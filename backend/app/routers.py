@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Router registry/composition for FastAPI app."""
 
-from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Optional

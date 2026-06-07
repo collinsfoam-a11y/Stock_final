@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Validate active projection parity against authoritative raw Mongo data."""
 
-from __future__ import annotations
 
 import argparse
 import asyncio

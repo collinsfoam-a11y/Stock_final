@@ -45,4 +45,4 @@ if (Test-Path $expoCache) {
     Remove-Item -Path $expoCache -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-npx expo start --web --clear
+npx expo start --web

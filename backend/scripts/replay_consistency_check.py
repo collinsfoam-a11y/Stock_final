@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Verify that replaying event_log produces identical projection state on repeated rebuilds.
 
@@ -6,7 +7,6 @@ Safe by default:
 - mismatches are reported, never auto-fixed
 """
 
-from __future__ import annotations
 
 import argparse
 import asyncio

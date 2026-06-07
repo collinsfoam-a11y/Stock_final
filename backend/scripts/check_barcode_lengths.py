@@ -35,7 +35,7 @@ def check_lengths():
         for r in rows:
             print(f"Length {r[0]}: {r[1]} items")
 
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         print(f"Error: {e}")
     finally:
         connector.disconnect()

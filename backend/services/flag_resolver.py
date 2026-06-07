@@ -1,6 +1,6 @@
+from __future__ import annotations
 """BL V2 phase-0 server-side flag resolution."""
 
-from __future__ import annotations
 
 import inspect
 import hashlib

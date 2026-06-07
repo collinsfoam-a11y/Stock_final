@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 FIX GROUP 4: Tenant Isolation Middleware and Repository Guard.
 
@@ -6,7 +7,6 @@ movements, unknown_items, and reports must include an org_id filter.
 This module provides the enforcement mechanism.
 """
 
-from __future__ import annotations
 
 import logging
 from contextvars import ContextVar

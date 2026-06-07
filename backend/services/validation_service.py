@@ -1,8 +1,8 @@
+from __future__ import annotations
 """
 Runtime and background validation service for governance invariants.
 """
 
-from __future__ import annotations
 
 import logging
 import os
@@ -311,6 +311,8 @@ class ValidationService:
         doc: dict[str, Any],
     ) -> dict[str, Any]:
         qty = _as_decimal(doc.get("counted_qty"))
+        if qty < 0:
+            raise GovernanceViolation("NEGATIVE_QUANTITY")
         input_uom = (
             _normalize_uom(doc.get("input_uom"))
             or _normalize_uom(doc.get("uom_code"))
@@ -455,6 +457,9 @@ class ValidationService:
 
         try:
             await self.enforce_count_line_business_rules(doc, db_session=None)
+            damaged_qty = _as_decimal(doc.get("damaged_qty"), default="0")
+            if damaged_qty < 0:
+                errors.append("NEGATIVE_DAMAGE_QUANTITY")
         except GovernanceViolation as exc:
             errors.append(str(exc))
 
@@ -513,6 +518,12 @@ class ValidationService:
     async def check_duplicates(self) -> list[dict[str, Any]]:
         pipeline = [
             {
+                "$match": {
+                    "archived": {"$ne": True},
+                    "status": {"$not": {"$regex": "^superseded$", "$options": "i"}}
+                }
+            },
+            {
                 "$group": {
                     "_id": {
                         "session_id": "$session_id",
@@ -532,10 +543,8 @@ class ValidationService:
         return int(
             await self.db.count_lines.count_documents(
                 {
+                    "archived": {"$ne": True},
                     "$or": [
-                        {"location_id": {"$exists": False}},
-                        {"floor_id": {"$exists": False}},
-                        {"rack_id": {"$exists": False}},
                         {"location_id": None},
                         {"floor_id": None},
                         {"rack_id": None},

@@ -4,7 +4,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { ModernCard, ProgressRing, StatsCard } from "@/components/ui";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { spacing } from "@/theme/spacing";
+import { spacing } from "@/theme/unified/spacing";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { DashboardStats } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 

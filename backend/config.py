@@ -6,6 +6,8 @@ Type-safe configuration with validation using Pydantic
 """
 
 import logging
+logger = logging.getLogger(__name__)
+import logging
 import os
 from typing import Optional
 from pathlib import Path
@@ -566,7 +568,8 @@ except Exception as e:
                     from backend.utils.port_detector import PortDetector
 
                     mongo_url = PortDetector.get_mongo_url()
-                except Exception:
+                except Exception as e:
+                    logger.warning("Caught broad exception: %s", e)
                     pass
             self.MONGO_URL = mongo_url
             self.DB_NAME = os.getenv("DB_NAME", "stock_verification")

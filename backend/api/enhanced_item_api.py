@@ -3,6 +3,8 @@ Enhanced Item API - Upgraded endpoints with better error handling,
 caching, validation, and performance monitoring
 """
 
+import logging
+logger = logging.getLogger(__name__)
 import asyncio
 import logging
 import re
@@ -404,7 +406,8 @@ async def _fetch_with_fallback_strategy(barcode: str) -> tuple[Optional[dict], s
             cached_item = _extract_cached_item(cached)
             if cached_item:
                 return cached_item, "cache"
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             pass  # Continue to next strategy
 
     # Strategy 2: MongoDB (primary app database)

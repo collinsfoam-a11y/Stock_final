@@ -3,6 +3,8 @@ SQL Verification Service - Verifies item quantities from SQL Server
 Implements business logic requirement: Item selection triggers SQL qty read + Mongo writeback
 """
 
+import logging
+logger = logging.getLogger(__name__)
 import asyncio
 import logging
 import math
@@ -421,6 +423,109 @@ class SQLVerificationService:
                 error_info=error_info,
             )
 
+    async def _handle_sql_verification_error(
+        self,
+        exc: Exception,
+        item_code: str,
+        latency_ms: float,
+    ) -> Dict[str, Any]:
+        from backend.sql_server_connector import (
+            DatabaseConnectionError,
+            DatabaseQueryError,
+            ERPQueryParameterError,
+            ERPReadOnlyViolation,
+        )
+        
+        error_info = None
+        
+        if isinstance(exc, DatabaseConnectionError):
+            logger.error(f"FAIL-FAST: SQL connection failed for {item_code}: {exc}")
+            error_info = self._error_response(
+                error_code="SQL_CONNECTION_ERROR",
+                message="ERP system is temporarily unavailable. Please try again later.",
+                status_code=503,
+                item_code=item_code,
+                box_status="SQL_FAILURE",
+            )
+        elif isinstance(exc, ERPReadOnlyViolation):
+            logger.error(f"FAIL-FAST: ERP read-only violation for {item_code}: {exc}")
+            error_info = self._error_response(
+                error_code="ERP_READ_ONLY_VIOLATION",
+                message="Write operation blocked on ERP.",
+                status_code=400,
+                item_code=item_code,
+            )
+        elif isinstance(exc, ERPQueryParameterError):
+            logger.error(f"FAIL-FAST: ERP parameterization error for {item_code}: {exc}")
+            error_info = self._error_response(
+                error_code="ERP_QUERY_PARAMETER_ERROR",
+                message="ERP query blocked due to unsafe parameters.",
+                status_code=400,
+                item_code=item_code,
+            )
+        elif isinstance(exc, SQLNullResultError):
+            logger.error(f"ERP null result for {item_code}: {exc}")
+            error_info = self._error_response(
+                error_code="ERP_NULL_RESULT",
+                message="ERP returned no quantity for this item.",
+                status_code=500,
+                item_code=item_code,
+            )
+        elif isinstance(exc, SQLAmbiguousResultError):
+            logger.error(f"ERP ambiguous result for {item_code}: {exc}")
+            error_info = self._error_response(
+                error_code="ERP_AMBIGUOUS_RESULT",
+                message="ERP returned ambiguous quantity for this item.",
+                status_code=500,
+                item_code=item_code,
+            )
+        elif isinstance(exc, SQLInvalidNumericError):
+            logger.error(f"ERP invalid numeric result for {item_code}: {exc}")
+            error_info = self._error_response(
+                error_code="ERP_INVALID_RESULT",
+                message="ERP returned invalid quantity for this item.",
+                status_code=500,
+                item_code=item_code,
+            )
+        elif isinstance(exc, DatabaseQueryError):
+            logger.error(f"ERP query failed for {item_code}: {exc}")
+            error_info = self._error_response(
+                error_code="ERP_QUERY_ERROR",
+                message="ERP query failed. Please try again later.",
+                status_code=500,
+                item_code=item_code,
+            )
+        else:
+            logger.error(f"Governance Error verifying {item_code}: {str(exc)}")
+            error_text = str(exc).lower()
+            if any(term in error_text for term in ["connection", "sql server", "timeout", "reconnect"]):
+                error_info = self._error_response(
+                    error_code="SQL_CONNECTION_ERROR",
+                    message="ERP system is temporarily unavailable. Please try again later.",
+                    status_code=503,
+                    item_code=item_code,
+                    box_status="SQL_FAILURE",
+                )
+            else:
+                error_info = self._error_response(
+                    error_code="VERIFICATION_INTERNAL_ERROR",
+                    message="Verification failed due to an internal error.",
+                    status_code=500,
+                    item_code=item_code,
+                )
+                
+        await self._record_governance_event(
+            item_code=item_code,
+            sql_qty=None,
+            mongo_qty=None,
+            variance=None,
+            latency_ms=latency_ms,
+            seq=None,
+            status="FAILED",
+            error_info=error_info,
+        )
+        return error_info
+
     async def verify_item_quantity(self, item_code: str) -> Dict[str, Any]:
         """
         GOVERNANCE MANDATE: Enforce authoritative stock truth from SQL Server.
@@ -440,193 +545,15 @@ class SQLVerificationService:
         start_time = time.perf_counter()
         latency_ms: Optional[float] = None
 
-        from backend.sql_server_connector import (
-            DatabaseConnectionError,
-            DatabaseQueryError,
-            ERPQueryParameterError,
-            ERPReadOnlyViolation,
-        )
-
         try:
             # 1. Read Authoritative Quantity from SQL Server
             sql_qty = await self._get_sql_quantity(item_code)
             latency_ms = (time.perf_counter() - start_time) * 1000
-        except DatabaseConnectionError as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"FAIL-FAST: SQL connection failed for {item_code}: {e}")
-            error_info = self._error_response(
-                error_code="SQL_CONNECTION_ERROR",
-                message="ERP system is temporarily unavailable. Please try again later.",
-                status_code=503,
-                item_code=item_code,
-                box_status="SQL_FAILURE",
-            )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
-        except ERPReadOnlyViolation as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"FAIL-FAST: ERP read-only violation for {item_code}: {e}")
-            error_info = self._error_response(
-                error_code="ERP_READ_ONLY_VIOLATION",
-                message="Write operation blocked on ERP.",
-                status_code=400,
-                item_code=item_code,
-            )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
-        except ERPQueryParameterError as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"FAIL-FAST: ERP parameterization error for {item_code}: {e}")
-            error_info = self._error_response(
-                error_code="ERP_QUERY_PARAMETER_ERROR",
-                message="ERP query blocked due to unsafe parameters.",
-                status_code=400,
-                item_code=item_code,
-            )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
-        except SQLNullResultError as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"ERP null result for {item_code}: {e}")
-            error_info = self._error_response(
-                error_code="ERP_NULL_RESULT",
-                message="ERP returned no quantity for this item.",
-                status_code=500,
-                item_code=item_code,
-            )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
-        except SQLAmbiguousResultError as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"ERP ambiguous result for {item_code}: {e}")
-            error_info = self._error_response(
-                error_code="ERP_AMBIGUOUS_RESULT",
-                message="ERP returned ambiguous quantity for this item.",
-                status_code=500,
-                item_code=item_code,
-            )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
-        except SQLInvalidNumericError as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"ERP invalid numeric result for {item_code}: {e}")
-            error_info = self._error_response(
-                error_code="ERP_INVALID_RESULT",
-                message="ERP returned invalid quantity for this item.",
-                status_code=500,
-                item_code=item_code,
-            )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
-        except DatabaseQueryError as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"ERP query failed for {item_code}: {e}")
-            error_info = self._error_response(
-                error_code="ERP_QUERY_ERROR",
-                message="ERP query failed. Please try again later.",
-                status_code=500,
-                item_code=item_code,
-            )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
         except Exception as e:
             latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"Governance Error verifying {item_code}: {str(e)}")
-            error_text = str(e).lower()
-            if any(
-                term in error_text for term in ["connection", "sql server", "timeout", "reconnect"]
-            ):
-                error_info = self._error_response(
-                    error_code="SQL_CONNECTION_ERROR",
-                    message="ERP system is temporarily unavailable. Please try again later.",
-                    status_code=503,
-                    item_code=item_code,
-                    box_status="SQL_FAILURE",
-                )
-            else:
-                error_info = self._error_response(
-                    error_code="VERIFICATION_INTERNAL_ERROR",
-                    message="Verification failed due to an internal error.",
-                    status_code=500,
-                    item_code=item_code,
-                )
-            await self._record_governance_event(
-                item_code=item_code,
-                sql_qty=None,
-                mongo_qty=None,
-                variance=None,
-                latency_ms=latency_ms,
-                seq=None,
-                status="FAILED",
-                error_info=error_info,
-            )
-            return error_info
+            return await self._handle_sql_verification_error(e, item_code, latency_ms)
 
         return await self._verify_item_with_sql_qty(item_code, sql_qty, latency_ms)
-
     async def _get_sql_quantity(self, item_code: str) -> float:
         """Get item quantity from SQL Server with strict extraction"""
         try:
@@ -920,7 +847,8 @@ class SQLVerificationService:
                 "timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
             }
 
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             return {
                 "success": False,
                 "status": "disconnected",

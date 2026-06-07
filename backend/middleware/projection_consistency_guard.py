@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Projection consistency guard for dashboard read endpoints.
 
 This middleware performs a lightweight version/count parity check before
@@ -5,7 +6,8 @@ serving critical read endpoints and retries transient projection-stale reads
 instead of immediately returning 503.
 """
 
-from __future__ import annotations
+import logging
+logger = logging.getLogger(__name__)
 
 import asyncio
 from collections import deque
@@ -632,7 +634,8 @@ class ProjectionConsistencyGuardMiddleware(BaseHTTPMiddleware):
             return {}
         try:
             return json.loads(body_bytes.decode("utf-8"))
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             return {}
 
     def _is_projection_stale_503(self, payload: dict[str, Any]) -> bool:

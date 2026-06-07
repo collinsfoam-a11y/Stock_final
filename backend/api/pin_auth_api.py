@@ -2,6 +2,8 @@
 Auth API Endpoints (PIN Extensions)
 """
 
+import logging
+logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
@@ -109,7 +111,8 @@ async def login_with_pin(
     # Reset rate limit for successful PIN login
     try:
         await reset_rate_limit(ip_address)
-    except Exception:
+    except Exception as e:
+        logger.warning("Caught broad exception: %s", e)
         pass
 
     return {

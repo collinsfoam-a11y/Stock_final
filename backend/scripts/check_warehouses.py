@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 import os
 import sys
 
@@ -53,12 +55,13 @@ def main():
         for w in others:
             print(f"  - {w.get('warehouse_name')}")
 
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         print(f"Error: {e}")
     finally:
         try:
             connector.disconnect()
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             pass
 
 

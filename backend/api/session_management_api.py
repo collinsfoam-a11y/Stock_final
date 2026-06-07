@@ -336,10 +336,15 @@ def _build_snapshot_queries(
     return unique_queries
 
 
-def _build_snapshot_payload_and_hash(snapshot_items: list[Any]) -> tuple[list[dict[str, Any]], str]:
+async def _build_snapshot_payload_and_hash(snapshot_items: list[Any]) -> tuple[list[dict[str, Any]], str]:
+    import asyncio
     snapshot_items.sort(key=lambda item: item.item_code)
     items_payload = [item.model_dump(mode="json") for item in snapshot_items]
-    payload_str = json.dumps(items_payload, sort_keys=True, default=str)
+    
+    def _do_dumps() -> str:
+        return json.dumps(items_payload, sort_keys=True, default=str)
+        
+    payload_str = await asyncio.to_thread(_do_dumps)
     snapshot_hash = hashlib.sha256(payload_str.encode()).hexdigest()
     return items_payload, snapshot_hash
 
@@ -680,6 +685,10 @@ def _derive_next_action(
     return WorkflowNextAction.NONE
 
 
+MAX_DATE_BUCKETS = 365
+MAX_WAREHOUSE_BUCKETS = 100
+MAX_STAFF_BUCKETS = 500
+
 async def _build_sessions_analytics_payload(db: AsyncIOMotorDatabase) -> dict[str, Any]:
     """Build the aggregated session analytics payload used by admin/supervisor dashboards."""
     pipeline = [
@@ -690,7 +699,15 @@ async def _build_sessions_analytics_payload(db: AsyncIOMotorDatabase) -> dict[st
                 "total_items": {"$sum": "$total_items"},
                 "total_variance": {"$sum": "$total_variance"},
                 "avg_variance": {"$avg": "$total_variance"},
-                "sessions_by_status": {"$push": {"status": "$status", "count": 1}},
+            }
+        }
+    ]
+
+    status_pipeline = [
+        {
+            "$group": {
+                "_id": "$status",
+                "count": {"$sum": 1},
             }
         }
     ]
@@ -730,11 +747,13 @@ async def _build_sessions_analytics_payload(db: AsyncIOMotorDatabase) -> dict[st
     ]
 
     overall = await db.sessions.aggregate(pipeline).to_list(1)
-    by_date = await db.sessions.aggregate(date_pipeline).to_list(None)  # type: ignore[arg-type]
-    by_warehouse = await db.sessions.aggregate(warehouse_pipeline).to_list(None)
-    by_staff = await db.sessions.aggregate(staff_pipeline).to_list(None)
+    by_status = await db.sessions.aggregate(status_pipeline).to_list(None)
+    by_date = await db.sessions.aggregate(date_pipeline).to_list(MAX_DATE_BUCKETS)
+    by_warehouse = await db.sessions.aggregate(warehouse_pipeline).to_list(MAX_WAREHOUSE_BUCKETS)
+    by_staff = await db.sessions.aggregate(staff_pipeline).to_list(MAX_STAFF_BUCKETS)
 
     overall_summary = overall[0] if overall else {}
+    overall_summary["sessions_by_status"] = [{"status": item["_id"], "count": item["count"]} for item in by_status]
 
     return {
         "overall": overall_summary,
@@ -842,7 +861,7 @@ async def _persist_session_snapshot(
         location_name=location_name,
         rack_no=rack_no,
     )
-    _, snapshot_hash = _build_snapshot_payload_and_hash(snapshot_items)
+    _, snapshot_hash = await _build_snapshot_payload_and_hash(snapshot_items)
 
     session.snapshot_hash = snapshot_hash
 
@@ -1293,7 +1312,7 @@ async def get_active_sessions(
 
     if user_id:
         # Only supervisors can view other users' sessions
-        if current_user["role"] != "supervisor" and user_id != current_user["username"]:
+        if current_user["role"] not in {"supervisor", "admin"} and user_id != current_user["username"]:
             raise HTTPException(status_code=403, detail="Access denied")
         query["staff_user"] = user_id
 
@@ -1379,7 +1398,7 @@ async def get_session_detail(
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     # Check access
-    if current_user["role"] != "supervisor" and _session_owner(session) != current_user["username"]:
+    if current_user["role"] not in {"supervisor", "admin"} and _session_owner(session) != current_user["username"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
     line_summary = await _get_session_line_summary(db, session_id)
@@ -1410,7 +1429,7 @@ async def get_session_stats(
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     # Check access
-    if current_user["role"] != "supervisor" and _session_owner(session) != current_user["username"]:
+    if current_user["role"] not in {"supervisor", "admin"} and _session_owner(session) != current_user["username"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
     line_summary = await _get_session_line_summary(db, session_id)

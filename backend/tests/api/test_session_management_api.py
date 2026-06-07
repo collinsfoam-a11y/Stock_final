@@ -1417,11 +1417,19 @@ class TestSessionAnalyticsEndpoint:
             ]
         )
 
+        by_status_cursor = MagicMock()
+        by_status_cursor.to_list = AsyncMock(
+            return_value=[
+                {"_id": "ACTIVE", "count": 2},
+            ]
+        )
+
         mock_db = MagicMock()
         mock_db.sessions = MagicMock()
         mock_db.sessions.aggregate = MagicMock(
             side_effect=[
                 overall_cursor,
+                by_status_cursor,
                 by_date_cursor,
                 by_warehouse_cursor,
                 by_staff_cursor,

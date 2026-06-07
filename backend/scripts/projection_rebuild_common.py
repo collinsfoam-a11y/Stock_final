@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Shared helpers for controlled projection rebuild scripts."""
 
-from __future__ import annotations
 
 import argparse
 import asyncio

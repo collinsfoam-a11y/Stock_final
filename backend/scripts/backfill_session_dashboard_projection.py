@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Rebuild session dashboard projection rows from authoritative raw data."""
 
-from __future__ import annotations
 
 import sys
 from pathlib import Path

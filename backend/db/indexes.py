@@ -7,6 +7,8 @@ Optimized indexes for 20 concurrent users and fast queries
 # field_spec: List of (field, direction) tuples
 # options: Index options dict
 
+import logging
+logger = logging.getLogger(__name__)
 from typing import Union
 
 INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
@@ -131,8 +133,15 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("rack_no", 1), ("session_id", 1)], {"name": "idx_rack_counts"}),
         # Idempotent submission guard
         (
-            [("idempotency_key", 1)],
-            {"name": "idx_count_line_idempotency", "unique": True, "sparse": True},
+            [("session_id", 1), ("idempotency_key", 1)],
+            {
+                "name": "idx_count_line_idempotency",
+                "unique": True,
+                "partialFilterExpression": {
+                    "session_id": {"$exists": True},
+                    "idempotency_key": {"$exists": True},
+                },
+            },
         ),
         # Domain semantic idempotency guard (session + item + context + qty + version hash)
         (
@@ -354,6 +363,46 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
 }
 
 
+def _normalize_index_key(key: object) -> list[tuple[str, Union[int, str]]]:
+    normalized: list[tuple[str, Union[int, str]]] = []
+    if not isinstance(key, list):
+        return normalized
+    for entry in key:
+        if isinstance(entry, tuple) and len(entry) == 2:
+            normalized.append((str(entry[0]), entry[1]))
+        elif isinstance(entry, list) and len(entry) == 2:
+            normalized.append((str(entry[0]), entry[1]))
+    return normalized
+
+
+async def _drop_legacy_count_line_idempotency_index(collection, expected_key) -> None:
+    """Replace the legacy global idempotency index with the session-scoped contract."""
+    try:
+        index_info = await collection.index_information()
+    except Exception as exc:
+        logger.warning("Unable to inspect count_lines idempotency index: %s", exc)
+        return
+
+    existing = index_info.get("idx_count_line_idempotency")
+    if not isinstance(existing, dict):
+        return
+
+    existing_key = _normalize_index_key(existing.get("key"))
+    legacy_key = [("idempotency_key", 1)]
+    if existing_key == legacy_key:
+        logger.warning(
+            "Dropping legacy count_lines idempotency index before creating session-scoped index"
+        )
+        await collection.drop_index("idx_count_line_idempotency")
+        return
+
+    if existing_key and existing_key != _normalize_index_key(expected_key):
+        logger.warning(
+            "Existing idx_count_line_idempotency has unexpected key %s; leaving it unchanged",
+            existing_key,
+        )
+
+
 async def create_indexes(db) -> dict[str, int]:
     """
     Create all indexes defined in INDEXES
@@ -376,6 +425,11 @@ async def create_indexes(db) -> dict[str, int]:
 
             for field_spec, options in index_specs:
                 try:
+                    if (
+                        collection_name == "count_lines"
+                        and options.get("name") == "idx_count_line_idempotency"
+                    ):
+                        await _drop_legacy_count_line_idempotency_index(collection, field_spec)
                     await collection.create_index(field_spec, **options)
                     created += 1
                 except Exception as e:
@@ -454,7 +508,8 @@ async def get_index_stats(db) -> dict[str, list[dict]]:
                 }
                 for name, info in index_info.items()
             ]
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             stats[collection_name] = []
 
     return stats

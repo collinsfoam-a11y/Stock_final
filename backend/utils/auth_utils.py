@@ -1,4 +1,6 @@
 import logging
+logger = logging.getLogger(__name__)
+import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -87,7 +89,8 @@ def identify_password_hash(hashed_password: Optional[str]) -> str:
         return "unknown"
     try:
         scheme = pwd_context.identify(hashed_password)
-    except Exception:
+    except Exception as e:
+        logger.warning("Caught broad exception: %s", e)
         scheme = None
     if scheme == "argon2":
         if hashed_password.startswith("$argon2id$"):
@@ -103,7 +106,8 @@ def identify_password_hash(hashed_password: Optional[str]) -> str:
 def _default_password_hash_algorithm() -> str:
     try:
         scheme = pwd_context.default_scheme()
-    except Exception:
+    except Exception as e:
+        logger.warning("Caught broad exception: %s", e)
         return "unknown"
     return "argon2id" if scheme == "argon2" else str(scheme)
 
@@ -119,7 +123,8 @@ def password_hash_needs_upgrade(hashed_password: Optional[str]) -> bool:
         return _default_password_hash_algorithm() == "argon2id"
     try:
         return bool(pwd_context.needs_update(hashed_password))
-    except Exception:
+    except Exception as e:
+        logger.warning("Caught broad exception: %s", e)
         return False
 
 

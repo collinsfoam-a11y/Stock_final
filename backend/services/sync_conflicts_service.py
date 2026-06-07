@@ -532,12 +532,11 @@ class SyncConflictsService:
         Auto-resolve simple conflicts based on strategy
         Returns number of conflicts resolved
         """
-        # Get pending conflicts
-        conflicts = await self.get_conflicts(status=ConflictStatus.PENDING)
-
+        cursor = self.db.sync_conflicts.find({"status": ConflictStatus.PENDING.value})
         resolved_count = 0
 
-        for conflict in conflicts:
+        async for conflict in cursor:
+            conflict["id"] = str(conflict.pop("_id"))
             try:
                 if await self._resolve_single_conflict(conflict, strategy):
                     resolved_count += 1

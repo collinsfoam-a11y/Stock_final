@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Concurrency primitives for governed write services."""
 
-from __future__ import annotations
 
 from typing import Any
 

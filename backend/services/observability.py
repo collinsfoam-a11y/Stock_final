@@ -3,6 +3,8 @@ Enterprise Observability Service
 Structured logging, distributed tracing, and metrics collection
 """
 
+import logging
+logger = logging.getLogger(__name__)
 import asyncio
 import json
 import logging
@@ -142,7 +144,8 @@ class StructuredLogger:
 
         try:
             return "".join(traceback.format_exception(type(error), error, error.__traceback__))
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             return str(error)
 
     def debug(self, message: str, **kwargs):

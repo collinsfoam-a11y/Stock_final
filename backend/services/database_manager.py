@@ -3,6 +3,8 @@ Comprehensive Database Manager - Handles all database operations with enhanced f
 """
 
 import logging
+logger = logging.getLogger(__name__)
+import logging
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -370,7 +372,8 @@ class DatabaseManager:
                     if size_mb > 10:
                         large_collections.append(collection)
 
-                except Exception:
+                except Exception as e:
+                    logger.warning("Caught broad exception: %s", e)
                     continue  # Skip collections that can't be analyzed
 
         except Exception as e:
@@ -428,7 +431,8 @@ class DatabaseManager:
                             "Collection {collection} is empty. Check sync services.",
                         )
                     )
-            except Exception:
+            except Exception as e:
+                logger.warning("Caught broad exception: %s", e)
                 continue
 
     def _analyze_sql_server(self, insights: dict[str, Any]) -> None:

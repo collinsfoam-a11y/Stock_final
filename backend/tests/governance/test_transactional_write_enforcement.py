@@ -6,6 +6,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from backend.api.count_lines_routes import (
+    CountLineMergeRequest,
+    _persist_count_line_document,
+    merge_count_lines,
+)
+from backend.api.schemas import CountLineCreate
 from backend.services.concurrency import ConcurrencyError
 from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.governance_guard import GovernanceViolation
@@ -17,17 +23,25 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-async def _seed_active_session(db: InMemoryDatabase, session_id: str = "sess-1") -> None:
+async def _seed_active_session(
+    db: InMemoryDatabase,
+    session_id: str = "sess-1",
+    *,
+    version: int = 0,
+) -> None:
     now = _utc_now()
     await db.sessions.insert_one(
         {
             "id": session_id,
             "session_id": session_id,
             "status": "ACTIVE",
-            "version": 0,
+            "version": version,
             "location_id": "LOC-1",
             "floor_id": "FLOOR-1",
             "rack_id": "RACK-1",
+            "warehouse": "WH-1",
+            "logic_version": "v1",
+            "logic_scope_source": "global",
             "started_at": now,
             "last_heartbeat": now,
         }
@@ -39,6 +53,18 @@ async def _seed_active_session(db: InMemoryDatabase, session_id: str = "sess-1")
             "last_heartbeat": now,
         }
     )
+
+
+def _touch_side_effect_collections(db: InMemoryDatabase) -> None:
+    for collection_name in (
+        "event_log",
+        "session_dashboard_projection",
+        "verified_items_projection",
+        "variance_summary_projection",
+        "financial_projection",
+        "governance_events",
+    ):
+        getattr(db, collection_name)
 
 
 async def _seed_session_snapshot(
@@ -97,6 +123,26 @@ def _build_line(
     }
 
 
+def _build_line_data(
+    *,
+    session_id: str,
+    item_code: str,
+    counted_qty: float,
+    idempotency_key: str,
+) -> CountLineCreate:
+    return CountLineCreate(
+        session_id=session_id,
+        location_id="LOC-1",
+        floor_id="FLOOR-1",
+        rack_id="RACK-1",
+        floor_no="FLOOR-1",
+        rack_no="RACK-1",
+        item_code=item_code,
+        counted_qty=counted_qty,
+        idempotency_key=idempotency_key,
+    )
+
+
 @pytest.mark.asyncio
 async def test_count_line_insert_rolls_back_when_session_update_fails(monkeypatch):
     db = InMemoryDatabase()
@@ -149,6 +195,11 @@ async def test_count_line_write_rejects_stale_expected_session_version():
             "expected_session_version": 0,
         },
     )
+    session_after_first = await db.sessions.find_one({"id": "sess-occ"})
+    event_count_after_first = await db.event_log.count_documents({})
+    session_projection_count_after_first = await db.session_dashboard_projection.count_documents({})
+
+    assert session_after_first["version"] == 1
 
     second = _build_line(
         line_id="line-occ-2",
@@ -169,6 +220,227 @@ async def test_count_line_write_rejects_stale_expected_session_version():
         )
 
     assert await db.count_lines.count_documents({}) == 1
+    assert await db.count_lines.find_one({"id": "line-occ-2"}) is None
+    assert await db.event_log.count_documents({}) == event_count_after_first
+    assert await db.event_log.find_one({"payload.count_line.id": "line-occ-2"}) is None
+    assert (
+        await db.session_dashboard_projection.count_documents({})
+        == session_projection_count_after_first
+    )
+    session_after_stale = await db.sessions.find_one({"id": "sess-occ"})
+    assert session_after_stale["version"] == 1
+
+
+@pytest.mark.asyncio
+async def test_count_line_write_accepts_current_expected_session_version_and_increments():
+    db = InMemoryDatabase()
+    await _seed_active_session(db, "sess-occ-valid")
+    await _seed_session_snapshot(db, "sess-occ-valid", item_code="ITEM-OCC-V1", stock_qty=5.0)
+    await _seed_session_snapshot(db, "sess-occ-valid", item_code="ITEM-OCC-V2", stock_qty=7.0)
+    service = CountLineWriteService(db)
+
+    await service.process_write(
+        {
+            "operation": "insert_one",
+            "document": _build_line(
+                line_id="line-occ-valid-1",
+                session_id="sess-occ-valid",
+                item_code="ITEM-OCC-V1",
+                counted_qty=5.0,
+                idempotency_key="idem-occ-valid-1",
+            ),
+        },
+        context={
+            "username": "tester",
+            "enforce_snapshot": False,
+            "expected_session_version": 0,
+        },
+    )
+
+    session_after_first = await db.sessions.find_one({"id": "sess-occ-valid"})
+    assert session_after_first["version"] == 1
+
+    await service.process_write(
+        {
+            "operation": "insert_one",
+            "document": _build_line(
+                line_id="line-occ-valid-2",
+                session_id="sess-occ-valid",
+                item_code="ITEM-OCC-V2",
+                counted_qty=7.0,
+                idempotency_key="idem-occ-valid-2",
+            ),
+        },
+        context={
+            "username": "tester",
+            "enforce_snapshot": False,
+            "expected_session_version": 1,
+        },
+    )
+
+    session_after_second = await db.sessions.find_one({"id": "sess-occ-valid"})
+    projection = await db.session_dashboard_projection.find_one(
+        {"session_id": "sess-occ-valid"}
+    )
+
+    assert await db.count_lines.count_documents({}) == 2
+    assert session_after_second["version"] == 2
+    assert projection["version"] == 2
+    assert await db.event_log.find_one({"payload.count_line.id": "line-occ-valid-2"}) is not None
+
+
+@pytest.mark.asyncio
+async def test_persist_count_line_document_advances_session_version_under_occ():
+    db = InMemoryDatabase()
+    _touch_side_effect_collections(db)
+    await _seed_active_session(db, "sess-legacy-persist")
+    await _seed_session_snapshot(
+        db,
+        "sess-legacy-persist",
+        item_code="ITEM-LEGACY-PERSIST",
+        stock_qty=3.0,
+    )
+    service = CountLineWriteService(db)
+    line_data = _build_line_data(
+        session_id="sess-legacy-persist",
+        item_code="ITEM-LEGACY-PERSIST",
+        counted_qty=3.0,
+        idempotency_key="idem-legacy-persist",
+    )
+    count_line = _build_line(
+        line_id="line-legacy-persist",
+        session_id="sess-legacy-persist",
+        item_code="ITEM-LEGACY-PERSIST",
+        counted_qty=3.0,
+        idempotency_key="idem-legacy-persist",
+    )
+    session = await db.sessions.find_one({"id": "sess-legacy-persist"})
+
+    await _persist_count_line_document(
+        db,
+        line_data,
+        "tester",
+        count_line,
+        count_line["counted_at"],
+        None,
+        write_service=service,
+        session=session,
+    )
+
+    stored_session = await db.sessions.find_one({"id": "sess-legacy-persist"})
+    assert stored_session["version"] == 1
+    assert stored_session["total_items"] == 1
+    assert await db.count_lines.count_documents({"session_id": "sess-legacy-persist"}) == 1
+
+
+@pytest.mark.asyncio
+async def test_persist_count_line_document_rolls_back_on_stale_session_version():
+    db = InMemoryDatabase()
+    _touch_side_effect_collections(db)
+    await _seed_active_session(db, "sess-legacy-stale", version=1)
+    await _seed_session_snapshot(
+        db,
+        "sess-legacy-stale",
+        item_code="ITEM-LEGACY-STALE",
+        stock_qty=4.0,
+    )
+    service = CountLineWriteService(db)
+    line_data = _build_line_data(
+        session_id="sess-legacy-stale",
+        item_code="ITEM-LEGACY-STALE",
+        counted_qty=4.0,
+        idempotency_key="idem-legacy-stale",
+    )
+    count_line = _build_line(
+        line_id="line-legacy-stale",
+        session_id="sess-legacy-stale",
+        item_code="ITEM-LEGACY-STALE",
+        counted_qty=4.0,
+        idempotency_key="idem-legacy-stale",
+    )
+    stale_session = {
+        **(await db.sessions.find_one({"id": "sess-legacy-stale"})),
+        "version": 0,
+    }
+
+    with pytest.raises(ConcurrencyError, match="version mismatch"):
+        await _persist_count_line_document(
+            db,
+            line_data,
+            "tester",
+            count_line,
+            count_line["counted_at"],
+            None,
+            write_service=service,
+            session=stale_session,
+            expected_session_version=0,
+        )
+
+    assert await db.count_lines.count_documents({}) == 0
+    assert await db.event_log.count_documents({}) == 0
+    assert await db.session_dashboard_projection.count_documents({}) == 0
+    assert await db.governance_events.count_documents({}) == 0
+    stored_session = await db.sessions.find_one({"id": "sess-legacy-stale"})
+    assert stored_session["version"] == 1
+
+
+@pytest.mark.asyncio
+async def test_merge_count_lines_advances_session_version_inside_merge_path(monkeypatch):
+    monkeypatch.setenv("PROJECTION_WRITE_LOCK_ENABLED", "false")
+    db = InMemoryDatabase()
+    _touch_side_effect_collections(db)
+    await _seed_active_session(db, "sess-legacy-merge")
+    await _seed_session_snapshot(
+        db,
+        "sess-legacy-merge",
+        item_code="ITEM-LEGACY-MERGE",
+        stock_qty=8.0,
+    )
+    await db.erp_items.insert_one(
+        {
+            "item_code": "ITEM-LEGACY-MERGE",
+            "item_name": "Merge Item",
+            "stock_qty": 8.0,
+            "last_cost": 1.0,
+        }
+    )
+    await db.count_lines.insert_one(
+        _build_line(
+            line_id="line-merge-target",
+            session_id="sess-legacy-merge",
+            item_code="ITEM-LEGACY-MERGE",
+            counted_qty=3.0,
+            idempotency_key="idem-merge-target",
+        )
+    )
+    await db.count_lines.insert_one(
+        _build_line(
+            line_id="line-merge-source",
+            session_id="sess-legacy-merge",
+            item_code="ITEM-LEGACY-MERGE",
+            counted_qty=2.0,
+            idempotency_key="idem-merge-source",
+        )
+    )
+
+    result = await merge_count_lines(
+        http_request=None,
+        payload=CountLineMergeRequest(
+            target_line_id="line-merge-target",
+            source_line_ids=["line-merge-source"],
+        ),
+        current_user={"username": "supervisor", "role": "supervisor"},
+        db_override=db,
+    )
+
+    stored_session = await db.sessions.find_one({"id": "sess-legacy-merge"})
+    target_line = await db.count_lines.find_one({"id": "line-merge-target"})
+    source_line = await db.count_lines.find_one({"id": "line-merge-source"})
+
+    assert result["merged"] == ["line-merge-source"]
+    assert stored_session["version"] == 1
+    assert target_line["counted_qty"] == 5.0
+    assert source_line["merged_into_id"] == "line-merge-target"
 
 
 @pytest.mark.asyncio

@@ -3,6 +3,8 @@ Input Sanitization Middleware (2024/2025 Best Practice)
 Sanitizes input to prevent XSS and injection attacks
 """
 
+import logging
+logger = logging.getLogger(__name__)
 import html
 import logging
 import re
@@ -105,7 +107,8 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
                                 "request_id": request_id,
                             },
                         )
-            except Exception:
+            except Exception as e:
+                logger.warning("Caught broad exception: %s", e)
                 pass
         return None
 

@@ -3,6 +3,7 @@ User Management API
 Full CRUD endpoints for managing users - Admin only
 """
 
+from bson.errors import InvalidId
 import logging
 from datetime import datetime, timezone
 from typing import Any, Optional, cast
@@ -293,7 +294,7 @@ async def _resolve_user_or_raise(db: Any, user_id: str) -> tuple[Any, dict[str, 
 
     try:
         oid = ObjectId(user_id)
-    except Exception:
+    except InvalidId:
         _raise_http_error(status.HTTP_400_BAD_REQUEST, "Invalid user ID", "INVALID_ID")
 
     user = await db.users.find_one({"_id": oid})
@@ -434,7 +435,7 @@ async def get_user(
     # Validate ObjectId
     try:
         oid = ObjectId(user_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
@@ -574,7 +575,7 @@ async def update_user(
 
     try:
         oid = ObjectId(user_id)
-    except Exception:
+    except InvalidId:
         _raise_http_error(status.HTTP_400_BAD_REQUEST, "Invalid user ID", "INVALID_ID")
 
     existing = await db.users.find_one({"_id": oid})
@@ -617,7 +618,7 @@ async def delete_user(
     # Validate ObjectId
     try:
         oid = ObjectId(user_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={

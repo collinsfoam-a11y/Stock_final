@@ -79,7 +79,7 @@ def explore():
         for s in series:
             print(f"Series {s[0]}: {s[1]} items")
 
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         print(f"Error: {e}")
     finally:
         connector.disconnect()

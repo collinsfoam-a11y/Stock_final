@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Report-only validation of projection-backed business reads against legacy aggregates."""
 
-from __future__ import annotations
 
 import argparse
 import asyncio

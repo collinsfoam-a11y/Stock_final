@@ -3,6 +3,9 @@ API v2 Items Endpoints
 Upgraded item endpoints with standardized responses
 """
 
+import logging
+logger = logging.getLogger(__name__)
+from bson.errors import InvalidId
 import io
 import re
 import sys
@@ -76,7 +79,7 @@ async def _resolve_item_document(db: Any, item_identifier: str) -> Optional[dict
 
         if ObjectId.is_valid(item_identifier):
             return await db.erp_items.find_one({"_id": ObjectId(item_identifier)})
-    except Exception:
+    except InvalidId:
         pass
 
     return None
@@ -108,7 +111,8 @@ def _extract_image_identifiers(file_bytes: bytes) -> list[str]:
 
         image = Image.open(io.BytesIO(file_bytes))
         image.load()
-    except Exception:
+    except Exception as e:
+        logger.warning("Caught broad exception: %s", e)
         return []
 
     try:
@@ -117,7 +121,8 @@ def _extract_image_identifiers(file_bytes: bytes) -> list[str]:
         for decoded in decode_barcodes(image):
             if decoded.data:
                 identifiers.append(decoded.data.decode("utf-8", errors="ignore"))
-    except Exception:
+    except Exception as e:
+        logger.warning("Caught broad exception: %s", e)
         pass
 
     try:
@@ -125,7 +130,8 @@ def _extract_image_identifiers(file_bytes: bytes) -> list[str]:
 
         ocr_text = pytesseract.image_to_string(image)
         identifiers.extend(_extract_identifiers_from_text(ocr_text))
-    except Exception:
+    except Exception as e:
+        logger.warning("Caught broad exception: %s", e)
         pass
 
     return _dedupe_preserve_order(identifiers)

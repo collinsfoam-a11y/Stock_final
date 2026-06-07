@@ -1,4 +1,6 @@
 from __future__ import annotations
+import logging
+logger = logging.getLogger(__name__)
 import base64
 import hashlib
 import logging
@@ -107,7 +109,8 @@ def get_connection(conn_string):
         if env == "development":
             try:
                 drivers = list(pyodbc.drivers())
-            except Exception:
+            except Exception as e:
+                logger.warning("Caught broad exception: %s", e)
                 drivers = []
             raise HTTPException(
                 status_code=400,

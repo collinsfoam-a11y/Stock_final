@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Publish projection readiness using the packaged publisher entrypoint."""
 
-from __future__ import annotations
 
 import subprocess
 import sys

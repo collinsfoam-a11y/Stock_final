@@ -1,6 +1,6 @@
+from __future__ import annotations
 """FastAPI app factory compatibility surface."""
 
-from __future__ import annotations
 
 from fastapi import FastAPI
 

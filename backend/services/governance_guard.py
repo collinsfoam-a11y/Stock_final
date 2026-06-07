@@ -1,8 +1,10 @@
+from __future__ import annotations
 """
 Central governance guard for write-path invariants.
 """
 
-from __future__ import annotations
+import logging
+logger = logging.getLogger(__name__)
 
 import inspect
 from contextlib import contextmanager
@@ -357,7 +359,8 @@ def _install_collection_proxy(db: Any, collection_name: str, collection: Any) ->
     try:
         setattr(db, collection_name, proxy)
         return proxy
-    except Exception:
+    except Exception as e:
+        logger.warning("Caught broad exception: %s", e)
         return collection
 
 

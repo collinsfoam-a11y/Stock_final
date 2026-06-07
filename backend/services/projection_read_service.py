@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pymongo.errors import PyMongoError
 
 import logging
 import os
@@ -121,7 +122,7 @@ class ProjectionReadService:
         try:
             collection = getattr(self.db, "feature_flags", None) or self.db["feature_flags"]
             doc = await collection.find_one({"key": flag_name})
-        except Exception:
+        except PyMongoError:
             return False
 
         if not isinstance(doc, dict):

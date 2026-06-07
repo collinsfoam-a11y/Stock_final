@@ -18,6 +18,44 @@ logger = logging.getLogger(__name__)
 health_router = APIRouter(prefix="/health", tags=["health"])
 info_router = APIRouter(prefix="/api", tags=["info"])
 
+_SENSITIVE_HEALTH_KEYS = {
+    "config",
+    "password",
+    "pwd",
+    "username",
+    "user",
+    "uid",
+    "host",
+    "server",
+    "dsn",
+    "connection_string",
+    "connectionstring",
+}
+
+
+def _sanitize_detailed_health_response(payload: Any) -> Any:
+    """Defensive scrub for public detailed health responses."""
+    if isinstance(payload, dict):
+        sanitized: dict[str, Any] = {}
+        for key, value in payload.items():
+            if str(key).strip().lower() in _SENSITIVE_HEALTH_KEYS:
+                continue
+            sanitized[key] = _sanitize_detailed_health_response(value)
+        return sanitized
+
+    if isinstance(payload, list):
+        return [_sanitize_detailed_health_response(value) for value in payload]
+
+    if isinstance(payload, str):
+        if re.search(
+            r"(?i)\b(password|pwd|uid|user\s*id|server|host|dsn)\s*=",
+            payload,
+        ):
+            return "[REDACTED]"
+        return payload
+
+    return payload
+
 # Import MongoDB status checker
 try:
     from backend.utils.port_detector import PortDetector
@@ -472,7 +510,7 @@ async def detailed_health_check() -> dict[str, Any]:
         },
     }
 
-    return health_data
+    return _sanitize_detailed_health_response(health_data)
 
 
 def _parse_version(version_str: str) -> tuple[int, int, int]:

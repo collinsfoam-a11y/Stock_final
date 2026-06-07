@@ -23,6 +23,7 @@ ALLOWED_WRITERS = [
     "query_builder.py",
     "sync_batch_api.py",
     "test_governance_contracts.py",
+    "load_test_offline_sync.py",
 ]
 
 

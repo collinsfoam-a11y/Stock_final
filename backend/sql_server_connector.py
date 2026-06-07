@@ -1,4 +1,6 @@
 from __future__ import annotations
+import logging
+logger = logging.getLogger(__name__)
 
 # ruff: noqa: E402
 import asyncio
@@ -617,7 +619,8 @@ class SQLServerConnector:
             cursor.fetchone()
             cursor.close()
             return True
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             return False
 
     def _attempt_reconnect_on_failure(self) -> bool:

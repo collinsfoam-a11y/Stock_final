@@ -1,6 +1,8 @@
+from __future__ import annotations
 """Mongo transaction helper for governed write operations."""
 
-from __future__ import annotations
+import logging
+logger = logging.getLogger(__name__)
 
 import inspect
 import logging
@@ -28,7 +30,8 @@ async def _client_supports_transactions(client: Any) -> bool:
     try:
         hello_result = command("hello")
         hello = await hello_result if inspect.isawaitable(hello_result) else hello_result
-    except Exception:
+    except Exception as e:
+        logger.warning("Caught broad exception: %s", e)
         return True
 
     if not isinstance(hello, dict):

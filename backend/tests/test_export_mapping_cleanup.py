@@ -25,6 +25,7 @@ class _AggregateCursor:
 @pytest.mark.asyncio
 async def test_verified_items_report_uses_alias_aware_match_and_projection():
     db = MagicMock()
+    db.feature_flags.find_one = AsyncMock(return_value={"value": True})
     db.count_lines.count_documents = AsyncMock(side_effect=[3, 1])
     pipelines = []
 
@@ -119,9 +120,9 @@ def test_catalog_defines_sparse_unique_idempotency_index():
     }
 
     fields, options = count_line_indexes["idx_count_line_idempotency"]
-    assert fields == [("idempotency_key", 1)]
+    assert fields == [("session_id", 1), ("idempotency_key", 1)]
     assert options["unique"] is True
-    assert options["sparse"] is True
+    assert "partialFilterExpression" in options
 
 
 def test_optimized_count_line_indexes_match_runtime_fields():
@@ -133,9 +134,9 @@ def test_optimized_count_line_indexes_match_runtime_fields():
     assert count_line_indexes["idx_rack_counts"][0] == [("rack_no", 1), ("session_id", 1)]
 
     idempotency_fields, idempotency_options = count_line_indexes["idx_count_line_idempotency"]
-    assert idempotency_fields == [("idempotency_key", 1)]
+    assert idempotency_fields == [("session_id", 1), ("idempotency_key", 1)]
     assert idempotency_options["unique"] is True
-    assert idempotency_options["sparse"] is True
+    assert "partialFilterExpression" in idempotency_options
 
 
 @pytest.mark.asyncio

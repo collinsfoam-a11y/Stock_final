@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Backfill legacy count_lines into the append-only event_log and optionally rebuild projections.
 
@@ -7,7 +8,6 @@ Safe by default:
 - mismatches are reported, never auto-fixed
 """
 
-from __future__ import annotations
 
 import argparse
 import asyncio

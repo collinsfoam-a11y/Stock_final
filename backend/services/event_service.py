@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pymongo.errors import PyMongoError
 
 import hashlib
 import inspect
@@ -113,7 +114,7 @@ class EventService:
         try:
             collection = getattr(self.db, "feature_flags", None) or self.db["feature_flags"]
             doc = await self._resolve_awaitable(collection.find_one({"key": key}))
-        except Exception:
+        except PyMongoError:
             return default
 
         if not isinstance(doc, dict):

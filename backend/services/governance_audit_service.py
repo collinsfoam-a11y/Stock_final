@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Structured governance audit event logging for governed writes."""
 
-from __future__ import annotations
 
 import logging
 import inspect

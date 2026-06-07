@@ -3,6 +3,8 @@ Database Health Monitoring Service
 Monitors database connections and provides health checks
 """
 
+import logging
+logger = logging.getLogger(__name__)
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
@@ -18,6 +20,54 @@ else:
     SQLServerConnector = None
 
 logger = logging.getLogger(__name__)
+
+_SQL_SENSITIVE_CONFIG_KEYS = {
+    "config",
+    "password",
+    "pwd",
+    "username",
+    "user",
+    "uid",
+    "host",
+    "server",
+    "dsn",
+    "connection_string",
+    "connectionstring",
+}
+
+
+def _normalize_config_values(config: Any) -> set[str]:
+    if not isinstance(config, dict):
+        return set()
+    values: set[str] = set()
+    for value in config.values():
+        if value in (None, ""):
+            continue
+        if isinstance(value, (str, int, float, bool)):
+            values.add(str(value))
+    return values
+
+
+def _redact_known_config_values(value: str, config: Any) -> str:
+    redacted = value
+    for sensitive_value in _normalize_config_values(config):
+        redacted = redacted.replace(sensitive_value, "[REDACTED]")
+    return redacted
+
+
+def _sanitize_sql_health_payload(payload: Any, *, config: Any = None) -> Any:
+    if isinstance(payload, dict):
+        sanitized: dict[str, Any] = {}
+        for key, value in payload.items():
+            if str(key).strip().lower() in _SQL_SENSITIVE_CONFIG_KEYS:
+                continue
+            sanitized[key] = _sanitize_sql_health_payload(value, config=config)
+        return sanitized
+    if isinstance(payload, list):
+        return [_sanitize_sql_health_payload(value, config=config) for value in payload]
+    if isinstance(payload, str):
+        return _redact_known_config_values(payload, config)
+    return payload
 
 
 class DatabaseHealthService:
@@ -141,7 +191,8 @@ class DatabaseHealthService:
                     from backend.config import settings
 
                     sql_password = getattr(settings, "SQL_SERVER_PASSWORD", None)
-                except Exception:
+                except Exception as e:
+                    logger.warning("Caught broad exception: %s", e)
                     pass
 
                 is_placeholder = isinstance(sql_password, str) and sql_password.strip().lower() in {
@@ -279,7 +330,8 @@ class DatabaseHealthService:
         if self._dedicated_client:
             try:
                 self._dedicated_client.close()
-            except Exception:
+            except Exception as e:
+                logger.warning("Caught broad exception: %s", e)
                 pass
         logger.info("Database health monitoring stopped")
 
@@ -302,13 +354,19 @@ class DatabaseHealthService:
         """Get detailed health check with current status"""
         # Perform fresh health checks
         health_check = await self.check_all()
+        sql_config = getattr(self.sql_connector, "config", None)
+        if isinstance(health_check, dict) and "sql_server" in health_check:
+            health_check["sql_server"] = _sanitize_sql_health_payload(
+                health_check.get("sql_server"),
+                config=sql_config,
+            )
 
         # Get status
         status = self.get_status()
 
         # Get database statistics
-        mongo_stats = {}
-        sql_stats = {}
+        mongo_stats: dict[str, Any] = {}
+        sql_stats: dict[str, Any] = {}
 
         try:
             # MongoDB stats
@@ -343,14 +401,16 @@ class DatabaseHealthService:
             if sql_connected:
                 sql_stats = {
                     "connected": True,
-                    "config": self.sql_connector.config,
+                    "configured": bool(sql_config),
                 }
             else:
                 sql_stats = {"connected": False}
         except asyncio.TimeoutError:
             sql_stats = {"connected": False, "error": "Timeout checking SQL Server connection"}
         except Exception as e:
-            sql_stats = {"error": str(e)}
+            logger.warning("SQL Server detailed health check failed: %s", e)
+            sql_stats = {"connected": False, "error": "SQL Server health check failed"}
+        sql_stats = _sanitize_sql_health_payload(sql_stats, config=sql_config)
 
         return {
             **health_check,

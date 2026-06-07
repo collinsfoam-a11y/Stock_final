@@ -1,4 +1,6 @@
 from __future__ import annotations
+import logging
+logger = logging.getLogger(__name__)
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -18,6 +20,7 @@ from backend.services.governance_guard import (
     assert_valid_write,
     write_authority,
 )
+from backend.services.event_service import EventService
 from backend.services.projection_write_service import ProjectionWriteService
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.snapshot_service import SnapshotService
@@ -194,6 +197,20 @@ GOVERNANCE_MODE_PROFILES: dict[str, CountLineGovernanceModeProfile] = {
 }
 DEFAULT_VALIDATION_MODE = "enforce"
 VALIDATION_MODES = {"enforce", "repair_skip"}
+_VALIDATION_NORMALIZED_FIELDS = {
+    "item_code",
+    "counted_qty",
+    "input_qty",
+    "input_uom",
+    "base_uom",
+    "uom_code",
+    "uom_name",
+    "conversion_factor",
+    "quantity_precision",
+    "allow_fraction",
+    "serial_numbers",
+    "is_serial_item",
+}
 
 
 class CountLineWriteService:
@@ -209,6 +226,7 @@ class CountLineWriteService:
         lifecycle_service: Optional[SessionLifecycleService] = None,
         audit_service: Optional[GovernanceAuditService] = None,
         projection_service: Optional[ProjectionWriteService] = None,
+        event_service: Optional[EventService] = None,
     ) -> None:
         self.db = db
         self.snapshot_service = snapshot_service or SnapshotService(db)
@@ -217,6 +235,7 @@ class CountLineWriteService:
         self.lifecycle_service = lifecycle_service or SessionLifecycleService(db)
         self.audit_service = audit_service or GovernanceAuditService(db)
         self.projection_service = projection_service or ProjectionWriteService(db)
+        self.event_service = event_service or EventService(db)
         self._session_snapshot_cache: dict[str, Optional[dict[str, Any]]] = {}
         self._session_snapshot_item_index: dict[str, dict[str, float]] = {}
 
@@ -390,6 +409,7 @@ class CountLineWriteService:
                     f"expected {expected}, current {current_version}"
                 )
             versions[session_id] = current_version
+        self._session_snapshot_item_index = {}
         return versions
 
     async def _compute_session_totals(
@@ -398,44 +418,72 @@ class CountLineWriteService:
         *,
         db_session: Optional[Any],
     ) -> dict[str, Any]:
-        from backend.services.canonical_inventory import is_count_line_effectively_reviewed
-
-        total_items = 0
-        total_variance = 0.0
-        verified_items = 0
-        damage_items = 0
-        last_activity: Optional[datetime] = None
         kwargs = {"session": db_session} if db_session is not None else {}
-        cursor = self.db.count_lines.find({"session_id": session_id}, **kwargs)
-        async for line in cursor:
-            if _is_superseded_count_line(line):
-                continue
-            total_items += 1
-            total_variance += float(line.get("variance") or 0.0)
-            damage_items += int(float(line.get("damaged_qty") or 0.0))
-            if is_count_line_effectively_reviewed(line):
-                verified_items += 1
-            candidate_activity = (
-                line.get("updated_at") or line.get("approved_at") or line.get("counted_at")
-            )
-            if isinstance(candidate_activity, datetime):
-                if candidate_activity.tzinfo is not None:
-                    candidate_activity = candidate_activity.astimezone(timezone.utc).replace(
-                        tzinfo=None
-                    )
-                if last_activity is None or candidate_activity > last_activity:
-                    last_activity = candidate_activity
+        pipeline = [
+            {"$match": {
+                "session_id": session_id,
+                "$and": [
+                    {"status": {"$not": {"$regex": "^superseded$", "$options": "i"}}},
+                    {"superseded_by_version_id": {"$in": [None, ""]}},
+                    {"superseded_at": {"$in": [None, ""]}}
+                ]
+            }},
+            {"$group": {
+                "_id": None,
+                "total_items": {"$sum": 1},
+                "total_variance": {"$sum": {"$toDouble": {"$ifNull": ["$variance", 0.0]}}},
+                "damage_items": {"$sum": {"$toInt": {"$toDouble": {"$ifNull": ["$damaged_qty", 0.0]}}}},
+                "verified_items": {
+                    "$sum": {
+                        "$cond": [
+                            {"$or": [
+                                {"$eq": ["$verified", True]},
+                                {"$in": [{"$toLower": "$status"}, ["locked", "approved"]]},
+                                {"$eq": [{"$toUpper": "$approval_status"}, "APPROVED"]}
+                            ]},
+                            1,
+                            0
+                        ]
+                    }
+                },
+                "last_activity": {"$max": {"$max": ["$updated_at", "$approved_at", "$counted_at"]}}
+            }}
+        ]
+        
+        try:
+            cursor = self.db.count_lines.aggregate(pipeline, **kwargs)
+            cursor = await self._resolve_awaitable(cursor)
+            to_list_result = cursor.to_list(1)
+            result = await self._resolve_awaitable(to_list_result)
+            if not isinstance(result, list):
+                result = []
+        except Exception:
+            result = []
 
-        session_update: dict[str, Any] = {
-            "total_items": total_items,
-            "total_variance": total_variance,
-            "verified_items": verified_items,
-            "pending_items": max(total_items - verified_items, 0),
-            "damage_items": damage_items,
-            "updated_at": _utc_now(),
-        }
-        if last_activity is not None:
-            session_update["last_activity"] = last_activity
+        if result and isinstance(result[0], dict):
+            data = result[0]
+            total_items = int(data.get("total_items", 0) or 0)
+            verified_items = int(data.get("verified_items", 0) or 0)
+            session_update = {
+                "total_items": total_items,
+                "total_variance": float(data.get("total_variance", 0.0) or 0.0),
+                "verified_items": verified_items,
+                "pending_items": max(total_items - verified_items, 0),
+                "damage_items": int(data.get("damage_items", 0) or 0),
+                "updated_at": _utc_now(),
+            }
+            if data.get("last_activity"):
+                session_update["last_activity"] = data["last_activity"]
+        else:
+            session_update = {
+                "total_items": 0,
+                "total_variance": 0.0,
+                "verified_items": 0,
+                "pending_items": 0,
+                "damage_items": 0,
+                "updated_at": _utc_now(),
+            }
+            
         return session_update
 
     async def _update_session_totals_for_sessions(
@@ -456,6 +504,7 @@ class CountLineWriteService:
                 expected_version=expected_versions.get(session_id),
                 actor=actor,
                 sync_projection=False,
+                enforce_occ=True,
             )
 
     async def _log_count_line_audit(
@@ -605,6 +654,133 @@ class CountLineWriteService:
             lambda: collection.delete_many(filter_query, **kwargs)
         )
 
+    @staticmethod
+    def _identity_filter_for_count_line(document: dict[str, Any]) -> Optional[dict[str, Any]]:
+        if document.get("_id") is not None:
+            return {"_id": document["_id"]}
+        if document.get("id") is not None:
+            return {"id": document["id"]}
+        return None
+
+    async def _capture_count_line_images(
+        self,
+        *,
+        operation: str,
+        payload: dict[str, Any],
+        context: dict[str, Any],
+        db_session: Optional[Any],
+        pre_images: Optional[list[dict[str, Any]]] = None,
+    ) -> list[dict[str, Any]]:
+        kwargs = {"session": db_session} if db_session is not None else {}
+        if operation == "insert_one":
+            document = payload.get("document")
+            return [dict(document)] if isinstance(document, dict) else []
+
+        if operation in {"update_one", "delete_one"}:
+            filter_query = payload.get("filter")
+            if not isinstance(filter_query, dict):
+                return []
+            if pre_images:
+                identity_filter = self._identity_filter_for_count_line(pre_images[0])
+                if isinstance(identity_filter, dict):
+                    filter_query = identity_filter
+            existing = await self._resolve_awaitable(
+                self.db.count_lines.find_one(filter_query, **kwargs)
+            )
+            return [existing] if isinstance(existing, dict) else []
+
+        if operation in {"update_many", "delete_many"}:
+            if pre_images:
+                captured: list[dict[str, Any]] = []
+                for pre_image in pre_images:
+                    identity_filter = self._identity_filter_for_count_line(pre_image)
+                    if not isinstance(identity_filter, dict):
+                        continue
+                    existing = await self._resolve_awaitable(
+                        self.db.count_lines.find_one(identity_filter, **kwargs)
+                    )
+                    if isinstance(existing, dict):
+                        captured.append(existing)
+                return captured
+
+            filter_query = payload.get("filter")
+            if not isinstance(filter_query, dict):
+                return []
+            cursor = self.db.count_lines.find(filter_query, **kwargs)
+            return await self._resolve_awaitable(cursor.to_list(length=None))
+
+        return []
+
+    @staticmethod
+    def _apply_validated_fields_to_update(
+        *,
+        update_doc: dict[str, Any],
+        validated_document: dict[str, Any],
+    ) -> None:
+        set_doc = update_doc.setdefault("$set", {})
+        if not isinstance(set_doc, dict):
+            return
+        for field_name in _VALIDATION_NORMALIZED_FIELDS:
+            if field_name in validated_document:
+                set_doc[field_name] = validated_document[field_name]
+
+    async def _run_pre_write_validation(
+        self,
+        *,
+        operation: str,
+        payload: dict[str, Any],
+        context: dict[str, Any],
+        pre_images: list[dict[str, Any]],
+    ) -> None:
+        if not self._should_run_runtime_validation(context):
+            return
+
+        if operation == "insert_one":
+            document = payload.get("document")
+            if isinstance(document, dict):
+                await self.validation_service.validate_count_line(document, raise_on_error=True)
+            return
+
+        if operation not in {"update_one", "update_many"}:
+            return
+
+        update_doc = payload.get("update")
+        if not isinstance(update_doc, dict):
+            return
+
+        for before in pre_images:
+            if not isinstance(before, dict):
+                continue
+            merged_document = dict(before)
+            _apply_update_document_to_merged(merged_document, update_doc)
+            await self.validation_service.validate_count_line(
+                merged_document,
+                raise_on_error=True,
+            )
+            self._apply_validated_fields_to_update(
+                update_doc=update_doc,
+                validated_document=merged_document,
+            )
+
+    async def _mirror_count_line_event_log(
+        self,
+        *,
+        payload: dict[str, Any],
+        context: dict[str, Any],
+        resolved_result: Any,
+        pre_images: list[dict[str, Any]],
+        post_images: list[dict[str, Any]],
+        db_session: Optional[Any],
+    ) -> None:
+        await self.event_service.mirror_count_line_write(
+            payload=payload,
+            context=context,
+            resolved_result=resolved_result,
+            pre_images=pre_images,
+            post_images=post_images,
+            db_session=db_session,
+        )
+
     async def _process_write_core(
         self,
         payload: dict[str, Any],
@@ -627,21 +803,40 @@ class CountLineWriteService:
 
         await self._assert_snapshot_integrity_for_write(payload, ctx)
         await self._assert_mandatory_write_invariants(payload, ctx)
-        self._apply_state_transition_for_write(payload, ctx)
-        if self._should_apply_governance(payload, ctx):
-            await self._enforce_variance_for_write(payload, ctx)
-
         session_ids = await self._collect_session_ids_for_write(payload, ctx)
         expected_versions = await self._capture_session_versions(
             session_ids,
             context=ctx,
             db_session=db_session,
         )
+        self._apply_state_transition_for_write(payload, ctx)
+        if self._should_apply_governance(payload, ctx):
+            await self._enforce_variance_for_write(payload, ctx)
+
+        pre_images = await self._capture_count_line_images(
+            operation=operation,
+            payload=payload,
+            context=ctx,
+            db_session=db_session,
+        )
+        await self._run_pre_write_validation(
+            operation=operation,
+            payload=payload,
+            context=ctx,
+            pre_images=pre_images,
+        )
 
         resolved = await self._execute_count_line_operation(
             payload=payload,
             context=ctx,
             db_session=db_session,
+        )
+        post_images = await self._capture_count_line_images(
+            operation=operation,
+            payload=payload,
+            context=ctx,
+            db_session=db_session,
+            pre_images=pre_images,
         )
         await self._run_post_write_validation(
             operation=operation,
@@ -657,6 +852,15 @@ class CountLineWriteService:
                 db_session=db_session,
                 expected_versions=expected_versions,
             )
+
+        await self._mirror_count_line_event_log(
+            payload=payload,
+            context=ctx,
+            resolved_result=resolved,
+            pre_images=pre_images,
+            post_images=post_images,
+            db_session=db_session,
+        )
 
         if session_ids and not bool(ctx.get("skip_projection_sync", False)):
             await self.projection_service.sync_for_sessions(
@@ -722,7 +926,7 @@ class CountLineWriteService:
             if isinstance(document, dict):
                 if hasattr(resolved_result, "inserted_id") and "_id" not in document:
                     document["_id"] = getattr(resolved_result, "inserted_id")
-                await self.validation_service.validate_count_line(document)
+                await self.validation_service.validate_count_line(document, raise_on_error=True)
             return
 
         if operation == "update_one":
@@ -738,7 +942,7 @@ class CountLineWriteService:
                     self.db.count_lines.find_one(filter_query, **kwargs)
                 )
             if isinstance(updated, dict):
-                await self.validation_service.validate_count_line(updated)
+                await self.validation_service.validate_count_line(updated, raise_on_error=True)
             return
 
         if operation == "update_many":
@@ -749,7 +953,7 @@ class CountLineWriteService:
                 )
                 for line in updated_lines or []:
                     if isinstance(line, dict):
-                        await self.validation_service.validate_count_line(line)
+                        await self.validation_service.validate_count_line(line, raise_on_error=True)
             return
 
     async def _assert_mandatory_write_invariants(
@@ -1083,7 +1287,8 @@ class CountLineWriteService:
                     **kwargs,
                 )
             )
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             legacy_snapshot = None
         if isinstance(legacy_snapshot, dict):
             return float(legacy_snapshot.get("erp_qty") or 0.0), str(

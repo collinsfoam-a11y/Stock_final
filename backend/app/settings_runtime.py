@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Runtime boot concerns for direct app execution."""
 
-from __future__ import annotations
 
 import os
 from pathlib import Path

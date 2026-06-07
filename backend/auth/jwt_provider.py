@@ -26,7 +26,7 @@ def _ensure_timestamp(exp: Any) -> Optional[float]:
         return exp.timestamp()
     try:
         return float(exp)
-    except Exception:
+    except (TypeError, ValueError):
         return None
 
 

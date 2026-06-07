@@ -1,10 +1,10 @@
+from __future__ import annotations
 """Compatibility database module.
 
 This shim preserves historical imports from ``backend.core.database`` while
 delegating runtime state to ``backend.db.runtime`` as the single source of truth.
 """
 
-from __future__ import annotations
 
 from typing import Any, Callable
 

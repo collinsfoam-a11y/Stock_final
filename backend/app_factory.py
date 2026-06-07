@@ -1,4 +1,7 @@
 import logging
+logger = logging.getLogger(__name__)
+import json
+import logging
 import os
 import sys
 from datetime import datetime, timezone
@@ -231,7 +234,8 @@ app = FastAPI(
 # Attach OpenTelemetry tracing to the FastAPI app if enabled
 try:
     instrument_fastapi_app(app)
-except Exception:
+except Exception as e:
+    logger.warning("Caught broad exception: %s", e)
     # Tracing should never prevent the app from starting
     pass
 
@@ -462,7 +466,7 @@ async def refresh_token(
     try:
         try:
             body = await request.json()
-        except Exception:
+        except json.JSONDecodeError:
             body = {}
         refresh_token_value = body.get("refresh_token") or get_refresh_token_cookie(request)
 
@@ -499,7 +503,7 @@ async def logout(
     try:
         try:
             body = await request.json()
-        except Exception:
+        except json.JSONDecodeError:
             body = {}
         refresh_token_value = body.get("refresh_token") or get_refresh_token_cookie(request)
 

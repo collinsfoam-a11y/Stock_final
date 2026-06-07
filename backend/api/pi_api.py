@@ -1,4 +1,6 @@
 import logging
+logger = logging.getLogger(__name__)
+import logging
 from backend.utils.api_utils import sanitize_for_logging
 import httpx
 from datetime import datetime, timezone
@@ -165,5 +167,6 @@ async def get_pi_status(current_user: Dict[str, Any] = Depends(get_current_user)
                     else "AI sidecar returned an error"
                 ),
             }
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             return {"active": False, "msg": "AI sidecar unreachable"}

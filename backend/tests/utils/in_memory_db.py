@@ -1,9 +1,9 @@
+from __future__ import annotations
 """
 Simple in-memory MongoDB substitute for backend unit tests.
 Provides async collection helpers that mimic the subset of Motor APIs our tests use.
 """
 
-from __future__ import annotations
 
 import copy
 import os
@@ -435,10 +435,53 @@ class InMemoryCollection:
                 results.append(doc)
         return InMemoryCursor(results)
 
-    def aggregate(self, pipeline: list[dict[str, Any]]) -> InMemoryCursor:
+    def aggregate(self, pipeline: list[dict[str, Any]], *args, **kwargs) -> InMemoryCursor:
         # For now, return empty cursor or basic aggregation if needed
         # This is a mock, so we can just return empty list or implement basic logic
         return InMemoryCursor([])
+
+    async def bulk_write(self, requests: list[Any], *args, **kwargs) -> Any:
+        from pymongo import DeleteMany, ReplaceOne, DeleteOne, InsertOne, UpdateOne, UpdateMany
+        
+        modified_count = 0
+        deleted_count = 0
+        inserted_count = 0
+        upserted_count = 0
+        
+        for req in requests:
+            if isinstance(req, DeleteMany):
+                res = await self.delete_many(req._filter)
+                deleted_count += res.deleted_count
+            elif isinstance(req, ReplaceOne):
+                res = await self.replace_one(req._filter, req._doc, upsert=req._upsert)
+                if res.upserted_id:
+                    upserted_count += 1
+                else:
+                    modified_count += res.modified_count
+            elif isinstance(req, DeleteOne):
+                res = await self.delete_one(req._filter)
+                deleted_count += res.deleted_count
+            elif isinstance(req, InsertOne):
+                await self.insert_one(req._doc)
+                inserted_count += 1
+            elif isinstance(req, UpdateOne):
+                res = await self.update_one(req._filter, req._doc, upsert=req._upsert)
+                if res.upserted_id:
+                    upserted_count += 1
+                else:
+                    modified_count += res.modified_count
+            elif isinstance(req, UpdateMany):
+                res = await self.update_many(req._filter, req._doc)
+                modified_count += res.modified_count
+                
+        class BulkWriteResult:
+            def __init__(self, modified, deleted, inserted, upserted):
+                self.modified_count = modified
+                self.deleted_count = deleted
+                self.inserted_count = inserted
+                self.upserted_count = upserted
+                self.bulk_api_result = {}
+        return BulkWriteResult(modified_count, deleted_count, inserted_count, upserted_count)
 
 
 class InMemoryDatabase:

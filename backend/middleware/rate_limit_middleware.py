@@ -3,6 +3,8 @@ Rate Limit Middleware - Enforce rate limiting on API endpoints
 """
 
 import logging
+logger = logging.getLogger(__name__)
+import logging
 import os
 from typing import Optional
 
@@ -57,7 +59,8 @@ class RateLimitMiddleware:
                 # Decode JWT to get user ID
                 payload = jwt_decode(token, self.jwt_secret, algorithms=["HS256"])
                 user_id = payload.get("sub")
-            except Exception:
+            except Exception as e:
+                logger.warning("Caught broad exception: %s", e)
                 pass  # Invalid token, use IP-based rate limit
 
         # Fallback to IP-based limiting if no user ID

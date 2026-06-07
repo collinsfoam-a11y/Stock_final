@@ -156,6 +156,17 @@ class BatchSyncResponse(BaseModel):
 
 # Sync Logic
 
+def _invalid_quantity_conflict(record: SyncRecord, message: str) -> SyncConflict:
+    return SyncConflict(
+        client_record_id=record.client_record_id,
+        conflict_type="invalid_quantity",
+        message=message,
+        details={
+            "verified_qty": record.verified_qty,
+            "damaged_qty": record.damaged_qty,
+        },
+    )
+
 
 async def validate_record(
     record: SyncRecord,
@@ -214,6 +225,11 @@ async def validate_record(
                     },
                 )
 
+    if record.verified_qty < 0:
+        return _invalid_quantity_conflict(record, "Verified quantity cannot be negative")
+    if record.damaged_qty < 0:
+        return _invalid_quantity_conflict(record, "Damage quantity cannot be negative")
+
     # Validate damage qty <= verified qty
     if record.damaged_qty > record.verified_qty:
         return SyncConflict(
@@ -262,7 +278,10 @@ async def sync_single_record(
         if str(user_role or "").strip().lower() not in {"supervisor", "admin"}:
             owner = str(session.get("staff_user") or "").strip()
             if owner and owner != user_id:
-                return False, "Not authorized to sync records for this session"
+                raise HTTPException(
+                    status_code=403,
+                    detail="Not authorized to sync records for this session",
+                )
 
         floor_id = (record.floor_id or record.floor or "").strip()
         rack_id = (record.rack_id or "").strip()
@@ -275,6 +294,9 @@ async def sync_single_record(
 
         status_normalized = (record.status or "").strip().lower()
         is_finalized = status_normalized == "finalized"
+        if is_finalized and str(user_role or "").strip().lower() not in {"supervisor", "admin"}:
+            is_finalized = False
+            status_normalized = "pending"
         counted_at = datetime.fromisoformat(record.created_at.replace("Z", "+00:00")).replace(
             tzinfo=None
         )
@@ -293,6 +315,8 @@ async def sync_single_record(
                 False,
                 f"damaged_qty ({record.damaged_qty}) exceeds counted_qty ({counted_qty})",
             )
+        if record.verified_qty < 0 or record.damaged_qty < 0:
+            return False, "Quantities cannot be negative"
         doc = {
             "id": str(uuid.uuid4()),
             "client_record_id": record.client_record_id,
@@ -365,6 +389,30 @@ async def sync_single_record(
             "Error syncing record {record.client_record_id}: %s", sanitize_for_logging(str(e))
         )
         return False, str(e)
+
+
+async def _prefetch_count_line_idempotency_keys(db: Any, records: list[SyncRecord]) -> set[tuple[str, str]]:
+    pairs = [
+        (record.session_id, record.client_record_id)
+        for record in records
+        if record.session_id and record.client_record_id
+    ]
+    if not pairs:
+        return set()
+
+    clauses = [
+        {"session_id": session_id, "idempotency_key": idempotency_key}
+        for session_id, idempotency_key in pairs
+    ]
+    existing = await db.count_lines.find(
+        {"$or": clauses},
+        {"session_id": 1, "idempotency_key": 1},
+    ).to_list(length=len(clauses))
+    return {
+        (str(row.get("session_id")), str(row.get("idempotency_key")))
+        for row in existing or []
+        if row.get("session_id") and row.get("idempotency_key")
+    }
 
 
 @router.post("/batch", response_model=BatchSyncResponse)
@@ -455,13 +503,21 @@ async def sync_batch(
     try:
         write_service = CountLineWriteService(db)
         lifecycle_service = SessionLifecycleService(db)
+        
+        # Batch idempotency lookup
+        client_record_ids = [r.client_record_id for r in request.records]
+        existing_ops_cursor = db.idempotency_operations.find({"operation_id": {"$in": client_record_ids}})
+        existing_ops_list = await existing_ops_cursor.to_list(length=None)
+        existing_op_ids = {op["operation_id"] for op in existing_ops_list}
+
+        existing_count_line_keys = await _prefetch_count_line_idempotency_keys(db, request.records)
+
         # Validate all records first
         for record in request.records:
-            # Check idempotency first using client_record_id as operation_id
-            existing_op = await db.idempotency_operations.find_one(
-                {"operation_id": record.client_record_id}
-            )
-            if existing_op:
+            if record.client_record_id in existing_op_ids:
+                ok_records.append(record.client_record_id)
+                continue
+            if (record.session_id, record.client_record_id) in existing_count_line_keys:
                 ok_records.append(record.client_record_id)
                 continue
 
@@ -500,6 +556,10 @@ async def sync_batch(
         # Record success in circuit breaker
         await circuit_breaker.record_success()
 
+    except HTTPException:
+        # Record failure in circuit breaker
+        await circuit_breaker.record_failure()
+        raise
     except Exception as e:
         # Record failure in circuit breaker
         await circuit_breaker.record_failure()

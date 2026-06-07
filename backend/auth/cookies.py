@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Cookie helpers for browser-based authentication flows."""
 
-from __future__ import annotations
 
 from typing import Literal, Optional, TypedDict, cast
 

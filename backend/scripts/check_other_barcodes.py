@@ -44,7 +44,7 @@ def check_other_barcodes():
                 samples = [r[0] for r in cursor.fetchall()]
                 print(f"  Sample {col}: {samples}")
 
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         print(f"Error: {e}")
     finally:
         connector.disconnect()

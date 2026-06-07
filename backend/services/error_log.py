@@ -4,6 +4,8 @@ Tracks and stores application errors, exceptions, and system issues for monitori
 """
 
 import logging
+logger = logging.getLogger(__name__)
+import logging
 import traceback
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
@@ -143,7 +145,8 @@ class ErrorLogService:
                     stack_trace = "".join(
                         traceback.format_exception(type(error), error, error.__traceback__)
                     )
-                except Exception:
+                except Exception as e:
+                    logger.warning("Caught broad exception: %s", e)
                     stack_trace = traceback.format_exc()
 
             # Create log entry

@@ -103,7 +103,7 @@ async def backfill_empty_session_snapshots(
                 )
                 continue
 
-            items_payload, snapshot_hash = _build_snapshot_payload_and_hash(snapshot_items)
+            items_payload, snapshot_hash = await _build_snapshot_payload_and_hash(snapshot_items)
             stats["repairable"] += 1
 
             if dry_run:

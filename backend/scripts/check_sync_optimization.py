@@ -55,7 +55,7 @@ def check_optimization():
         for r in rows:
             print(f"ID: {r[0]} | Auto: {r[1]} | Manual: {r[2]} | Unit2: {r[3]}")
 
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         print(f"Error: {e}")
     finally:
         connector.disconnect()

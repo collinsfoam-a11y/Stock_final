@@ -1,6 +1,8 @@
 # ruff: noqa: E402
 # flake8: noqa: E402
 
+import logging
+logger = logging.getLogger(__name__)
 import asyncio
 import logging
 import os
@@ -114,7 +116,8 @@ logger = setup_logging(
 # app instance is created.
 try:
     init_tracing()
-except Exception:
+except Exception as e:
+    logger.warning("Caught broad exception: %s", e)
     # Never break startup due to tracing
     pass
 
@@ -821,8 +824,8 @@ async def lifespan(app: FastAPI):  # noqa: C901
 
     # Verify Services
     services_running = []
-    # if erp_sync_service:
-    #     services_running.append("ERP Sync")
+    if erp_sync_service:
+        services_running.append("ERP Sync")
     if scheduled_export_service:
         services_running.append("Scheduled Export")
     if sync_conflicts_service:
@@ -844,7 +847,9 @@ async def lifespan(app: FastAPI):  # noqa: C901
         logger.info("✅ Startup Checklist: All critical services OK")
     else:
         failed = [svc for svc in critical_services if not startup_checklist[svc]]
-        logger.warning("⚠️  Startup Checklist: Critical services failed - %s", ", ".join(failed))
+        error_msg = f"Application cannot start. Critical services failed: {', '.join(failed)}"
+        logger.error("❌ %s", error_msg)
+        raise RuntimeError(error_msg)
 
     # Initialize search service
     try:
@@ -902,7 +907,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
     try:
         port_str = os.getenv("PORT", str(getattr(settings, "PORT", 8001)))
         port = int(port_str)
-    except Exception:
+    except (TypeError, ValueError):
         port = 8001
 
     try:

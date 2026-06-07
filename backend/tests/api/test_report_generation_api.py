@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -35,6 +35,7 @@ class _AsyncCursor:
 @pytest.mark.asyncio
 async def test_generate_stock_summary_short_circuits_when_item_filters_match_nothing():
     db = MagicMock()
+    db.feature_flags.find_one = AsyncMock(return_value={"value": True})
     db.erp_items.find.return_value = _AsyncCursor([])
 
     def _unexpected_count_line_scan(_query):
@@ -55,6 +56,7 @@ async def test_generate_stock_summary_short_circuits_when_item_filters_match_not
 @pytest.mark.asyncio
 async def test_generate_variance_report_short_circuits_when_item_filters_match_nothing():
     db = MagicMock()
+    db.feature_flags.find_one = AsyncMock(return_value={"value": True})
     db.erp_items.find.return_value = _AsyncCursor([])
 
     def _unexpected_count_line_scan(_query):
@@ -76,6 +78,7 @@ async def test_generate_variance_report_short_circuits_when_item_filters_match_n
 async def test_generate_session_history_report_fetches_count_lines_in_one_query():
     started_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db = MagicMock()
+    db.feature_flags.find_one = AsyncMock(return_value={"value": True})
     db.sessions.find.return_value = _AsyncCursor(
         [
             {

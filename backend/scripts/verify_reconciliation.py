@@ -75,7 +75,7 @@ async def run_verification():
         # The api uses `backend.db.runtime.get_db`. Ideally we should use TestClient.
         # However, let's use TestClient for cleaner integration test.
 
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         print(f"Setup Error: {e}")
         return
 

@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 import asyncio
 import logging
 import socket
@@ -92,7 +94,8 @@ class MDNSService:
             ip = s.getsockname()[0]
             s.close()
             return ip
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             return "127.0.0.1"
 
 

@@ -1257,8 +1257,8 @@ class TestCountLinesAPIEdgeCases:
         assert impact == 0
 
     @pytest.mark.asyncio
-    async def test_create_count_line_session_stats_error(self):
-        """Test count line creation when session stats update fails"""
+    async def test_create_count_line_session_stats_error_aborts_write(self):
+        """Stats update is now the OCC/version advancement and must abort creation."""
         mock_db = AsyncMock()
         mock_db.client = None
         mock_db.sessions.find_one = AsyncMock(
@@ -1301,22 +1301,20 @@ class TestCountLinesAPIEdgeCases:
                 AsyncMock(side_effect=Exception("Database error")),
             ),
         ):
-            # Should still succeed despite stats update error
-            result = await create_count_line(
-                request=AsyncMock(),
-                line_data=CountLineCreate(
-                    session_id="session123",
-                    location_id="LOC-1",
-                    floor_id="F1",
-                    rack_id="R1",
-                    item_code="ITEM001",
-                    counted_qty=50,
-                    variance_reason="test_reason",
-                ),
-                current_user={"username": "testuser"},
-            )
-
-        assert result["session_id"] == "session123"
+            with pytest.raises(Exception, match="Database error"):
+                await create_count_line(
+                    request=AsyncMock(),
+                    line_data=CountLineCreate(
+                        session_id="session123",
+                        location_id="LOC-1",
+                        floor_id="F1",
+                        rack_id="R1",
+                        item_code="ITEM001",
+                        counted_qty=50,
+                        variance_reason="test_reason",
+                    ),
+                    current_user={"username": "testuser"},
+                )
 
     @pytest.mark.asyncio
     async def test_create_count_line_updates_session_barcode_by_dual_key(self):

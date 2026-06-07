@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Governed unknown-item domain service."""
 
-from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone

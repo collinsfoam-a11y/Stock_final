@@ -1,4 +1,6 @@
 from __future__ import annotations
+import logging
+logger = logging.getLogger(__name__)
 
 """
 Structured Logging Configuration
@@ -28,27 +30,42 @@ class NonClosingStreamHandler(logging.StreamHandler):
         logging.Handler.close(self)
 
 
+import re
+
 class AppNameFilter(logging.Filter):
     """Normalize emitted records to the configured application name and sanitize message."""
 
     def __init__(self, app_name: str):
         super().__init__()
         self.app_name = app_name
+        # Regex to match sensitive information (tokens, passwords, secrets)
+        self.sensitive_patterns = [
+            (re.compile(r"(?i)(bearer\s+)[A-Za-z0-9\-\._~\+\/]+=*"), r"\1[REDACTED_TOKEN]"),
+            (re.compile(r"(?i)(password\s*[:=]\s*['\"]?)[^'\"\s]+(['\"]?)"), r"\1[REDACTED_PASSWORD]\2"),
+            (re.compile(r"(?i)(secret\s*[:=]\s*['\"]?)[^'\"\s]+(['\"]?)"), r"\1[REDACTED_SECRET]\2"),
+            (re.compile(r"(?i)(api_key\s*[:=]\s*['\"]?)[^'\"\s]+(['\"]?)"), r"\1[REDACTED_API_KEY]\2"),
+        ]
 
     def filter(self, record: logging.LogRecord) -> bool:
         record.app_logger_name = self.app_name
         record.source_logger = record.name
 
-        # Sanitize log message to prevent CWE-117 Log Injection
+        # Sanitize log message to prevent CWE-117 Log Injection and CWE-532 Sensitive Logging
         try:
             msg = record.getMessage()
-            # Replace newlines and carriage returns to prevent log injection
+            
+            # 1. Redact sensitive data
+            for pattern, replacement in self.sensitive_patterns:
+                msg = pattern.sub(replacement, msg)
+                
+            # 2. Replace newlines and carriage returns to prevent log injection
             msg = msg.replace("\r", "\\r").replace("\n", "\\n")
+            
             # Only set msg if we don't have args to avoid re-formatting errors
-            # Alternatively, safely override both msg and args
             record.msg = msg
             record.args = ()
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             pass
 
         return True

@@ -42,7 +42,7 @@ def check_other_columns():
         else:
             print("No barcodes found in Products.Barcode column.")
 
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         print(f"Error: {e}")
     finally:
         connector.disconnect()

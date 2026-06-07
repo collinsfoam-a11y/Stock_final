@@ -235,7 +235,7 @@ def get_memory_usage() -> float:
     try:
         process = psutil.Process(os.getpid())
         return round(process.memory_info().rss / 1024 / 1024, 2)
-    except Exception:
+    except (psutil.Error, OSError):
         return 0.0
 
 
@@ -243,7 +243,7 @@ def get_cpu_usage() -> float:
     """Get current CPU usage percentage."""
     try:
         return psutil.cpu_percent(interval=0.1)
-    except Exception:
+    except (psutil.Error, OSError):
         return 0.0
 
 

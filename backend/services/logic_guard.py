@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Centralized BL V2 phase-0 execution safety guard."""
 
-from __future__ import annotations
 
 import logging
 from collections.abc import Mapping

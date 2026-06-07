@@ -1,4 +1,6 @@
 import logging
+logger = logging.getLogger(__name__)
+import logging
 import os
 from datetime import date, datetime, timezone
 from typing import Any, Optional, Sequence
@@ -48,7 +50,8 @@ def _safe_date_str(val: Any) -> Optional[str]:
         return datetime.combine(val, datetime.min.time()).isoformat()
     try:
         return str(val)
-    except Exception:
+    except Exception as e:
+        logger.warning("Caught broad exception: %s", e)
         return None
 
 

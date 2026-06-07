@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Archive count lines that reference missing stock-count sessions.
 
 This is a guarded reconciliation script for historical data debt only. The
@@ -5,7 +6,8 @@ normal application write path must continue to create count lines through the
 domain services.
 """
 
-from __future__ import annotations
+import logging
+logger = logging.getLogger(__name__)
 
 import argparse
 import asyncio
@@ -265,7 +267,8 @@ async def _release_locks(db: Any, locks: list[tuple[str, str]]) -> None:
     for key, owner in reversed(locks):
         try:
             await lock_service.release_lock(key, owner)
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             continue
 
 

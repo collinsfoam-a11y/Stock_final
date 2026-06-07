@@ -3,6 +3,8 @@ SQL Sync Service - Sync ONLY quantity changes from SQL Server to MongoDB
 CRITICAL: Preserves all enriched data (serial numbers, MRP, HSN codes, etc.)
 """
 
+import logging
+logger = logging.getLogger(__name__)
 import asyncio
 import logging
 from datetime import date, datetime, timedelta, timezone
@@ -30,7 +32,8 @@ def _normalize_date(value: Any) -> Optional[str]:
         return datetime.combine(value, datetime.min.time()).isoformat()
     try:
         return str(value)
-    except Exception:
+    except Exception as e:
+        logger.warning("Caught broad exception: %s", e)
         return None
 
 
@@ -326,31 +329,15 @@ class SQLSyncService:
         try:
             logger.info("Starting variance-only sync from SQL Server...")
 
-            # Step 1: Get all item codes from MongoDB (fast local query)
+            # Step 1: Stream items from MongoDB and process in batches
             mongo_items_cursor = self.mongo_db.erp_items.find({}, {"item_code": 1, "stock_qty": 1})
-            mongo_items = {}
-            async for item in mongo_items_cursor:
-                item_code = item.get("item_code")
-                if item_code:
-                    mongo_items[item_code] = float(item.get("stock_qty", 0.0))
-
-            if not mongo_items:
-                logger.info("No items in MongoDB to sync")
-                stats["duration"] = (
-                    datetime.now(timezone.utc).replace(tzinfo=None) - start_time
-                ).total_seconds()
-                return stats
-
-            stats["items_checked"] = len(mongo_items)
-            logger.info(f"Found {len(mongo_items)} items in MongoDB to check")
-
-            # Step 2: Batch fetch quantities from SQL Server (minimal load)
-            item_codes = list(mongo_items.keys())
             batch_size = 500  # SQL Server handles this well with IN clause
+            current_batch = {}
 
-            for i in range(0, len(item_codes), batch_size):
-                batch_codes = item_codes[i : i + batch_size]
-
+            async def process_batch(batch: dict[str, float]) -> None:
+                if not batch:
+                    return
+                batch_codes = list(batch.keys())
                 try:
                     # Fetch only quantities - minimal SQL load
                     sql_quantities = await asyncio.to_thread(
@@ -358,9 +345,9 @@ class SQLSyncService:
                     )
                     stats["sql_queries"] += 1
 
-                    # Step 3: Compare and update only variances
+                    # Compare and update only variances
                     for item_code, sql_qty in sql_quantities.items():
-                        mongo_qty = mongo_items.get(item_code, 0.0)
+                        mongo_qty = batch.get(item_code, 0.0)
 
                         # M9 fix: Use tolerance-based comparison for floats
                         if abs(sql_qty - mongo_qty) > 0.001:
@@ -388,10 +375,33 @@ class SQLSyncService:
                                 f"Variance sync: {item_code}: {mongo_qty} → {sql_qty} "
                                 f"(Δ {sql_qty - mongo_qty})"
                             )
-
                 except Exception as e:
-                    logger.error(f"Error syncing batch starting at index {i}: {e}")
+                    logger.error(f"Error syncing batch: {e}")
                     stats["errors"] += 1
+
+            # Iterate through the cursor
+            async for item in mongo_items_cursor:
+                item_code = item.get("item_code")
+                if item_code:
+                    current_batch[item_code] = float(item.get("stock_qty", 0.0))
+
+                if len(current_batch) >= batch_size:
+                    await process_batch(current_batch)
+                    stats["items_checked"] += len(current_batch)
+                    current_batch.clear()
+
+            # Process any remaining items in the final batch
+            if current_batch:
+                await process_batch(current_batch)
+                stats["items_checked"] += len(current_batch)
+                current_batch.clear()
+
+            if stats["items_checked"] == 0:
+                logger.info("No items in MongoDB to sync")
+                stats["duration"] = (
+                    datetime.now(timezone.utc).replace(tzinfo=None) - start_time
+                ).total_seconds()
+                return stats
 
             stats["duration"] = (
                 datetime.now(timezone.utc).replace(tzinfo=None) - start_time
@@ -933,7 +943,8 @@ class SQLSyncService:
                 asyncio.to_thread(self.sql_connector.test_connection),
                 timeout=3,
             )
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             is_connected = False
 
         if not is_connected:

@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Shared validation helpers for the V3.1 event-sourcing migration."""
 
-from __future__ import annotations
 
 from typing import Any, Optional
 

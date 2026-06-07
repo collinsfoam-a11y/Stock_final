@@ -1,4 +1,6 @@
 from __future__ import annotations
+import logging
+logger = logging.getLogger(__name__)
 
 """
 Shared database connection utilities to eliminate duplicate connection logic
@@ -253,7 +255,8 @@ class SQLServerConnectionBuilder:
             cursor.fetchone()
             cursor.close()
             return True
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             return False
 
 

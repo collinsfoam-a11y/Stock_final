@@ -1,4 +1,6 @@
 import logging
+logger = logging.getLogger(__name__)
+import logging
 from backend.utils.api_utils import sanitize_for_logging
 from typing import Optional
 
@@ -131,5 +133,6 @@ async def websocket_endpoint(
         manager.disconnect(websocket, user_id, session_id)
         try:
             await websocket.close(code=1011)  # Internal Error
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             pass

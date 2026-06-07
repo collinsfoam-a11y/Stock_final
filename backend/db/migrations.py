@@ -80,7 +80,7 @@ class MigrationManager:
         return names
 
     @staticmethod
-    def _index_spec_matches(existing: dict, key_spec: Any, options: dict) -> bool:
+    def _index_spec_matches(existing: Any, key_spec: Any, options: dict[str, Any]) -> bool:
         """True when a live index already matches the catalog key + key options."""
         want_key = [(field, direction) for field, direction in key_spec]
         have_key = [(field, direction) for field, direction in (existing.get("key") or {}).items()]

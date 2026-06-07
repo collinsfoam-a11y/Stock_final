@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Report-only validation of legacy count_lines against V3.1 projections."""
 
-from __future__ import annotations
 
 import argparse
 import asyncio

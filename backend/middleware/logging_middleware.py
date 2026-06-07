@@ -4,6 +4,8 @@ Adds user and session context to all log messages for protected endpoints
 """
 
 import logging
+logger = logging.getLogger(__name__)
+import logging
 import time
 from contextvars import ContextVar
 from typing import Any, Optional
@@ -154,7 +156,8 @@ class SessionContextLoggingMiddleware:
                 "role": payload.get("role"),
                 "session_id": payload.get("session_id"),
             }
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             # If we can't decode, just continue without context
             return None
 

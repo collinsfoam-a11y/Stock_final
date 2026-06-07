@@ -1,6 +1,8 @@
+from __future__ import annotations
 """Synchronous projection writer for session/count-line write flows."""
 
-from __future__ import annotations
+import logging
+logger = logging.getLogger(__name__)
 
 import asyncio
 from datetime import datetime, timezone
@@ -245,7 +247,8 @@ class ProjectionWriteService:
         if not hasattr(self.db, "locks") and hasattr(self.db, "__getitem__"):
             try:
                 setattr(self.db, "locks", self.db["locks"])
-            except Exception:
+            except Exception as e:
+                logger.warning("Caught broad exception: %s", e)
                 return False
         lock_service = LockService(self.db)
         started = datetime.now(timezone.utc)
@@ -406,7 +409,8 @@ class ProjectionWriteService:
         if hasattr(cursor, "to_list"):
             try:
                 raw_lines = await self._resolve_result(cursor.to_list(length=10000))
-            except Exception:
+            except Exception as e:
+                logger.warning("Caught broad exception: %s", e)
                 raw_lines = []
             for line in raw_lines or []:
                 if not isinstance(line, dict):
@@ -484,33 +488,14 @@ class ProjectionWriteService:
         db_session: Optional[Any],
         item_projection_scopes: Optional[set[str]],
     ) -> None:
+        from pymongo import DeleteMany, ReplaceOne
+
         kwargs = self._kwargs(db_session)
         verified_projection = self._collection("verified_items_projection")
         variance_projection = self._collection("variance_summary_projection")
         financial_projection = self._collection("financial_projection")
 
         scopes = item_projection_scopes or {"verified", "variance", "financial"}
-        if "verified" in scopes:
-            await self._resolve_result(
-                verified_projection.delete_many(
-                    {"session_id": session_id, "archived": {"$ne": True}},
-                    **kwargs,
-                )
-            )
-        if "variance" in scopes:
-            await self._resolve_result(
-                variance_projection.delete_many(
-                    {"session_id": session_id, "archived": {"$ne": True}},
-                    **kwargs,
-                )
-            )
-        if "financial" in scopes:
-            await self._resolve_result(
-                financial_projection.delete_many(
-                    {"session_id": session_id, "archived": {"$ne": True}},
-                    **kwargs,
-                )
-            )
 
         verified_docs: list[dict[str, Any]] = []
         variance_docs: list[dict[str, Any]] = []
@@ -610,10 +595,21 @@ class ProjectionWriteService:
                 financial["shortage_value"] += abs(delta_value)
             financial["damage_value"] += damaged_qty * unit_value
 
-        if verified_docs and "verified" in scopes:
-            await self._resolve_result(verified_projection.insert_many(verified_docs, **kwargs))
-        if variance_docs and "variance" in scopes:
-            await self._resolve_result(variance_projection.insert_many(variance_docs, **kwargs))
+        if "verified" in scopes:
+            active_line_ids = [doc["count_line_id"] for doc in verified_docs]
+            verified_ops = [DeleteMany({"session_id": session_id, "count_line_id": {"$nin": active_line_ids}})]
+            for doc in verified_docs:
+                verified_ops.append(ReplaceOne({"session_id": session_id, "count_line_id": doc["count_line_id"]}, doc, upsert=True))
+            if verified_ops:
+                await self._resolve_result(verified_projection.bulk_write(verified_ops, **kwargs))
+
+        if "variance" in scopes:
+            active_line_ids = [doc["count_line_id"] for doc in variance_docs]
+            variance_ops = [DeleteMany({"session_id": session_id, "count_line_id": {"$nin": active_line_ids}})]
+            for doc in variance_docs:
+                variance_ops.append(ReplaceOne({"session_id": session_id, "count_line_id": doc["count_line_id"]}, doc, upsert=True))
+            if variance_ops:
+                await self._resolve_result(variance_projection.bulk_write(variance_ops, **kwargs))
 
         complete_percent = (
             round((reviewed_count / len(active_lines)) * 100.0, 2) if active_lines else 0.0
@@ -636,7 +632,14 @@ class ProjectionWriteService:
             "archived": False,
         }
         if "financial" in scopes:
-            await self._resolve_result(financial_projection.insert_one(financial_doc, **kwargs))
+            await self._resolve_result(
+                financial_projection.replace_one(
+                    {"session_id": session_id},
+                    financial_doc,
+                    upsert=True,
+                    **kwargs
+                )
+            )
 
     @staticmethod
     def _resolve_source_updated_at(session_doc: dict[str, Any]) -> Optional[datetime]:

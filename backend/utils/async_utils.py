@@ -3,6 +3,8 @@ Modern Async Utilities - 2024/2025 Best Practices
 Zero-error async patterns, connection pooling, and performance optimization
 """
 
+import logging
+logger = logging.getLogger(__name__)
 import asyncio
 import logging
 import time
@@ -240,7 +242,8 @@ async def async_connection_pool(pool_size: int = 10):
                 try:
                     # Close connection logic
                     pass
-                except Exception:
+                except Exception as e:
+                    logger.warning("Caught broad exception: %s", e)
                     pass
 
 

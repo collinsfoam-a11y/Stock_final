@@ -3,6 +3,8 @@ Real-Time Dashboard API
 Server-Sent Events (SSE) and WebSocket endpoints for live data updates
 """
 
+import logging
+logger = logging.getLogger(__name__)
 import asyncio
 import json
 import logging
@@ -122,7 +124,8 @@ class ConnectionManager:
         for user_id, connection in self.active_connections.items():
             try:
                 await connection.send_json(message)
-            except Exception:
+            except Exception as e:
+                logger.warning("Caught broad exception: %s", e)
                 disconnected.append(user_id)
 
         for user_id in disconnected:

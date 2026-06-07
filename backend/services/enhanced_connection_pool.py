@@ -1,4 +1,6 @@
 from __future__ import annotations
+import logging
+logger = logging.getLogger(__name__)
 
 """
 Enhanced Connection Pool Service
@@ -284,7 +286,8 @@ class EnhancedSQLServerConnectionPool:
         """Close connection ignoring errors"""
         try:
             conn.close()
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             pass
 
     def _get_connection(self, timeout: Optional[float] = None) -> "pyodbc.Connection":
@@ -351,7 +354,8 @@ class EnhancedSQLServerConnectionPool:
                 logger.error(f"Failed to return connection to pool: {str(e)}")
                 try:
                     conn.close()
-                except Exception:
+                except Exception as e:
+                    logger.warning("Caught broad exception: %s", e)
                     pass
                 with self._lock:
                     self._created -= 1
@@ -360,7 +364,8 @@ class EnhancedSQLServerConnectionPool:
             # Connection is dead, close it
             try:
                 conn.close()
-            except Exception:
+            except Exception as e:
+                logger.warning("Caught broad exception: %s", e)
                 pass
             with self._lock:
                 self._created -= 1
@@ -481,7 +486,8 @@ class EnhancedSQLServerConnectionPool:
                 conn, _ = self._pool.get_nowait()
                 conn.close()
                 closed_count += 1
-            except Exception:
+            except Exception as e:
+                logger.warning("Caught broad exception: %s", e)
                 pass
 
         with self._lock:

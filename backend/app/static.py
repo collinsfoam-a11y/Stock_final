@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Static frontend serving registration."""
 
-from __future__ import annotations
 
 from pathlib import Path
 from typing import Any

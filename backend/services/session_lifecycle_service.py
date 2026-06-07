@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Session lifecycle domain service."""
 
-from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Optional
@@ -120,22 +120,29 @@ class SessionLifecycleService:
         set_doc: dict[str, Any],
         expected_version: int,
         db_session: Optional[Any],
+        bypass_occ: bool = False,
     ) -> None:
-        filter_doc = {
-            "$and": [
-                self._lookup(session_id),
-                build_version_filter(expected_version),
-            ]
-        }
+        if bypass_occ:
+            filter_doc = self._lookup(session_id)
+            update_spec = {"$set": dict(set_doc)}
+        else:
+            filter_doc = {
+                "$and": [
+                    self._lookup(session_id),
+                    build_version_filter(expected_version),
+                ]
+            }
+            update_spec = {"$set": dict(set_doc), "$inc": {"version": 1}}
+
         kwargs = self._kwargs(db_session)
         result = await self._execute_authorized_write(
             lambda: self.db.sessions.update_one(
                 filter_doc,
-                {"$set": dict(set_doc), "$inc": {"version": 1}},
+                update_spec,
                 **kwargs,
             )
         )
-        if getattr(result, "modified_count", 0) == 0:
+        if not bypass_occ and getattr(result, "modified_count", 0) == 0:
             raise ConcurrencyError(
                 f"CRITICAL: Session version mismatch for {session_id} (expected {expected_version})"
             )
@@ -420,6 +427,7 @@ class SessionLifecycleService:
         expected_version: Optional[int] = None,
         actor: str = "system",
         sync_projection: bool = True,
+        enforce_occ: bool = False,
     ) -> None:
         session = await self.ensure_session_not_finalized(session_id, db_session=db_session)
         await assert_valid_write(
@@ -439,6 +447,7 @@ class SessionLifecycleService:
             set_doc=dict(totals),
             expected_version=effective_expected,
             db_session=db_session,
+            bypass_occ=not enforce_occ,
         )
         await self.audit_service.log_write_event(
             event="SESSION_WRITE",

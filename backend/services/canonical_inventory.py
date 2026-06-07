@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Canonical inventory helpers shared by session, count-line, and sync flows.
 
@@ -6,7 +7,6 @@ The active source of truth for stock verification is:
 - count_lines
 """
 
-from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -264,6 +264,10 @@ async def recompute_session_totals(
     session_id: str,
     *,
     lifecycle_service: Any,
+    db_session: Optional[Any] = None,
+    expected_version: Optional[int] = None,
+    enforce_occ: bool = False,
+    actor: str = "system",
 ) -> dict[str, Any]:
     total_items = 0
     total_variance = 0.0
@@ -271,7 +275,11 @@ async def recompute_session_totals(
     damage_items = 0
     last_activity: Optional[datetime] = None
 
-    cursor = db.count_lines.find({"session_id": session_id})
+    kwargs = {"session": db_session} if db_session is not None else {}
+    try:
+        cursor = db.count_lines.find({"session_id": session_id}, **kwargs)
+    except TypeError:
+        cursor = db.count_lines.find({"session_id": session_id})
     async for line in cursor:
         if is_superseded_count_line(line):
             continue
@@ -323,5 +331,12 @@ async def recompute_session_totals(
     if last_activity is not None:
         session_update["last_activity"] = last_activity
 
-    await lifecycle_service.update_session_totals(session_id, session_update)
+    await lifecycle_service.update_session_totals(
+        session_id,
+        session_update,
+        db_session=db_session,
+        expected_version=expected_version,
+        enforce_occ=enforce_occ,
+        actor=actor,
+    )
     return session_update

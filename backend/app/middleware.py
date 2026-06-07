@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Middleware registration for FastAPI app composition."""
 
-from __future__ import annotations
 
 import os
 from typing import Any

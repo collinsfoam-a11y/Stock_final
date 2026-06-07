@@ -4,6 +4,8 @@ Provides endpoints for service management, status monitoring, and system control
 """
 
 # ruff: noqa: E402
+import logging
+logger = logging.getLogger(__name__)
 import sys
 from pathlib import Path
 
@@ -421,7 +423,8 @@ def _find_running_backend_process() -> Optional[dict[str, Any]]:
                     "port": port,
                     "pid": pid,
                 }
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             pass
     return None
 
@@ -496,7 +499,8 @@ async def start_frontend(current_user: dict = Depends(require_admin)):
                                 "port": port,
                                 "pid": pid,
                             }
-                    except Exception:
+                    except Exception as e:
+                        logger.warning("Caught broad exception: %s", e)
                         pass
 
         raise HTTPException(
@@ -746,7 +750,8 @@ def _parse_log_line(line: str) -> Optional[dict[str, Optional[str]]]:
                 "level": parts[2],
                 "message": parts[3],
             }
-    except Exception:
+    except Exception as e:
+        logger.warning("Caught broad exception: %s", e)
         pass
     return None
 

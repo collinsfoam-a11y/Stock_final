@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 import io
 import logging
 from collections import defaultdict
@@ -252,7 +254,8 @@ class SystemReportService:
         mongodb_status = "connected"
         try:
             await self.db.command("ping")
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             mongodb_status = "disconnected"
 
         return self._serialize_row(

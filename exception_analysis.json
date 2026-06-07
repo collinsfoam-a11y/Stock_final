@@ -1,0 +1,1562 @@
+[
+  {
+    "file": "backend\\app_factory.py",
+    "line": 234,
+    "code_snippet": [
+      "try:\n",
+      "    instrument_fastapi_app(app)\n",
+      "except Exception:\n",
+      "    # Tracing should never prevent the app from starting\n",
+      "    pass\n"
+    ]
+  },
+  {
+    "file": "backend\\app_factory.py",
+    "line": 465,
+    "code_snippet": [
+      "        try:\n",
+      "            body = await request.json()\n",
+      "        except Exception:\n",
+      "            body = {}\n",
+      "        refresh_token_value = body.get(\"refresh_token\") or get_refresh_token_cookie(request)\n"
+    ]
+  },
+  {
+    "file": "backend\\app_factory.py",
+    "line": 502,
+    "code_snippet": [
+      "        try:\n",
+      "            body = await request.json()\n",
+      "        except Exception:\n",
+      "            body = {}\n",
+      "        refresh_token_value = body.get(\"refresh_token\") or get_refresh_token_cookie(request)\n"
+    ]
+  },
+  {
+    "file": "backend\\config.py",
+    "line": 569,
+    "code_snippet": [
+      "\n",
+      "                    mongo_url = PortDetector.get_mongo_url()\n",
+      "                except Exception:\n",
+      "                    pass\n",
+      "            self.MONGO_URL = mongo_url\n"
+    ]
+  },
+  {
+    "file": "backend\\sql_server_connector.py",
+    "line": 620,
+    "code_snippet": [
+      "            cursor.close()\n",
+      "            return True\n",
+      "        except Exception:\n",
+      "            return False\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\admin_control_api.py",
+    "line": 424,
+    "code_snippet": [
+      "                    \"pid\": pid,\n",
+      "                }\n",
+      "        except Exception:\n",
+      "            pass\n",
+      "    return None\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\admin_control_api.py",
+    "line": 499,
+    "code_snippet": [
+      "                                \"pid\": pid,\n",
+      "                            }\n",
+      "                    except Exception:\n",
+      "                        pass\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\admin_control_api.py",
+    "line": 749,
+    "code_snippet": [
+      "                \"message\": parts[3],\n",
+      "            }\n",
+      "    except Exception:\n",
+      "        pass\n",
+      "    return None\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\admin_control_api.py",
+    "line": 952,
+    "code_snippet": [
+      "                \"message\": (\"Connection is active\" if success else \"Connection is inactive\"),\n",
+      "            }\n",
+      "    except Exception as e:\n",
+      "        return {\"success\": False, \"message\": f\"Connection failed: {str(e)}\"}\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\admin_dashboard_api.py",
+    "line": 238,
+    "code_snippet": [
+      "        process = psutil.Process(os.getpid())\n",
+      "        return round(process.memory_info().rss / 1024 / 1024, 2)\n",
+      "    except Exception:\n",
+      "        return 0.0\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\admin_dashboard_api.py",
+    "line": 246,
+    "code_snippet": [
+      "    try:\n",
+      "        return psutil.cpu_percent(interval=0.1)\n",
+      "    except Exception:\n",
+      "        return 0.0\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\count_lines_routes.py",
+    "line": 1866,
+    "code_snippet": [
+      "    try:\n",
+      "        return await db.count_lines.find_one({\"_id\": ObjectId(line_id)})\n",
+      "    except Exception:\n",
+      "        return None\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\count_lines_routes.py",
+    "line": 2294,
+    "code_snippet": [
+      "            )\n",
+      "            results.append({\"index\": idx, \"id\": str(count_line.get(\"id\") or \"\"), \"success\": True})\n",
+      "        except Exception as e:\n",
+      "            errors.append({\"index\": idx, \"error\": str(e)})\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\count_lines_routes.py",
+    "line": 2640,
+    "code_snippet": [
+      "            merged_count += 1\n",
+      "\n",
+      "        except Exception as e:\n",
+      "            results[\"failed\"].append({\"id\": source_id, \"error\": str(e)})\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\dynamic_fields_api.py",
+    "line": 302,
+    "code_snippet": [
+      "                    )\n",
+      "                    results.append(result)\n",
+      "                except Exception as e:\n",
+      "                    errors.append(\n",
+      "                        {\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\enhanced_item_api.py",
+    "line": 407,
+    "code_snippet": [
+      "            if cached_item:\n",
+      "                return cached_item, \"cache\"\n",
+      "        except Exception:\n",
+      "            pass  # Continue to next strategy\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\health.py",
+    "line": 241,
+    "code_snippet": [
+      "            \"utilization_percent\": pool_stats.get(\"utilization_percent\", 0),\n",
+      "        }\n",
+      "    except Exception as exc:\n",
+      "        connection_pools[\"sql_server\"] = {\n",
+      "            \"initialized\": True,\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\health.py",
+    "line": 432,
+    "code_snippet": [
+      "                    \"fallback\": not cache_service.use_redis,\n",
+      "                }\n",
+      "        except Exception as exc:\n",
+      "            redis_health = {\"status\": \"unhealthy\", \"error\": str(exc)}\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\health.py",
+    "line": 445,
+    "code_snippet": [
+      "                \"rooms\": len(getattr(websocket_manager, \"rooms\", {}) or {}),\n",
+      "            }\n",
+      "        except Exception as exc:\n",
+      "            ws_health = {\"status\": \"degraded\", \"error\": str(exc)}\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\health.py",
+    "line": 458,
+    "code_snippet": [
+      "                \"is_connected\": True,\n",
+      "            }\n",
+      "    except Exception as exc:\n",
+      "        sql_health = {\"status\": \"unavailable\", \"error\": str(exc)}\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\mapping_api.py",
+    "line": 110,
+    "code_snippet": [
+      "            try:\n",
+      "                drivers = list(pyodbc.drivers())\n",
+      "            except Exception:\n",
+      "                drivers = []\n",
+      "            raise HTTPException(\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\metrics_api.py",
+    "line": 127,
+    "code_snippet": [
+      "        await db.command(\"ping\")\n",
+      "        stats[\"mongodb\"] = {\"status\": \"connected\", \"database\": db.name}\n",
+      "    except Exception as e:\n",
+      "        stats[\"mongodb\"] = {\"status\": \"disconnected\", \"error\": str(e)}\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\metrics_api.py",
+    "line": 135,
+    "code_snippet": [
+      "            monitoring_stats = await _monitoring_service.get_metrics()\n",
+      "            stats[\"services\"] = monitoring_stats\n",
+      "        except Exception as e:\n",
+      "            stats[\"services\"] = {\"error\": str(e)}\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\notifications_api.py",
+    "line": 271,
+    "code_snippet": [
+      "                    {\"user_id\": user_id, \"success\": True, \"notification_id\": notification_id}\n",
+      "                )\n",
+      "            except Exception as e:\n",
+      "                results.append({\"user_id\": user_id, \"success\": False, \"error\": str(e)})\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\pin_auth_api.py",
+    "line": 112,
+    "code_snippet": [
+      "    try:\n",
+      "        await reset_rate_limit(ip_address)\n",
+      "    except Exception:\n",
+      "        pass\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\pi_api.py",
+    "line": 168,
+    "code_snippet": [
+      "                ),\n",
+      "            }\n",
+      "        except Exception:\n",
+      "            return {\"active\": False, \"msg\": \"AI sidecar unreachable\"}\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\realtime_dashboard_api.py",
+    "line": 125,
+    "code_snippet": [
+      "            try:\n",
+      "                await connection.send_json(message)\n",
+      "            except Exception:\n",
+      "                disconnected.append(user_id)\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\sync_conflicts_api.py",
+    "line": 179,
+    "code_snippet": [
+      "                )\n",
+      "                resolved_count += 1\n",
+      "            except Exception as e:\n",
+      "                errors.append({\"id\": conflict_id, \"error\": str(e)})\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\user_management_api.py",
+    "line": 296,
+    "code_snippet": [
+      "    try:\n",
+      "        oid = ObjectId(user_id)\n",
+      "    except Exception:\n",
+      "        _raise_http_error(status.HTTP_400_BAD_REQUEST, \"Invalid user ID\", \"INVALID_ID\")\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\user_management_api.py",
+    "line": 577,
+    "code_snippet": [
+      "    try:\n",
+      "        oid = ObjectId(user_id)\n",
+      "    except Exception:\n",
+      "        _raise_http_error(status.HTTP_400_BAD_REQUEST, \"Invalid user ID\", \"INVALID_ID\")\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\websocket_api.py",
+    "line": 134,
+    "code_snippet": [
+      "        try:\n",
+      "            await websocket.close(code=1011)  # Internal Error\n",
+      "        except Exception:\n",
+      "            pass\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\connection_status.py",
+    "line": 49,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"POOL_STATUS_ERROR\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\connection_status.py",
+    "line": 78,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"POOL_STATS_ERROR\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\connection_status.py",
+    "line": 107,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"HEALTH_CHECK_ERROR\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\health.py",
+    "line": 29,
+    "code_snippet": [
+      "            return await res\n",
+      "        return res\n",
+      "    except Exception as e:\n",
+      "        return {\"status\": \"unhealthy\", \"error\": str(e)}\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\health.py",
+    "line": 118,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"HEALTH_CHECK_FAILED\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\health.py",
+    "line": 157,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"DETAILED_HEALTH_CHECK_FAILED\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\items.py",
+    "line": 79,
+    "code_snippet": [
+      "        if ObjectId.is_valid(item_identifier):\n",
+      "            return await db.erp_items.find_one({\"_id\": ObjectId(item_identifier)})\n",
+      "    except Exception:\n",
+      "        pass\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\items.py",
+    "line": 111,
+    "code_snippet": [
+      "        image = Image.open(io.BytesIO(file_bytes))\n",
+      "        image.load()\n",
+      "    except Exception:\n",
+      "        return []\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\items.py",
+    "line": 120,
+    "code_snippet": [
+      "            if decoded.data:\n",
+      "                identifiers.append(decoded.data.decode(\"utf-8\", errors=\"ignore\"))\n",
+      "    except Exception:\n",
+      "        pass\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\items.py",
+    "line": 128,
+    "code_snippet": [
+      "        ocr_text = pytesseract.image_to_string(image)\n",
+      "        identifiers.extend(_extract_identifiers_from_text(ocr_text))\n",
+      "    except Exception:\n",
+      "        pass\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\items.py",
+    "line": 289,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"ITEMS_FETCH_ERROR\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\items.py",
+    "line": 350,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"SEMANTIC_SEARCH_ERROR\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\items.py",
+    "line": 402,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"ITEM_FETCH_ERROR\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\items.py",
+    "line": 464,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"VISUAL_SEARCH_ERROR\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\items.py",
+    "line": 548,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"INTERNAL_ERROR\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\metrics.py",
+    "line": 46,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"METRICS_ERROR\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\metrics.py",
+    "line": 59,
+    "code_snippet": [
+      "    try:\n",
+      "        return getattr(obj, method_name)()\n",
+      "    except Exception as e:\n",
+      "        return {\"error\": str(e)}\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\metrics.py",
+    "line": 98,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"SYSTEM_METRICS_ERROR\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\sessions.py",
+    "line": 142,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"SESSIONS_FETCH_ERROR\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\sessions.py",
+    "line": 165,
+    "code_snippet": [
+      "        try:\n",
+      "            session = await db.sessions.find_one({\"_id\": ObjectId(session_id)})\n",
+      "        except Exception:\n",
+      "            # Try finding by string id if ObjectId fails (for offline/legacy ids)\n",
+      "            session = await db.sessions.find_one({\"session_id\": session_id})\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\sessions.py",
+    "line": 251,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"PROGRESS_CALC_ERROR\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\sessions.py",
+    "line": 367,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"WATCHTOWER_ERROR\",\n"
+    ]
+  },
+  {
+    "file": "backend\\api\\v2\\supervisor.py",
+    "line": 48,
+    "code_snippet": [
+      "        )\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        return ApiResponse.error_response(\n",
+      "            error_code=\"PREDICTION_ERROR\",\n"
+    ]
+  },
+  {
+    "file": "backend\\auth\\jwt_provider.py",
+    "line": 29,
+    "code_snippet": [
+      "    try:\n",
+      "        return float(exp)\n",
+      "    except Exception:\n",
+      "        return None\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\core\\lifespan.py",
+    "line": 117,
+    "code_snippet": [
+      "try:\n",
+      "    init_tracing()\n",
+      "except Exception:\n",
+      "    # Never break startup due to tracing\n",
+      "    pass\n"
+    ]
+  },
+  {
+    "file": "backend\\core\\lifespan.py",
+    "line": 905,
+    "code_snippet": [
+      "        port_str = os.getenv(\"PORT\", str(getattr(settings, \"PORT\", 8001)))\n",
+      "        port = int(port_str)\n",
+      "    except Exception:\n",
+      "        port = 8001\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\core\\websocket_manager.py",
+    "line": 111,
+    "code_snippet": [
+      "                    responsive += 1\n",
+      "                    alive.append(conn)\n",
+      "                except Exception:\n",
+      "                    pass\n",
+      "            self.active_connections[user_id] = alive\n"
+    ]
+  },
+  {
+    "file": "backend\\db\\indexes.py",
+    "line": 457,
+    "code_snippet": [
+      "                for name, info in index_info.items()\n",
+      "            ]\n",
+      "        except Exception:\n",
+      "            stats[collection_name] = []\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\middleware\\input_sanitization.py",
+    "line": 108,
+    "code_snippet": [
+      "                            },\n",
+      "                        )\n",
+      "            except Exception:\n",
+      "                pass\n",
+      "        return None\n"
+    ]
+  },
+  {
+    "file": "backend\\middleware\\logging_middleware.py",
+    "line": 157,
+    "code_snippet": [
+      "                \"session_id\": payload.get(\"session_id\"),\n",
+      "            }\n",
+      "        except Exception:\n",
+      "            # If we can't decode, just continue without context\n",
+      "            return None\n"
+    ]
+  },
+  {
+    "file": "backend\\middleware\\projection_consistency_guard.py",
+    "line": 635,
+    "code_snippet": [
+      "        try:\n",
+      "            return json.loads(body_bytes.decode(\"utf-8\"))\n",
+      "        except Exception:\n",
+      "            return {}\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\middleware\\rate_limit_middleware.py",
+    "line": 60,
+    "code_snippet": [
+      "                payload = jwt_decode(token, self.jwt_secret, algorithms=[\"HS256\"])\n",
+      "                user_id = payload.get(\"sub\")\n",
+      "            except Exception:\n",
+      "                pass  # Invalid token, use IP-based rate limit\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\add_test_items.py",
+    "line": 93,
+    "code_snippet": [
+      "        client.close()\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        print(f\"\u274c Error: {e}\")\n",
+      "        import traceback\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\archive_orphan_count_lines.py",
+    "line": 268,
+    "code_snippet": [
+      "        try:\n",
+      "            await lock_service.release_lock(key, owner)\n",
+      "        except Exception:\n",
+      "            continue\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\archive_orphan_count_lines.py",
+    "line": 560,
+    "code_snippet": [
+      "        await _write_audit_log(db, report)\n",
+      "        return return_code\n",
+      "    except Exception as exc:\n",
+      "        report[\"errors\"].append({\"kind\": \"exception\", \"message\": sanitize_for_logging(str(exc))})\n",
+      "        return 1\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\check_barcode_lengths.py",
+    "line": 38,
+    "code_snippet": [
+      "            print(f\"Length {r[0]}: {r[1]} items\")\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        print(f\"Error: {e}\")\n",
+      "    finally:\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\check_other_barcodes.py",
+    "line": 47,
+    "code_snippet": [
+      "                print(f\"  Sample {col}: {samples}\")\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        print(f\"Error: {e}\")\n",
+      "    finally:\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\check_other_barcode_columns.py",
+    "line": 45,
+    "code_snippet": [
+      "            print(\"No barcodes found in Products.Barcode column.\")\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        print(f\"Error: {e}\")\n",
+      "    finally:\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\check_sync_optimization.py",
+    "line": 58,
+    "code_snippet": [
+      "            print(f\"ID: {r[0]} | Auto: {r[1]} | Manual: {r[2]} | Unit2: {r[3]}\")\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        print(f\"Error: {e}\")\n",
+      "    finally:\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\check_warehouses.py",
+    "line": 56,
+    "code_snippet": [
+      "            print(f\"  - {w.get('warehouse_name')}\")\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        print(f\"Error: {e}\")\n",
+      "    finally:\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\check_warehouses.py",
+    "line": 61,
+    "code_snippet": [
+      "        try:\n",
+      "            connector.disconnect()\n",
+      "        except Exception:\n",
+      "            pass\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\create_feature_indexes.py",
+    "line": 63,
+    "code_snippet": [
+      "        await db[collection].create_index(fields)\n",
+      "        print(f\"  \u2713 Index: {desc}\")\n",
+      "    except Exception as e:\n",
+      "        print(f\"  \u2717 Error: {e}\")\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\create_feature_indexes.py",
+    "line": 105,
+    "code_snippet": [
+      "        print(\"=\" * 60)\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        print(f\"\\n\u274c Error: {e}\")\n",
+      "        return False\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\discover_tables.py",
+    "line": 170,
+    "code_snippet": [
+      "        cursor.close()\n",
+      "        return results\n",
+      "    except Exception as e:\n",
+      "        return f\"Error: {e}\"\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\explore_barcodes.py",
+    "line": 82,
+    "code_snippet": [
+      "            print(f\"Series {s[0]}: {s[1]} items\")\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        print(f\"Error: {e}\")\n",
+      "    finally:\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\projection_rebuild_common.py",
+    "line": 155,
+    "code_snippet": [
+      "            report[\"sessions_rebuilt\"] += 1\n",
+      "            report[\"rebuilt_session_ids\"].append(session_id)\n",
+      "        except Exception as exc:\n",
+      "            report[\"errors\"].append(\n",
+      "                {\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\restore_mongodb_backup.py",
+    "line": 72,
+    "code_snippet": [
+      "            return 1\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        print(f\"   \u274c Error restoring {collection_name}: {e}\")\n",
+      "        import traceback\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\restore_mongodb_backup.py",
+    "line": 130,
+    "code_snippet": [
+      "        return True\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        print(f\"\u274c Error: {e}\")\n",
+      "        import traceback\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\stress_test_concurrent_users.py",
+    "line": 192,
+    "code_snippet": [
+      "            self.results.connection_errors += 1\n",
+      "            return False\n",
+      "        except Exception as e:\n",
+      "            user.failed_requests += 1\n",
+      "            user.errors.append(f\"Login error: {str(e)}\")\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\stress_test_concurrent_users.py",
+    "line": 245,
+    "code_snippet": [
+      "            self.results.connection_errors += 1\n",
+      "            return False, None\n",
+      "        except Exception as e:\n",
+      "            user.failed_requests += 1\n",
+      "            user.errors.append(f\"Request error: {str(e)}\")\n"
+    ]
+  },
+  {
+    "file": "backend\\scripts\\verify_reconciliation.py",
+    "line": 78,
+    "code_snippet": [
+      "        # However, let's use TestClient for cleaner integration test.\n",
+      "\n",
+      "    except Exception as e:\n",
+      "        print(f\"Setup Error: {e}\")\n",
+      "        return\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\auto_diagnosis.py",
+    "line": 650,
+    "code_snippet": [
+      "                check_result = await check_func()\n",
+      "                health_report[\"checks\"][check_func.__name__] = check_result\n",
+      "            except Exception as e:\n",
+      "                diagnosis = await self.diagnose_error(e)\n",
+      "                health_report[\"diagnoses\"].append(diagnosis.to_dict())\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\auto_sync_manager.py",
+    "line": 247,
+    "code_snippet": [
+      "            await self._trigger_sync()\n",
+      "            return {\"success\": True, \"message\": \"Sync triggered successfully\"}\n",
+      "        except Exception as e:\n",
+      "            return {\"success\": False, \"error\": str(e)}\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\cache_service.py",
+    "line": 217,
+    "code_snippet": [
+      "                    \"uptime_days\": info.get(\"uptime_in_days\"),\n",
+      "                }\n",
+      "            except Exception as e:\n",
+      "                status[\"status\"] = \"unhealthy\"\n",
+      "                status[\"details\"][\"error\"] = str(e)\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\change_detection_sync.py",
+    "line": 107,
+    "code_snippet": [
+      "            return Ok(query)\n",
+      "\n",
+      "        except Exception as e:\n",
+      "            return Fail(\n",
+      "                DatabaseError(\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\change_detection_sync.py",
+    "line": 158,
+    "code_snippet": [
+      "            return Ok(operations)\n",
+      "\n",
+      "        except Exception as e:\n",
+      "            return Fail(\n",
+      "                DatabaseError(\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\change_detection_sync.py",
+    "line": 187,
+    "code_snippet": [
+      "                results_list = cast(Optional[list[ProductData]], results)\n",
+      "            return Ok(results_list or [])\n",
+      "        except Exception as e:\n",
+      "            return Fail(\n",
+      "                DatabaseError(\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\change_detection_sync.py",
+    "line": 219,
+    "code_snippet": [
+      "                }\n",
+      "            )\n",
+      "        except Exception as e:\n",
+      "            return Fail(\n",
+      "                DatabaseError(\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\count_line_write_service.py",
+    "line": 1086,
+    "code_snippet": [
+      "                )\n",
+      "            )\n",
+      "        except Exception:\n",
+      "            legacy_snapshot = None\n",
+      "        if isinstance(legacy_snapshot, dict):\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\database_health.py",
+    "line": 144,
+    "code_snippet": [
+      "\n",
+      "                    sql_password = getattr(settings, \"SQL_SERVER_PASSWORD\", None)\n",
+      "                except Exception:\n",
+      "                    pass\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\database_health.py",
+    "line": 165,
+    "code_snippet": [
+      "                            timeout=3,\n",
+      "                        )\n",
+      "                    except Exception as e:\n",
+      "                        is_available = False\n",
+      "                        error_detail = f\"Connection attempt failed: {str(e)}\"\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\database_health.py",
+    "line": 282,
+    "code_snippet": [
+      "            try:\n",
+      "                self._dedicated_client.close()\n",
+      "            except Exception:\n",
+      "                pass\n",
+      "        logger.info(\"Database health monitoring stopped\")\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\database_health.py",
+    "line": 330,
+    "code_snippet": [
+      "                        \"storage_size\": db_stats.get(\"storageSize\", 0),\n",
+      "                    }\n",
+      "                except Exception as inner:\n",
+      "                    mongo_stats = {\"error\": str(inner)}\n",
+      "            else:\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\database_health.py",
+    "line": 334,
+    "code_snippet": [
+      "            else:\n",
+      "                mongo_stats = {\"error\": str(e)}\n",
+      "        except Exception as e:\n",
+      "            mongo_stats = {\"error\": str(e)}\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\database_health.py",
+    "line": 352,
+    "code_snippet": [
+      "        except asyncio.TimeoutError:\n",
+      "            sql_stats = {\"connected\": False, \"error\": \"Timeout checking SQL Server connection\"}\n",
+      "        except Exception as e:\n",
+      "            sql_stats = {\"error\": str(e)}\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\database_manager.py",
+    "line": 373,
+    "code_snippet": [
+      "                        large_collections.append(collection)\n",
+      "\n",
+      "                except Exception:\n",
+      "                    continue  # Skip collections that can't be analyzed\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\database_manager.py",
+    "line": 431,
+    "code_snippet": [
+      "                        )\n",
+      "                    )\n",
+      "            except Exception:\n",
+      "                continue\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\enhanced_connection_pool.py",
+    "line": 287,
+    "code_snippet": [
+      "        try:\n",
+      "            conn.close()\n",
+      "        except Exception:\n",
+      "            pass\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\enhanced_connection_pool.py",
+    "line": 354,
+    "code_snippet": [
+      "                try:\n",
+      "                    conn.close()\n",
+      "                except Exception:\n",
+      "                    pass\n",
+      "                with self._lock:\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\enhanced_connection_pool.py",
+    "line": 363,
+    "code_snippet": [
+      "            try:\n",
+      "                conn.close()\n",
+      "            except Exception:\n",
+      "                pass\n",
+      "            with self._lock:\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\enhanced_connection_pool.py",
+    "line": 438,
+    "code_snippet": [
+      "                    self._metrics.total_closed += 1\n",
+      "                health_status[\"connection_test\"] = \"passed\"\n",
+      "            except Exception as e:\n",
+      "                health_status[\"connection_test\"] = f\"failed: {str(e)}\"\n",
+      "                health_status[\"status\"] = \"unhealthy\"\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\enhanced_connection_pool.py",
+    "line": 484,
+    "code_snippet": [
+      "                conn.close()\n",
+      "                closed_count += 1\n",
+      "            except Exception:\n",
+      "                pass\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\enrichment_service.py",
+    "line": 456,
+    "code_snippet": [
+      "                    )\n",
+      "\n",
+      "            except Exception as e:\n",
+      "                results[\"failed\"] += 1\n",
+      "                results[\"errors\"].append(\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\error_log.py",
+    "line": 146,
+    "code_snippet": [
+      "                        traceback.format_exception(type(error), error, error.__traceback__)\n",
+      "                    )\n",
+      "                except Exception:\n",
+      "                    stack_trace = traceback.format_exc()\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\event_service.py",
+    "line": 116,
+    "code_snippet": [
+      "            collection = getattr(self.db, \"feature_flags\", None) or self.db[\"feature_flags\"]\n",
+      "            doc = await self._resolve_awaitable(collection.find_one({\"key\": key}))\n",
+      "        except Exception:\n",
+      "            return default\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\governance_guard.py",
+    "line": 360,
+    "code_snippet": [
+      "        setattr(db, collection_name, proxy)\n",
+      "        return proxy\n",
+      "    except Exception:\n",
+      "        return collection\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\mdns_service.py",
+    "line": 95,
+    "code_snippet": [
+      "            s.close()\n",
+      "            return ip\n",
+      "        except Exception:\n",
+      "            return \"127.0.0.1\"\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\observability.py",
+    "line": 145,
+    "code_snippet": [
+      "        try:\n",
+      "            return \"\".join(traceback.format_exception(type(error), error, error.__traceback__))\n",
+      "        except Exception:\n",
+      "            return str(error)\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\projection_read_service.py",
+    "line": 124,
+    "code_snippet": [
+      "            collection = getattr(self.db, \"feature_flags\", None) or self.db[\"feature_flags\"]\n",
+      "            doc = await collection.find_one({\"key\": flag_name})\n",
+      "        except Exception:\n",
+      "            return False\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\projection_write_service.py",
+    "line": 248,
+    "code_snippet": [
+      "            try:\n",
+      "                setattr(self.db, \"locks\", self.db[\"locks\"])\n",
+      "            except Exception:\n",
+      "                return False\n",
+      "        lock_service = LockService(self.db)\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\projection_write_service.py",
+    "line": 409,
+    "code_snippet": [
+      "            try:\n",
+      "                raw_lines = await self._resolve_result(cursor.to_list(length=10000))\n",
+      "            except Exception:\n",
+      "                raw_lines = []\n",
+      "            for line in raw_lines or []:\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\read_router.py",
+    "line": 151,
+    "code_snippet": [
+      "            collection = getattr(self.db, \"feature_flags\", None) or self.db[\"feature_flags\"]\n",
+      "            doc = await collection.find_one({\"key\": flag_name})\n",
+      "        except Exception:\n",
+      "            return False\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\sql_sync_service.py",
+    "line": 33,
+    "code_snippet": [
+      "    try:\n",
+      "        return str(value)\n",
+      "    except Exception:\n",
+      "        return None\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\sql_sync_service.py",
+    "line": 936,
+    "code_snippet": [
+      "                timeout=3,\n",
+      "            )\n",
+      "        except Exception:\n",
+      "            is_connected = False\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\sql_verification_service.py",
+    "line": 550,
+    "code_snippet": [
+      "            sql_qty = await self._get_sql_quantity(item_code)\n",
+      "            latency_ms = (time.perf_counter() - start_time) * 1000\n",
+      "        except Exception as e:\n",
+      "            latency_ms = (time.perf_counter() - start_time) * 1000\n",
+      "            return await self._handle_sql_verification_error(e, item_code, latency_ms)\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\sql_verification_service.py",
+    "line": 848,
+    "code_snippet": [
+      "            }\n",
+      "\n",
+      "        except Exception:\n",
+      "            return {\n",
+      "                \"success\": False,\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\system_report_service.py",
+    "line": 255,
+    "code_snippet": [
+      "        try:\n",
+      "            await self.db.command(\"ping\")\n",
+      "        except Exception:\n",
+      "            mongodb_status = \"disconnected\"\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\services\\transaction_manager.py",
+    "line": 31,
+    "code_snippet": [
+      "        hello_result = command(\"hello\")\n",
+      "        hello = await hello_result if inspect.isawaitable(hello_result) else hello_result\n",
+      "    except Exception:\n",
+      "        return True\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\api_utils.py",
+    "line": 226,
+    "code_snippet": [
+      "            except HTTPException:\n",
+      "                raise\n",
+      "            except Exception as e:\n",
+      "                # Convert unhandled exceptions to Result and then to API response\n",
+      "                return handle_result(Fail(e), 500)\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\async_utils.py",
+    "line": 243,
+    "code_snippet": [
+      "                    # Close connection logic\n",
+      "                    pass\n",
+      "                except Exception:\n",
+      "                    pass\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\auth_utils.py",
+    "line": 90,
+    "code_snippet": [
+      "    try:\n",
+      "        scheme = pwd_context.identify(hashed_password)\n",
+      "    except Exception:\n",
+      "        scheme = None\n",
+      "    if scheme == \"argon2\":\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\auth_utils.py",
+    "line": 106,
+    "code_snippet": [
+      "    try:\n",
+      "        scheme = pwd_context.default_scheme()\n",
+      "    except Exception:\n",
+      "        return \"unknown\"\n",
+      "    return \"argon2id\" if scheme == \"argon2\" else str(scheme)\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\auth_utils.py",
+    "line": 122,
+    "code_snippet": [
+      "    try:\n",
+      "        return bool(pwd_context.needs_update(hashed_password))\n",
+      "    except Exception:\n",
+      "        return False\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\db_connection.py",
+    "line": 256,
+    "code_snippet": [
+      "            cursor.close()\n",
+      "            return True\n",
+      "        except Exception:\n",
+      "            return False\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\erp_utils.py",
+    "line": 51,
+    "code_snippet": [
+      "    try:\n",
+      "        return str(val)\n",
+      "    except Exception:\n",
+      "        return None\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\error_handler_with_diagnosis.py",
+    "line": 152,
+    "code_snippet": [
+      "                try:\n",
+      "                    return await func(*args, **kwargs)\n",
+      "                except Exception as e:\n",
+      "                    return await _handle_async_error(\n",
+      "                        func,\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\error_handler_with_diagnosis.py",
+    "line": 171,
+    "code_snippet": [
+      "                try:\n",
+      "                    return func(*args, **kwargs)\n",
+      "                except Exception as e:\n",
+      "                    return _handle_sync_error(\n",
+      "                        func,\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\error_handler_with_diagnosis.py",
+    "line": 287,
+    "code_snippet": [
+      "                        result = await func_or_coro()\n",
+      "                        return Result.success(result)\n",
+      "                    except Exception as retry_error:\n",
+      "                        return Result.error(retry_error, \"Auto-fix retry failed\")\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\logging_config.py",
+    "line": 65,
+    "code_snippet": [
+      "            record.msg = msg\n",
+      "            record.args = ()\n",
+      "        except Exception:\n",
+      "            pass\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\port_detector.py",
+    "line": 54,
+    "code_snippet": [
+      "                result = sock.connect_ex((host, port))\n",
+      "                return result != 0\n",
+      "        except Exception:\n",
+      "            return False\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\port_detector.py",
+    "line": 123,
+    "code_snippet": [
+      "                    client.close()\n",
+      "                return True\n",
+      "            except Exception:\n",
+      "                # Port is open but ping failed (could be a different service)\n",
+      "                return False\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\port_detector.py",
+    "line": 126,
+    "code_snippet": [
+      "                # Port is open but ping failed (could be a different service)\n",
+      "                return False\n",
+      "        except Exception:\n",
+      "            return False\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\port_detector.py",
+    "line": 203,
+    "code_snippet": [
+      "                s.connect((\"8.8.8.8\", 80))\n",
+      "                ip = s.getsockname()[0]\n",
+      "            except Exception:\n",
+      "                ip = \"127.0.0.1\"\n",
+      "            finally:\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\port_detector.py",
+    "line": 216,
+    "code_snippet": [
+      "                    s.connect((\"192.168.1.1\", 80))\n",
+      "                    ip = s.getsockname()[0]\n",
+      "                except Exception:\n",
+      "                    pass\n",
+      "                finally:\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\port_detector.py",
+    "line": 222,
+    "code_snippet": [
+      "\n",
+      "            return ip\n",
+      "        except Exception:\n",
+      "            return \"127.0.0.1\"\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\result.py",
+    "line": 374,
+    "code_snippet": [
+      "            except HTTPException:\n",
+      "                raise\n",
+      "            except Exception as exc:\n",
+      "                return handle_result(Fail(exc), 500)\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\result_types.py",
+    "line": 77,
+    "code_snippet": [
+      "            try:\n",
+      "                return Result.success(fn(cast(T, self._value)))\n",
+      "            except Exception as e:\n",
+      "                return Result[Any, E].error(cast(E, e), str(e))\n",
+      "        return Result[Any, E].error(cast(E, self._error), self._error_message)\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\result_types.py",
+    "line": 86,
+    "code_snippet": [
+      "            try:\n",
+      "                return Result[T, Any].error(fn(cast(E, self._error)), self._error_message)\n",
+      "            except Exception as e:\n",
+      "                return Result[T, Any].error(e, str(e))\n",
+      "        return Result[T, Any].success(cast(T, self._value))\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\service_manager.py",
+    "line": 28,
+    "code_snippet": [
+      "                result = sock.connect_ex((host, port))\n",
+      "                return result == 0\n",
+      "        except Exception:\n",
+      "            return False\n",
+      "\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\service_manager.py",
+    "line": 101,
+    "code_snippet": [
+      "                        )\n",
+      "                        killed += 1\n",
+      "                    except Exception:\n",
+      "                        pass\n",
+      "            else:\n"
+    ]
+  },
+  {
+    "file": "backend\\utils\\service_manager.py",
+    "line": 108,
+    "code_snippet": [
+      "                        subprocess.run([\"pkill\", \"-f\", pattern], capture_output=True, timeout=5)\n",
+      "                        killed += 1\n",
+      "                    except Exception:\n",
+      "                        pass\n",
+      "        except Exception as e:\n"
+    ]
+  }
+]

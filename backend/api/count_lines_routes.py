@@ -1,3 +1,4 @@
+from bson.errors import InvalidId
 import inspect
 import logging
 import uuid
@@ -27,6 +28,7 @@ from backend.services.canonical_inventory import (
     materialize_count_line_review_state,
     recompute_session_totals,
 )
+from backend.services.concurrency import coerce_version
 from backend.services.count_line_write_service import (
     CountLineGovernanceDecision,
     CountLineWriteService,
@@ -121,12 +123,40 @@ def _get_db_client(db_override=None):
         raise HTTPException(status_code=500, detail="Database is not initialized")
 
 
-async def _recompute_session_totals(db: Any, session_id: str) -> dict[str, Any]:
+async def _load_session_version_for_occ(
+    db: Any,
+    session_id: str,
+    *,
+    db_session: Optional[Any] = None,
+) -> int:
+    kwargs = {"session": db_session} if db_session is not None else {}
+    query = {"$or": [{"id": session_id}, {"session_id": session_id}]}
+    try:
+        result = db.sessions.find_one(query, **kwargs)
+    except TypeError:
+        result = db.sessions.find_one(query)
+    session = await result if inspect.isawaitable(result) else result
+    return coerce_version(session.get("version") if isinstance(session, dict) else None)
+
+
+async def _recompute_session_totals(
+    db: Any,
+    session_id: str,
+    *,
+    db_session: Optional[Any] = None,
+    expected_version: Optional[int] = None,
+    enforce_occ: bool = False,
+    actor: str = "system",
+) -> dict[str, Any]:
     lifecycle_service = SessionLifecycleService(db)
     return await recompute_session_totals(
         db,
         session_id,
         lifecycle_service=lifecycle_service,
+        db_session=db_session,
+        expected_version=expected_version,
+        enforce_occ=enforce_occ,
+        actor=actor,
     )
 
 
@@ -741,13 +771,25 @@ async def _persist_count_line_document(
     *,
     write_service: CountLineWriteService,
     session: dict[str, Any],
+    expected_session_version: Optional[int] = None,
 ) -> None:
     async with mongo_transaction(db.client) as tx:
+        effective_expected_version = (
+            int(expected_session_version)
+            if expected_session_version is not None
+            else await _load_session_version_for_occ(
+                db,
+                line_data.session_id,
+                db_session=tx,
+            )
+        )
         write_context = {
             "session": session,
             "username": username,
             "db_session": tx,
             "skip_session_totals_update": True,
+            "skip_projection_items_sync": True,
+            "expected_session_version": effective_expected_version,
         }
 
         await write_service.process_write(
@@ -801,6 +843,15 @@ async def _persist_count_line_document(
             )
         if inspect.isawaitable(draft_update_result):
             await draft_update_result
+
+        await _recompute_session_totals(
+            db,
+            line_data.session_id,
+            db_session=tx,
+            expected_version=effective_expected_version,
+            enforce_occ=True,
+            actor=username,
+        )
 
 
 async def _create_and_persist_count_line(
@@ -1188,11 +1239,6 @@ async def create_count_line(
         session_id=line_data.session_id,
         count_line=count_line,
     )
-
-    try:
-        await _recompute_session_totals(db, line_data.session_id)
-    except Exception as exc:
-        logger.error("Failed to update session stats: %s", _safe_log_value(exc, max_length=200))
 
     await _maybe_update_session_barcode(db, line_data)
 
@@ -1863,7 +1909,7 @@ async def _find_count_line(db, line_id: str) -> Optional[dict]:
         return count_line
     try:
         return await db.count_lines.find_one({"_id": ObjectId(line_id)})
-    except Exception:
+    except InvalidId:
         return None
 
 
@@ -2294,8 +2340,6 @@ async def create_count_lines_batch(
         except Exception as e:
             errors.append({"index": idx, "error": str(e)})
 
-    await _recompute_session_totals(db, batch_data.session_id)
-
     return {
         "success": len(results) > 0,
         "created": len(results),
@@ -2559,7 +2603,6 @@ async def merge_count_lines(
     target_session = await _ensure_count_line_mutable(db, target_line)
     target_session_id = str(target_line.get("session_id") or "")
     target_qty = float(target_line.get("counted_qty", 0) or 0)
-    merged_count = 0
 
     for source_id in payload.source_line_ids:
         if source_id == payload.target_line_id:
@@ -2594,6 +2637,11 @@ async def merge_count_lines(
 
             erp_item = await _get_erp_item_for_existing_count_line(db, target_line)
             async with mongo_transaction(db.client) as tx:
+                effective_expected_version = await _load_session_version_for_occ(
+                    db,
+                    target_session_id,
+                    db_session=tx,
+                )
                 await write_service.process_write(
                     {
                         "operation": "update_one",
@@ -2613,6 +2661,7 @@ async def merge_count_lines(
                         "db_session": tx,
                         "governance_mode": "mutable_session",
                         "skip_session_totals_update": True,
+                        "expected_session_version": effective_expected_version,
                     },
                 )
 
@@ -2630,23 +2679,22 @@ async def merge_count_lines(
                         "db_session": tx,
                         "governance_mode": "mutable_session",
                         "skip_session_totals_update": True,
+                        "expected_session_version": effective_expected_version,
                     },
+                )
+                await _recompute_session_totals(
+                    db,
+                    target_session_id,
+                    db_session=tx,
+                    expected_version=effective_expected_version,
+                    enforce_occ=True,
+                    actor=str(current_user.get("username") or "system"),
                 )
             results["merged"].append(source_id)
             target_qty = merged_qty
             target_line["counted_qty"] = merged_qty
-            merged_count += 1
 
         except Exception as e:
             results["failed"].append({"id": source_id, "error": str(e)})
-
-    if merged_count > 0 and target_session_id:
-        try:
-            await _recompute_session_totals(db, target_session_id)
-        except Exception as exc:
-            logger.warning(
-                "Failed to recompute session totals after merge: %s",
-                _safe_log_value(exc, max_length=200),
-            )
 
     return {"success": True, "target_line_id": payload.target_line_id, **results}

@@ -3,6 +3,8 @@ Port Detection Utility for Backend
 Automatically detect and use available ports
 """
 
+import logging
+logger = logging.getLogger(__name__)
 import json
 import logging
 import os
@@ -51,7 +53,8 @@ class PortDetector:
                 sock.settimeout(1)
                 result = sock.connect_ex((host, port))
                 return result != 0
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             return False
 
     @staticmethod
@@ -120,10 +123,12 @@ class PortDetector:
                 finally:
                     client.close()
                 return True
-            except Exception:
+            except Exception as e:
+                logger.warning("Caught broad exception: %s", e)
                 # Port is open but ping failed (could be a different service)
                 return False
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             return False
 
     @staticmethod
@@ -200,7 +205,8 @@ class PortDetector:
             try:
                 s.connect(("8.8.8.8", 80))
                 ip = s.getsockname()[0]
-            except Exception:
+            except Exception as e:
+                logger.warning("Caught broad exception: %s", e)
                 ip = "127.0.0.1"
             finally:
                 s.close()
@@ -213,13 +219,15 @@ class PortDetector:
                 try:
                     s.connect(("192.168.1.1", 80))
                     ip = s.getsockname()[0]
-                except Exception:
+                except Exception as e:
+                    logger.warning("Caught broad exception: %s", e)
                     pass
                 finally:
                     s.close()
 
             return ip
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             return "127.0.0.1"
 
     @staticmethod

@@ -1,9 +1,9 @@
+from __future__ import annotations
 """
 Robust Result type implementation with comprehensive error handling.
 Designed for high reliability and clear error tracking.
 """
 
-from __future__ import annotations
 
 import logging
 import traceback

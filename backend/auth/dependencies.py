@@ -4,6 +4,7 @@ Shared dependencies for authentication across all routers
 """
 
 import logging
+import time
 from typing import Any, Optional
 
 from fastapi import Depends, HTTPException, Request
@@ -161,11 +162,36 @@ class JWTValidator:
 
 class UserRepository:
     """Handles user database operations"""
+    
+    _cache: dict[str, tuple[float, Optional[dict[str, Any]]]] = {}
+    _cache_ttl = 60  # seconds
 
-    @staticmethod
-    async def get_user_by_username(username: str) -> Optional[dict[str, Any]]:
-        """Retrieve user from database by username"""
-        return await auth_deps.db.users.find_one({"username": username})
+    @classmethod
+    async def get_user_by_username(cls, username: str) -> Optional[dict[str, Any]]:
+        """Retrieve user from database by username with in-memory TTL cache"""
+        import os
+        is_testing = os.getenv("TESTING", "false").lower() == "true"
+        
+        now = time.time()
+        
+        # Check cache
+        if not is_testing and username in cls._cache:
+            timestamp, user = cls._cache[username]
+            if now - timestamp < cls._cache_ttl:
+                return user
+                
+        # Cache miss, fetch from DB
+        user = await auth_deps.db.users.find_one({"username": username})
+        
+        # Update cache
+        if not is_testing:
+            cls._cache[username] = (now, user)
+            
+            # Simple cleanup to prevent memory leaks
+            if len(cls._cache) > 1000:
+                cls._cache = {k: v for k, v in cls._cache.items() if now - v[0] < cls._cache_ttl}
+            
+        return user
 
 
 async def get_current_user(

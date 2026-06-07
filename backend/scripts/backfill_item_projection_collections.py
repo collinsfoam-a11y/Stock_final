@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Rebuild item projection rows from authoritative raw count-line data."""
 
-from __future__ import annotations
 
 import sys
 from pathlib import Path

@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Runtime database lifecycle management utilities."""
 
-from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager

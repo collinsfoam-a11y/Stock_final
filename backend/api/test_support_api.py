@@ -1,9 +1,9 @@
+from __future__ import annotations
 """Guarded development/test-only APIs for deterministic E2E fixture control.
 
 EXEMPT: test-only mutation surface used by integration and E2E harnesses.
 """
 
-from __future__ import annotations
 
 import os
 import re

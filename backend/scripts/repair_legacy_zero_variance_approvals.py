@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Repair legacy zero-variance count lines that still require approval.
 
@@ -7,7 +8,6 @@ rule is that only variance items require supervisor verification, so exact-match
 legacy rows should be normalized to approved.
 """
 
-from __future__ import annotations
 
 import argparse
 import asyncio

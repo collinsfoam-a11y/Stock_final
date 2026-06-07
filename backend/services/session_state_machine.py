@@ -1,10 +1,10 @@
+from __future__ import annotations
 """
 Session State Machine
 
 Enforces allowed session status transitions with case-insensitive matching.
 """
 
-from __future__ import annotations
 
 from enum import Enum
 

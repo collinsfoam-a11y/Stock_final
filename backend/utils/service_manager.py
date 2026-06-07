@@ -4,6 +4,8 @@ Handles port conflicts dynamically and kills existing instances
 """
 
 import logging
+logger = logging.getLogger(__name__)
+import logging
 import os
 import platform
 import socket
@@ -25,7 +27,8 @@ class ServiceManager:
                 sock.settimeout(1)
                 result = sock.connect_ex((host, port))
                 return result == 0
-        except Exception:
+        except Exception as e:
+            logger.warning("Caught broad exception: %s", e)
             return False
 
     @staticmethod
@@ -98,14 +101,16 @@ class ServiceManager:
                             timeout=5,
                         )
                         killed += 1
-                    except Exception:
+                    except Exception as e:
+                        logger.warning("Caught broad exception: %s", e)
                         pass
             else:
                 for pattern in name_patterns:
                     try:
                         subprocess.run(["pkill", "-f", pattern], capture_output=True, timeout=5)
                         killed += 1
-                    except Exception:
+                    except Exception as e:
+                        logger.warning("Caught broad exception: %s", e)
                         pass
         except Exception as e:
             logger.warning(f"Error killing processes: {e}")

@@ -69,7 +69,7 @@ async def restore_collection(client, db_name: str, collection_name: str, json_fi
             print("   ✅ Restored 1 document")
             return 1
 
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         print(f"   ❌ Error restoring {collection_name}: {e}")
         import traceback
 
@@ -127,7 +127,7 @@ async def restore_backup(backup_dir: Path, db_name: str = DB_NAME):
         client.close()
         return True
 
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         print(f"❌ Error: {e}")
         import traceback
 

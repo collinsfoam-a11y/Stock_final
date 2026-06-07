@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 FIX GROUP 11: Inventory Adjustment Workflow Service.
 
@@ -9,7 +10,6 @@ No direct stock mutations are permitted.  Every stage is audited and
 attributed to a real actor.
 """
 
-from __future__ import annotations
 
 import logging
 import uuid

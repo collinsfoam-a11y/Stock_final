@@ -3,6 +3,7 @@ API v2 Sessions Endpoints
 Upgraded session endpoints with standardized responses
 """
 
+from bson.errors import InvalidId
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -162,7 +163,7 @@ async def get_rack_progress(
 
         try:
             session = await db.sessions.find_one({"_id": ObjectId(session_id)})
-        except Exception:
+        except InvalidId:
             # Try finding by string id if ObjectId fails (for offline/legacy ids)
             session = await db.sessions.find_one({"session_id": session_id})
 

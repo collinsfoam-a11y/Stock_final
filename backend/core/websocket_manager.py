@@ -1,4 +1,6 @@
 import logging
+logger = logging.getLogger(__name__)
+import logging
 from typing import Optional
 
 from fastapi import WebSocket
@@ -108,7 +110,8 @@ class WebSocketManager:
                     await conn.send_json({"type": "ping", "timestamp": __import__("time").time()})
                     responsive += 1
                     alive.append(conn)
-                except Exception:
+                except Exception as e:
+                    logger.warning("Caught broad exception: %s", e)
                     pass
             self.active_connections[user_id] = alive
         return responsive

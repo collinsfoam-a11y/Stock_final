@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Tracing utilities for the backend.
 
 This module wires OpenTelemetry tracing to FastAPI and exposes a simple
@@ -7,7 +8,6 @@ packages being installed. Missing OTEL packages should never break imports
 or tests.
 """
 
-from __future__ import annotations
 
 import logging
 import os

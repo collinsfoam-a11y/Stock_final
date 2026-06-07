@@ -90,7 +90,7 @@ async def add_test_items():
 
         client.close()
 
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         print(f"❌ Error: {e}")
         import traceback
 

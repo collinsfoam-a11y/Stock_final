@@ -60,7 +60,7 @@ async def _create_index(db: Any, collection: str, fields: list[tuple[str, int]],
     try:
         await db[collection].create_index(fields)
         print(f"  ✓ Index: {desc}")
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         print(f"  ✗ Error: {e}")
 
 
@@ -102,7 +102,7 @@ async def create_indexes():
         print("✅ INDEX CREATION COMPLETE!")
         print("=" * 60)
 
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         print(f"\n❌ Error: {e}")
         return False
     finally:
