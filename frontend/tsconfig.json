@@ -52,7 +52,9 @@
     "jest.config.js",
     "android",
     "ios",
-    "e2e"
+    "e2e",
+    "**/*.stories.tsx",
+    "**/*.stories.ts"
   ],
   "extends": "expo/tsconfig.base"
 }

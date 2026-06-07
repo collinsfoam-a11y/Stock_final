@@ -4,13 +4,21 @@
   "private": true,
   "expo": {
     "install": {
-      "exclude": ["expo", "expo-camera", "expo-file-system", "expo-font", "expo-image", "expo-router", "expo-sharing", "jest-expo"]
+      "exclude": [
+        "expo",
+        "expo-camera",
+        "expo-file-system",
+        "expo-font",
+        "expo-image",
+        "expo-router",
+        "expo-sharing",
+        "jest-expo"
+      ]
     }
   },
   "main": "index.js",
   "overrides": {
     "@tootallnate/once": "^3.0.1",
-    "brace-expansion": "5.0.6",
     "uuid": "11.1.1",
     "ws": "8.20.1"
   },
@@ -118,11 +126,13 @@
     "expo-status-bar": "~55.0.6",
     "expo-system-ui": "~55.0.18",
     "expo-task-manager": "~55.0.16",
+    "i18next": "^26.3.1",
     "lottie-react-native": "^7.1.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-error-boundary": "^6.1.0",
     "react-hook-form": "^7.74.0",
+    "react-i18next": "^17.0.8",
     "react-native": "0.83.6",
     "react-native-gesture-handler": "~2.30.0",
     "react-native-reanimated": "4.2.1",

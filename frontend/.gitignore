@@ -21,3 +21,6 @@ dist/
 
 # Coverage
 coverage/
+
+# Local environment variables (never commit — use .env.example as template)
+.env

@@ -58,7 +58,17 @@ module.exports = {
       },
     },
     {
-      files: ["scripts/**", "jest.setup.js", "jest.polyfills.js", ".eslintrc.js", "babel.config.js", "metro.config.js"],
+      files: ["jest.setup.js", "jest.polyfills.js"],
+      env: {
+        node: true,
+        jest: true,
+      },
+      rules: {
+        "@typescript-eslint/no-var-requires": "off",
+      },
+    },
+    {
+      files: ["scripts/**", ".eslintrc.js", "babel.config.js", "metro.config.js"],
       env: {
         node: true,
       },
