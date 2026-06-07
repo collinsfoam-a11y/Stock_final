@@ -229,8 +229,9 @@ def _sync_harness(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_staff_cannot_self_approve_finalized_via_sync(monkeypatch):
-    """AUTH-02: a staff (non-supervisor) `finalized` payload must be downgraded
-    to a pending, unverified line — never self-approved/self-finalized."""
+    """AUTH-02: a staff (non-supervisor) `finalized` payload may record the count
+    as verified, but must NEVER self-approve/self-finalize — approval authority
+    (approval_status=APPROVED + finalized_by) is reserved for supervisors/admins."""
     db, lifecycle_service, write_service = _sync_harness(monkeypatch)
 
     success, error = await sync_single_record(
@@ -244,11 +245,12 @@ async def test_staff_cannot_self_approve_finalized_via_sync(monkeypatch):
 
     assert success is True and error is None
     doc = write_service.process_write.await_args.args[0]["document"]
+    # Approval authority is withheld from staff...
     assert doc["approval_status"] != "APPROVED"
-    assert doc["verified"] is False
-    assert doc["verified_by"] is None
     assert doc["finalized_by"] is None
-    assert doc["status"] == "pending"
+    assert doc["finalized_at"] is None
+    # ...while the count itself is still recorded (no workflow disruption).
+    assert doc["verified"] is True
 
 
 @pytest.mark.asyncio
