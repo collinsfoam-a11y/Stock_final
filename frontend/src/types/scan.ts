@@ -18,6 +18,9 @@ export interface Item {
   uom_name?: string;
   uom_code?: string;
   item_group?: string;
+  location_id?: string;
+  floor_id?: string;
+  rack_id?: string;
   location?: string;
   warehouse?: string; // warehouse location (alias for location in some contexts)
   mrp_variants?: unknown[];
@@ -90,6 +93,9 @@ export interface CreateCountLinePayload {
     expiry_date?: string;
     expiry_date_format?: DateFormatType;
   }[];
+  location_id?: string | null;
+  floor_id?: string | null;
+  rack_id?: string | null;
   floor_no?: string | null;
   rack_no?: string | null;
   mark_location?: string | null;

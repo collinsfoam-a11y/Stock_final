@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * MyPressable - Enhanced Pressable with Platform-Specific Feedback
  *
@@ -56,7 +57,7 @@ export interface MyPressableProps extends Omit<PressableProps, "style"> {
  *
  * @example
  * // Basic usage
- * <MyPressable onPress={() => console.log('Pressed!')}>
+ * <MyPressable onPress={() => logger.debug('Pressed!')}>
  *   <Text>Press me</Text>
  * </MyPressable>
  *

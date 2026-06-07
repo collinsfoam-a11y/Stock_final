@@ -1,12 +1,18 @@
 import React from "react";
 
-import ModernButton from "./ModernButton";
+import ModernButton, { type ModernButtonProps } from "./ModernButton";
 
-type ModernButtonProps = React.ComponentProps<typeof ModernButton>;
+// Re-export ModernButtonProps so consumers can import it from AppButton if needed.
+export type { ModernButtonProps };
 
 export type AppButtonVariant = "primary" | "secondary" | "tertiary" | "destructive";
 export type AppButtonSize = NonNullable<ModernButtonProps["size"]>;
 
+/**
+ * AppButtonProps maps AppButton's variant vocabulary onto ModernButton's props.
+ * Consumers that already depend on AppButtonProps can continue to use it; the
+ * underlying implementation delegates entirely to ModernButton.
+ */
 export interface AppButtonProps
   extends Omit<ModernButtonProps, "variant" | "gradientColors" | "size"> {
   variant?: AppButtonVariant;

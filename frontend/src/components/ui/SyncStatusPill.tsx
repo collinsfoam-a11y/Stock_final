@@ -1,3 +1,4 @@
+import { logger } from '@/services/logging';
 /**
  * SyncStatusPill Component
  * Modern, unified status indicator for synchronization state
@@ -18,7 +19,6 @@ import {
   subscribeSyncStatus,
   type SyncStatusSnapshot,
 } from "../../services/syncStatusPolling";
-import { modernAnimations, modernBorderRadius } from "../../styles/modernDesignSystem";
 
 import { colors } from "@/theme/legacyCompat";
 import { useUiTokens } from "@/hooks/useUiTokens";
@@ -46,7 +46,7 @@ export const SyncStatusPill = () => {
     setIsSyncing(true);
     if (!reduceMotion) {
       rotation.value = withRepeat(
-        withTiming(360, { duration: modernAnimations.duration.slow }),
+        withTiming(360, { duration: uiTokens.motion.slow }),
         -1
       );
     }
@@ -55,7 +55,7 @@ export const SyncStatusPill = () => {
       await forceSync();
       await refreshSyncStatus();
     } catch (e) {
-      console.error("Sync failed", e);
+      logger.error("Sync failed", e);
     } finally {
       setIsSyncing(false);
       rotation.value = 0;
@@ -115,7 +115,7 @@ export const SyncStatusPill = () => {
       }}
       hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
     >
-      <View style={[styles.pill, { backgroundColor: pillBg, borderColor: pillColor }]}>
+      <View style={[styles.pill, { backgroundColor: pillBg, borderColor: pillColor, borderRadius: uiTokens.radius.full }]}>
         <Animated.View style={isSyncing && !reduceMotion ? animatedIconStyle : undefined}>
           <Ionicons name={iconName} size={14} color={pillColor} />
         </Animated.View>
@@ -131,7 +131,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: modernBorderRadius.full,
     borderWidth: 1,
     gap: 6,
   },

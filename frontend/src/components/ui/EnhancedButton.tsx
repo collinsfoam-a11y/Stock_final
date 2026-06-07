@@ -1,4 +1,9 @@
 /**
+ * @deprecated EnhancedButton is a legacy compatibility adapter and will be removed in a
+ * future release. Use AppButton (or ModernButton directly) for all new work. Existing
+ * callers are not required to migrate immediately — this file is intentionally kept as a
+ * thin shim to avoid a big-bang refactor — but no new usages should be added.
+ *
  * EnhancedButton - Material Design Inspired Button Component
  *
  * Features:
@@ -9,8 +14,6 @@
  * - Size variants
  *
  * Inspired by react-native-design-kit Button patterns
- *
- * @deprecated Use AppButton. This component remains as a legacy compatibility adapter only.
  */
 
 import React from "react";

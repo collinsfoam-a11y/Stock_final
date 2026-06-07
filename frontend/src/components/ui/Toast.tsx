@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Compatibility wrapper around the canonical feedback toast.
  *
@@ -32,7 +33,7 @@ export const Toast: React.FC<ToastProps> = ({
   useEffect(() => {
     if (__DEV__ && action) {
       // Keep surface compatibility but discourage action usage on this legacy wrapper.
-      console.warn(
+      logger.warn(
         "[ui/Toast] action is not supported in the compatibility wrapper. Use feedback/ToastProvider patterns.",
       );
     }

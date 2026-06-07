@@ -4,22 +4,23 @@
  */
 
 import React, { useState, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StyleProp, ViewStyle } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+
+export type TableRowData = Record<string, unknown>;
+
 export interface TableColumn {
   key: string;
   label: string;
   sortable?: boolean;
   width?: number;
-  render?: (value: any, row: any) => React.ReactNode;
+  render?: (value: unknown, row: TableRowData) => React.ReactNode;
 }
 
-export interface TableData {
-  [key: string]: any;
-}
+export interface TableData extends TableRowData {}
 
 interface DataTableProps {
   columns: TableColumn[];
@@ -51,14 +52,14 @@ export const DataTable: React.FC<DataTableProps> = ({
     }
 
     return [...data].sort((a, b) => {
-      const aValue = a[sortColumn];
-      const bValue = b[sortColumn];
+      const aValue = a[sortColumn] as string | number | boolean | null | undefined;
+      const bValue = b[sortColumn] as string | number | boolean | null | undefined;
 
       if (aValue === bValue) {
         return 0;
       }
 
-      const comparison = aValue < bValue ? -1 : 1;
+      const comparison = (aValue ?? "") < (bValue ?? "") ? -1 : 1;
       return sortDirection === "asc" ? comparison : -comparison;
     });
   }, [data, sortColumn, sortDirection, sortable]);
@@ -96,7 +97,7 @@ export const DataTable: React.FC<DataTableProps> = ({
       {columns.map((column) => (
         <TouchableOpacity
           key={column.key}
-          style={[styles.headerCell, column.width && { width: column.width }] as any}
+          style={[styles.headerCell, column.width && { width: column.width }] as StyleProp<ViewStyle>}
           onPress={() => column.sortable && handleSort(column.key)}
           disabled={!column.sortable}
         >
@@ -125,7 +126,7 @@ export const DataTable: React.FC<DataTableProps> = ({
       {columns.map((column) => (
         <View
           key={column.key}
-          style={[styles.cell, column.width && { width: column.width }] as any}
+          style={[styles.cell, column.width && { width: column.width }] as StyleProp<ViewStyle>}
         >
           {column.render ? (
             column.render(item[column.key], item)
