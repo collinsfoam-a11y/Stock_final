@@ -1,3 +1,4 @@
+import '@/i18n';
 import React from "react";
 import { Animated, Platform, StyleSheet, View } from "react-native";
 import * as SplashScreen from "expo-splash-screen";

@@ -1,0 +1,54 @@
+{
+  "common": {
+    "retry": "Retry",
+    "retrying": "Retrying...",
+    "back": "Back",
+    "cancel": "Cancel",
+    "save": "Save",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "dismiss": "Dismiss",
+    "syncNow": "Sync Now",
+    "syncing": "Syncing..."
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "network": "Please check your internet connection and try again.",
+    "server": "Our servers are temporarily unavailable. Please try again later.",
+    "validation": "Please check the highlighted fields and try again.",
+    "boundary": "This screen failed before it could finish rendering. Retry the action; if it fails again, return to the previous workflow and report the screen name.",
+    "boundaryTitle": "Application Recovery Required",
+    "technicalDetails": "Technical Details:",
+    "errorDetails": "Error Details:",
+    "errorBadge": "Error"
+  },
+  "errorState": {
+    "retry": "Retry",
+    "retrying": "Retrying...",
+    "back": "Back",
+    "dismiss": "Dismiss",
+    "dismissLabel": "Dismiss error message"
+  },
+  "network": {
+    "restricted": "Restricted Mode: Connect to Wi-Fi",
+    "online": "Online",
+    "offline": "Offline Mode - Data will sync when online",
+    "pendingItems": "{{count}} pending items to sync",
+    "syncNow": "Sync Now",
+    "syncing": "Syncing..."
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "rememberMe": "Remember Me",
+    "forgotPassword": "Forgot Password?",
+    "signIn": "Sign In"
+  },
+  "scan": {
+    "scanBarcode": "Scan Barcode",
+    "scanItem": "Scan Item",
+    "retry": "Retry Scan"
+  }
+}

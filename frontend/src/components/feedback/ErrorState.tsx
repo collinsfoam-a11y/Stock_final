@@ -11,6 +11,7 @@
  */
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { View, Text, StyleSheet, ViewStyle, ScrollView } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ModernButton } from "../ui/ModernButton";
@@ -76,13 +77,15 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
   description,
   onRetry,
   onSecondaryAction,
-  secondaryActionLabel = "Back",
+  secondaryActionLabel,
   isRetrying = false,
   style,
   onDismiss,
   showDismiss = true,
   details,
 }) => {
+  const { t } = useTranslation();
+  const resolvedSecondaryLabel = secondaryActionLabel ?? t("common.back");
   const config = getErrorConfig(type);
 
   return (
@@ -122,7 +125,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
       {/* Technical Details (Dev Only) */}
       {__DEV__ && details && (
         <View style={styles.detailsBox}>
-          <Text style={styles.detailsLabel}>Technical Details:</Text>
+          <Text style={styles.detailsLabel}>{t("errors.technicalDetails")}</Text>
           <Text style={styles.detailsText}>{details}</Text>
         </View>
       )}
@@ -131,37 +134,37 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
       <View style={styles.buttonsContainer}>
         {onRetry && (
           <ModernButton
-            title={isRetrying ? "Retrying..." : "Retry"}
+            title={isRetrying ? t("common.retrying") : t("common.retry")}
             onPress={onRetry}
             disabled={isRetrying}
             loading={isRetrying}
             variant="primary"
             fullWidth={true}
-            accessibilityLabel={`Retry: ${title}`}
+            accessibilityLabel={`${t("common.retry")}: ${title}`}
             testID="error-retry-button"
           />
         )}
 
         {onSecondaryAction && (
           <ModernButton
-            title={secondaryActionLabel}
+            title={resolvedSecondaryLabel}
             onPress={onSecondaryAction}
             variant="outline"
             fullWidth={true}
             style={styles.secondaryButton}
-            accessibilityLabel={secondaryActionLabel}
+            accessibilityLabel={resolvedSecondaryLabel}
             testID="error-secondary-button"
           />
         )}
 
         {showDismiss && onDismiss && (
           <ModernButton
-            title="Dismiss"
+            title={t("common.dismiss")}
             onPress={onDismiss}
             variant="ghost"
             fullWidth={true}
             style={styles.dismissButton}
-            accessibilityLabel="Dismiss error message"
+            accessibilityLabel={t("errorState.dismissLabel")}
             testID="error-dismiss-button"
           />
         )}
@@ -170,19 +173,19 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
       {/* Help Text */}
       {type === "network" && (
         <Text style={styles.helpText} accessibilityLiveRegion="polite">
-          Please check your internet connection and try again.
+          {t("errors.network")}
         </Text>
       )}
 
       {type === "server" && (
         <Text style={styles.helpText} accessibilityLiveRegion="polite">
-          Our servers are temporarily unavailable. Please try again later.
+          {t("errors.server")}
         </Text>
       )}
 
       {type === "validation" && (
         <Text style={styles.helpText} accessibilityLiveRegion="polite">
-          Please check the highlighted fields and try again.
+          {t("errors.validation")}
         </Text>
       )}
     </ScrollView>
