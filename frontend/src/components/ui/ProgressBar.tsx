@@ -5,7 +5,7 @@
  */
 
 import React, { useEffect } from "react";
-import { View, Text, StyleSheet, ViewStyle } from "react-native";
+import { View, Text, StyleSheet, ViewStyle, ViewProps } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -16,7 +16,7 @@ import { colorPalette, spacing, typography } from "@/theme/designTokens";
 export type ProgressBarVariant = "default" | "success" | "warning" | "error";
 export type ProgressBarSize = "sm" | "md" | "lg";
 
-interface ProgressBarProps {
+interface ProgressBarProps extends ViewProps {
   progress: number; // 0-100
   variant?: ProgressBarVariant;
   size?: ProgressBarSize;
@@ -50,8 +50,10 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   showLabel = false,
   label,
   animated = true,
-  indeterminate: _indeterminate = false,
+  indeterminate = false,
   style,
+  accessibilityLabel,
+  ...props
 }) => {
   const progressValue = useSharedValue(0);
   const sizes = sizeStyles[size];
@@ -76,8 +78,24 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
 
   const displayLabel = label || `${Math.round(progress)}%`;
 
+  const clampedProgress = Math.min(Math.max(progress, 0), 100);
+
   return (
-    <View style={[styles.container, style]}>
+    <View
+      {...props}
+      style={[styles.container, style]}
+      accessibilityRole="progressbar"
+      accessibilityLabel={accessibilityLabel || label || "Progress"}
+      accessibilityValue={
+        indeterminate
+          ? { min: 0, max: 100 }
+          : {
+              min: 0,
+              max: 100,
+              now: Math.round(clampedProgress),
+            }
+      }
+    >
       {showLabel && (
         <Text
           style={[

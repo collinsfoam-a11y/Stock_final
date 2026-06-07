@@ -19,6 +19,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { borderRadius, colors, semanticColors } from "@/theme/legacyCompat";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 type BadgeVariant =
   | "success"
@@ -145,7 +146,12 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   const content = (
     <>
       {icon && (
-        <Ionicons name={icon} size={sizeConfig.iconSize} color={colors.text} />
+        <Ionicons
+          name={icon}
+          size={sizeConfig.iconSize}
+          color={colors.text}
+          {...getDecorativeIconProps()}
+        />
       )}
       <Text
         style={[
