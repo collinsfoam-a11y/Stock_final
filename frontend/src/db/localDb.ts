@@ -113,7 +113,11 @@ export const getDb = async () => {
  * Save items to local database.
  */
 export const saveLocalItems = async (items: LocalItem[]) => {
+  if (items.length === 0) return;
   const db = await getDb();
+  // PERF-07: import the whole batch inside a SINGLE transaction so a large
+  // catalog commits once instead of once-per-row. (expo-sqlite's runAsync
+  // compiles + finalizes the statement internally per call.)
   await db.withTransactionAsync(async () => {
     for (const item of items) {
       await db.runAsync(
@@ -225,13 +229,18 @@ export const localDb = {
 
   async searchItems(query: string): Promise<Partial<Item>[]> {
     const db = await getDb();
-    const normalizedQuery = `%${query.trim()}%`;
+    const trimmed = query.trim();
+    // PERF-07: barcode is the PRIMARY KEY, so a leading-anchored prefix match
+    // (`barcode LIKE 'q%'`) can use the index instead of forcing a full scan,
+    // while name/category keep substring search for human-readable lookups.
+    const prefixQuery = `${trimmed}%`;
+    const containsQuery = `%${trimmed}%`;
     const rows = await db.getAllAsync<LocalItem>(
       `SELECT * FROM items
        WHERE barcode LIKE ? OR name LIKE ? OR category LIKE ?
        ORDER BY last_sync DESC
        LIMIT 25`,
-      [normalizedQuery, normalizedQuery, normalizedQuery]
+      [prefixQuery, containsQuery, containsQuery]
     );
 
     return rows.map(mapLocalItemToAppItem);

@@ -19,6 +19,7 @@ describe("authStore.logout", () => {
     const clearScanSessionStore = jest.fn(async () => undefined);
     const clearRecent = jest.fn(async () => undefined);
     const clearAllCache = jest.fn(async () => undefined);
+    const clearReadCaches = jest.fn(async () => undefined);
 
     jest.doMock("../../services/storage/secureStorage", () => ({
       __esModule: true,
@@ -117,6 +118,7 @@ describe("authStore.logout", () => {
     jest.doMock("../../services/offline/offlineStorage", () => ({
       __esModule: true,
       clearAllCache,
+      clearReadCaches,
     }));
 
     jest.doMock("../../services/utils/notificationService", () => ({
@@ -157,5 +159,10 @@ describe("authStore.logout", () => {
     expect(httpClient.defaults.headers.common.Authorization).toBeUndefined();
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(useAuthStore.getState().user).toBeNull();
+
+    // SYNC-01 regression: logout must clear only re-fetchable read caches and
+    // must NEVER wipe the unsynced offline queue / count-lines cache.
+    expect(clearReadCaches).toHaveBeenCalled();
+    expect(clearAllCache).not.toHaveBeenCalled();
   });
 });

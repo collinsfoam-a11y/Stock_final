@@ -893,6 +893,29 @@ export const clearAllCache = async () => {
   }
 };
 
+/**
+ * SYNC-01: Clear only re-fetchable read caches (items/sessions/last-sync).
+ *
+ * This intentionally PRESERVES unsynced business data — the offline mutation
+ * queue (`OFFLINE_QUEUE`) and locally-authored count lines (`COUNT_LINES_CACHE`)
+ * — so that logging out (manual, forced, token-refresh failure, or single-device
+ * replacement) never destroys counts the user has not yet synced to the server.
+ *
+ * Use this on logout/auth transitions. Use `clearAllCache` only for an explicit,
+ * user-confirmed "wipe local data" action.
+ */
+export const clearReadCaches = async () => {
+  try {
+    await AsyncStorage.multiRemove([
+      STORAGE_KEYS.ITEMS_CACHE,
+      STORAGE_KEYS.SESSIONS_CACHE,
+      STORAGE_KEYS.LAST_SYNC,
+    ]);
+  } catch (error) {
+    logStorageError("Error clearing read caches", error);
+  }
+};
+
 // Get cache statistics
 export const getCacheStats = async () => {
   try {

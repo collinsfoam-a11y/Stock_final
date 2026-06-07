@@ -275,6 +275,14 @@ async def sync_single_record(
 
         status_normalized = (record.status or "").strip().lower()
         is_finalized = status_normalized == "finalized"
+        # AUTH-02: a "finalized" count from a non-privileged (staff) user may be
+        # recorded as counted/verified, but APPROVAL authority is reserved for
+        # supervisors/admins. Only they may stamp APPROVED + finalized_by via the
+        # sync payload; a staff line stays PENDING and routes to the audited
+        # supervisor / governance approval path. (Variance governance in
+        # CountLineWriteService can still revise approval downward server-side.)
+        has_approval_authority = str(user_role or "").strip().lower() in {"supervisor", "admin"}
+        is_approved = is_finalized and has_approval_authority
         counted_at = datetime.fromisoformat(record.created_at.replace("Z", "+00:00")).replace(
             tzinfo=None
         )
@@ -315,12 +323,12 @@ async def sync_single_record(
             "item_condition": record.item_condition,
             "evidence_photos": record.evidence_photos,
             "status": "locked" if is_finalized else "pending",
-            "approval_status": "APPROVED" if is_finalized else "PENDING",
+            "approval_status": "APPROVED" if is_approved else "PENDING",
             "verified": is_finalized,
             "verified_by": user_id if is_finalized else None,
             "verified_at": updated_at if is_finalized else None,
-            "finalized_by": user_id if is_finalized else None,
-            "finalized_at": updated_at if is_finalized else None,
+            "finalized_by": user_id if is_approved else None,
+            "finalized_at": updated_at if is_approved else None,
             "counted_at": counted_at,
             "updated_at": updated_at,
             "sync_status": "synced",

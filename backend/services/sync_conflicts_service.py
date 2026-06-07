@@ -164,17 +164,14 @@ class SyncConflictsService:
 
         return conflict_id
 
-    async def get_conflicts(
+    def _build_conflicts_query(
         self,
         status: ConflictStatus = None,
         session_id: Optional[str] = None,
         user: Optional[str] = None,
         entity_type: Optional[str] = None,
-        limit: int = 100,
-    ) -> list[dict[str, Any]]:
-        """Get conflicts with optional filters"""
-        query = {}
-
+    ) -> dict[str, Any]:
+        query: dict[str, Any] = {}
         if status:
             query["status"] = status.value
         if session_id:
@@ -183,8 +180,31 @@ class SyncConflictsService:
             query["user"] = user
         if entity_type:
             query["entity_type"] = entity_type
+        return query
 
-        cursor = self.db.sync_conflicts.find(query).sort("created_at", -1).limit(limit)
+    async def get_conflicts(
+        self,
+        status: ConflictStatus = None,
+        session_id: Optional[str] = None,
+        user: Optional[str] = None,
+        entity_type: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """Get conflicts with optional filters.
+
+        SYNC-06: supports `offset` so callers can page through more than `limit`
+        conflicts. Combined with `count_conflicts`, the full backlog is reachable
+        even when it exceeds the per-page cap (no silent truncation past 100).
+        """
+        query = self._build_conflicts_query(status, session_id, user, entity_type)
+
+        cursor = (
+            self.db.sync_conflicts.find(query)
+            .sort("created_at", -1)
+            .skip(max(0, offset))
+            .limit(limit)
+        )
         conflicts = await cursor.to_list(length=limit)
 
         # Convert ObjectId to string
@@ -192,6 +212,18 @@ class SyncConflictsService:
             conflict["id"] = str(conflict.pop("_id"))
 
         return conflicts
+
+    async def count_conflicts(
+        self,
+        status: ConflictStatus = None,
+        session_id: Optional[str] = None,
+        user: Optional[str] = None,
+        entity_type: Optional[str] = None,
+    ) -> int:
+        """SYNC-06: total conflicts matching the filter, so paginating callers
+        know how many pages exist beyond the first `limit`."""
+        query = self._build_conflicts_query(status, session_id, user, entity_type)
+        return await self.db.sync_conflicts.count_documents(query)
 
     async def get_conflict_by_id(self, conflict_id: str) -> Optional[dict[str, Optional[Any]]]:
         """Get a specific conflict by ID"""
