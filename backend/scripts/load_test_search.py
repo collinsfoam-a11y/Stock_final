@@ -1,60 +1,74 @@
+"""Locust load test for the optimized item-search path.
+
+Run (headless example):
+    locust -f backend/locustfile.py --headless -u 30 -r 5 -t 45s \
+        --host http://localhost:8001
+
+Credentials default to the auto-seeded test users (AUTO_SEED_DEFAULT_USERS)
+and can be overridden via LOADTEST_USERNAME / LOADTEST_PASSWORD.
+"""
+import os
 import random
 
 from locust import HttpUser, between, task
 
+# Seeded default users (see backend/db/initialization.py). Override via env.
+_DEFAULT_USERS = [
+    ("admin", "admin123"),
+    ("supervisor", "super123"),
+    ("staff1", "staff123"),
+]
+
+_ENV_USER = os.getenv("LOADTEST_USERNAME")
+_ENV_PASS = os.getenv("LOADTEST_PASSWORD")
+USERS = [(_ENV_USER, _ENV_PASS)] if _ENV_USER and _ENV_PASS else _DEFAULT_USERS
+
+QUERIES = ["item", "test", "ITEM001", "a", "5", "1", "stock", "b"]
+
 
 class SearchUser(HttpUser):
-    wait_time = between(1, 3)
+    wait_time = between(0.5, 2)
     token = None
 
     def on_start(self):
-        """Login to get JWT token"""
-        # Use active auth endpoint and payload format
+        """Login to get a JWT token."""
+        username, password = random.choice(USERS)
         response = self.client.post(
             "/api/auth/login",
-            json={"username": "admin", "password": "password123"},
-            name="/api/auth/login",
+            json={"username": username, "password": password},
+            name="POST /api/auth/login",
         )
         if response.status_code == 200:
             payload = response.json()
-            self.token = payload.get("access_token") or payload.get("data", {}).get("access_token")
+            # Login returns {"success": true, "data": {"access_token": ...}}.
+            self.token = payload.get("data", {}).get("access_token") or payload.get(
+                "access_token"
+            )
             if not self.token:
                 print("Login succeeded but no access token found:", payload)
         else:
-            print("Failed to login:", response.text)
+            print("Failed to login:", response.status_code, response.text[:200])
 
     @task(3)
     def search_items(self):
-        """Test optimized search endpoint"""
+        """Optimized search. NOTE: q/limit/offset are QUERY PARAMS, not a body."""
         if not self.token:
             return
-
-        headers = {"Authorization": f"Bearer {self.token}"}
-
-        # Search terms likely to exist
-        queries = ["item", "test", "51", "52", "53", "a", "b", "c"]
-        query = random.choice(queries)
-
+        query = random.choice(QUERIES)
         self.client.post(
-            "/api/items/search/optimized",
-            json={"query": query, "limit": 20, "offset": 0},
-            headers=headers,
-            name="/api/items/search/optimized",
+            f"/api/items/search/optimized?q={query}&limit=20&offset=0",
+            headers={"Authorization": f"Bearer {self.token}"},
+            name="POST /api/items/search/optimized",
         )
 
     @task(1)
     def search_exact_barcode(self):
-        """Test exact barcode search"""
+        """Exact-ish barcode lookup against the same endpoint."""
         if not self.token:
             return
-
-        headers = {"Authorization": f"Bearer {self.token}"}
-        # Example barcode prefix
         barcode = f"51{random.randint(1000, 9999)}"
-
         self.client.post(
-            "/api/items/search/optimized",
-            json={"query": barcode, "limit": 1, "offset": 0},
-            headers=headers,
-            name="/api/items/search/optimized (barcode)",
+            f"/api/items/search/optimized?q={barcode}&limit=1&offset=0",
+            headers={"Authorization": f"Bearer {self.token}"},
+            name="POST /api/items/search/optimized (barcode)",
         )
