@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Active Users Panel - Enterprise Grade
  * Displays currently active users with strict status logic and performance optimizations.
  *
@@ -9,7 +9,7 @@ import React, { useMemo } from "react";
 import { View, Text, StyleSheet, ViewStyle, TextStyle, TouchableOpacity } from "react-native";
 import { VirtualList } from "../common/VirtualList";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { modernColors, modernBorderRadius, modernShadows } from "../../styles/modernDesignSystem";
+import { modernColors, modernBorderRadius, modernShadows } from "@/theme/unified";
 
 import { colors as uiColors } from "@/theme/legacyCompat";
 // --- Domain Types ---

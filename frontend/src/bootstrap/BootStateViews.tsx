@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { modernColors, modernTypography } from "../styles/modernDesignSystem";
+import { modernColors, modernTypography } from "@/theme/unified";
 import { BrandLogo } from "../components/branding/BrandLogo";
 
 interface BootLoadingViewProps {

@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Simple Line Chart - View-based implementation (no SVG required)
  * Fully functional line chart using React Native Views
  */
 
 import React from "react";
 import { View, Text, StyleSheet, Dimensions, Platform } from "react-native";
-import { modernColors, modernTypography, modernSpacing } from "../../styles/modernDesignSystem";
+import { modernColors, modernTypography, modernSpacing } from "@/theme/unified";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");

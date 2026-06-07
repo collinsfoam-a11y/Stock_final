@@ -81,6 +81,17 @@ export const hitSlop = {
   large: { top: 16, bottom: 16, left: 16, right: 16 },
 } as const;
 
+// ==========================================
+// BACKWARD-COMPAT ALIASES
+// ==========================================
+/**
+ * `xxl` alias for spacing["2xl"] — used by legacy modernDesign consumers.
+ * Prefer spacing["2xl"] in new code.
+ */
+export const spacingAliases = {
+  xxl: spacing["2xl"], // 24px
+} as const;
+
 // Type exports
 export type Spacing = typeof spacing;
 export type SpacingKey = keyof typeof spacing;

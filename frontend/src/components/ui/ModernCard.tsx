@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Modern Card Component - Enhanced UI/UX
  * Features:
  * - Glassmorphism support
@@ -28,7 +28,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { modernColors, modernSpacing, modernAnimations } from "../../styles/modernDesignSystem";
+import { modernColors, modernSpacing, modernAnimations } from "@/theme/unified";
 import {
   semanticColors,
   radius as unifiedRadius,

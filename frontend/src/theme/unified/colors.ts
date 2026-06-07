@@ -239,6 +239,15 @@ export const gradients = {
   glass: ["rgba(255, 255, 255, 0.15)", "rgba(255, 255, 255, 0.08)"],
 } as const;
 
+// ==========================================
+// BACKWARD-COMPAT ALIASES
+// ==========================================
+/**
+ * Alias for `colors.neutral` — some legacy code and modernDesign used "gray".
+ * Prefer `colors.neutral` in new code.
+ */
+export const gray = colors.neutral;
+
 // Type exports
 export type ColorPalette = typeof colors;
 export type SemanticColors = typeof semanticColors;

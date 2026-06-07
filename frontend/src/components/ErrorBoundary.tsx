@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Error Boundary Component
  * Catches and handles React component errors
@@ -9,7 +10,7 @@ import { View, Text, StyleSheet, ScrollView } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary";
 import { errorReporter } from "../services/errorRecovery";
-import { modernColors, modernTypography, modernSpacing } from "../styles/modernDesignSystem";
+import { modernColors, modernTypography, modernSpacing } from "@/theme/unified";
 import { AppButton } from "./ui/AppButton";
 
 interface Props {
@@ -31,7 +32,7 @@ const ErrorFallback = ({
         errorReporter.report(error, "ErrorBoundary");
       }
     } catch (reportError) {
-      console.error("Error reporting failed:", reportError);
+      logger.error("Error reporting failed:", reportError);
     }
   }, [error]);
 

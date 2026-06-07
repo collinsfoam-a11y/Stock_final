@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Platform,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { modernColors, modernSpacing, modernBorderRadius } from "@/styles/modernDesignSystem";
+import { modernColors, modernSpacing, modernBorderRadius } from "@/theme/unified";
 import {
   SuggestionItem,
   smartSuggestionsService,

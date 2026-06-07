@@ -1,8 +1,8 @@
-import React from "react";
+﻿import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { AppInput } from "@/components/ui/AppInput";
-import { modernColors } from "@/styles/modernDesignSystem";
+import { modernColors } from "@/theme/unified";
 import { DEFAULT_FLOOR_OPTIONS } from "@/config/location";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";

@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * KPI Card Component - Enterprise Grade
  * Displays a single KPI metric with strict semantics, accessibility, and drill-down capability.
@@ -6,7 +7,7 @@
 import React from "react";
 import { View, Text, StyleSheet, ViewStyle, TextStyle, TouchableOpacity } from "react-native";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { modernColors, modernShadows, modernBorderRadius } from "@/styles/modernDesignSystem";
+import { modernColors, modernShadows, modernBorderRadius } from "@/theme/unified";
 
 export type KPIStatus = "normal" | "warning" | "critical" | "success";
 export type TrendIntent = "good" | "bad" | "neutral";
@@ -78,7 +79,7 @@ export function KPICard({
       try {
         return new Intl.NumberFormat(locale, formatOptions).format(val);
       } catch (e) {
-        console.warn("KPICard: Formatting failed", e);
+        logger.warn("KPICard: Formatting failed", e);
         return val.toString();
       }
     }

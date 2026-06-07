@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Unified Design System - Migration Guide & Examples
  *
@@ -192,7 +193,7 @@ const NewListItem: React.FC<ListItemProps> = ({ item, index }) => {
     <UnifiedAnimatedCard
       variant="elevated"
       staggerIndex={index}
-      onPress={() => console.log("Pressed", item.id)}
+      onPress={() => logger.debug("Pressed", item.id)}
     >
       <Text style={{ ...textStyles.body, color: semanticColors.text.primary }}>
         {item.title}
@@ -215,7 +216,7 @@ const _OldButton: React.FC = () => (
 // ✅ NEW WAY - Platform-specific feedback
 const NewButton: React.FC = () => (
   <TouchableScale
-    onPress={() => console.log("Pressed!")}
+    onPress={() => logger.debug("Pressed!")}
     style={[staticStyles.button, { borderRadius: componentRadius.button }]}
   >
     <Text style={{ ...textStyles.button, color: semanticColors.text.inverse }}>
@@ -251,7 +252,7 @@ const CompleteDashboard: React.FC<{ stats: StatsData[] }> = ({ stats }) => {
             variant="elevated"
             staggerIndex={index}
             style={staticStyles.statsCard}
-            onPress={() => console.log("View details:", item.id)}
+            onPress={() => logger.debug("View details:", item.id)}
           >
             <Text style={staticStyles.statsTitle}>{item.title}</Text>
             <Text style={staticStyles.statsValue}>{item.value}</Text>

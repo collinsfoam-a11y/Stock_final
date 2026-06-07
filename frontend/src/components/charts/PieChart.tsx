@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Pie Chart Component - SVG-based for React Native
  * Fully functional pie chart for analytics
  */
@@ -6,7 +6,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import Svg, { G, Path, Text as SvgText } from "react-native-svg";
-import { modernColors, modernTypography, modernSpacing } from "../../styles/modernDesignSystem";
+import { modernColors, modernTypography, modernSpacing } from "@/theme/unified";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 const CHART_SIZE = 200;

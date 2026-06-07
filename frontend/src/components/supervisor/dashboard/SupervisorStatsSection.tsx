@@ -1,10 +1,10 @@
-import React from "react";
+﻿import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { ModernCard, ProgressRing, StatsCard } from "@/components/ui";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { theme } from "@/styles/modernDesignSystem";
+import { spacing } from "@/theme/spacing";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { DashboardStats } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 
@@ -104,18 +104,18 @@ export function SupervisorStatsSection({
 
 const styles = StyleSheet.create({
   statsGrid: {
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
+    gap: spacing.md,
+    marginBottom: spacing.xl,
   },
   statsRow: {
     flexDirection: "row",
-    gap: theme.spacing.md,
+    gap: spacing.md,
   },
   statCard: {
     flex: 1,
   },
   progressCard: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: spacing.xl,
   },
   progressContent: {
     flexDirection: "row",
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   },
   progressInfo: {
     flex: 1,
-    gap: theme.spacing.xs,
+    gap: spacing.xs,
   },
   progressTitle: {
     fontSize: 20,

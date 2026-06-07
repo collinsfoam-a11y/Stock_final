@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Line Chart Component - SVG-based for React Native
  * Fully functional chart component for analytics
  */
@@ -6,7 +6,7 @@
 import React from "react";
 import { View, Text, StyleSheet, useWindowDimensions, Platform } from "react-native";
 import Svg, { Polyline, Circle, Line, Text as SvgText, G } from "react-native-svg";
-import { modernColors, modernTypography, modernSpacing } from "../../styles/modernDesignSystem";
+import { modernColors, modernTypography, modernSpacing } from "@/theme/unified";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 const CHART_HEIGHT = 200;

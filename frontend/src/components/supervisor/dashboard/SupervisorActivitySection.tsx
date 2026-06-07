@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -6,7 +6,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { ActivityFeedItem, AnimatedPressable, ModernCard } from "@/components/ui";
 import { ActivityItem } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { theme } from "@/styles/modernDesignSystem";
+import { theme } from "@/theme/unified";
 
 interface SupervisorActivitySectionProps {
   activities: ActivityItem[];

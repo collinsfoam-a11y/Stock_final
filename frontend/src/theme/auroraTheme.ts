@@ -1,4 +1,7 @@
 /**
+ * @deprecated Use @/theme/unified instead. This file will be removed in a future cleanup.
+ * All tokens are duplicated in src/theme/unified/ which is the single source of truth.
+ *
  * Aurora Theme - Enhanced Design System v2.0
  *
  * Features:

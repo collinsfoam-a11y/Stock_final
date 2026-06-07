@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AnimatedInput Component
  * Input field with smooth focus animations and haptic feedback
  * Inspired by rnx-ui input patterns
@@ -16,7 +16,7 @@ import {
   TextStyle,
 } from "react-native";
 import * as Haptics from "expo-haptics";
-import { modernColors, modernBorderRadius } from "../../styles/modernDesignSystem";
+import { modernColors, modernBorderRadius } from "@/theme/unified";
 
 import { shadows as uiShadows } from "@/theme/legacyCompat";
 interface AnimatedInputProps extends TextInputProps {

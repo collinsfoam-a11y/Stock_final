@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Modern Button Component - Enhanced UI/UX
  * Features:
  * - Multiple variants (primary, secondary, outline, ghost, danger)
@@ -31,7 +31,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { modernColors, modernAnimations } from "../../styles/modernDesignSystem";
+import { modernColors, modernAnimations } from "@/theme/unified";
 import {
   colors,
   semanticColors,
@@ -56,7 +56,7 @@ export type ButtonVariant =
   | "gradient";
 export type ButtonSize = "small" | "medium" | "large";
 
-interface ModernButtonProps {
+export interface ModernButtonProps {
   title: string;
   onPress: () => void;
   variant?: ButtonVariant;

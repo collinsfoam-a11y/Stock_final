@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 type LegacyClassification = "removable" | "wrapper-only" | "migration-required" | "approved-exception";
 
 export type LegacyVisualSystemEntry = {
@@ -76,7 +77,7 @@ export function warnDeprecatedVisualSystem(componentName: keyof typeof legacyVis
   warnedKeys.add(componentName);
 
   const entry = legacyVisualSystemRegistry[componentName];
-  console.warn(
+  logger.warn(
     `[UI governance] ${componentName} is deprecated (${entry.classification}). ` +
       `Use ${entry.replacement}. ${entry.guidance}`
   );
