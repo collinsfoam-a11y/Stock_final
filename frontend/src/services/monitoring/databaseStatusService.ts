@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Database Status Service
  * Handles database connection status and sync status
@@ -40,7 +41,7 @@ export const getDatabaseStatus = async (): Promise<DatabaseStatus> => {
     const response = await api.get("/api/erp/config");
     return response.data;
   } catch (error: any) {
-    __DEV__ && console.error("Error fetching database status:", error);
+    __DEV__ && logger.error("Error fetching database status:", error);
     return {
       configured: false,
       use_sql_server: false,
@@ -60,7 +61,7 @@ export const getSyncStatusData = async (): Promise<SyncStatus> => {
   try {
     return await getSyncStatus();
   } catch (error: any) {
-    __DEV__ && console.error("Error fetching sync status:", error);
+    __DEV__ && logger.error("Error fetching sync status:", error);
     return {
       isOnline: false,
       queuedOperations: 0,

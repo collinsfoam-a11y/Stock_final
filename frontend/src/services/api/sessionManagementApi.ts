@@ -1,7 +1,8 @@
-import { useAuthStore } from "../../store/authStore";
+﻿import { useAuthStore } from "../../store/authStore";
 import { Platform } from "react-native";
 import { controlPlaneFlags } from "../../core/config/controlPlaneFlags";
 import api from "../httpClient";
+import { logger } from '@/services/logging';
 import {
   cacheSession,
   cacheSessions,
@@ -302,7 +303,7 @@ export const getSessions = async (page: number = 1, pageSize: number = 20) => {
     try {
       mergedSessions = await mergeSessionsWithVisibleCache(mergedSessions);
     } catch (cacheError) {
-      __DEV__ && console.warn("Unable to merge cached sessions:", cacheError);
+      __DEV__ && logger.warn("Unable to merge cached sessions:", cacheError);
     }
 
     return {
@@ -311,7 +312,7 @@ export const getSessions = async (page: number = 1, pageSize: number = 20) => {
     };
   } catch (error: any) {
     if (error?.response?.status !== 401) {
-      __DEV__ && console.error("Error getting sessions:", error);
+      __DEV__ && logger.error("Error getting sessions:", error);
     }
 
     return await getOfflinePaginatedSessions(validPage, validPageSize);
@@ -516,7 +517,7 @@ export const getRackProgress = async (sessionId: string) => {
     const response = await api.get(`/api/v2/sessions/${sessionId}/rack-progress`);
     return response.data;
   } catch (error) {
-    __DEV__ && console.error("Error getting rack progress:", error);
+    __DEV__ && logger.error("Error getting rack progress:", error);
     return { data: [] };
   }
 };
@@ -528,7 +529,7 @@ export const bulkExportSessions = async (sessionIds: string[], format: string = 
     });
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Bulk export sessions error:", error);
+    __DEV__ && logger.error("Bulk export sessions error:", error);
     throw error;
   }
 };

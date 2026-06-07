@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * SearchAutocomplete Component Stories
  *
@@ -56,10 +57,10 @@ const SearchWrapper = (args: any) => {
         {...args}
         onSelectItem={(item) => {
           setSelectedItem(item);
-          console.log("Selected:", item);
+          logger.debug("Selected:", item);
         }}
         onBarcodeScan={(barcode) => {
-          console.log("Barcode scanned:", barcode);
+          logger.debug("Barcode scanned:", barcode);
         }}
       />
       {selectedItem && (

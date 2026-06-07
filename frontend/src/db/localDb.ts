@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import type * as SQLiteTypes from "expo-sqlite";
 import type { CreateCountLinePayload, Item } from "@/types/scan";
 import { ensureControlPlaneSchema } from "@/data/db/controlPlaneDb";
@@ -94,7 +95,7 @@ export const initDb = async () => {
   await ensureSchema(db);
   // Cache so a subsequent getDb() doesn't reopen and re-run schema setup.
   cachedDb = db;
-  __DEV__ && console.log("Local database initialized");
+  __DEV__ && logger.debug("Local database initialized");
   return db;
 };
 
@@ -115,11 +116,21 @@ export const getDb = async () => {
 export const saveLocalItems = async (items: LocalItem[]) => {
   const db = await getDb();
   await db.withTransactionAsync(async () => {
-    for (const item of items) {
-      await db.runAsync(
-        "INSERT OR REPLACE INTO items (barcode, name, category, verified, last_sync) VALUES (?, ?, ?, ?, ?)",
-        [item.barcode, item.name, item.category, item.verified, item.last_sync]
-      );
+    const statement = await (db as any).prepareAsync(
+      "INSERT OR REPLACE INTO items (barcode, name, category, verified, last_sync) VALUES ($barcode, $name, $category, $verified, $last_sync)"
+    );
+    try {
+      for (const item of items) {
+        await statement.executeAsync({
+          $barcode: item.barcode,
+          $name: item.name,
+          $category: item.category,
+          $verified: item.verified,
+          $last_sync: item.last_sync
+        });
+      }
+    } finally {
+      await statement.finalizeAsync();
     }
   });
 };
@@ -225,13 +236,24 @@ export const localDb = {
 
   async searchItems(query: string): Promise<Partial<Item>[]> {
     const db = await getDb();
-    const normalizedQuery = `%${query.trim()}%`;
+    const q = query.trim();
+    if (!q) return [];
+
+    const prefixQuery = `${q}%`;
+    const containsQuery = `%${q}%`;
     const rows = await db.getAllAsync<LocalItem>(
       `SELECT * FROM items
        WHERE barcode LIKE ? OR name LIKE ? OR category LIKE ?
-       ORDER BY last_sync DESC
+       ORDER BY 
+         CASE 
+           WHEN barcode = ? THEN 1
+           WHEN barcode LIKE ? THEN 2
+           WHEN name LIKE ? THEN 3
+           ELSE 4 
+         END,
+         last_sync DESC
        LIMIT 25`,
-      [normalizedQuery, normalizedQuery, normalizedQuery]
+      [prefixQuery, containsQuery, containsQuery, q, prefixQuery, prefixQuery]
     );
 
     return rows.map(mapLocalItemToAppItem);
@@ -276,18 +298,13 @@ export const localDb = {
       [sessionId]
     );
 
-    // Count verified items from local items table
-    const verifiedResult = await db.getFirstAsync<{ count: number }>(
-      "SELECT COUNT(*) as count FROM items WHERE verified = 1"
+    // Combine aggregations for items table
+    const itemsStats = await db.getFirstAsync<{ total: number; verified: number }>(
+      "SELECT COUNT(*) as total, SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END) as verified FROM items"
     );
 
-    // Count all local items as total (approximation)
-    const totalResult = await db.getFirstAsync<{ count: number }>(
-      "SELECT COUNT(*) as count FROM items"
-    );
-
-    const totalItems = totalResult?.count || 0;
-    const verifiedItems = projectedStats?.verifiedItems ?? (verifiedResult?.count || 0);
+    const totalItems = itemsStats?.total || 0;
+    const verifiedItems = projectedStats?.verifiedItems ?? (itemsStats?.verified || 0);
     const pendingItems = projectedStats?.pendingItems ?? (pendingResult?.count || 0);
     const scannedItems = projectedStats?.scannedItems ?? verifiedItems + pendingItems;
 

@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -38,7 +39,7 @@ export const SectionFocusConfig: React.FC = () => {
   ]);
 
   useEffect(() => {
-    console.log("Location type changed:", locationType);
+    logger.debug("Location type changed:", locationType);
     if (locationType === "showroom") {
       setFloorOptions(["Ground Floor", "First Floor", "Second Floor"]);
     } else {
@@ -48,7 +49,7 @@ export const SectionFocusConfig: React.FC = () => {
   }, [locationType]);
 
   const handleOpenModal = () => {
-    console.log("Opening floor modal");
+    logger.debug("Opening floor modal");
     setShowFloorModal(true);
   };
 

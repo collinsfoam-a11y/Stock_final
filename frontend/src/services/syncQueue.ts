@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import {
   saveLocalItems,
   getLatestItemSyncTimestamp,
@@ -47,7 +48,7 @@ export const syncQueue = {
 
       return items.length;
     } catch (error) {
-      console.error("Failed to pull updated items:", error);
+      logger.error("Failed to pull updated items:", error);
       return 0;
     }
   },

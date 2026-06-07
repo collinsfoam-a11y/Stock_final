@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Voice Control Service
  * Enables hands-free operation through voice commands
@@ -53,12 +54,12 @@ class VoiceControlService {
     // Check if speech is available
     try {
       const isSpeaking = await Speech.isSpeakingAsync();
-      console.log(
+      logger.debug(
         "Voice control initialized. Speech system active:",
         !isSpeaking,
       );
     } catch (error) {
-      console.warn("Voice control initialization check failed:", error);
+      logger.warn("Voice control initialization check failed:", error);
     }
   }
 
@@ -75,7 +76,7 @@ class VoiceControlService {
         pitch: options?.pitch ?? 1.0,
       });
     } catch (error) {
-      console.warn("Speech synthesis failed:", error);
+      logger.warn("Speech synthesis failed:", error);
     }
   }
 
@@ -84,7 +85,7 @@ class VoiceControlService {
       await Speech.stop();
       this.isListening = false;
     } catch (error) {
-      console.warn("Failed to stop speech:", error);
+      logger.warn("Failed to stop speech:", error);
     }
   }
 

@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * MicroInteractions Service - Aurora Design v2.0
  *
@@ -73,7 +74,7 @@ export const triggerHaptic = async (pattern: HapticPattern): Promise<void> => {
     }
   } catch (error) {
     // Silently fail - haptics are non-critical
-    console.debug("Haptic feedback failed:", error);
+    logger.debug("Haptic feedback failed:", error);
   }
 };
 
@@ -94,7 +95,7 @@ export const triggerImpact = async (
   try {
     await Haptics.impactAsync(style);
   } catch (error) {
-    console.debug("Impact feedback failed:", error);
+    logger.debug("Impact feedback failed:", error);
   }
 };
 
@@ -107,7 +108,7 @@ export const triggerSelection = async (): Promise<void> => {
   try {
     await Haptics.selectionAsync();
   } catch (error) {
-    console.debug("Selection feedback failed:", error);
+    logger.debug("Selection feedback failed:", error);
   }
 };
 
@@ -128,7 +129,7 @@ export const triggerNotification = async (
   try {
     await Haptics.notificationAsync(feedbackType);
   } catch (error) {
-    console.debug("Notification feedback failed:", error);
+    logger.debug("Notification feedback failed:", error);
   }
 };
 

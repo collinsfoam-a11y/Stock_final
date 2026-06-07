@@ -1,3 +1,4 @@
+import { logger } from '@/services/logging';
 /**
  * Centralized AsyncStorage service to eliminate duplicate storage logic
  */
@@ -10,6 +11,7 @@ export interface StorageItem<T = unknown> {
   timestamp?: number;
   expires?: number;
 }
+
 
 export interface StorageOptions {
   expires?: number;
@@ -44,7 +46,7 @@ export class AsyncStorageService {
     const errorMessage = `AsyncStorage ${operation} failed for key '${key}': ${errorMsg}`;
 
     if (this.debugMode) {
-      __DEV__ && console.error(errorMessage, error);
+      logger.error(errorMessage, { error: error instanceof Error ? (error as Error).message : String(error) });
     }
 
     // Prevent infinite recursion if saving the error itself fails
@@ -82,7 +84,7 @@ export class AsyncStorageService {
 
       // Debug logging disabled for performance - uncomment if needed
       // if (this.debugMode && !options.silent) {
-      //   __DEV__ && console.log(`✅ AsyncStorage: Set '${key}'`, value);
+      //   __DEV__ && logger.debug(`✅ AsyncStorage: Set '${key}'`, value);
       // }
 
       return true;
@@ -106,7 +108,7 @@ export class AsyncStorageService {
 
       if (serialized === null) {
         if (this.debugMode && !options.silent) {
-          __DEV__ && console.log(`📭 AsyncStorage: '${key}' not found`);
+          logger.debug(`AsyncStorage: '${key}' not found`);
         }
         return options.defaultValue ?? null;
       }
@@ -117,7 +119,7 @@ export class AsyncStorageService {
       } catch {
         // Fallback: If it's not JSON, treat it as a raw string value (legacy support)
         if (this.debugMode && !options.silent) {
-          __DEV__ && console.log(`⚠️ AsyncStorage: '${key}' is not JSON, treating as raw string`);
+          logger.warn(`AsyncStorage: '${key}' is not JSON, treating as raw string`);
         }
         // Construct a wrapper for the raw value (assuming T is string or unknown)
         item = { key, value: serialized as unknown as T };
@@ -126,7 +128,7 @@ export class AsyncStorageService {
       // Check expiration (only if it was a valid StorageItem with expires)
       if (!options.ignoreExpiration && item.expires && Date.now() > item.expires) {
         if (this.debugMode && !options.silent) {
-          __DEV__ && console.log(`⏰ AsyncStorage: '${key}' expired, removing`);
+          logger.debug(`AsyncStorage: '${key}' expired, removing`);
         }
         await this.removeItem(key, { silent: true });
         return options.defaultValue ?? null;
@@ -134,7 +136,7 @@ export class AsyncStorageService {
 
       // Debug logging disabled for performance - uncomment if needed
       // if (this.debugMode && !options.silent) {
-      //   __DEV__ && console.log(`📦 AsyncStorage: Got '${key}'`, item.value);
+      //   __DEV__ && logger.debug(`📦 AsyncStorage: Got '${key}'`, item.value);
       // }
 
       return item.value;
@@ -152,7 +154,7 @@ export class AsyncStorageService {
       await AsyncStorage.removeItem(key);
 
       if (this.debugMode && !options.silent) {
-        __DEV__ && console.log(`🗑️ AsyncStorage: Removed '${key}'`);
+        logger.debug(`AsyncStorage: Removed '${key}'`);
       }
 
       return true;
@@ -201,7 +203,7 @@ export class AsyncStorageService {
                 try {
                   await AsyncStorage.clear();
                   if (this.debugMode) {
-                    __DEV__ && console.log("🧹 AsyncStorage: Cleared all data");
+                    logger.debug("AsyncStorage: Cleared all data");
                   }
                   resolve(true);
                 } catch (error) {
@@ -215,7 +217,7 @@ export class AsyncStorageService {
       } else {
         await AsyncStorage.clear();
         if (this.debugMode) {
-          __DEV__ && console.log("🧹 AsyncStorage: Cleared all data");
+          logger.debug("AsyncStorage: Cleared all data");
         }
         return true;
       }
@@ -295,7 +297,7 @@ export class AsyncStorageService {
       await AsyncStorage.multiSet(preparedItems);
 
       if (this.debugMode) {
-        __DEV__ && console.log(`✅ AsyncStorage: Set ${items.length} items`);
+        logger.debug(`AsyncStorage: Set ${items.length} items`);
       }
 
       return true;
@@ -331,7 +333,7 @@ export class AsyncStorageService {
         await AsyncStorage.multiRemove(expiredKeys);
 
         if (this.debugMode) {
-          __DEV__ && console.log(`🧹 AsyncStorage: Cleaned up ${expiredKeys.length} expired items`);
+          logger.debug(`AsyncStorage: Cleaned up ${expiredKeys.length} expired items`);
         }
       }
 

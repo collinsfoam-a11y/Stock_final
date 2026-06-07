@@ -55,7 +55,7 @@ const formatDate = (dateString: string | null) => {
   return new Date(dateString).toLocaleDateString();
 };
 
-export function UsersTable({
+function UsersTableComponent({
   ListHeaderComponent,
   onDeleteUser,
   onEditUser,
@@ -221,6 +221,8 @@ export function UsersTable({
     />
   );
 }
+
+export const UsersTable = React.memo(UsersTableComponent);
 
 function SortableHeader({
   active,

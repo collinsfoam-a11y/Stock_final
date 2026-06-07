@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * AnalyticsDashboard Component
  * Main analytics dashboard with real-time metrics
@@ -53,7 +54,7 @@ export const AnalyticsDashboard = React.memo(function AnalyticsDashboard({
       setActiveUsers(users);
       setErrorLogs(logs);
     } catch (error) {
-      console.error("Failed to load analytics data:", error);
+      logger.error("Failed to load analytics data:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -129,7 +130,7 @@ export const AnalyticsDashboard = React.memo(function AnalyticsDashboard({
                 }
                 // Mock onPress for now
                 onPress={() => {
-                  __DEV__ && console.log("Drill-down", metric.label);
+                  __DEV__ && logger.debug("Drill-down", metric.label);
                 }}
               />
             );

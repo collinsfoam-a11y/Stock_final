@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Analytics API Service
  *
@@ -12,7 +13,7 @@
  *
  * // Get session analytics
  * const analytics = await analyticsApi.getSessionAnalytics();
- * console.log(analytics.data.total_sessions);
+ * logger.debug(analytics.data.total_sessions);
  *
  * // Get variance trends
  * const trends = await analyticsApi.getVarianceTrends("2024-01-01", "2024-01-31");

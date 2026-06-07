@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import api from "../httpClient";
 
 export const getFieldDefinitions = async (
@@ -12,7 +13,7 @@ export const getFieldDefinitions = async (
     const response = await api.get(`/api/dynamic-fields/definitions?${params.toString()}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get field definitions error:", error);
+    __DEV__ && logger.error("Get field definitions error:", error);
     throw error;
   }
 };
@@ -22,7 +23,7 @@ export const createFieldDefinition = async (fieldData: Record<string, unknown>) 
     const response = await api.post("/api/dynamic-fields/definitions", fieldData);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Create field definition error:", error);
+    __DEV__ && logger.error("Create field definition error:", error);
     throw error;
   }
 };
@@ -32,7 +33,7 @@ export const updateFieldDefinition = async (fieldId: string, updates: Record<str
     const response = await api.put(`/api/dynamic-fields/definitions/${fieldId}`, updates);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Update field definition error:", error);
+    __DEV__ && logger.error("Update field definition error:", error);
     throw error;
   }
 };
@@ -42,7 +43,7 @@ export const deleteFieldDefinition = async (fieldId: string) => {
     const response = await api.delete(`/api/dynamic-fields/definitions/${fieldId}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Delete field definition error:", error);
+    __DEV__ && logger.error("Delete field definition error:", error);
     throw error;
   }
 };
@@ -56,7 +57,7 @@ export const setFieldValue = async (itemCode: string, fieldName: string, value: 
     });
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Set field value error:", error);
+    __DEV__ && logger.error("Set field value error:", error);
     throw error;
   }
 };
@@ -72,7 +73,7 @@ export const setBulkFieldValues = async (
     });
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Set bulk field values error:", error);
+    __DEV__ && logger.error("Set bulk field values error:", error);
     throw error;
   }
 };
@@ -82,7 +83,7 @@ export const getItemFieldValues = async (itemCode: string) => {
     const response = await api.get(`/api/dynamic-fields/values/${itemCode}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get item field values error:", error);
+    __DEV__ && logger.error("Get item field values error:", error);
     throw error;
   }
 };
@@ -104,7 +105,7 @@ export const getItemsWithFields = async (
     const response = await api.get(`/api/dynamic-fields/items?${params.toString()}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get items with fields error:", error);
+    __DEV__ && logger.error("Get items with fields error:", error);
     throw error;
   }
 };
@@ -114,7 +115,7 @@ export const getFieldStatistics = async (fieldName: string) => {
     const response = await api.get(`/api/dynamic-fields/statistics/${fieldName}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get field statistics error:", error);
+    __DEV__ && logger.error("Get field statistics error:", error);
     throw error;
   }
 };

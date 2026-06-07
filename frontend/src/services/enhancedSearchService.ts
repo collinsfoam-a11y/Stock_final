@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 // Enhanced Search Service for advanced item searching
 import {
   searchItemsOptimized,
@@ -91,7 +92,7 @@ export const EnhancedSearchService = {
         totalPages,
       };
     } catch (error) {
-      __DEV__ && console.error("EnhancedSearchService error:", error);
+      __DEV__ && logger.error("EnhancedSearchService error:", error);
       return {
         items: [],
         total: 0,
@@ -105,7 +106,7 @@ export const EnhancedSearchService = {
     try {
       return await getApiSuggestions(query);
     } catch (error) {
-      __DEV__ && console.error("Error getting suggestions:", error);
+      __DEV__ && logger.error("Error getting suggestions:", error);
       return [];
     }
   },

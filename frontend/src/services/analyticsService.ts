@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Analytics Service
  * Provides real-time metrics and analytics data
@@ -104,7 +105,7 @@ class AnalyticsService {
         recentActivity: [],
       };
     } catch (error) {
-      console.error("Failed to fetch analytics data:", error);
+      logger.error("Failed to fetch analytics data:", error);
       return this.getEmptyDashboardData();
     }
   }
@@ -145,7 +146,7 @@ class AnalyticsService {
       const sessionsByDate = sessionsAnalytics?.sessions_by_date || {};
       return this.mapSessionsToTrends(sessionsByDate).slice(-days);
     } catch (error) {
-      console.error("Failed to fetch variance trends:", error);
+      logger.error("Failed to fetch variance trends:", error);
       return [];
     }
   }
@@ -210,7 +211,7 @@ class AnalyticsService {
    * Acknowledge an error log
    */
   async acknowledgeError(id: string): Promise<boolean> {
-    console.log(`Acknowledging error ${id}`);
+    logger.debug(`Acknowledging error ${id}`);
     return true;
   }
 
@@ -218,7 +219,7 @@ class AnalyticsService {
    * Resolve an error log
    */
   async resolveError(id: string): Promise<boolean> {
-    console.log(`Resolving error ${id}`);
+    logger.debug(`Resolving error ${id}`);
     return true;
   }
 }

@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Session Integrity Hook - FR-M-34: Session integrity warnings
  * Tracks master data versions and warns if data changed during session
@@ -97,7 +98,7 @@ export const useSessionIntegrity = (
         }),
       );
     } catch (e) {
-      console.warn("Failed to store session snapshot:", e);
+      logger.warn("Failed to store session snapshot:", e);
     }
 
     return snapshot;
@@ -145,7 +146,7 @@ export const useSessionIntegrity = (
 
         return hasChanges ? warnings : null;
       } catch (e) {
-        console.error("Failed to check session integrity:", e);
+        logger.error("Failed to check session integrity:", e);
         return null;
       }
     },
@@ -182,7 +183,7 @@ export const useSessionIntegrity = (
     try {
       removeStoredSnapshot(snapshotStorageKey);
     } catch (e) {
-      console.warn("Failed to clear session snapshot:", e);
+      logger.warn("Failed to clear session snapshot:", e);
     }
 
     setIntegrityState({

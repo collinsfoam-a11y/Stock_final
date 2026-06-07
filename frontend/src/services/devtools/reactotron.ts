@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 let initialized = false;
 
 type ReactotronClient = {
@@ -26,7 +27,7 @@ const loadReactotron = (): ReactotronClient | null => {
 
     return loaded as ReactotronClient;
   } catch (error) {
-    console.warn("Reactotron package not available, skipping initialization", error);
+    logger.warn("Reactotron package not available, skipping initialization", error);
     return null;
   }
 };
@@ -48,5 +49,5 @@ export const initReactotron = async (): Promise<void> => {
   }
 
   initialized = true;
-  console.log("Reactotron initialized");
+  logger.debug("Reactotron initialized");
 };

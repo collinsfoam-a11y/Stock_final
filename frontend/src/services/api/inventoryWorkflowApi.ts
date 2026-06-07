@@ -473,7 +473,7 @@ export const checkSerialUniqueness = async (
     const response = await api.get(`/api/count-lines/check-serial/${sessionId}/${serialNumber}`);
     return response.data;
   } catch (error) {
-    console.error("Error checking serial uniqueness:", error);
+    log.error("Error checking serial uniqueness", { error: error instanceof Error ? error.message : String(error) });
     return { exists: false };
   }
 };
@@ -623,7 +623,7 @@ export const getSearchSuggestions = async (query: string, limit: number = 5): Pr
     const apiResponse = response.data;
     return apiResponse?.data?.suggestions || apiResponse?.suggestions || [];
   } catch (error) {
-    __DEV__ && console.error("Error fetching suggestions:", error);
+    log.error("Error fetching suggestions", { error: error instanceof Error ? (error as Error).message : String(error) });
     return [];
   }
 };
@@ -648,7 +648,7 @@ export const getSearchFilters = async (): Promise<{
       warehouses: Array.isArray(data.warehouses) ? data.warehouses : [],
     };
   } catch (error) {
-    __DEV__ && console.error("Error fetching search filters:", error);
+    log.error("Error fetching search filters", { error: error instanceof Error ? (error as Error).message : String(error) });
     return { categories: [], warehouses: [] };
   }
 };
@@ -673,7 +673,7 @@ export const searchItemsSemantic = async (query: string, limit: number = 20): Pr
       name: item.name || item.item_name,
     }));
   } catch (error) {
-    __DEV__ && console.error("Error in semantic search:", error);
+    log.error("Error in semantic search", { error: error instanceof Error ? (error as Error).message : String(error) });
     return [];
   }
 };
@@ -691,7 +691,7 @@ export const getRiskPredictions = async (sessionId: string, limit: number = 10) 
 
     return response.data.data || [];
   } catch (error) {
-    __DEV__ && console.error("Error fetching risk predictions:", error);
+    log.error("Error fetching risk predictions", { error: error instanceof Error ? (error as Error).message : String(error) });
     return [];
   }
 };
@@ -730,7 +730,7 @@ export const identifyItem = async (imageUri: string): Promise<Item[]> => {
       name: item.name || item.item_name,
     }));
   } catch (error) {
-    __DEV__ && console.error("Error in visual search:", error);
+    log.error("Error in visual search", { error: error instanceof Error ? (error as Error).message : String(error) });
     throw error;
   }
 };
@@ -781,7 +781,7 @@ export const checkItemScanStatus = async (
     const response = await api.get(`/api/sessions/${sessionId}/items/${itemCode}/scan-status`);
     return response.data;
   } catch (error) {
-    console.error("Error checking item scan status:", error);
+    log.error("Error checking item scan status", { error: error instanceof Error ? error.message : String(error) });
     return { scanned: false, total_qty: 0, locations: [] };
   }
 };
@@ -822,10 +822,37 @@ const createOfflineCountLineResult = async (
   };
 };
 
+const firstMeaningfulString = (...values: Array<string | null | undefined>): string | null => {
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const normalized = value.trim();
+    if (normalized) return normalized;
+  }
+  return null;
+};
+
+const withCanonicalLocationContext = (
+  countData: CreateCountLinePayload
+): CreateCountLinePayload => {
+  const floorId = firstMeaningfulString(countData.floor_id, countData.floor_no) || "Unknown";
+  const rackId = firstMeaningfulString(countData.rack_id, countData.rack_no) || "Unknown";
+  const locationId =
+    firstMeaningfulString(countData.location_id, countData.mark_location, floorId) || "Unknown";
+
+  return {
+    ...countData,
+    location_id: locationId,
+    floor_id: floorId,
+    rack_id: rackId,
+    floor_no: countData.floor_no ?? floorId,
+    rack_no: countData.rack_no ?? rackId,
+  };
+};
+
 const ensureCountLineIdempotencyKey = (
   countData: CreateCountLinePayload
 ): CreateCountLinePayload => ({
-  ...countData,
+  ...withCanonicalLocationContext(countData),
   idempotency_key: countData.idempotency_key?.trim() || generateUUID(),
 });
 
@@ -1108,7 +1135,7 @@ export const checkItemCounted = async (sessionId: string, itemCode: string) => {
     const response = await api.get(`/api/count-lines/check/${sessionId}/${itemCode}`);
     return response.data;
   } catch (error) {
-    __DEV__ && console.error("Error checking item counted:", error);
+    log.error("Error checking item counted", { error: error instanceof Error ? (error as Error).message : String(error) });
 
     const cachedLines = await getCountLinesBySessionFromCache(sessionId);
     const itemLines = cachedLines.filter((line) => line.item_code === itemCode);
@@ -1133,7 +1160,7 @@ export const addQuantityToCountLine = async (
     const response = await api.patch(`/api/count-lines/${lineId}/add-quantity`, payload);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Error adding quantity to count line:", error);
+    log.error("Error adding quantity to count line", { error: error instanceof Error ? (error as Error).message : String(error) });
     throw error;
   }
 };
@@ -1202,7 +1229,7 @@ export const finalizeSession = async (sessionId: string, payload?: { note?: stri
     const response = await api.post(`/api/sessions/${sessionId}/finalize`, payload || {});
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Finalize session error:", error);
+    log.error("Finalize session error", { error: error instanceof Error ? (error as Error).message : String(error) });
     throw error;
   }
 };
@@ -1211,19 +1238,25 @@ export const finalizeSession = async (sessionId: string, payload?: { note?: stri
  * Queues or creates an unknown item depending on network availability.
  */
 export const createUnknownItem = async (itemData: Record<string, unknown>) => {
+  // SYNC-03 Fix: Inject idempotency_key to prevent duplicate creations on retry
+  const payload = {
+    ...itemData,
+    idempotency_key: (itemData.idempotency_key as string) || generateUUID(),
+  };
+
   try {
     if (!isOnline()) {
-      await addToOfflineQueue("unknown_item", itemData);
+      await addToOfflineQueue("unknown_item", payload);
       return { success: true, offline: true };
     }
 
-    const response = await api.post("/api/unknown-items", itemData, {
+    const response = await api.post("/api/unknown-items", payload, {
       skipOfflineQueue: true,
     } as any);
     return response.data;
   } catch (error) {
-    __DEV__ && console.error("Error creating unknown item:", error);
-    await addToOfflineQueue("unknown_item", itemData);
+    log.error("Error creating unknown item", { error: error instanceof Error ? (error as Error).message : String(error) });
+    await addToOfflineQueue("unknown_item", payload);
     return { success: true, offline: true };
   }
 };
@@ -1240,7 +1273,7 @@ export const refreshItemStock = async (itemCode: string) => {
     );
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Refresh stock error:", error);
+    log.error("Refresh stock error", { error: error instanceof Error ? (error as Error).message : String(error) });
     throw error;
   }
 };
@@ -1253,7 +1286,7 @@ export const deleteCountLine = async (lineId: string) => {
     const response = await api.delete(`/api/count-lines/${lineId}`);
     return response.data;
   } catch (error: any) {
-    __DEV__ && console.error("Delete count line error:", error);
+    log.error("Delete count line error", { error: error instanceof Error ? (error as Error).message : String(error) });
     throw error;
   }
 };

@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Simple Event Emitter for cross-service communication
  */
@@ -43,7 +44,7 @@ export class EventEmitter {
         try {
           callback(...args);
         } catch (error) {
-          console.error(`Error in event listener for ${event}:`, error);
+          logger.error(`Error in event listener for ${event}:`, error);
         }
       });
     }

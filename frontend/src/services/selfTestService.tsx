@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Self-Test Service for Stock Verification System
  * Comprehensive testing of all functionality
@@ -55,7 +56,7 @@ export class SelfTestService {
     const suites: TestSuite[] = [];
 
     try {
-      console.log("Starting comprehensive self-test suite...");
+      logger.debug("Starting comprehensive self-test suite...");
 
       suites.push(await this.testAuthentication());
       suites.push(await this.testPINAuth());
@@ -68,7 +69,7 @@ export class SelfTestService {
 
       return suites;
     } catch (error) {
-      console.error("Self-test suite error:", error);
+      logger.error("Self-test suite error:", error);
       throw error instanceof Error ? error : new Error(String(error));
     }
   }

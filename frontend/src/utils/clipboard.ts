@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Clipboard Utilities
  * Provides copy to clipboard functionality
@@ -27,7 +28,7 @@ export const copyToClipboard = async (
 
     return true;
   } catch (error) {
-    __DEV__ && console.error("Failed to copy to clipboard:", error);
+    __DEV__ && logger.error("Failed to copy to clipboard:", error);
     return false;
   }
 };
@@ -41,7 +42,7 @@ export const getFromClipboard = async (): Promise<string | null> => {
     const text = await Clipboard.getStringAsync();
     return text || null;
   } catch (error) {
-    __DEV__ && console.error("Failed to get from clipboard:", error);
+    __DEV__ && logger.error("Failed to get from clipboard:", error);
     return null;
   }
 };

@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * PhotoCaptureModal Component
  * Modal for capturing photos using the device camera
@@ -84,7 +85,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       }
     } catch (error) {
       Alert.alert("Error", "Failed to capture photo. Please try again.");
-      console.error("Photo capture error:", error);
+      logger.error("Photo capture error:", error);
     } finally {
       setIsCapturing(false);
     }

@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Camera Enhancement Service
  * Provides advanced camera features for barcode scanning
@@ -40,7 +41,7 @@ class CameraEnhancementService {
       // Store original brightness
       this.originalBrightness = await Brightness.getBrightnessAsync();
     } catch (error) {
-      console.warn("Failed to get brightness:", error);
+      logger.warn("Failed to get brightness:", error);
     }
   }
 
@@ -58,7 +59,7 @@ class CameraEnhancementService {
 
       return "off";
     } catch (error) {
-      console.warn("Failed to auto-adjust flash:", error);
+      logger.warn("Failed to auto-adjust flash:", error);
       return "off";
     }
   }
@@ -134,7 +135,7 @@ class CameraEnhancementService {
     try {
       await Brightness.setBrightnessAsync(1.0);
     } catch (error) {
-      console.warn("Failed to boost brightness:", error);
+      logger.warn("Failed to boost brightness:", error);
     }
   }
 
@@ -145,7 +146,7 @@ class CameraEnhancementService {
     try {
       await Brightness.setBrightnessAsync(this.originalBrightness);
     } catch (error) {
-      console.warn("Failed to restore brightness:", error);
+      logger.warn("Failed to restore brightness:", error);
     }
   }
 

@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import api from "../httpClient";
 import type { BatchSyncResponse, SyncBatchResult, SyncRecord } from "../../types/sync";
 
@@ -49,7 +50,7 @@ export const syncBatch = async (
     });
     return normalizeSyncBatchResponse(response.data);
   } catch (error: unknown) {
-    __DEV__ && console.warn("Sync batch error:", error);
+    __DEV__ && logger.warn("Sync batch error:", error);
     throw error;
   }
 };
@@ -60,7 +61,7 @@ export const getWatchtowerStats = async () => {
     const response = await api.get("/api/v2/sessions/watchtower");
     return unwrapApiPayload(response.data);
   } catch (error: unknown) {
-    __DEV__ && console.error("Get watchtower stats error:", error);
+    __DEV__ && logger.error("Get watchtower stats error:", error);
     throw error;
   }
 };
@@ -72,7 +73,7 @@ export const getZones = async () => {
     return response.data;
   } catch (error: any) {
     if (error?.response?.status !== 401) {
-      console.error("Error fetching zones:", error);
+      logger.error("Error fetching zones:", error);
     }
     throw error;
   }
@@ -88,7 +89,7 @@ export const getWarehouses = async (zone?: string) => {
     return response.data;
   } catch (error: any) {
     if (error?.response?.status !== 401) {
-      console.error("Error fetching warehouses:", error);
+      logger.error("Error fetching warehouses:", error);
     }
     throw error;
   }

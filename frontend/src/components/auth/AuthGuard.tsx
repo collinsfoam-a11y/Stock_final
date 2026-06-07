@@ -1,5 +1,6 @@
+﻿import { logger } from '@/services/logging';
 import React, { useEffect } from "react";
-import { useGlobalSearchParams, usePathname, useRouter, useSegments } from "expo-router";
+import { useGlobalSearchParams, usePathname, useRouter, useSegments, type Href } from "expo-router";
 import { useAuthStore } from "../../store/authStore";
 import { getRouteForRole, isRouteAllowedForRole, UserRole } from "../../utils/roleNavigation";
 import { flags } from "../../constants/flags";
@@ -50,7 +51,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         stopPolling = module.stopNotificationPolling;
       })
       .catch((error) => {
-        console.warn("[AuthGuard] Notification polling unavailable", error);
+        logger.warn("[AuthGuard] Notification polling unavailable", error);
       });
 
     return () => {
@@ -84,13 +85,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }${buildQueryString(globalSearchParams as Record<string, unknown>)}`;
 
     if (!user && requiresAuth) {
-      console.log("[AuthGuard] Unauthenticated access attempt. Redirecting to login.");
+      logger.debug("[AuthGuard] Unauthenticated access attempt. Redirecting to login.");
       if (flags.uiAuthRedirectV2) {
         void useAuthStore
           .getState()
           .setPendingRedirect(currentPath)
           .catch((error) => {
-            console.warn("[AuthGuard] Failed to set pending redirect", error);
+            logger.warn("[AuthGuard] Failed to set pending redirect", error);
           });
         router.replace("/login");
       } else {
@@ -117,16 +118,16 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             }
 
             if (cancelled) return;
-            console.log(
+            logger.debug(
               `[AuthGuard] Authenticated user in public route. Redirecting to ${targetRoute}`
             );
-            router.replace(targetRoute as any);
+            router.replace(targetRoute as Href);
           })
           .catch((error) => {
             if (cancelled) return;
-            console.warn("[AuthGuard] Failed to resolve pending redirect", error);
+            logger.warn("[AuthGuard] Failed to resolve pending redirect", error);
             const targetRoute = getRouteForRole(user.role as UserRole);
-            router.replace(targetRoute as any);
+            router.replace(targetRoute as Href);
           });
         return () => {
           cancelled = true;
@@ -134,8 +135,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       }
 
       const targetRoute = getRouteForRole(user.role as UserRole);
-      console.log(`[AuthGuard] Authenticated user in public route. Redirecting to ${targetRoute}`);
-      router.replace(targetRoute as any);
+      logger.debug(`[AuthGuard] Authenticated user in public route. Redirecting to ${targetRoute}`);
+      router.replace(targetRoute as Href);
       return;
     }
 
@@ -148,11 +149,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             .getState()
             .clearPendingRedirect()
             .catch((error) => {
-              console.warn("[AuthGuard] Failed to clear pending redirect", error);
+              logger.warn("[AuthGuard] Failed to clear pending redirect", error);
             });
         }
-        console.warn(`[AuthGuard] Unauthorized role access. Redirecting to ${targetRoute}`);
-        router.replace(targetRoute as any);
+        logger.warn(`[AuthGuard] Unauthorized role access. Redirecting to ${targetRoute}`);
+        router.replace(targetRoute as Href);
       }
     }
 

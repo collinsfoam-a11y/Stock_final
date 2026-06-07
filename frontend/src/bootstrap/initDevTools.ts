@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 export function initMonitoringAndDevTools(isDev: boolean): void {
   import("../services/sentry")
     .then(({ initSentry }) => {
@@ -5,7 +6,7 @@ export function initMonitoringAndDevTools(isDev: boolean): void {
     })
     .catch((e) => {
       if (isDev) {
-        console.warn("Sentry init failed", e);
+        logger.warn("Sentry init failed", e);
       }
     });
 
@@ -18,7 +19,7 @@ export function initMonitoringAndDevTools(isDev: boolean): void {
       initReactotron();
     })
     .catch((e) => {
-      console.warn("Reactotron init failed", e);
+      logger.warn("Reactotron init failed", e);
     });
 
 }

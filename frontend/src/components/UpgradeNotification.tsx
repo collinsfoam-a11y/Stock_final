@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * UpgradeNotification Component
  * Shows update available or force update banners
@@ -44,14 +45,14 @@ export const UpgradeNotification: React.FC<UpgradeNotificationProps> = ({
         if (canOpen) {
           await Linking.openURL(storeUrl);
         } else {
-          __DEV__ && console.log("Cannot open store URL:", storeUrl);
+          __DEV__ && logger.debug("Cannot open store URL:", storeUrl);
         }
       } catch (err) {
-        __DEV__ && console.log("Failed to open store URL", err);
+        __DEV__ && logger.debug("Failed to open store URL", err);
       }
     } else {
       // Platform-specific store URLs could be configured here
-      __DEV__ && console.log("No store URL configured for update");
+      __DEV__ && logger.debug("No store URL configured for update");
     }
   };
 

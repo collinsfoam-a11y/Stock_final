@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Backup Service - Backup and restore functionality
  * Handles backing up and restoring app data
@@ -99,13 +100,13 @@ export class BackupService {
             }
           }
         } catch (error) {
-          __DEV__ && console.error(`Error backing up ${key}:`, error);
+          __DEV__ && logger.error(`Error backing up ${key}:`, error);
         }
       }
 
       return backup;
     } catch (error) {
-      __DEV__ && console.error("Error creating backup:", error);
+      __DEV__ && logger.error("Error creating backup:", error);
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
@@ -131,7 +132,7 @@ export class BackupService {
         title: filename,
       });
     } catch (error) {
-      __DEV__ && console.error("Error sharing backup:", error);
+      __DEV__ && logger.error("Error sharing backup:", error);
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
@@ -179,9 +180,9 @@ export class BackupService {
         );
       }
 
-      __DEV__ && console.log("Backup restored successfully");
+      __DEV__ && logger.debug("Backup restored successfully");
     } catch (error) {
-      __DEV__ && console.error("Error restoring backup:", error);
+      __DEV__ && logger.error("Error restoring backup:", error);
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
@@ -194,7 +195,7 @@ export class BackupService {
       const backupData: BackupData = JSON.parse(jsonString);
       await this.restoreBackup(backupData);
     } catch (error) {
-      __DEV__ && console.error("Error restoring from JSON:", error);
+      __DEV__ && logger.error("Error restoring from JSON:", error);
       throw new Error("Invalid backup file format");
     }
   }
@@ -220,7 +221,7 @@ export class BackupService {
         timestamp: backup.timestamp,
       };
     } catch (error) {
-      __DEV__ && console.error("Error getting backup info:", error);
+      __DEV__ && logger.error("Error getting backup info:", error);
       return {
         size: 0,
         itemCount: 0,
@@ -242,9 +243,9 @@ export class BackupService {
         await AsyncStorage.removeItem(key);
       }
 
-      __DEV__ && console.log("All data cleared");
+      __DEV__ && logger.debug("All data cleared");
     } catch (error) {
-      __DEV__ && console.error("Error clearing data:", error);
+      __DEV__ && logger.error("Error clearing data:", error);
       throw error instanceof Error ? error : new Error(String(error));
     }
   }

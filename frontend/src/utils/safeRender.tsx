@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Safe Render Utilities
  * Helper functions to prevent crashes during rendering
@@ -13,7 +14,7 @@ export function safeRender(component: () => ReactNode, fallback?: ReactNode): Re
   try {
     return component();
   } catch (error) {
-    __DEV__ && console.error("Render error caught:", error);
+    __DEV__ && logger.error("Render error caught:", error);
     return fallback || null;
   }
 }
@@ -64,7 +65,7 @@ export async function safeAsync<T>(
       requestError.name === "AbortError"
     );
     if (__DEV__ && !isHandledRequestError) {
-      console.error("Safe async error:", err);
+      logger.error("Safe async error:", err);
     }
     if (onError) {
       onError(err);
@@ -80,7 +81,7 @@ export function safeGet<T>(getter: () => T, fallback: T): T {
   try {
     return getter();
   } catch (error) {
-    __DEV__ && console.error("Safe get error:", error);
+    __DEV__ && logger.error("Safe get error:", error);
     return fallback;
   }
 }

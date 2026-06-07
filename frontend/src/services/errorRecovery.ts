@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Error Recovery Service
  * Handles error recovery, retry strategies, and error reporting
@@ -74,15 +75,15 @@ export const recoverFromError = async <T>(
     return await primaryOperation();
   } catch (error: unknown) {
     __DEV__ &&
-      console.error("Primary operation failed, trying fallbacks...", error);
+      logger.error("Primary operation failed, trying fallbacks...", error);
 
     for (const fallbackOperation of fallbackOperations) {
       try {
         const result = await fallbackOperation();
-        __DEV__ && console.log("Fallback operation succeeded");
+        __DEV__ && logger.debug("Fallback operation succeeded");
         return result;
       } catch (fallbackError: unknown) {
-        __DEV__ && console.error("Fallback operation failed:", fallbackError);
+        __DEV__ && logger.error("Fallback operation failed:", fallbackError);
         continue;
       }
     }
@@ -99,7 +100,7 @@ export const safeExecute = async <T>(
   try {
     return await operation();
   } catch (error: unknown) {
-    __DEV__ && console.error("Safe execute error:", error);
+    __DEV__ && logger.error("Safe execute error:", error);
 
     if (onError) {
       onError(error);
@@ -151,7 +152,7 @@ class ErrorReporter {
       this.errorLog.shift();
     }
 
-    __DEV__ && console.error(`[${context || "Error"}]:`, errorReport);
+    __DEV__ && logger.error(`[${context || "Error"}]:`, errorReport);
 
     return errorReport;
   }
@@ -214,7 +215,7 @@ export const handleErrorWithRecovery = async <T>(
 
     if (fallback) {
       try {
-        __DEV__ && console.log("Trying fallback operation...");
+        __DEV__ && logger.debug("Trying fallback operation...");
         return await fallback();
       } catch (fallbackError: any) {
         errorReporter.report(fallbackError, `${context} (fallback)`);
@@ -247,7 +248,7 @@ export const handleNetworkError = async <T>(
       maxRetries,
       retryDelay: 1000,
       onRetry: (attempt) => {
-        __DEV__ && console.log(`Network retry attempt ${attempt}`);
+        __DEV__ && logger.debug(`Network retry attempt ${attempt}`);
       },
     },
     showAlert,

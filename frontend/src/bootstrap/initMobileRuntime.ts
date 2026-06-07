@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import { Platform } from "react-native";
 
 export async function initMobileRuntime(
@@ -22,7 +23,7 @@ export async function initMobileRuntime(
     startSyncService();
   } catch (e) {
     if (isDev) {
-      console.warn("Offline sync start failed:", e);
+      logger.warn("Offline sync start failed:", e);
     }
   }
 

@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Export Service
  * Handles data export to CSV, Excel, and JSON formats
@@ -71,7 +72,7 @@ export class ExportService {
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to export CSV";
-      __DEV__ && console.error("CSV export error:", error);
+      __DEV__ && logger.error("CSV export error:", error);
       Alert.alert("Export Error", errorMessage);
       throw error instanceof Error ? error : new Error(String(error));
     }
@@ -96,7 +97,7 @@ export class ExportService {
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to export JSON";
-      __DEV__ && console.error("JSON export error:", error);
+      __DEV__ && logger.error("JSON export error:", error);
       Alert.alert("Export Error", errorMessage);
       throw error instanceof Error ? error : new Error(String(error));
     }
@@ -135,7 +136,7 @@ export class ExportService {
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to export text";
-      __DEV__ && console.error("Text export error:", error);
+      __DEV__ && logger.error("Text export error:", error);
       Alert.alert("Export Error", errorMessage);
       throw error instanceof Error ? error : new Error(String(error));
     }
@@ -174,7 +175,7 @@ export class ExportService {
    */
   static async exportSessionsWithDetails(sessions: Session[]): Promise<void> {
     try {
-      __DEV__ && console.log("📊 [Export] Exporting sessions with details...");
+      __DEV__ && logger.debug("📊 [Export] Exporting sessions with details...");
 
       // Transform sessions into detailed rows
       const detailedData: ExportRecord[] = [];
@@ -219,10 +220,10 @@ export class ExportService {
       }
 
       __DEV__ &&
-        console.log("✅ [Export] Sessions with details exported successfully");
+        logger.debug("✅ [Export] Sessions with details exported successfully");
     } catch (error: unknown) {
       __DEV__ &&
-        console.error(
+        logger.error(
           "❌ [Export] Failed to export sessions with details:",
           error,
         );
@@ -235,7 +236,7 @@ export class ExportService {
    */
   static async exportVarianceReport(sessions: Session[]): Promise<void> {
     try {
-      __DEV__ && console.log("📊 [Export] Exporting variance report...");
+      __DEV__ && logger.debug("📊 [Export] Exporting variance report...");
 
       const varianceData = sessions.map((session) => ({
         session_id: session.id,
@@ -279,10 +280,10 @@ export class ExportService {
       }
 
       __DEV__ &&
-        console.log("✅ [Export] Variance report exported successfully");
+        logger.debug("✅ [Export] Variance report exported successfully");
     } catch (error: unknown) {
       __DEV__ &&
-        console.error("❌ [Export] Failed to export variance report:", error);
+        logger.error("❌ [Export] Failed to export variance report:", error);
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
@@ -292,7 +293,7 @@ export class ExportService {
    */
   static async exportSummaryReport(sessions: Session[]): Promise<void> {
     try {
-      __DEV__ && console.log("📊 [Export] Exporting summary report...");
+      __DEV__ && logger.debug("📊 [Export] Exporting summary report...");
 
       // Calculate summary statistics
       const totalSessions = sessions.length;
@@ -331,10 +332,10 @@ export class ExportService {
       });
 
       __DEV__ &&
-        console.log("✅ [Export] Summary report exported successfully");
+        logger.debug("✅ [Export] Summary report exported successfully");
     } catch (error: unknown) {
       __DEV__ &&
-        console.error("❌ [Export] Failed to export summary report:", error);
+        logger.error("❌ [Export] Failed to export summary report:", error);
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
@@ -418,7 +419,7 @@ export class ExportService {
         ]);
       }
     } catch (error: unknown) {
-      __DEV__ && console.error("File save/share error:", error);
+      __DEV__ && logger.error("File save/share error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
       throw new Error(`Failed to save or share file: ${errorMessage}`);

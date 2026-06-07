@@ -1,3 +1,4 @@
+import { logger } from '@/services/logging';
 /**
  * Centralized Error Handling Service
  * Provides professional error handling for the entire application
@@ -159,7 +160,7 @@ export class ErrorHandler {
    * Handle API errors with user-friendly messages
    */
   static handleApiError(error: any, context?: string): ApiError {
-    __DEV__ && console.error(`[${context || "API Error"}]:`, error);
+    logger.error(`[${context || "API Error"}]`, { error: error?.message || String(error) });
     if (error.response) return buildServerApiError(error);
     if (error.request) return buildRequestApiError(error);
     return buildSetupApiError(error);
@@ -251,7 +252,7 @@ export class ErrorHandler {
   static logError(context: string, error: any, additionalInfo?: any) {
     const timestamp = new Date().toISOString();
     __DEV__ &&
-      console.error(`[${timestamp}] [${context}]`, {
+      logger.error(`[${timestamp}] [${context}]`, {
         error: error.message || error,
         stack: error.stack,
         ...additionalInfo,
@@ -303,7 +304,7 @@ export class RetryHandler {
         return await operation();
       } catch (error) {
         lastError = error;
-        __DEV__ && console.log(`Attempt ${attempt} failed, retrying...`);
+        __DEV__ && logger.debug(`Attempt ${attempt} failed, retrying...`);
 
         if (attempt < maxRetries) {
           await new Promise((resolve) => setTimeout(resolve, delayMs));

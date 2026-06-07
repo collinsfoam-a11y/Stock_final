@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import api from "../httpClient";
 
 type DiagnosisSeverity = "critical" | "high" | "medium" | "low";
@@ -133,7 +134,7 @@ export const getDiagnosisHealth = async () => {
     const response = await api.get("/api/diagnosis/health");
     return normalizeDiagnosisHealth(response.data);
   } catch (error: unknown) {
-    __DEV__ && console.error("Get diagnosis health error:", error);
+    __DEV__ && logger.error("Get diagnosis health error:", error);
     throw error;
   }
 };
@@ -146,7 +147,7 @@ export const getDiagnosisStats = async (hours: number = 24) => {
     const response = await api.get(`/api/diagnosis/statistics?hours=${hours}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get diagnosis stats error:", error);
+    __DEV__ && logger.error("Get diagnosis stats error:", error);
     throw error;
   }
 };
@@ -163,7 +164,7 @@ export const diagnoseError = async (errorInfo: {
     const response = await api.post("/api/diagnosis/diagnose", errorInfo);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Diagnose error failed:", error);
+    __DEV__ && logger.error("Diagnose error failed:", error);
     throw error;
   }
 };
@@ -183,7 +184,7 @@ export const attemptAutoFixDiagnosis = async (errorInfo: {
       fixed: Boolean(response.data?.fix_successful),
     };
   } catch (error: unknown) {
-    __DEV__ && console.error("Auto-fix diagnosis failed:", error);
+    __DEV__ && logger.error("Auto-fix diagnosis failed:", error);
     throw error;
   }
 };

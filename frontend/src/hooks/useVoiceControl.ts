@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * React Hook for Voice Control
  * Provides easy integration of voice commands in components
@@ -33,7 +34,7 @@ export const useVoiceControl = (
       try {
         await voiceControlService.initialize(options);
       } catch (error) {
-        console.warn("Voice control initialization failed:", error);
+        logger.warn("Voice control initialization failed:", error);
       }
     };
 
@@ -48,7 +49,7 @@ export const useVoiceControl = (
     try {
       await voiceControlService.speak(text);
     } catch (error) {
-      console.warn("Speech failed:", error);
+      logger.warn("Speech failed:", error);
     }
   }, []);
 

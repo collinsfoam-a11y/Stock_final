@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import { Platform } from "react-native";
 import api from "../httpClient";
 
@@ -11,7 +12,7 @@ export const getServicesStatus = async () => {
     const response = await api.get("/api/admin/control/services/status");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get services status error:", error);
+    __DEV__ && logger.error("Get services status error:", error);
     throw error;
   }
 };
@@ -21,7 +22,7 @@ export const startService = async (service: string) => {
     const response = await api.post(`/api/admin/control/services/${service}/start`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Start service error:", error);
+    __DEV__ && logger.error("Start service error:", error);
     throw error;
   }
 };
@@ -31,7 +32,7 @@ export const stopService = async (service: string) => {
     const response = await api.post(`/api/admin/control/services/${service}/stop`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Stop service error:", error);
+    __DEV__ && logger.error("Stop service error:", error);
     throw error;
   }
 };
@@ -42,7 +43,7 @@ export const getSystemIssues = async () => {
     const response = await api.get("/api/admin/control/system/issues");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get system issues error:", error);
+    __DEV__ && logger.error("Get system issues error:", error);
     throw error;
   }
 };
@@ -52,7 +53,7 @@ export const getSystemHealthScore = async () => {
     const response = await api.get("/api/admin/control/system/health-score");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get system health score error:", error);
+    __DEV__ && logger.error("Get system health score error:", error);
     throw error;
   }
 };
@@ -62,7 +63,7 @@ export const getSystemStats = async () => {
     const response = await api.get("/api/admin/control/system/stats");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get system stats error:", error);
+    __DEV__ && logger.error("Get system stats error:", error);
     throw error;
   }
 };
@@ -73,7 +74,7 @@ export const getLoginDevices = async () => {
     const response = await api.get("/api/admin/control/devices");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get login devices error:", error);
+    __DEV__ && logger.error("Get login devices error:", error);
     throw error;
   }
 };
@@ -89,7 +90,7 @@ export const getServiceLogs = async (service: string, lines: number = 100, level
     const response = await api.get(`/api/admin/control/logs/${service}?${params.toString()}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get service logs error:", error);
+    __DEV__ && logger.error("Get service logs error:", error);
     throw error;
   }
 };
@@ -101,7 +102,7 @@ export const clearServiceLogs = async (service: string) => {
     });
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error(`Clear ${service} logs error:`, error);
+    __DEV__ && logger.error(`Clear ${service} logs error:`, error);
     throw error;
   }
 };
@@ -112,7 +113,7 @@ export const getAvailablePermissions = async () => {
     const response = await api.get("/api/permissions/available");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get available permissions error:", error);
+    __DEV__ && logger.error("Get available permissions error:", error);
     throw error;
   }
 };
@@ -124,7 +125,7 @@ export const getRolePermissions = async (role: string) => {
     const permissions = data?.[role] ?? [];
     return { success: true, data: { role, permissions } };
   } catch (error: unknown) {
-    __DEV__ && console.error("Get role permissions error:", error);
+    __DEV__ && logger.error("Get role permissions error:", error);
     throw error;
   }
 };
@@ -134,7 +135,7 @@ export const getUserPermissions = async (username: string) => {
     const response = await api.get(`/api/permissions/users/${username}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get user permissions error:", error);
+    __DEV__ && logger.error("Get user permissions error:", error);
     throw error;
   }
 };
@@ -146,7 +147,7 @@ export const addUserPermissions = async (username: string, permissions: string[]
     });
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Add user permissions error:", error);
+    __DEV__ && logger.error("Add user permissions error:", error);
     throw error;
   }
 };
@@ -158,7 +159,7 @@ export const removeUserPermissions = async (username: string, permissions: strin
     });
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Remove user permissions error:", error);
+    __DEV__ && logger.error("Remove user permissions error:", error);
     throw error;
   }
 };
@@ -295,7 +296,7 @@ export const getExportSchedules = async (
         )
       : [];
   } catch (error: unknown) {
-    __DEV__ && console.error("Get export schedules error:", error);
+    __DEV__ && logger.error("Get export schedules error:", error);
     throw error;
   }
 };
@@ -307,7 +308,7 @@ export const getExportSchedule = async (
     const response = await api.get(`/api/exports/schedules/${scheduleId}`);
     return normalizeExportSchedule(response.data?.data ?? response.data);
   } catch (error: unknown) {
-    __DEV__ && console.error("Get export schedule error:", error);
+    __DEV__ && logger.error("Get export schedule error:", error);
     throw error;
   }
 };
@@ -319,7 +320,7 @@ export const createExportSchedule = async (
     const response = await api.post("/api/exports/schedules", scheduleData);
     return response.data?.data ?? response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Create export schedule error:", error);
+    __DEV__ && logger.error("Create export schedule error:", error);
     throw error;
   }
 };
@@ -332,7 +333,7 @@ export const updateExportSchedule = async (
     const response = await api.put(`/api/exports/schedules/${scheduleId}`, scheduleData);
     return response.data?.data ?? response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Update export schedule error:", error);
+    __DEV__ && logger.error("Update export schedule error:", error);
     throw error;
   }
 };
@@ -342,7 +343,7 @@ export const deleteExportSchedule = async (scheduleId: string) => {
     const response = await api.delete(`/api/exports/schedules/${scheduleId}`);
     return response.data?.data ?? response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Delete export schedule error:", error);
+    __DEV__ && logger.error("Delete export schedule error:", error);
     throw error;
   }
 };
@@ -352,7 +353,7 @@ export const triggerExportSchedule = async (scheduleId: string) => {
     const response = await api.post(`/api/exports/schedules/${scheduleId}/execute`);
     return response.data?.data ?? response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Trigger export schedule error:", error);
+    __DEV__ && logger.error("Trigger export schedule error:", error);
     throw error;
   }
 };
@@ -375,7 +376,7 @@ export const getExportResults = async (
         )
       : [];
   } catch (error: unknown) {
-    __DEV__ && console.error("Get export results error:", error);
+    __DEV__ && logger.error("Get export results error:", error);
     throw error;
   }
 };
@@ -387,7 +388,7 @@ export const downloadExportResult = async (resultId: string) => {
     });
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Download export result error:", error);
+    __DEV__ && logger.error("Download export result error:", error);
     throw error;
   }
 };
@@ -413,7 +414,7 @@ export const getSyncConflicts = async (
     const response = await api.get(`/api/sync/conflicts?${params.toString()}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get sync conflicts error:", error);
+    __DEV__ && logger.error("Get sync conflicts error:", error);
     throw error;
   }
 };
@@ -423,7 +424,7 @@ export const getSyncConflictDetail = async (conflictId: string) => {
     const response = await api.get(`/api/sync/conflicts/${conflictId}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get sync conflict detail error:", error);
+    __DEV__ && logger.error("Get sync conflict detail error:", error);
     throw error;
   }
 };
@@ -440,7 +441,7 @@ export const resolveSyncConflict = async (
     });
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Resolve sync conflict error:", error);
+    __DEV__ && logger.error("Resolve sync conflict error:", error);
     throw error;
   }
 };
@@ -458,7 +459,7 @@ export const batchResolveSyncConflicts = async (
     });
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Batch resolve sync conflicts error:", error);
+    __DEV__ && logger.error("Batch resolve sync conflicts error:", error);
     throw error;
   }
 };
@@ -468,7 +469,7 @@ export const getSyncConflictStats = async () => {
     const response = await api.get("/api/sync/conflicts/stats/summary");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get sync conflict stats error:", error);
+    __DEV__ && logger.error("Get sync conflict stats error:", error);
     throw error;
   }
 };
@@ -482,7 +483,7 @@ export const getMetrics = async () => {
     const response = await api.get("/api/metrics");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get metrics error:", error);
+    __DEV__ && logger.error("Get metrics error:", error);
     throw error;
   }
 };
@@ -492,7 +493,7 @@ export const getMetricsHealth = async () => {
     const response = await api.get("/api/metrics/health");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get metrics health error:", error);
+    __DEV__ && logger.error("Get metrics health error:", error);
     throw error;
   }
 };
@@ -503,7 +504,7 @@ export const checkHealth = async () => {
     const response = await api.get("/health");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Health check error:", error);
+    __DEV__ && logger.error("Health check error:", error);
     throw error;
   }
 };
@@ -513,7 +514,7 @@ export const getMetricsStats = async () => {
     const response = await api.get("/api/metrics/stats");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get metrics stats error:", error);
+    __DEV__ && logger.error("Get metrics stats error:", error);
     throw error;
   }
 };
@@ -524,7 +525,7 @@ export const getSyncStatus = async () => {
     const response = await api.get("/api/sync/status");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get sync status error:", error);
+    __DEV__ && logger.error("Get sync status error:", error);
     throw error;
   }
 };
@@ -534,7 +535,7 @@ export const getSyncStats = async () => {
     const response = await api.get("/api/sync/stats");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get sync stats error:", error);
+    __DEV__ && logger.error("Get sync stats error:", error);
     throw error;
   }
 };
@@ -544,7 +545,7 @@ export const triggerManualSync = async () => {
     const response = await api.post("/api/sync/trigger");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Trigger manual sync error:", error);
+    __DEV__ && logger.error("Trigger manual sync error:", error);
     throw error;
   }
 };
@@ -554,7 +555,7 @@ export const getAvailableReports = async () => {
     const response = await api.get("/api/admin/control/reports/available");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get available reports error:", error);
+    __DEV__ && logger.error("Get available reports error:", error);
     throw error;
   }
 };
@@ -562,7 +563,7 @@ export const getAvailableReports = async () => {
 export type AdminControlReportFormat = "json" | "csv" | "excel";
 
 export type GenerateAdminControlReportResult =
-  | { kind: "json"; data: any }
+  | { kind: "json"; data: unknown }
   | { kind: "file"; blob: Blob; fileName: string; contentType?: string }
   | {
       kind: "file";
@@ -593,7 +594,7 @@ export const generateReport = async (
 
     const response = await api.post("/api/admin/control/reports/generate", null, {
       params,
-      responseType: responseType as any,
+      responseType: responseType as "json" | "blob" | "arraybuffer",
     });
 
     const header =
@@ -625,7 +626,7 @@ export const generateReport = async (
       contentType,
     };
   } catch (error: unknown) {
-    __DEV__ && console.error("Generate report error:", error);
+    __DEV__ && logger.error("Generate report error:", error);
     throw error;
   }
 };
@@ -635,7 +636,7 @@ export const getSqlServerConfig = async () => {
     const response = await api.get("/api/admin/control/sql-server/config");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get SQL Server config error:", error);
+    __DEV__ && logger.error("Get SQL Server config error:", error);
     throw error;
   }
 };
@@ -645,7 +646,7 @@ export const updateSqlServerConfig = async (config: Record<string, unknown>) => 
     const response = await api.post("/api/admin/control/sql-server/config", config);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Update SQL Server config error:", error);
+    __DEV__ && logger.error("Update SQL Server config error:", error);
     throw error;
   }
 };
@@ -655,7 +656,7 @@ export const testSqlServerConnection = async (config?: Record<string, unknown>) 
     const response = await api.post("/api/admin/control/sql-server/test", config || {});
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Test SQL Server connection error:", error);
+    __DEV__ && logger.error("Test SQL Server connection error:", error);
     throw error;
   }
 };
@@ -666,7 +667,7 @@ export const getSecuritySummary = async () => {
     const response = await api.get("/api/admin/security/summary");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get security summary error:", error);
+    __DEV__ && logger.error("Get security summary error:", error);
     throw error;
   }
 };
@@ -687,7 +688,7 @@ export const getFailedLogins = async (
     const response = await api.get(`/api/admin/security/failed-logins?${params.toString()}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get failed logins error:", error);
+    __DEV__ && logger.error("Get failed logins error:", error);
     throw error;
   }
 };
@@ -697,7 +698,7 @@ export const getSuspiciousActivity = async (hours: number = 24) => {
     const response = await api.get(`/api/admin/security/suspicious-activity?hours=${hours}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get suspicious activity error:", error);
+    __DEV__ && logger.error("Get suspicious activity error:", error);
     throw error;
   }
 };
@@ -709,7 +710,7 @@ export const getSecuritySessions = async (limit: number = 100, activeOnly: boole
     );
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get security sessions error:", error);
+    __DEV__ && logger.error("Get security sessions error:", error);
     throw error;
   }
 };
@@ -730,7 +731,7 @@ export const getSecurityAuditLog = async (
     const response = await api.get(`/api/admin/security/audit-log?${params.toString()}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get security audit log error:", error);
+    __DEV__ && logger.error("Get security audit log error:", error);
     throw error;
   }
 };
@@ -740,7 +741,7 @@ export const getIpTracking = async (hours: number = 24) => {
     const response = await api.get(`/api/admin/security/ip-tracking?hours=${hours}`);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get IP tracking error:", error);
+    __DEV__ && logger.error("Get IP tracking error:", error);
     throw error;
   }
 };
@@ -774,7 +775,7 @@ export const getSystemParameters = async () => {
     const response = await api.get("/api/admin/settings/parameters");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get system parameters error:", error);
+    __DEV__ && logger.error("Get system parameters error:", error);
     throw error;
   }
 };
@@ -784,7 +785,7 @@ export const updateSystemParameters = async (parameters: Record<string, unknown>
     const response = await api.put("/api/admin/settings/parameters", parameters);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Update system parameters error:", error);
+    __DEV__ && logger.error("Update system parameters error:", error);
     throw error;
   }
 };
@@ -794,7 +795,7 @@ export const getSettingsCategories = async () => {
     const response = await api.get("/api/admin/settings/categories");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get settings categories error:", error);
+    __DEV__ && logger.error("Get settings categories error:", error);
     throw error;
   }
 };
@@ -807,7 +808,7 @@ export const resetSettingsToDefaults = async (category?: string) => {
     });
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Reset settings error:", error);
+    __DEV__ && logger.error("Reset settings error:", error);
     throw error;
   }
 };
@@ -818,7 +819,7 @@ export const getSystemSettings = async () => {
     const response = await api.get("/api/admin/settings/parameters");
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Get system settings error:", error);
+    __DEV__ && logger.error("Get system settings error:", error);
     throw error;
   }
 };
@@ -828,7 +829,7 @@ export const updateSystemSettings = async (settings: Record<string, unknown>) =>
     const response = await api.put("/api/admin/settings/parameters", settings);
     return response.data;
   } catch (error: unknown) {
-    __DEV__ && console.error("Update system settings error:", error);
+    __DEV__ && logger.error("Update system settings error:", error);
     throw error;
   }
 };

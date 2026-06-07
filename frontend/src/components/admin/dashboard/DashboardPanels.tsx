@@ -11,12 +11,71 @@ import { SimplePieChart } from "@/components/charts/SimplePieChart";
 import { DateRangePicker } from "@/components/forms/DateRangePicker";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 
+export type ServiceKey = "backend" | "frontend" | string;
+
+export interface DashboardServiceStatus {
+  running?: boolean;
+  pid?: number;
+  name?: string;
+  port?: number;
+  health?: string;
+  [key: string]: unknown;
+}
+
+export interface DashboardSystemStats {
+  active_sessions?: number;
+  total_sessions?: number;
+  total_users?: number;
+  total_items?: number;
+  [key: string]: unknown;
+}
+
+export interface DashboardIssue {
+  severity?: "critical" | "warning" | "info" | string;
+  title?: string;
+  type?: string;
+  description?: string;
+  message?: string;
+  timestamp?: string | number | Date;
+  auto_fix_available?: boolean;
+  [key: string]: unknown;
+}
+
+export interface DiagnosisHealth {
+  health_score?: number;
+  total_issues?: number;
+  critical_issues?: number;
+  auto_fixable_issues?: number;
+  issues?: DashboardIssue[];
+  recommendations?: string[];
+}
+
+export type ServicesStatusMap = Record<ServiceKey, DashboardServiceStatus>;
+
+export interface DashboardMetrics {
+  request_metrics?: {
+    avg_response_time?: number;
+    requests_per_minute?: number;
+    error_rate?: number;
+  };
+  [key: string]: unknown;
+}
+
+export interface DashboardReportSummary {
+  id: string;
+  name?: string;
+  title?: string;
+  description?: string;
+  date?: string;
+  [key: string]: unknown;
+}
+
 type DashboardTab = "overview" | "monitoring" | "reports" | "analytics" | "diagnosis";
 
 interface DashboardTabBarProps {
   activeTab: DashboardTab;
   onChangeTab: (tab: DashboardTab) => void;
-  styles: any;
+  styles: Record<string, any>;
   tabs: DashboardTab[];
 }
 
@@ -49,12 +108,12 @@ interface DashboardOverviewPanelProps {
     title: string;
   }[];
   healthScore: number | null;
-  issues: any[];
-  servicesStatus: any;
+  issues: DashboardIssue[];
+  servicesStatus: ServicesStatusMap | null;
   sessionChartData: { x: string; y: number }[];
   statusChartData: { color: string; label: string; value: number }[];
-  styles: any;
-  systemStats: any;
+  styles: Record<string, any>;
+  systemStats: DashboardSystemStats | null;
   uiTokens: ThemeTokens;
 }
 
@@ -77,7 +136,12 @@ export function DashboardOverviewPanel({
     >
       <View style={styles.quickStatsRow}>
         <ModernCard variant="outlined" elevation="none" style={styles.quickStatCard}>
-          <View style={styles.quickStatIcon}>
+          <View
+            style={[
+              styles.quickStatIcon,
+              { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.12) },
+            ]}
+          >
             <Ionicons name="people" size={24} color={uiTokens.colors.accent} />
           </View>
           <Text style={styles.quickStatValue}>{systemStats?.active_sessions || 0}</Text>
@@ -110,9 +174,9 @@ export function DashboardOverviewPanel({
           </View>
           <Text style={styles.quickStatValue}>
             {servicesStatus
-              ? Object.values(servicesStatus).filter((service: any) => service.running).length
+              ? Object.values(servicesStatus ?? {}).filter((service) => Boolean(service.running)).length
               : 0}
-            /4
+            /{servicesStatus ? Object.keys(servicesStatus).length : 0}
           </Text>
           <Text style={styles.quickStatLabel}>Services Running</Text>
         </ModernCard>
@@ -190,11 +254,11 @@ export function DashboardOverviewPanel({
 }
 
 interface DashboardMonitoringPanelProps {
-  metrics: any;
-  onServiceToggle: (serviceKey: "backend" | "frontend", service: any) => void;
+  metrics: DashboardMetrics | null;
+  onServiceToggle: (serviceKey: "backend" | "frontend", service: DashboardServiceStatus) => void;
   serviceActionLoading: string | null;
-  servicesStatus: any;
-  styles: any;
+  servicesStatus: ServicesStatusMap | null;
+  styles: Record<string, any>;
   uiTokens: ThemeTokens;
 }
 
@@ -216,7 +280,7 @@ export function DashboardMonitoringPanel({
         <Text style={styles.sectionTitle}>Services Status</Text>
         <View style={styles.servicesList}>
           {servicesStatus &&
-            Object.entries(servicesStatus).map(([key, service]: [string, any]) => (
+            Object.entries(servicesStatus).map(([key, service]: [string, DashboardServiceStatus]) => (
               <View key={key} style={styles.serviceRow} testID={`service-row-${key}`}>
                 <View style={styles.serviceInfo}>
                   <View
@@ -321,9 +385,9 @@ export function DashboardMonitoringPanel({
 
 interface DashboardReportsPanelProps {
   onOpenReport: (reportId: string) => void;
-  reports: any[];
+  reports: DashboardReportSummary[];
   reportsLoading: boolean;
-  styles: any;
+  styles: Record<string, any>;
   uiTokens: ThemeTokens;
 }
 
@@ -365,7 +429,7 @@ export function DashboardReportsPanel({
           </ModernCard>
         ) : (
           reports.map((report, index) => (
-            <ModernCard key={index} variant="outlined" elevation="none" style={styles.reportCard}>
+            <ModernCard key={report.id || index} variant="outlined" elevation="none" style={styles.reportCard}>
               <View style={styles.reportHeader}>
                 <View style={styles.reportIcon}>
                   <Ionicons
@@ -375,13 +439,13 @@ export function DashboardReportsPanel({
                   />
                 </View>
                 <View style={styles.reportInfo}>
-                  <Text style={styles.reportTitle}>{report.name}</Text>
+                  <Text style={styles.reportTitle}>{report.title || report.name}</Text>
                   <Text style={styles.reportDesc}>{report.description}</Text>
                 </View>
               </View>
               <AnimatedPressable
                 style={styles.generateButton}
-                onPress={() => onOpenReport(report.id)}
+                onPress={() => report.id && onOpenReport(report.id)}
                 testID={`generate-report-${report.id}`}
               >
                 <Text style={styles.generateButtonText}>Generate Report</Text>
@@ -403,7 +467,7 @@ interface DashboardAnalyticsPanelProps {
   analyticsDateRange: { end: Date; start: Date };
   onChangeDateRange: (next: { end: Date; start: Date }) => void;
   sessionChartData: { x: string; y: number }[];
-  styles: any;
+  styles: Record<string, any>;
 }
 
 export function DashboardAnalyticsPanel({
@@ -439,9 +503,9 @@ export function DashboardAnalyticsPanel({
 }
 
 interface DashboardDiagnosisPanelProps {
-  diagnosisHealth: any;
-  onAutoFix: (issue: any) => void;
-  styles: any;
+  diagnosisHealth: DiagnosisHealth | null;
+  onAutoFix: (issue: DashboardIssue) => void;
+  styles: Record<string, any>;
   uiTokens: ThemeTokens;
 }
 
@@ -489,8 +553,8 @@ export function DashboardDiagnosisPanel({
 
         <View style={styles.issuesList}>
           {diagnosisHealth?.issues && diagnosisHealth.issues.length > 0 ? (
-            diagnosisHealth.issues.map((issue: any, index: number) => (
-              <View key={index} style={styles.issueRow}>
+            diagnosisHealth.issues.map((issue: DashboardIssue, index: number) => (
+              <View key={`${issue.title ?? "issue"}-${index}`} style={styles.issueRow}>
                 <View
                   style={[
                     styles.issueIcon,
@@ -528,7 +592,7 @@ export function DashboardDiagnosisPanel({
                 </View>
                 <View style={styles.issueTime}>
                   <Text style={styles.timeText}>
-                    {new Date(issue.timestamp).toLocaleTimeString([], {
+                    {new Date(issue.timestamp || Date.now()).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
@@ -544,10 +608,10 @@ export function DashboardDiagnosisPanel({
           )}
         </View>
 
-        {diagnosisHealth?.recommendations?.length > 0 && (
+        {(diagnosisHealth?.recommendations?.length ?? 0) > 0 && (
           <View style={styles.recommendationsCard}>
             <Text style={styles.recommendationsTitle}>Recommended Actions</Text>
-            {diagnosisHealth.recommendations.map((recommendation: string, index: number) => (
+            {diagnosisHealth?.recommendations?.map((recommendation: string, index: number) => (
               <View key={`${recommendation}-${index}`} style={styles.recommendationRow}>
                 <Ionicons
                   name="arrow-forward-circle"

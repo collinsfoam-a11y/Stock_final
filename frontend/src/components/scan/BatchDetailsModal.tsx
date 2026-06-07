@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -69,7 +70,7 @@ export const BatchDetailsModal: React.FC<BatchDetailsModalProps> = ({
         setBatches([]);
       }
     } catch (error) {
-      console.error("Error fetching batches:", error);
+      logger.error("Error fetching batches:", error);
       Alert.alert("Error", "Failed to fetch batch details");
       setBatches([]);
     } finally {

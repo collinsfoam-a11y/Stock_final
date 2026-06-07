@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Sync Status Bar Component
  * Shows sync status, queue count, and allows manual sync
@@ -52,7 +53,7 @@ export const SyncStatusBar: React.FC = () => {
     try {
       const result = await forceSync({
         onProgress: (current, total) => {
-          console.log(`Sync: ${current}/${total}`);
+          logger.debug(`Sync: ${current}/${total}`);
         },
       });
 
@@ -68,7 +69,7 @@ export const SyncStatusBar: React.FC = () => {
         syncResultTimerRef.current = null;
       }, 3000);
     } catch (error: any) {
-      console.error("Sync error:", error);
+      logger.error("Sync error:", error);
       setSyncResult({
         success: 0,
         failed: 0,

@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Enhanced Database API - Frontend service for advanced database operations
  */
@@ -85,7 +86,7 @@ export class EnhancedDatabaseAPI {
       return response.data;
     } catch (error: unknown) {
       const apiError = error as ApiError;
-      __DEV__ && console.error("Enhanced barcode lookup failed:", apiError);
+      __DEV__ && logger.error("Enhanced barcode lookup failed:", apiError);
       throw new Error(
         `Enhanced lookup failed: ${apiError.response?.data?.detail || apiError.message}`,
       );
@@ -126,7 +127,7 @@ export class EnhancedDatabaseAPI {
       return response.data;
     } catch (error: unknown) {
       const apiError = error as ApiError;
-      __DEV__ && console.error("Advanced search failed:", apiError);
+      __DEV__ && logger.error("Advanced search failed:", apiError);
       throw new Error(
         `Advanced search failed: ${apiError.response?.data?.detail || apiError.message}`,
       );
@@ -142,7 +143,7 @@ export class EnhancedDatabaseAPI {
       return response.data;
     } catch (error: unknown) {
       const apiError = error as ApiError;
-      __DEV__ && console.error("Database health check failed:", apiError);
+      __DEV__ && logger.error("Database health check failed:", apiError);
       throw new Error(
         `Health check failed: ${apiError.response?.data?.detail || apiError.message}`,
       );
@@ -158,7 +159,7 @@ export class EnhancedDatabaseAPI {
       return response.data;
     } catch (error: unknown) {
       const apiError = error as ApiError;
-      __DEV__ && console.error("Performance stats failed:", apiError);
+      __DEV__ && logger.error("Performance stats failed:", apiError);
       throw new Error(
         `Performance stats failed: ${apiError.response?.data?.detail || apiError.message}`,
       );
@@ -178,7 +179,7 @@ export class EnhancedDatabaseAPI {
       return response.data;
     } catch (error: unknown) {
       const apiError = error as ApiError;
-      __DEV__ && console.error("Realtime sync failed:", apiError);
+      __DEV__ && logger.error("Realtime sync failed:", apiError);
       throw new Error(
         `Realtime sync failed: ${apiError.response?.data?.detail || apiError.message}`,
       );
@@ -194,7 +195,7 @@ export class EnhancedDatabaseAPI {
       return response.data;
     } catch (error: unknown) {
       const apiError = error as ApiError;
-      __DEV__ && console.error("Database optimization failed:", apiError);
+      __DEV__ && logger.error("Database optimization failed:", apiError);
       throw new Error(
         `Database optimization failed: ${apiError.response?.data?.detail || apiError.message}`,
       );
@@ -253,7 +254,7 @@ export class EnhancedDatabaseAPI {
       };
     } catch (error: unknown) {
       const err = error as Error;
-      __DEV__ && console.error("Data flow test failed:", err);
+      __DEV__ && logger.error("Data flow test failed:", err);
       throw new Error(`Data flow test failed: ${err.message}`);
     }
   }

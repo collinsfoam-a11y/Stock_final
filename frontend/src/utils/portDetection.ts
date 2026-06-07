@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Dynamic Port Detection Utility
  * Automatically detects which port the frontend is running on
@@ -24,7 +25,7 @@ const parsePortNumber = (value?: string | null): number | null => {
 
 const logPortSelection = (message: string, port: number) => {
   if (__DEV__) {
-    console.log(`📡 ${message}: ${port}`);
+    logger.debug(`📡 ${message}: ${port}`);
   }
 };
 

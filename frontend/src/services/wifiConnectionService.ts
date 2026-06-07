@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * WiFi Connection Monitoring Service
  * Tracks WiFi status and notifies on disconnection
@@ -55,11 +56,11 @@ export class WiFiConnectionService {
       const Notifications = await WiFiConnectionService.getNotificationsModule();
       const permissions = await Notifications.requestPermissionsAsync();
       if (!permissions.granted) {
-        console.warn("Notification permissions not granted for WiFi service");
+        logger.warn("Notification permissions not granted for WiFi service");
       }
 
       this.initialized = true;
-      console.log("WiFi Connection Service initialized");
+      logger.debug("WiFi Connection Service initialized");
     } catch (error) {
       errorReporter.report(
         error instanceof Error ? error : new Error(String(error)),
@@ -162,7 +163,7 @@ export class WiFiConnectionService {
         trigger: null,
       });
 
-      console.warn(`WiFi disconnected: ${message}`);
+      logger.warn(`WiFi disconnected: ${message}`);
     } catch (error) {
       errorReporter.report(
         error instanceof Error ? error : new Error(String(error)),
@@ -188,7 +189,7 @@ export class WiFiConnectionService {
         trigger: null,
       });
 
-      console.log(`WiFi reconnected: ${message}`);
+      logger.debug(`WiFi reconnected: ${message}`);
     } catch (error) {
       errorReporter.report(
         error instanceof Error ? error : new Error(String(error)),

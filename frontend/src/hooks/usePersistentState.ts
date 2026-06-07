@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * usePersistentState Hook
  *
@@ -41,7 +42,7 @@ export function usePersistentState<T>(
         }
       } catch (error) {
         if (__DEV__) {
-          console.warn(
+          logger.warn(
             `Failed to load persistent state for key "${key}":`,
             error,
           );
@@ -73,7 +74,7 @@ export function usePersistentState<T>(
         AsyncStorage.setItem(storageKey, JSON.stringify(resolvedValue)).catch(
           (error) => {
             if (__DEV__) {
-              console.warn(`Failed to persist state for key "${key}":`, error);
+              logger.warn(`Failed to persist state for key "${key}":`, error);
             }
           },
         );

@@ -1,3 +1,4 @@
+import { logger } from '@/services/logging';
 import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
 import { Platform } from "react-native";
@@ -6,9 +7,9 @@ import { syncQueue } from "./syncQueue";
 
 const BACKGROUND_SYNC_TASK = "BACKGROUND_SYNC_TASK";
 
-const logInfo = (...args: unknown[]) => {
+const logInfo = (message: string, context?: any) => {
   if (__DEV__) {
-    console.log(...args);
+    logger.debug(message, context);
   }
 };
 
@@ -20,11 +21,11 @@ if (Platform.OS !== "web" && TaskManager?.defineTask) {
     try {
       logInfo("Background sync task started");
       const result = await syncQueue.performFullSync();
-      logInfo("Background sync task completed:", result);
+      logInfo("Background sync task completed", result);
 
       return BackgroundTask.BackgroundTaskResult.Success;
     } catch (error) {
-      console.error("Background sync task failed:", error);
+      logger.error("Background sync task failed:", error);
       return BackgroundTask.BackgroundTaskResult.Failed;
     }
   });
@@ -77,7 +78,7 @@ export const registerBackgroundSync = async () => {
 
     logInfo("Background sync task registered");
   } catch (error) {
-    console.error("Failed to register background sync task:", error);
+    logger.error("Failed to register background sync task:", error);
   }
 };
 
@@ -91,6 +92,6 @@ export const unregisterBackgroundSync = async () => {
     await BackgroundTask.unregisterTaskAsync(BACKGROUND_SYNC_TASK);
     logInfo("Background sync task unregistered");
   } catch (error) {
-    console.error("Failed to unregister background sync task:", error);
+    logger.error("Failed to unregister background sync task:", error);
   }
 };

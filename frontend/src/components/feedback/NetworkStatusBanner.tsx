@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useNetworkStore } from "../../store/networkStore";
@@ -35,9 +36,9 @@ export const NetworkStatusBanner: React.FC<NetworkStatusBannerProps> = ({ onSync
         onSyncPress();
       }
 
-      __DEV__ && console.log("Sync completed:", results);
+      __DEV__ && logger.debug("Sync completed:", results);
     } catch (error) {
-      __DEV__ && console.error("Sync failed:", error);
+      __DEV__ && logger.error("Sync failed:", error);
     } finally {
       setSyncing(false);
     }

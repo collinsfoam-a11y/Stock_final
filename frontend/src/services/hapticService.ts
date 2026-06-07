@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Haptic Feedback Service
  * Provides haptic feedback for scanner and other UI interactions
@@ -109,7 +110,7 @@ export class HapticService {
         await haptics.notification("success");
       }, 100);
     } catch (error) {
-      __DEV__ && console.warn("Scan success haptic failed:", error);
+      __DEV__ && logger.warn("Scan success haptic failed:", error);
     }
   }
 
@@ -124,7 +125,7 @@ export class HapticService {
       await haptics.impact(intensity);
       await haptics.notification("error");
     } catch (error) {
-      __DEV__ && console.warn("Scan error haptic failed:", error);
+      __DEV__ && logger.warn("Scan error haptic failed:", error);
     }
   }
 
@@ -163,7 +164,7 @@ export class HapticService {
       // On iOS, use impact. On Android, use notification.
       await this.notification("success");
     } catch (error) {
-      __DEV__ && console.warn("Vibrate failed:", error);
+      __DEV__ && logger.warn("Vibrate failed:", error);
     }
   }
 }

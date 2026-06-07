@@ -470,6 +470,7 @@ const StaffHome = React.memo(function StaffHome() {
               onPress={() => router.push("/notifications" as any)}
               accessibilityRole="button"
               accessibilityLabel={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
+              accessibilityState={{ disabled: false }}
             >
               <Ionicons
                 name={unreadCount > 0 ? "notifications" : "notifications-outline"}
@@ -490,6 +491,7 @@ const StaffHome = React.memo(function StaffHome() {
               onPress={() => router.push("/staff/settings" as any)}
               accessibilityRole="button"
               accessibilityLabel="Settings"
+              accessibilityState={{ disabled: false }}
             >
               <Ionicons name="settings-outline" size={20} color={uiTokens.colors.textSecondary} />
             </TouchableOpacity>
@@ -501,6 +503,7 @@ const StaffHome = React.memo(function StaffHome() {
               onPress={handleLogout}
               accessibilityRole="button"
               accessibilityLabel="Sign out"
+              accessibilityState={{ disabled: false }}
             >
               <Ionicons name="log-out-outline" size={20} color={uiTokens.colors.error} />
             </TouchableOpacity>
@@ -550,8 +553,10 @@ const StaffHome = React.memo(function StaffHome() {
                 isActive && { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.1), borderColor: uiTokens.colors.accent },
               ]}
               onPress={() => setActiveTab(tab)}
+              hitSlop={HIT_SLOP}
               accessibilityRole="tab"
-              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={`${tab === "active" ? "Active" : "History"} sessions tab`}
+              accessibilityState={{ selected: isActive, disabled: false }}
             >
               <Text style={[s.tabText, { color: isActive ? uiTokens.colors.accent : uiTokens.colors.textSecondary }]}>
                 {tab === "active" ? "Active" : "History"}
@@ -579,7 +584,7 @@ const StaffHome = React.memo(function StaffHome() {
           />
         }
       >
-        <Animated.View entering={prefersReducedMotion ? undefined : FadeInDown.duration(400)}>
+        <Animated.View entering={prefersReducedMotion ? undefined : FadeInDown.duration(uiTokens.motion.normal)}>
           {/* Distinct loading / error states so an in-flight or failed fetch is
               never mistaken for a genuinely empty list. */}
           {sessions.length === 0 && sessionsLoading ? (
@@ -662,6 +667,7 @@ const StaffHome = React.memo(function StaffHome() {
               onPress={resetModal}
               accessibilityRole="button"
               accessibilityLabel="Close"
+              accessibilityState={{ disabled: false }}
             >
               <Ionicons name="close" size={20} color={uiTokens.colors.textSecondary} />
             </TouchableOpacity>
@@ -718,8 +724,10 @@ const StaffHome = React.memo(function StaffHome() {
                       },
                     ]}
                     onPress={() => { setLocationType(zone.zone_name); setSelectedFloor(null); }}
+                    hitSlop={HIT_SLOP}
                     accessibilityRole="radio"
-                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={`Location ${zone.zone_name}`}
+                    accessibilityState={{ selected: active, disabled: false }}
                   >
                     <Ionicons
                       name={active ? "location" : "location-outline"}
@@ -736,7 +744,7 @@ const StaffHome = React.memo(function StaffHome() {
 
             {/* Floor chips */}
             {locationType && (
-              <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(220)}>
+              <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(uiTokens.motion.fast)}>
                 <Text style={[s.sectionLabel, { color: uiTokens.colors.textSecondary }]}>Select Floor / Area</Text>
                 <View style={s.chips}>
                   {warehouses.map((wh) => {
@@ -754,8 +762,10 @@ const StaffHome = React.memo(function StaffHome() {
                           },
                         ]}
                         onPress={() => setSelectedFloor(wh.warehouse_name)}
+                        hitSlop={HIT_SLOP}
                         accessibilityRole="radio"
-                        accessibilityState={{ selected: active }}
+                        accessibilityLabel={`Floor or area ${wh.warehouse_name}`}
+                        accessibilityState={{ selected: active, disabled: false }}
                       >
                         <Ionicons
                           name={active ? "layers" : "layers-outline"}
@@ -774,7 +784,7 @@ const StaffHome = React.memo(function StaffHome() {
 
             {/* Rack input */}
             {selectedFloor && (
-              <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(220)}>
+              <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(uiTokens.motion.fast)}>
                 <ModernInput
                   label="Rack / Shelf Number"
                   placeholder="e.g. A-123"
@@ -825,7 +835,7 @@ const createStyles = (t: ReturnType<typeof useUiTokens>) =>
     badge: {
       position: "absolute", top: -4, right: -4,
       minWidth: 16, height: 16, borderRadius: radius.full,
-      paddingHorizontal: 3, alignItems: "center", justifyContent: "center",
+      paddingHorizontal: gap.xs, alignItems: "center", justifyContent: "center",
     },
     badgeText: { color: t.colors.surfaceElevated, fontSize: font.size.micro, fontWeight: font.weight.bold },
 
@@ -882,7 +892,7 @@ const createStyles = (t: ReturnType<typeof useUiTokens>) =>
 
     statusPill: {
       flexDirection: "row", alignItems: "center", gap: gap.xs,
-      paddingHorizontal: gap.sm, paddingVertical: 4,
+      paddingHorizontal: gap.sm, paddingVertical: gap.xs,
       borderRadius: radius.sm, borderWidth: 1, marginLeft: gap.sm,
     },
     statusDot: { width: 6, height: 6, borderRadius: radius.full },
@@ -898,7 +908,7 @@ const createStyles = (t: ReturnType<typeof useUiTokens>) =>
     statDivider: { width: 1 },
 
     // ── Empty state ───────────────────────────────────────────────────────────
-    empty:        { alignItems: "center", justifyContent: "center", paddingVertical: 56 },
+    empty:        { alignItems: "center", justifyContent: "center", paddingVertical: touch.min },
     emptyIconWrap:{
       width: 72, height: 72, borderRadius: radius["2xl"],
       alignItems: "center", justifyContent: "center", marginBottom: gap.lg,

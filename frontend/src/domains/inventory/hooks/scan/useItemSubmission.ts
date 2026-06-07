@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import { useState } from "react";
 import { Alert } from "react-native";
 import * as Haptics from "expo-haptics";
@@ -143,7 +144,7 @@ export const useItemSubmission = ({
       }
       return false;
     } catch (error) {
-      console.warn("Error checking item counted:", error);
+      logger.warn("Error checking item counted:", error);
       return false;
     }
   };

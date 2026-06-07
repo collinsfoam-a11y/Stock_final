@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * CSV Export Utility
  * Helper functions for exporting data to CSV
@@ -17,7 +18,7 @@ export const downloadCSV = (csvContent: string, filename: string) => {
     document.body.removeChild(link);
   } else {
     // For mobile, we'll need to use a file system library
-    __DEV__ && console.warn("CSV export not supported on mobile yet");
+    __DEV__ && logger.warn("CSV export not supported on mobile yet");
   }
 };
 

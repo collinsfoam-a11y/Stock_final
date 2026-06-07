@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Notification Service - User notifications and alerts
  * Handles in-app notifications, badges, and alerts
@@ -66,7 +67,7 @@ export class NotificationService {
       }
 
       if (!hasPermission) {
-        __DEV__ && console.warn("Notification permissions not granted");
+        __DEV__ && logger.warn("Notification permissions not granted");
         return;
       }
 

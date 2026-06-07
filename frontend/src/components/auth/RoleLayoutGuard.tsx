@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import React from "react";
 import { Redirect } from "expo-router";
 import { View, ActivityIndicator } from "react-native";
@@ -45,7 +46,7 @@ export function RoleLayoutGuard({
 
   if (!isAllowed) {
     if (__DEV__) {
-      console.warn(
+      logger.warn(
         `⚠️ ${layoutName} rendered for non-allowed user role. ` +
           `allowed=[${allowedRoles.join(", ")}], actual=${user.role}. ` +
           `Redirecting to ${resolvedRedirect}`

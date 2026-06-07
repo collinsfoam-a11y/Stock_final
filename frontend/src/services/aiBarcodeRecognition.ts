@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * AI-Powered Barcode Recognition Service
  * Uses TensorFlow.js for client-side barcode recognition and OCR
@@ -52,7 +53,7 @@ class TensorFlowBarcodeService implements AIBarcodeRecognitionService {
           // Initialize MobileNet for image processing
           this.model = await mobilenet.load();
         } catch (_importError) {
-          console.warn(
+          logger.warn(
             "TensorFlow.js not available, AI features will be limited",
           );
         }
@@ -65,11 +66,11 @@ class TensorFlowBarcodeService implements AIBarcodeRecognitionService {
       }
 
       this.isInitialized = true;
-      console.log("✅ AI Barcode Recognition Service initialized");
+      logger.debug("✅ AI Barcode Recognition Service initialized");
     } catch (error) {
       const typedError =
         error instanceof Error ? error : new Error(String(error));
-      console.warn(
+      logger.warn(
         "⚠️ AI Barcode Recognition Service initialization failed:",
         typedError,
       );
@@ -131,7 +132,7 @@ class TensorFlowBarcodeService implements AIBarcodeRecognitionService {
 
       return result;
     } catch (error) {
-      console.error("Barcode recognition error:", error);
+      logger.error("Barcode recognition error:", error);
       return null;
     }
   }
@@ -176,7 +177,7 @@ class TensorFlowBarcodeService implements AIBarcodeRecognitionService {
           }
         }
       } catch (error) {
-        console.warn(
+        logger.warn(
           "OCR recognition failed (tesseract.js may not be installed):",
           error,
         );
@@ -241,7 +242,7 @@ class TensorFlowBarcodeService implements AIBarcodeRecognitionService {
           img.src = imageUri;
         });
       } catch (error) {
-        console.warn("Image enhancement failed:", error);
+        logger.warn("Image enhancement failed:", error);
         return imageUri;
       }
     }
@@ -301,7 +302,7 @@ export const useAIBarcodeRecognition = () => {
         await initializeAIBarcodeService();
         setIsInitialized(true);
       } catch (error) {
-        console.warn("AI Barcode service initialization failed:", error);
+        logger.warn("AI Barcode service initialization failed:", error);
       }
     };
 

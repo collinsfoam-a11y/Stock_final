@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Theme Context - Global Theme Management
  *
@@ -465,7 +466,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 export const useThemeContext = (): ThemeContextType => {
   const context = useContext(ThemeContext);
   if (!context) {
-    console.warn("useThemeContext called outside ThemeProvider - returning default theme");
+    logger.warn("useThemeContext called outside ThemeProvider - returning default theme");
     return {
       theme: themes.light!,
       themeLegacy: {

@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import React, { useEffect, useState, useRef } from "react";
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Animated } from "react-native";
 import { useRouter } from "expo-router";
@@ -26,7 +27,7 @@ export const RecentScans: React.FC<RecentScansProps> = ({ sessionId, onRefresh }
       const recent = await RecentItemsService.getRecent();
       setItems(recent);
     } catch (error) {
-      console.error("Failed to load recent items", error);
+      logger.error("Failed to load recent items", error);
     } finally {
       setIsLoading(false);
     }

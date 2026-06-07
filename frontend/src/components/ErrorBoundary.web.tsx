@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import React, { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary";
@@ -23,7 +24,7 @@ const ErrorFallback = ({
         errorReporter.report(error, "ErrorBoundary");
       }
     } catch (reportError) {
-      console.error("Error reporting failed:", reportError);
+      logger.error("Error reporting failed:", reportError);
     }
   }, [error]);
 

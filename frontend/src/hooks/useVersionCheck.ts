@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * useVersionCheck Hook
  * Provides version checking and upgrade notification functionality
@@ -63,7 +64,7 @@ export const useVersionCheck = (
     useCallback(async (): Promise<VersionCheckResult | null> => {
       if (!clientVersion || clientVersion === "Unknown") {
         __DEV__ &&
-          console.log("Version check skipped: client version not available");
+          logger.debug("Version check skipped: client version not available");
         return null;
       }
 
@@ -98,7 +99,7 @@ export const useVersionCheck = (
       } catch (err: any) {
         const errorMessage = err.message || "Failed to check for updates";
         setError(errorMessage);
-        __DEV__ && console.error("Version check failed:", err);
+        __DEV__ && logger.error("Version check failed:", err);
         return null;
       } finally {
         setIsChecking(false);

@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Enrichment API Service
  * Frontend service for item data enrichment operations
@@ -68,7 +69,7 @@ export const enrichItem = async (
       updated_at: new Date().toISOString(),
     };
   } catch (error: unknown) {
-    __DEV__ && console.error("Enrichment failed:", error);
+    __DEV__ && logger.error("Enrichment failed:", error);
     throw new Error(toErrorMessage(error, "Failed to enrich item data"));
   }
 };
@@ -92,7 +93,7 @@ export const getMissingFields = async (
       is_complete: Boolean(payload?.is_complete),
     };
   } catch (error: unknown) {
-    __DEV__ && console.error("Failed to get missing fields:", error);
+    __DEV__ && logger.error("Failed to get missing fields:", error);
     throw new Error(toErrorMessage(error, "Failed to get missing fields"));
   }
 };
@@ -129,7 +130,7 @@ export const validateEnrichmentData = async (
       errors: payload?.errors ?? [],
     };
   } catch (error: unknown) {
-    __DEV__ && console.error("Validation failed:", error);
+    __DEV__ && logger.error("Validation failed:", error);
     throw new Error(toErrorMessage(error, "Validation failed"));
   }
 };
@@ -159,7 +160,7 @@ export const getIncompleteItems = async (
       skip,
     };
   } catch (error: unknown) {
-    __DEV__ && console.error("Failed to get incomplete items:", error);
+    __DEV__ && logger.error("Failed to get incomplete items:", error);
     throw new Error(toErrorMessage(error, "Failed to get incomplete items"));
   }
 };
@@ -196,7 +197,7 @@ export const getEnrichmentStats = async (
       top_contributors: [],
     };
   } catch (error: unknown) {
-    __DEV__ && console.error("Failed to get enrichment stats:", error);
+    __DEV__ && logger.error("Failed to get enrichment stats:", error);
     throw new Error(toErrorMessage(error, "Failed to get enrichment stats"));
   }
 };
@@ -218,7 +219,7 @@ export const bulkImportEnrichments = async (
     const response = await apiClient.post(`${ENRICHMENT_BASE}/bulk`, payload);
     return response.data.results;
   } catch (error: unknown) {
-    __DEV__ && console.error("Bulk import failed:", error);
+    __DEV__ && logger.error("Bulk import failed:", error);
     throw new Error(toErrorMessage(error, "Bulk import failed"));
   }
 };

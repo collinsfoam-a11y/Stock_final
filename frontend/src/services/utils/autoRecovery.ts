@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Auto Recovery Service (Frontend)
  * Integrates with AutoErrorFinder for comprehensive error recovery
@@ -53,7 +54,7 @@ export class AutoRecovery {
     }
 
     __DEV__ &&
-      console.error("Auto recovery failed:", {
+      logger.error("Auto recovery failed:", {
         context,
         retryCount: recovery.retryCount,
         error: recovery.error,

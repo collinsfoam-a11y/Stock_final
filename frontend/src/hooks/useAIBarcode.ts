@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * React Hook for AI-Powered Barcode Recognition
  * Provides easy integration of AI barcode scanning in components
@@ -34,7 +35,7 @@ export const useAIBarcode = (): UseAIBarcodeReturn => {
         setIsInitialized(true);
         setError(null);
       } catch (err) {
-        console.warn("AI Barcode service initialization failed:", err);
+        logger.warn("AI Barcode service initialization failed:", err);
         setError(err instanceof Error ? err.message : "Initialization failed");
       }
     };
@@ -86,7 +87,7 @@ export const useAIBarcode = (): UseAIBarcodeReturn => {
       try {
         return await aiBarcodeService.enhanceImage(imageUri);
       } catch (err) {
-        console.warn("Image enhancement failed:", err);
+        logger.warn("Image enhancement failed:", err);
         return imageUri;
       }
     },

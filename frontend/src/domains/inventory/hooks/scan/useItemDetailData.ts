@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Platform } from "react-native";
 
@@ -310,14 +311,14 @@ export const useItemDetailData = ({
 
         setRawVariants(mappedBatches);
       } catch (error) {
-        console.warn("Failed to load batches:", error);
+        logger.warn("Failed to load batches:", error);
         try {
           const results = offlineMode
             ? { items: await localDb.searchItems(item.item_code) }
             : await searchItems(item.item_code);
           setRawVariants((results.items || []) as ItemDetailItem[]);
         } catch (fallbackError) {
-          console.warn("Batch fallback search failed:", fallbackError);
+          logger.warn("Batch fallback search failed:", fallbackError);
           setRawVariants([]);
         }
         setBatchError(

@@ -123,21 +123,22 @@ async function _doFlush(
       } catch (err) {
         const error = err as AxiosError;
         const status = error.response?.status;
-        // Network still down or server unreachable: stop processing, keep remaining
-        if (!error.response) {
+        
+        // SYNC-04 Fix: Align 401/403 with syncService. Suspend flush and leave in queue.
+        if (status === 401 || status === 403) {
+          log.warn("Auth error during flush - suspending queue until re-auth", { status });
           break;
         }
-        // Conflict, validation error, or AUTH error: record and drop this item, continue
-        // We treat 401/403 as fatal for queued items to avoid infinite retry loops
+
+        // Conflict or validation error: record and drop this item, continue
         if (
           status &&
-          (status === 409 || status === 422 || status === 400 || status === 401 || status === 403)
+          (status === 409 || status === 422 || status === 400)
         ) {
           await addConflict(item, error.response?.data);
           processed += 1; // we consider it handled (moved to conflicts)
         } else {
-          // C6 fix: On 5xx server errors, increment retry counter instead of silently dropping.
-          // If max retries exceeded, move to conflicts; otherwise leave in queue for later.
+          // SYNC-05 Fix: On 5xx OR missing response (unreachable), increment retry.
           item.retries = (item.retries || 0) + 1;
           if (item.retries >= 5) {
             await addConflict(item, {
@@ -237,6 +238,12 @@ export function attachOfflineQueueInterceptors(client: AxiosInstance): void {
       // Exclude auth endpoints from offline queue
       // It is dangerous to queue login/auth requests as they can cause loops or security issues
       if (cfg.url && cfg.url.includes("/auth/")) {
+        return Promise.reject(error);
+      }
+
+      // SYNC-02 Fix: Explicitly skip interception if caller requested it
+      // Prevents duplicating domain-managed offline stores like count-lines
+      if ((cfg as any).skipOfflineQueue) {
         return Promise.reject(error);
       }
 

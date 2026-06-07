@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import React from "react";
 import { TouchableOpacity, Text, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -28,7 +29,7 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
       logout()
         .then(() => undefined)
         .catch((error) => {
-          console.error("Logout error:", error);
+          logger.error("Logout error:", error);
           Alert.alert("Error", "Failed to logout. Please try again.");
         })
         .finally(() => {
@@ -53,7 +54,7 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
               setIsLoggingOut(true);
               await logout();
             } catch (error) {
-              console.error("Logout error:", error);
+              logger.error("Logout error:", error);
               Alert.alert("Error", "Failed to logout. Please try again.");
             } finally {
               setIsLoggingOut(false);

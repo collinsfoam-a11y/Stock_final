@@ -138,6 +138,17 @@ const resolveItemName = (item: Item, barcode?: string) => {
 
 const resolveLocationValue = (value?: string | null) => value || "Unknown";
 
+const resolveCanonicalLocationContext = (
+  item: Item,
+  currentFloor?: string | null,
+  currentRack?: string | null
+) => {
+  const floorId = resolveLocationValue(item.floor_id || currentFloor);
+  const rackId = resolveLocationValue(item.rack_id || currentRack);
+  const locationId = resolveLocationValue(item.location_id || item.location || item.warehouse || floorId);
+  return { locationId, floorId, rackId };
+};
+
 const resolveMrpCountedValue = (mrp: string, item: Item) => {
   const parsed = parseFloat(mrp);
   if (!Number.isNaN(parsed) && parsed > 0) return parsed;
@@ -191,6 +202,11 @@ const buildCountLinePayload = (context: SubmissionPayloadContext): CreateCountLi
   const serialEntriesData = getValidSerialEntries(isSerializedItem, serialEntries);
   const photoProofs = resolvePhotoProofs(damagePhoto, itemPhotos);
   const damageQuantities = resolveDamageQuantities(isDamageEnabled, damageType, damageQty);
+  const { locationId, floorId, rackId } = resolveCanonicalLocationContext(
+    item,
+    currentFloor,
+    currentRack
+  );
 
   return {
     session_id: sessionId,
@@ -198,6 +214,9 @@ const buildCountLinePayload = (context: SubmissionPayloadContext): CreateCountLi
     item_code: resolveItemCode(item, barcode),
     item_name: resolveItemName(item, barcode),
     counted_qty: parseFloat(quantity),
+    location_id: locationId,
+    floor_id: floorId,
+    rack_id: rackId,
     floor_no: resolveLocationValue(currentFloor),
     rack_no: resolveLocationValue(currentRack),
     item_condition: condition,

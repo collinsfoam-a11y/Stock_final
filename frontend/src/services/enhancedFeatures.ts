@@ -1,3 +1,4 @@
+import { logger } from '@/services/logging';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Item } from "../types/scan";
 
@@ -17,11 +18,11 @@ type AnalyticsData = Record<string, string | number | boolean | undefined>;
 export const AnalyticsService = {
   trackCount: async (itemCode: string, quantity: number) => {
     // Stub implementation
-    console.log("Tracking count:", itemCode, quantity);
+    logger.debug(`Tracking count: ${itemCode}`, { quantity });
   },
   trackItemScan: async (itemCode: string, itemName: string) => {
     // Stub implementation
-    console.log("Tracking item scan:", itemCode, itemName);
+    logger.debug(`Tracking item scan: ${itemCode}`, { itemName });
   },
   getRecentActivity: async (_sessionId: string): Promise<RecentItem[]> => {
     // Stub implementation - returns recent activity for a session
@@ -29,7 +30,7 @@ export const AnalyticsService = {
   },
   trackEvent: async (eventName: string, data: AnalyticsData) => {
     // Stub implementation
-    console.log("Tracking event:", eventName, data);
+    logger.debug(`Tracking event: ${eventName}`, data);
   },
 };
 
@@ -54,7 +55,7 @@ export const RecentItemsService = {
 
       await AsyncStorage.setItem(RECENT_ITEMS_KEY, JSON.stringify(updated));
     } catch (error) {
-      console.error("Error adding recent item:", error);
+      logger.error("Error adding recent item:", error);
     }
   },
 
@@ -63,7 +64,7 @@ export const RecentItemsService = {
       const items = await AsyncStorage.getItem(RECENT_ITEMS_KEY);
       return items ? JSON.parse(items) : [];
     } catch (error) {
-      console.error("Error getting recent items:", error);
+      logger.error("Error getting recent items:", error);
       return [];
     }
   },
@@ -78,7 +79,7 @@ export const RecentItemsService = {
     try {
       await AsyncStorage.removeItem(RECENT_ITEMS_KEY);
     } catch (error) {
-      console.error("Error clearing recent items:", error);
+      logger.error("Error clearing recent items:", error);
     }
   },
 };

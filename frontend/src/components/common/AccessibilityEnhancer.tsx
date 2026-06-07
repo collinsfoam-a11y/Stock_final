@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import React from "react";
 import {
   View,
@@ -83,13 +84,13 @@ export const AccessibilityUtils = {
   announce: (message: string) => {
     // Implementation would depend on the accessibility library used
     // This is a placeholder for screen reader announcements
-    console.log("Accessibility announcement:", message);
+    logger.debug("Accessibility announcement:", message);
   },
 
   // Focus management
   focus: (elementId: string) => {
     // Implementation would depend on the accessibility library used
-    console.log("Focus on element:", elementId);
+    logger.debug("Focus on element:", elementId);
   },
 
   // Check if screen reader is enabled

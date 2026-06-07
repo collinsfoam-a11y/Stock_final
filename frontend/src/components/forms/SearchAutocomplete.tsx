@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Search Autocomplete Component
  * Enhanced search with dropdown suggestions after 4 characters
@@ -85,7 +86,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
         setResults(response.items);
         setSelectedIndex(-1);
       } catch (error) {
-        __DEV__ && console.error("Search error:", error);
+        __DEV__ && logger.error("Search error:", error);
         setResults([]);
       } finally {
         setIsSearching(false);

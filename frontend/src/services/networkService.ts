@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 import NetInfo from "@react-native-community/netinfo";
 import { flags } from "../constants/flags";
 import { useNetworkStore } from "../store/networkStore";
@@ -33,7 +34,7 @@ function applyNetInfoState(state: {
 
   if (flags.enableNetworkLogging) {
     // Keep logs minimal in production.
-    console.log("[NetInfo]", {
+    logger.debug("[NetInfo]", {
       isConnected,
       isInternetReachable: state.isInternetReachable,
       normalizedReachable: reachable,

@@ -5,6 +5,8 @@
  * Replaces scattered __DEV__ && console.log patterns.
  */
 
+import { captureException } from "./sentry";
+
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface LogEntry {
@@ -45,13 +47,24 @@ const consoleSink: LogSink = (entry) => {
   }
 };
 
-// Production sink - can be extended to send to remote logging service
+// Production sink — logs warnings/errors to console and forwards errors to Sentry.
 const productionSink: LogSink = (entry) => {
-  // In production, only log warnings and errors
+  // In production, only surface warnings and errors.
   if (entry.level === "error" || entry.level === "warn") {
-    // Could integrate with Sentry, LogRocket, etc.
-    // For now, just use console but could be extended
     console[entry.level](entry.message, entry.context ?? "");
+
+    // Forward errors to Sentry in production only (not in dev to avoid noise).
+    if (!isDev && entry.level === "error") {
+      const err =
+        entry.context?.["error"] instanceof Error
+          ? (entry.context["error"] as Error)
+          : new Error(entry.message);
+      captureException(err, {
+        context: entry.module,
+        message: entry.message,
+        ...entry.context,
+      });
+    }
   }
 };
 

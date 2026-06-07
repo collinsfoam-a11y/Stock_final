@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Auto Error Finder Service (Frontend)
  * Automatically detects errors, broken functions, and runtime issues
@@ -196,7 +197,7 @@ export class AutoErrorFinder {
           this.recoveryStats.successful_recoveries++;
           this.recoveryStats.retry_count += retryCount;
           __DEV__ &&
-            console.log(`✅ Auto-recovered after ${retryCount} retries`);
+            logger.debug(`✅ Auto-recovered after ${retryCount} retries`);
         }
 
         this.recoveryStats.total_recoveries++;
@@ -222,13 +223,13 @@ export class AutoErrorFinder {
     if (fallback) {
       try {
         this.recoveryStats.fallback_used++;
-        __DEV__ && console.log("🔄 Using fallback operation");
+        __DEV__ && logger.debug("🔄 Using fallback operation");
         const result = await fallback();
         this.recoveryStats.successful_recoveries++;
         this.updateSuccessRate();
         return { result, success: true, retryCount };
       } catch (error: any) {
-        __DEV__ && console.error("❌ Fallback also failed:", error);
+        __DEV__ && logger.error("❌ Fallback also failed:", error);
         this.recoveryStats.failed_recoveries++;
         this.updateSuccessRate();
         return {
@@ -242,7 +243,7 @@ export class AutoErrorFinder {
 
     // Use default value
     if (defaultValue !== undefined) {
-      __DEV__ && console.log("📋 Using default value");
+      __DEV__ && logger.debug("📋 Using default value");
       this.recoveryStats.successful_recoveries++;
       this.updateSuccessRate();
       return { result: defaultValue, success: true, retryCount };
@@ -306,7 +307,7 @@ export class AutoErrorFinder {
    */
   static clearHistory() {
     this.errorHistory = [];
-    __DEV__ && console.log("📋 Error history cleared");
+    __DEV__ && logger.debug("📋 Error history cleared");
   }
 
   /**

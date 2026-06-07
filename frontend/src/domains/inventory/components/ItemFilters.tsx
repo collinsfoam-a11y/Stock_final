@@ -1,3 +1,4 @@
+﻿import { logger } from '@/services/logging';
 /**
  * Item Filters Component
  * Reusable filter UI for filtering items by category, subcategory, floor, rack, UOM, etc.
@@ -79,7 +80,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
         setFloors(data.floors || []);
         setRacks(data.racks || []);
       } catch (error) {
-        console.error("Failed to load locations", error);
+        logger.error("Failed to load locations", error);
       } finally {
         setLoadingLocations(false);
       }
@@ -97,7 +98,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
         setRackProgress(data);
       }
     } catch (error) {
-      console.error("Failed to load rack progress", error);
+      logger.error("Failed to load rack progress", error);
     } finally {
       setLoadingRacks(false);
     }
