@@ -24,3 +24,7 @@
 ## 2025-05-22 - Enhancing Empty States with Accessible Grouping and Animations
 **Learning:** Empty states benefit from entrance animations (like `FadeIn`) to feel less "stark." For accessibility, grouping the icon, title, and message into a single accessible unit with a descriptive `accessibilityLabel` provides a better experience for screen reader users. However, interactive elements (like action buttons) MUST remain outside this grouping to prevent them from becoming unreachable.
 **Action:** Wrap non-interactive empty state content in a single `accessible={true}` container, but keep action buttons as separate siblings to maintain accessibility tree depth.
+
+## 2024-05-18 - Missing ARIA attributes on PremiumHeader Icon-only buttons
+**Learning:** Found that custom header action buttons in PremiumHeader component (menu, logout, and custom right actions) lacked accessibility roles and labels for screen readers. The inner Ionicons were not hidden from accessibility tree, which is a required standard pattern for icon-only buttons in React Native.
+**Action:** Implemented standard built-in React Native a11y properties directly on the element (accessibilityRole, accessibilityLabel on wrapper; accessibilityElementsHidden, aria-hidden on icon). Will check other custom headers for similar issues.

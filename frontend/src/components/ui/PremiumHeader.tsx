@@ -37,6 +37,7 @@ interface PremiumHeaderProps {
     icon: keyof typeof Ionicons.glyphMap;
     onPress: () => void;
     color?: string;
+    accessibilityLabel?: string;
   };
   style?: ViewStyle;
 }
@@ -102,11 +103,16 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
           style={[styles.actionButton, { backgroundColor: "rgba(99, 102, 241, 0.15)" }]}
           onPress={rightAction.onPress}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={rightAction.accessibilityLabel || "Action"}
         >
           <Ionicons
             name={rightAction.icon}
             size={22}
             color={rightAction.color || theme.colors.primary[400]}
+            accessibilityElementsHidden={true}
+            importantForAccessibility="no"
+            aria-hidden={true}
           />
         </TouchableOpacity>
       );
@@ -118,16 +124,38 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
           style={[styles.actionButton, styles.logoutButton]}
           onPress={onLogout}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Logout"
         >
-          <Ionicons name="log-out-outline" size={22} color={theme.colors.error.main} />
+          <Ionicons
+            name="log-out-outline"
+            size={22}
+            color={theme.colors.error.main}
+            accessibilityElementsHidden={true}
+            importantForAccessibility="no"
+            aria-hidden={true}
+          />
         </TouchableOpacity>
       );
     }
 
     if (onMenuPress) {
       return (
-        <TouchableOpacity style={styles.actionButton} onPress={onMenuPress} activeOpacity={0.7}>
-          <Ionicons name="menu-outline" size={24} color={theme.colors.text.primary} />
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={onMenuPress}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Open menu"
+        >
+          <Ionicons
+            name="menu-outline"
+            size={24}
+            color={theme.colors.text.primary}
+            accessibilityElementsHidden={true}
+            importantForAccessibility="no"
+            aria-hidden={true}
+          />
         </TouchableOpacity>
       );
     }
