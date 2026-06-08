@@ -30,7 +30,7 @@ jobs:
     
     services:
       mongodb:
-        image: mongo:6.0
+        image: mongo:7.0
         ports:
           - 27017:27017
         options: >-
@@ -105,11 +105,12 @@ jobs:
             2>&1 | tee ../test-results.txt
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         if: always()
         with:
           files: backend/coverage.xml
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   # ==========================================
   # Backend Linting & Security
@@ -263,7 +264,7 @@ jobs:
 
     services:
       mongodb:
-        image: mongo:6.0
+        image: mongo:7.0
         ports:
           - 27017:27017
         options: >-
