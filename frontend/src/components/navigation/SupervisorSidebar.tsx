@@ -18,99 +18,9 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuthStore } from "../../store/authStore";
 import { layout, spacing, typography, breakpoints } from "../../styles/globalStyles";
-import { supervisorFeatureFlags } from "../../constants/roleFeatureFlags";
+import { SUPERVISOR_NAV_GROUPS, type SupervisorNavItem } from "./supervisorNavShared";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
-interface SidebarItem {
-  key: string;
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  route: string;
-  badge?: number;
-}
-
-interface SidebarGroup {
-  title: string;
-  items: SidebarItem[];
-}
-
-const SUPERVISOR_GROUPS: SidebarGroup[] = [
-  {
-    title: "Overview",
-    items: [
-      {
-        key: "dashboard",
-        label: "Today",
-        icon: "grid",
-        route: "/supervisor/dashboard",
-      },
-      {
-        key: "sessions",
-        label: "Count Sessions",
-        icon: "cube",
-        route: "/supervisor/sessions",
-      },
-      {
-        key: "variances",
-        label: "Count Differences",
-        icon: "alert-circle",
-        route: "/supervisor/variances",
-      },
-    ],
-  },
-  {
-    title: "Operations",
-    items: [
-      {
-        key: "user-workflows",
-        label: "Team Activity",
-        icon: "git-network",
-        route: "/supervisor/user-workflows",
-      },
-      ...(supervisorFeatureFlags.activityLogs
-        ? [
-            {
-              key: "activity-logs",
-              label: "Activity History",
-              icon: "list",
-              route: "/supervisor/activity-logs",
-            } satisfies SidebarItem,
-          ]
-        : []),
-      ...(supervisorFeatureFlags.offlineQueue
-        ? [
-            {
-              key: "offline-queue",
-              label: "Pending Uploads",
-              icon: "cloud-offline",
-              route: "/supervisor/offline-queue",
-            } satisfies SidebarItem,
-          ]
-        : []),
-      ...(supervisorFeatureFlags.syncConflicts
-        ? [
-            {
-              key: "sync-conflicts",
-              label: "Sync Issues",
-              icon: "sync",
-              route: "/supervisor/sync-conflicts",
-            } satisfies SidebarItem,
-          ]
-        : []),
-    ],
-  },
-  {
-    title: "Settings",
-    items: [
-      {
-        key: "settings",
-        label: "Preferences",
-        icon: "settings",
-        route: "/supervisor/settings",
-      },
-    ],
-  },
-];
 
 interface SupervisorSidebarProps {
   collapsed?: boolean;
@@ -135,7 +45,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
   // On mobile, show as drawer (controlled by parent)
   // On web/tablet, show as persistent sidebar
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
-    new Set(SUPERVISOR_GROUPS.map((g) => g.title))
+    new Set(SUPERVISOR_NAV_GROUPS.map((g) => g.title))
   );
 
   const currentRoute = segments.join("/");
@@ -144,7 +54,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
     return currentRoute === routePath || currentRoute.startsWith(routePath + "/");
   };
 
-  const handleItemPress = (item: SidebarItem) => {
+  const handleItemPress = (item: SupervisorNavItem) => {
     router.push(item.route as any);
   };
 
@@ -266,7 +176,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
         )}
 
         {/* Navigation Groups */}
-        {SUPERVISOR_GROUPS.map((group) => {
+        {SUPERVISOR_NAV_GROUPS.map((group) => {
           const isExpanded = expandedGroups.has(group.title);
 
           return (

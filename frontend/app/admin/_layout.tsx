@@ -12,7 +12,7 @@
 import React from "react";
 import { Redirect, Stack, Slot, useSegments } from "expo-router";
 import { View, StyleSheet, Platform, useWindowDimensions } from "react-native";
-import { AdminSidebar } from "@/components/navigation";
+import { AdminSidebar, MobileNavDrawer } from "@/components/navigation";
 import { RoleLayoutGuard } from "@/components/auth/RoleLayoutGuard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AdminCrashScreen } from "@/components/feedback/AdminCrashScreen";
@@ -79,7 +79,10 @@ export default function AdminLayout() {
             <AdminCrashScreen error={error} resetError={resetError} />
           )}
         >
-          <Stack screenOptions={{ headerShown: false }} />
+          <View style={styles.mobileContainer}>
+            <Stack screenOptions={{ headerShown: false }} />
+            <MobileNavDrawer role="admin" />
+          </View>
         </ErrorBoundary>
       )}
     </RoleLayoutGuard>
@@ -90,6 +93,9 @@ const styles = StyleSheet.create({
   webContainer: {
     flex: 1,
     flexDirection: "row",
+  },
+  mobileContainer: {
+    flex: 1,
   },
   mainContent: {
     flex: 1,
