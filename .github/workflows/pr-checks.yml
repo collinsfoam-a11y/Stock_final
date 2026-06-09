@@ -98,6 +98,10 @@ jobs:
         working-directory: frontend
         run: pnpm run typecheck
 
+      - name: Frontend unit tests (Jest)
+        working-directory: frontend
+        run: npm test -- --ci --maxWorkers=2 --testTimeout=15000
+
       - name: UI governance scanner tests
         working-directory: frontend
         run: npm run governance:ui:test
