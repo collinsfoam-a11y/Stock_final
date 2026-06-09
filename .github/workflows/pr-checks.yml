@@ -122,6 +122,11 @@ jobs:
         working-directory: frontend
         run: npm run deps:guard
 
+      - name: Dead-code report (knip, advisory)
+        working-directory: frontend
+        run: npm run knip
+        continue-on-error: true
+
       - name: Build web
         working-directory: frontend
         run: npm run build:web
