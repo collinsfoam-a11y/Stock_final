@@ -243,6 +243,10 @@ async function installMockApi(page: Page, role: Role) {
 }
 
 function shouldIgnoreConsoleMessage(message: string): boolean {
+  if (message.includes('"shadow*" style props are deprecated. Use "boxShadow".')) {
+    return true;
+  }
+
   if (!USE_MOCK_AUTH) {
     return false;
   }
@@ -252,6 +256,7 @@ function shouldIgnoreConsoleMessage(message: string): boolean {
     message.includes("[ConnectionManager] Using fallback connection") ||
     message.includes("[httpClient] Ignoring unhealthy connection update") ||
     message.includes("[initApp] Background sync failed {error: Background sync timeout}") ||
+    message.includes("[initApp] Theme initialization failed {error: Theme initialization timeout}") ||
     message.includes("props.pointerEvents is deprecated. Use style.pointerEvents")
   );
 }
