@@ -955,6 +955,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.15)",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
+    minHeight: 44, // 44x44 minimum touch target (a11y)
   },
   detectedRowDisabled: {
     opacity: 0.65,
