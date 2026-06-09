@@ -11,10 +11,10 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInUp } from "react-native-reanimated";
 
-import { ModernCard } from "../../../src/components/ui";
-import type { SessionType } from "../../../src/types";
-import type { AppTheme } from "../../../src/theme/themes";
-import { colorWithAlpha } from "../../../src/theme/themeTokens";
+import { ModernCard } from "@/components/ui";
+import type { SessionType } from "@/types";
+import type { AppTheme } from "@/theme/themes";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
 type SessionListItem = {
   id?: string;

@@ -12,9 +12,10 @@ import { Redirect, Stack, Slot, useRouter, useSegments } from "expo-router";
 import { View, Text, StyleSheet, Platform, useWindowDimensions } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { RoleLayoutGuard } from "@/components/auth/RoleLayoutGuard";
-import { SupervisorSidebar } from "@/components/navigation";
+import { AdminSidebar, SupervisorSidebar } from "@/components/navigation";
 import { AnimatedPressable, ModernCard, ScreenContainer } from "@/components/ui";
 import { useSettingsStore } from "@/store/settingsStore";
+import { useAuthStore } from "@/store/authStore";
 import { isSupervisorRouteEnabled } from "@/constants/roleFeatureFlags";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import type { ThemeTokens } from "@/theme/themeTokens";
@@ -61,6 +62,7 @@ export default function SupervisorLayout() {
   const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const isLargeScreen = width >= 1024 && Platform.OS === "web";
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const isAdmin = useAuthStore((state) => state.user?.role === "admin");
   const currentRoute = segmentList[1];
   const isFeatureDisabledRoute = Boolean(currentRoute && !isSupervisorRouteEnabled(currentRoute));
   const isOfflineBlockedRoute = Boolean(
@@ -83,10 +85,17 @@ export default function SupervisorLayout() {
     <RoleLayoutGuard allowedRoles={["supervisor", "admin"]} layoutName="SupervisorLayout">
       {isLargeScreen ? (
         <View style={styles.webContainer}>
-          <SupervisorSidebar
-            collapsed={sidebarCollapsed}
-            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-          />
+          {isAdmin ? (
+            <AdminSidebar
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+            />
+          ) : (
+            <SupervisorSidebar
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+            />
+          )}
           <View
             style={[
               styles.mainContent,
