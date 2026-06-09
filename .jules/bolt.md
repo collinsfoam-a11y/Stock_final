@@ -6,3 +6,6 @@
 ## 2026-06-09 - [MongoDB Aggregation Optimization with $facet]
 **Learning:** Performing multiple `count_documents` and simple `aggregate` queries sequentially on the same collection (like in activity logs or error logs) creates unnecessary network and I/O latency by making multiple database round-trips.
 **Action:** Use MongoDB's `$facet` stage to consolidate these into a single `aggregate` call. This allows the database to process all counts and groupings in parallel during a single pass, significantly reducing overall execution time.
+## 2026-06-09 - [Deprecated React Native Shadow Properties in Expo]
+**Learning:** Using legacy `shadowColor`, `shadowOffset`, `shadowOpacity`, and `shadowRadius` props causes noisy console warnings like `[warning] "shadow*" style props are deprecated. Use "boxShadow".` during E2E tests and runtime, failing strict console message checks.
+**Action:** Always replace them with the standard `boxShadow` property using the `colorWithAlpha` format (e.g., `boxShadow: "0px 2px 6px rgba(0, 0, 0, 0.25)"`). Update both custom style creators like `getTokenShadowStyle` and hardcoded shadow properties in component styles.

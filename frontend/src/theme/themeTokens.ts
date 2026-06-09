@@ -256,12 +256,19 @@ export const getTokenShadowStyle = (
     const height = offset && typeof offset.height === "number" ? offset.height : 0;
 
     if (shadowRadius > 0 || shadowOpacity > 0) {
+
+      const result = { ...base };
+      delete result.shadowColor;
+      delete result.shadowOffset;
+      delete result.shadowOpacity;
+      delete result.shadowRadius;
       return {
-        ...base,
+        ...result,
         boxShadow: `${width}px ${height}px ${shadowRadius}px ${colorWithAlpha(
           shadowColor,
           shadowOpacity
         )}`,
+
       };
     }
   }
