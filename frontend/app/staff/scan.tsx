@@ -654,19 +654,6 @@ const ScanScreen = React.memo(function ScanScreen() {
         rightComponent={
           <View style={styles.headerActions}>
             <TouchableOpacity
-              onPress={() =>
-                router.push({
-                  pathname: "/staff/serial-scanner",
-                  params: sessionId ? { sessionId: String(sessionId) } : undefined,
-                } as never)
-              }
-              style={styles.logoutButton}
-              accessibilityLabel="Open serial scanner"
-              accessibilityRole="button"
-            >
-              <Ionicons name="barcode-outline" size={24} color={uiTokens.colors.accent} />
-            </TouchableOpacity>
-            <TouchableOpacity
               onPress={handleLogout}
               style={styles.logoutButton}
               accessibilityLabel="Log out"
