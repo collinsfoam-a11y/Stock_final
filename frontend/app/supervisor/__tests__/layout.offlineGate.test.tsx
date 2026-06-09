@@ -36,6 +36,8 @@ jest.mock("@/components/auth/RoleLayoutGuard", () => ({
 
 jest.mock("@/components/navigation", () => ({
   SupervisorSidebar: () => null,
+  AdminSidebar: () => null,
+  MobileNavDrawer: () => null,
 }));
 
 jest.mock("@/components/ui", () => {

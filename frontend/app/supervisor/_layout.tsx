@@ -12,7 +12,7 @@ import { Redirect, Stack, Slot, useRouter, useSegments } from "expo-router";
 import { View, Text, StyleSheet, Platform, useWindowDimensions } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { RoleLayoutGuard } from "@/components/auth/RoleLayoutGuard";
-import { AdminSidebar, SupervisorSidebar } from "@/components/navigation";
+import { AdminSidebar, MobileNavDrawer, SupervisorSidebar } from "@/components/navigation";
 import { AnimatedPressable, ModernCard, ScreenContainer } from "@/components/ui";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useAuthStore } from "@/store/authStore";
@@ -124,7 +124,10 @@ export default function SupervisorLayout() {
           uiTokens={uiTokens}
         />
       ) : (
-        <Stack screenOptions={{ headerShown: false }} />
+        <View style={styles.mobileContainer}>
+          <Stack screenOptions={{ headerShown: false }} />
+          <MobileNavDrawer />
+        </View>
       )}
     </RoleLayoutGuard>
   );
@@ -197,6 +200,9 @@ const createStyles = (uiTokens: ThemeTokens) =>
     flex: 1,
     minWidth: 0,
     backgroundColor: uiTokens.colors.background,
+  },
+  mobileContainer: {
+    flex: 1,
   },
   offlineContainer: {
     flex: 1,
