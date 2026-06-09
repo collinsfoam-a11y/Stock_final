@@ -25,6 +25,7 @@ interface ProgressBarProps {
   animated?: boolean;
   indeterminate?: boolean;
   style?: ViewStyle;
+  testID?: string;
 }
 
 const variantColors: Record<ProgressBarVariant, string> = {
@@ -52,6 +53,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   animated = true,
   indeterminate: _indeterminate = false,
   style,
+  testID,
 }) => {
   const progressValue = useSharedValue(0);
   const sizes = sizeStyles[size];
@@ -75,9 +77,20 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   }));
 
   const displayLabel = label || `${Math.round(progress)}%`;
+  const clampedProgress = Math.min(Math.max(progress, 0), 100);
 
   return (
-    <View style={[styles.container, style]}>
+    <View
+      style={[styles.container, style]}
+      testID={testID}
+      accessibilityRole="progressbar"
+      accessibilityValue={{
+        min: 0,
+        max: 100,
+        now: clampedProgress,
+      }}
+      accessibilityLabel={label || "Progress"}
+    >
       {showLabel && (
         <Text
           style={[
