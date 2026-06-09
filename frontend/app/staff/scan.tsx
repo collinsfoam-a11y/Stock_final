@@ -56,6 +56,7 @@ import { FinishRackModal } from "../../src/components/scan/FinishRackModal";
 import { ScanCameraOverlay } from "../../src/components/scan/ScanCameraOverlay";
 import { ScanLookupPanel, type ScanLookupNotice } from "../../src/components/scan/ScanLookupPanel";
 import { ScanStatsCard } from "../../src/components/scan/ScanStatsCard";
+import { ScanMissingSession } from "../../src/components/scan/ScanMissingSession";
 import { styles } from "@/styles/screens/Scan.styles";
 
 import { useAuthStore } from "../../src/store/authStore";
@@ -572,57 +573,7 @@ const ScanScreen = React.memo(function ScanScreen() {
   };
 
   if (!hasValidSessionId) {
-    return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: uiTokens.colors.background }]}
-        edges={["top"]}
-      >
-        <ModernHeader
-          title="Scan Session Required"
-          subtitle="Open scan from an active count session"
-          showBackButton
-          showSettingsButton={false}
-          onBackPress={() => router.replace("/staff/home")}
-        />
-        <View style={styles.missingSessionContainer}>
-          <View
-            style={[
-              styles.missingSessionCard,
-              {
-                backgroundColor: uiTokens.colors.surface,
-                borderColor: uiTokens.colors.border,
-              },
-              scanVisualV2Enabled ? getTokenShadowStyle(uiTokens, "sm") : null,
-            ]}
-          >
-            <Ionicons name="alert-circle-outline" size={32} color={uiTokens.colors.warning} />
-            <Text style={[styles.missingSessionTitle, { color: uiTokens.colors.textPrimary }]}>
-              Session link is incomplete
-            </Text>
-            <Text style={[styles.missingSessionBody, { color: uiTokens.colors.textSecondary }]}>
-              This scan screen needs a valid session link. Start a new session or resume one from
-              Staff Home.
-            </Text>
-            <View style={styles.missingSessionActions}>
-              <ModernButton
-                title="Open Staff Home"
-                onPress={() => router.replace("/staff/home")}
-                variant="primary"
-                fullWidth
-              />
-              {flags.uiAuthRedirectV2 && (
-                <ModernButton
-                  title="Go to Login"
-                  onPress={() => router.replace("/login")}
-                  variant="outline"
-                  fullWidth
-                />
-              )}
-            </View>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
+    return <ScanMissingSession />;
   }
 
   if (isScanning) {
