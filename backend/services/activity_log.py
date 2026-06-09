@@ -164,7 +164,10 @@ class ActivityLogService:
             skip = (page - 1) * page_size
 
             cursor = (
-                self.collection.find(filter_query).sort("timestamp", -1).skip(skip).limit(page_size)
+                self.collection.find(filter_query)
+                .sort("timestamp", -1)
+                .skip(skip)
+                .limit(page_size)
             )
             activities = await cursor.to_list(page_size)
 
@@ -187,10 +190,16 @@ class ActivityLogService:
             logger.error(f"Failed to retrieve activities: {str(e)}")
             raise
 
-    async def get_user_activities(self, username: str, limit: int = 100) -> list[dict[str, Any]]:
+    async def get_user_activities(
+        self, username: str, limit: int = 100
+    ) -> list[dict[str, Any]]:
         """Get recent activities for a specific user"""
         try:
-            cursor = self.collection.find({"user": username}).sort("timestamp", -1).limit(limit)
+            cursor = (
+                self.collection.find({"user": username})
+                .sort("timestamp", -1)
+                .limit(limit)
+            )
             activities = await cursor.to_list(limit)
 
             for activity in activities:
@@ -215,35 +224,61 @@ class ActivityLogService:
                 if end_date:
                     filter_query["timestamp"]["$lte"] = end_date
 
-            # Total activities
-            total = await self.collection.count_documents(filter_query)
-
-            # By status
-            success_count = await self.collection.count_documents(
-                {**filter_query, "status": "success"}
-            )
-            error_count = await self.collection.count_documents({**filter_query, "status": "error"})
-            warning_count = await self.collection.count_documents(
-                {**filter_query, "status": "warning"}
-            )
-
-            # By action (top 10)
-            top_actions_pipeline: list[dict[str, Any]] = [
+            # Optimize: Consolidation of 4 count_documents and 2 aggregate queries into a single aggregation
+            # pipeline using $facet to reduce database round trips significantly.
+            pipeline: list[dict[str, Any]] = [
                 {"$match": filter_query} if filter_query else {"$match": {}},
-                {"$group": {"_id": "$action", "count": {"$sum": 1}}},
-                {"$sort": {"count": -1}},
-                {"$limit": 10},
+                {
+                    "$facet": {
+                        "total": [{"$count": "count"}],
+                        "success": [
+                            {"$match": {"status": "success"}},
+                            {"$count": "count"},
+                        ],
+                        "error": [{"$match": {"status": "error"}}, {"$count": "count"}],
+                        "warning": [
+                            {"$match": {"status": "warning"}},
+                            {"$count": "count"},
+                        ],
+                        "top_actions": [
+                            {"$group": {"_id": "$action", "count": {"$sum": 1}}},
+                            {"$sort": {"count": -1}},
+                            {"$limit": 10},
+                        ],
+                        "top_users": [
+                            {"$group": {"_id": "$user", "count": {"$sum": 1}}},
+                            {"$sort": {"count": -1}},
+                            {"$limit": 10},
+                        ],
+                    }
+                },
             ]
-            top_actions = await self.collection.aggregate(top_actions_pipeline).to_list(10)
 
-            # By user (top 10)
-            top_users_pipeline: list[dict[str, Any]] = [
-                {"$match": filter_query} if filter_query else {"$match": {}},
-                {"$group": {"_id": "$user", "count": {"$sum": 1}}},
-                {"$sort": {"count": -1}},
-                {"$limit": 10},
-            ]
-            top_users = await self.collection.aggregate(top_users_pipeline).to_list(10)
+            results = await self.collection.aggregate(pipeline).to_list(1)
+            result = results[0] if results else {}
+
+            total = (
+                result.get("total", [{"count": 0}])[0].get("count", 0)
+                if result.get("total")
+                else 0
+            )
+            success_count = (
+                result.get("success", [{"count": 0}])[0].get("count", 0)
+                if result.get("success")
+                else 0
+            )
+            error_count = (
+                result.get("error", [{"count": 0}])[0].get("count", 0)
+                if result.get("error")
+                else 0
+            )
+            warning_count = (
+                result.get("warning", [{"count": 0}])[0].get("count", 0)
+                if result.get("warning")
+                else 0
+            )
+            top_actions = result.get("top_actions", [])
+            top_users = result.get("top_users", [])
 
             return {
                 "total": total,
@@ -253,9 +288,12 @@ class ActivityLogService:
                     "warning": warning_count,
                 },
                 "top_actions": [
-                    {"action": item["_id"], "count": item["count"]} for item in top_actions
+                    {"action": item["_id"], "count": item["count"]}
+                    for item in top_actions
                 ],
-                "top_users": [{"user": item["_id"], "count": item["count"]} for item in top_users],
+                "top_users": [
+                    {"user": item["_id"], "count": item["count"]} for item in top_users
+                ],
             }
         except Exception as e:
             logger.error(f"Failed to get statistics: {str(e)}")
