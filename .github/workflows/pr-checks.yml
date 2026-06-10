@@ -124,7 +124,7 @@ jobs:
 
       - name: Dead-code report (knip, advisory)
         working-directory: frontend
-        run: npm run knip
+        run: npm run knip:check
         continue-on-error: true
 
       - name: Build web

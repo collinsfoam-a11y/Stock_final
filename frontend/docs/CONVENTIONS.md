@@ -54,7 +54,7 @@ See `docs/TECH-DEBT.md` for the current list of files over the limit.
 
 ## Dead code
 
-Run `npm run knip` to find unused files, exports, and dependencies. It runs as an
+Run `npm run knip:check` to find unused files, exports, and dependencies. It runs as an
 **advisory** (non-blocking) step in CI. Before adding a new component, check that
 an equivalent isn't already present but unwired.
 
