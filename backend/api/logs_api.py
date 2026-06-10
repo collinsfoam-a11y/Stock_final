@@ -54,12 +54,16 @@ class ActivityLogModel(BaseModel):
 # --- Helpers ---
 
 
-def build_date_query(start_date: Optional[str], end_date: Optional[str]) -> dict[str, Any]:
+def build_date_query(
+    start_date: Optional[str], end_date: Optional[str]
+) -> dict[str, Any]:
     """Build MongoDB date query from ISO strings."""
     date_query: dict[str, Any] = {}
     if start_date:
         try:
-            date_query["$gte"] = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+            date_query["$gte"] = datetime.fromisoformat(
+                start_date.replace("Z", "+00:00")
+            )
         except ValueError:
             pass
     if end_date:
@@ -143,16 +147,42 @@ async def get_error_stats(
     if date_query:
         query["timestamp"] = date_query
 
-    total = await auth_deps.db.error_logs.count_documents(query)
-    unresolved = await auth_deps.db.error_logs.count_documents({**query, "resolved": False})
+    # ⚡ Bolt: Consolidated multiple count_documents and aggregate queries into a single $facet pipeline to reduce DB round-trips
+    # To handle the case where `resolved` is in `query` (which would filter out unresolved items before the facet),
+    # we use a base_query that removes `resolved` for the initial $match.
+    base_query = {k: v for k, v in query.items() if k != "resolved"}
 
-    pipeline = [
-        {"$match": query},
-        {"$group": {"_id": "$severity", "count": {"$sum": 1}}},
+    pipeline: list[dict[str, Any]] = [
+        {"$match": base_query},
+        {
+            "$facet": {
+                # If the original query filtered by resolved, we must apply it to the total and by_severity facets
+                "total": ([{"$match": query}] if "resolved" in query else []) + [{"$count": "count"}],
+                "unresolved": [
+                    {"$match": {"resolved": False}},
+                    {"$count": "count"},
+                ],
+                "by_severity": ([{"$match": query}] if "resolved" in query else []) + [
+                    {"$group": {"_id": "$severity", "count": {"$sum": 1}}},
+                ],
+            }
+        },
     ]
+
+    result = await auth_deps.db.error_logs.aggregate(pipeline).to_list(1)
+
+    total = 0
+    unresolved = 0
     severity_counts = {}
-    async for doc in auth_deps.db.error_logs.aggregate(pipeline):
-        severity_counts[doc["_id"]] = doc["count"]
+
+    if result:
+        facet_data = result[0]
+        total = facet_data["total"][0]["count"] if facet_data.get("total") else 0
+        unresolved = (
+            facet_data["unresolved"][0]["count"] if facet_data.get("unresolved") else 0
+        )
+        for doc in facet_data.get("by_severity", []):
+            severity_counts[doc["_id"]] = doc["count"]
 
     return {
         "total": total,
@@ -268,14 +298,28 @@ async def get_activity_stats(
     if date_query:
         query["timestamp"] = date_query
 
-    total = await auth_deps.db.activity_logs.count_documents(query)
-
+    # ⚡ Bolt: Consolidated count_documents and aggregate query into a single $facet pipeline to reduce DB round-trips
     pipeline: list[dict[str, Any]] = [
         {"$match": query},
-        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+        {
+            "$facet": {
+                "total": [{"$count": "count"}],
+                "by_status": [
+                    {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+                ],
+            }
+        },
     ]
+
+    result = await auth_deps.db.activity_logs.aggregate(pipeline).to_list(1)
+
+    total = 0
     status_counts: dict[str, int] = {}
-    async for doc in auth_deps.db.activity_logs.aggregate(pipeline):
-        status_counts[doc["_id"]] = doc["count"]
+
+    if result:
+        facet_data = result[0]
+        total = facet_data["total"][0]["count"] if facet_data.get("total") else 0
+        for doc in facet_data.get("by_status", []):
+            status_counts[doc["_id"]] = doc["count"]
 
     return {"total": total, "by_status": status_counts, "trend": []}
