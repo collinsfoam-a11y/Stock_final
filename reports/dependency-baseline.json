@@ -1,9 +1,9 @@
 {
-  "updatedAt": "2026-05-08T17:11:47.825Z",
+  "updatedAt": "2026-06-10T01:17:34.402Z",
   "ceilings": {
     "dependencyCount": 51,
-    "devDependencyCount": 33,
-    "totalCount": 84
+    "devDependencyCount": 34,
+    "totalCount": 85
   },
   "knownDependencies": [
     "@expo-google-fonts/inter",
@@ -84,6 +84,7 @@
     "jest",
     "jest-environment-jsdom",
     "jest-expo",
+    "knip",
     "lint-staged",
     "npm-run-all2",
     "patch-package",
