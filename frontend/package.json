@@ -88,7 +88,7 @@
     "deps:outdated": "npm outdated",
     "deps:baseline": "node ./scripts/check-dependency-regression.cjs --write-baseline",
     "deps:guard": "node ./scripts/check-dependency-regression.cjs --strict",
-    "knip": "knip",
+    "knip:check": "knip",
     "knip:files": "knip --include files,dependencies",
     "storybook:dev": "storybook dev -p 6006",
     "storybook:build": "storybook build",

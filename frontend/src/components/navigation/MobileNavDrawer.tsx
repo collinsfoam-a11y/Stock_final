@@ -172,10 +172,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: uiTokens.colors.accent,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 6,
+      boxShadow: "0px 2px 6px rgba(0, 0, 0, 0.25)",
       elevation: 6,
     },
     backdrop: {
