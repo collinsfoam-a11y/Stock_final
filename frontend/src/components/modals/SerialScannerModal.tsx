@@ -563,7 +563,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
               <Text style={styles.infoText}>
                 Review mode is ON. Detected codes are listed for manual selection.
                 {"\n"}
-                Nearby serial/EAN/manufacturer barcodes are supported in one scan burst.
+                Nearby serial/manufacturer barcodes are supported in one scan burst.
               </Text>
             </View>
 
