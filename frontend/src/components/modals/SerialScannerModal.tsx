@@ -3,7 +3,7 @@
  * Validates scanned codes as serial numbers (not barcodes)
  * Collects detected candidates and lets user tap the correct serial to add
  */
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -91,6 +91,16 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
   const burstPauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const acceptedSerialsRef = useRef<Set<string>>(new Set());
   const hasAutoRequestedPermissionRef = useRef(false);
+
+  // Normalized set of serials already on the item, derived during render so it
+  // is ALWAYS current at scan time (no dependency on effect timing). Combined
+  // with acceptedSerialsRef (serials accepted optimistically before the
+  // existingSerials prop updates), the duplicate check stays O(1) per scan and
+  // race-free.
+  const existingSerialsSet = useMemo(
+    () => new Set(existingSerials.map(normalizeSerialValue).filter(Boolean)),
+    [existingSerials]
+  );
   const [permission, requestPermission] = useCameraPermissions();
 
   const [scanFeedback, setScanFeedback] = useState<{
@@ -301,9 +311,18 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
       }
       recentScanTimesRef.current.set(scannedValue, now);
 
-      // Validate as serial number (not barcode)
-      const knownSerials = [...existingSerials, ...Array.from(acceptedSerialsRef.current)];
-      const validation = validateScannedSerial(scannedValue, knownSerials);
+      // Validate as serial number (not barcode). The duplicate check is O(1):
+      // existingSerialsSet (derived from the current prop during render) covers
+      // serials already on the item, and acceptedSerialsRef covers ones accepted
+      // optimistically this session — avoiding an O(n) array rebuild + full
+      // re-normalization of every known serial on each scan (PERF), with no
+      // effect-timing race on the existingSerials prop.
+      const isKnownSerial =
+        existingSerialsSet.has(scannedValue) ||
+        acceptedSerialsRef.current.has(scannedValue);
+      const validation = isKnownSerial
+        ? { valid: false as const, error: "This serial number has already been added" }
+        : validateScannedSerial(scannedValue, []);
       const status: DetectedCodeStatus = validation.valid
         ? "ready"
         : validation.error?.includes("already been added")
@@ -340,7 +359,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
       scheduleBurstPause();
     },
     [
-      existingSerials,
+      existingSerialsSet,
       getInvalidCandidateMessage,
       scanPaused,
       scheduleBurstPause,
@@ -464,17 +483,11 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
           facing="back"
           active={visible && !showManualInput}
           barcodeScannerSettings={{
-            barcodeTypes: [
-              "qr",
-              "code128",
-              "code39",
-              "code93",
-              "datamatrix",
-              "ean13",
-              "ean8",
-              "upc_a",
-              "upc_e",
-            ],
+            // Serial labels are alphanumeric (Code128/39/93, QR, DataMatrix).
+            // Product EAN/UPC symbologies are intentionally excluded: the serial
+            // validator always rejects them, and decoding them every frame just
+            // wastes CPU and lowers the scan frame rate (PERF).
+            barcodeTypes: ["code128", "code39", "code93", "qr", "datamatrix"],
           }}
           onBarcodeScanned={scanPaused || showManualInput ? undefined : handleBarcodeScanned}
         />
@@ -550,7 +563,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
               <Text style={styles.infoText}>
                 Review mode is ON. Detected codes are listed for manual selection.
                 {"\n"}
-                Nearby serial/EAN/manufacturer barcodes are supported in one scan burst.
+                Nearby serial/manufacturer barcodes are supported in one scan burst.
               </Text>
             </View>
 
@@ -942,6 +955,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.15)",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
+    minHeight: 44, // 44x44 minimum touch target (a11y)
   },
   detectedRowDisabled: {
     opacity: 0.65,
