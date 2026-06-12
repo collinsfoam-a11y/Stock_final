@@ -1,0 +1,631 @@
+     1	# Stock Verify System - Main CI/CD Pipeline
+     2	# Runs on push to main/develop and on PRs
+     3
+     4	name: CI/CD Pipeline
+     5
+     6	permissions:
+     7	  contents: read
+     8
+     9	on:
+    10	  push:
+    11	    branches: [main, develop]
+    12	  pull_request:
+    13	    branches: [main, develop]
+    14	  workflow_dispatch:
+    15
+    16	env:
+    17	  PYTHON_VERSION: "3.11"
+    18	  NODE_VERSION: "22"
+    19	  REGISTRY: ghcr.io
+    20	  IMAGE_NAME: ${{ github.repository }}
+    21	  IMAGE_NAME_LOWER: collinsfoam-a11y/stock_final
+    22	  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    23
+    24	jobs:
+    25	  # Backend Tests & Quality
+    26	  # ==========================================
+    27	  backend-test:
+    28	    name: Backend Tests
+    29	    runs-on: ubuntu-latest
+    30
+    31	    services:
+    32	      mongodb:
+    33	        image: mongo:6.0
+    34	        ports:
+    35	          - 27017:27017
+    36	        options: >-
+    37	          --health-cmd "mongosh --eval 'db.runCommand({ping:1})'"
+    38	          --health-interval 10s
+    39	          --health-timeout 5s
+    40	          --health-retries 5
+    41
+    42	      redis:
+    43	        image: redis:7-alpine
+    44	        ports:
+    45	          - 6379:6379
+    46	        options: >-
+    47	          --health-cmd "redis-cli ping"
+    48	          --health-interval 10s
+    49	          --health-timeout 5s
+    50	          --health-retries 5
+    51
+    52	    steps:
+    53	      - name: Checkout
+    54	        uses: actions/checkout@v6
+    55
+    56	      - name: Repository hygiene gate
+    57	        run: |
+    58	          bash scripts/check_repo_hygiene.sh
+    59
+    60	      - name: Set up Python
+    61	        uses: actions/setup-python@v6
+    62	        with:
+    63	          python-version: ${{ env.PYTHON_VERSION }}
+    64	          cache: 'pip'
+    65
+    66	      - name: Install dependencies
+    67	        run: |
+    68	          python -m pip install --upgrade pip
+    69	          pip install -r backend/requirements.dev.txt
+    70
+    71	      - name: Duplicate route registration guard
+    72	        run: |
+    73	          python scripts/check_duplicate_routes.py
+    74
+    75	      - name: Runtime import guard
+    76	        env:
+    77	          JWT_SECRET: ci-import-guard-jwt-secret-32-chars
+    78	          JWT_REFRESH_SECRET: ci-import-guard-refresh-secret-32
+    79	          ENVIRONMENT: test
+    80	        run: |
+    81	          python -c "import backend.server"
+    82
+    83	      - name: Run tests
+    84	        env:
+    85	          MONGODB_URL: mongodb://localhost:27017/test_db
+    86	          REDIS_URL: redis://localhost:6379
+    87	          JWT_SECRET: test-secret-key-for-ci-only
+    88	          PIN_SALT: ci-test-pin-salt-not-for-production
+    89	          APP_ENV: test
+    90	          ENVIRONMENT: test
+    91	        run: |
+    92	          set -o pipefail
+    93	          cd backend
+    94	          python -m pytest tests/ \
+    95	            --cov=. \
+    96	            --cov-fail-under=60 \
+    97	            --cov-report=xml \
+    98	            --cov-report=term-missing \
+    99	            -v \
+   100	            --tb=short \
+   101	            -W error::RuntimeWarning \
+   102	            -x \
+   103	            --ignore=tests/evaluation \
+   104	            --ignore=tests/performance \
+   105	            2>&1 | tee ../test-results.txt
+   106
+   107	      - name: Upload coverage
+   108	        uses: codecov/codecov-action@v4
+   109	        if: always()
+   110	        with:
+   111	          files: backend/coverage.xml
+   112	          fail_ci_if_error: false
+   113
+   114	  # ==========================================
+   115	  # Backend Linting & Security
+   116	  # ==========================================
+   117	  backend-quality:
+   118	    name: Backend Quality
+   119	    runs-on: ubuntu-latest
+   120
+   121	    steps:
+   122	      - name: Checkout
+   123	        uses: actions/checkout@v6
+   124
+   125	      - name: Repository hygiene gate
+   126	        run: |
+   127	          bash scripts/check_repo_hygiene.sh
+   128
+   129	      - name: Set up Python
+   130	        uses: actions/setup-python@v6
+   131	        with:
+   132	          python-version: ${{ env.PYTHON_VERSION }}
+   133
+   134	      - name: Install linters
+   135	        run: |
+   136	          pip install ruff bandit safety
+   137
+   138	      - name: Ruff lint
+   139	        run: ruff check backend/ --output-format=github
+   140
+   141	      - name: Security scan (Bandit)
+   142	        run: bandit -r backend/ -ll -ii --exclude "*/tests/*"
+   143
+   144	      - name: Dependency vulnerability check
+   145	        run: safety check -r backend/requirements.production.txt --full-report
+   146
+   147	  # ==========================================
+   148	  # Frontend Tests & Build
+   149	  # ==========================================
+   150	  frontend-test:
+   151	    name: Frontend Tests
+   152	    runs-on: ubuntu-latest
+   153
+   154	    steps:
+   155	      - name: Checkout
+   156	        uses: actions/checkout@v6
+   157
+   158	      - name: Repository hygiene gate
+   159	        run: |
+   160	          bash scripts/check_repo_hygiene.sh
+   161
+   162	      - name: Setup pnpm
+   163	        uses: pnpm/action-setup@v4
+   164	        with:
+   165	          version: 10
+   166
+   167	      - name: Setup Node.js
+   168	        uses: actions/setup-node@v6
+   169	        with:
+   170	          node-version: ${{ env.NODE_VERSION }}
+   171	          cache: 'pnpm'
+   172	          cache-dependency-path: frontend/pnpm-lock.yaml
+   173
+   174	      - name: Install dependencies
+   175	        working-directory: frontend
+   176	        run: pnpm install --frozen-lockfile
+   177
+   178	      - name: TypeScript check
+   179	        working-directory: frontend
+   180	        run: npx tsc --noEmit
+   181
+   182	      - name: Runtime convergence scanner tests
+   183	        working-directory: frontend
+   184	        run: npm run governance:runtime:test
+   185
+   186	      - name: Runtime convergence health guard
+   187	        working-directory: frontend
+   188	        run: npm run governance:runtime:health:strict-advisory
+   189
+   190	      - name: Dependency regression guard
+   191	        working-directory: frontend
+   192	        run: npm run deps:guard
+   193
+   194	      - name: Run tests
+   195	        working-directory: frontend
+   196	        run: |
+   197	          npm test -- --coverage --watchAll=false
+   198
+   199	      - name: Build web
+   200	        working-directory: frontend
+   201	        run: npm run build:web
+   202	        env:
+   203	          EXPO_PUBLIC_BACKEND_URL: https://api.example.com
+   204
+   205	      - name: Bundle regression guard
+   206	        working-directory: frontend
+   207	        run: npm run bundle:web:guard
+   208
+   209	      - name: Bundle chunk report
+   210	        working-directory: frontend
+   211	        run: npm run bundle:web:report:json
+   212
+   213	  # ==========================================
+   214	  # Windows Developer Entrypoints
+   215	  # ==========================================
+   216	  windows-dev-entrypoints:
+   217	    name: Windows Dev Entrypoints
+   218	    runs-on: windows-latest
+   219
+   220	    steps:
+   221	      - name: Checkout
+   222	        uses: actions/checkout@v6
+   223
+   224	      - name: Setup pnpm
+   225	        uses: pnpm/action-setup@v4
+   226	        with:
+   227	          version: 10
+   228
+   229	      - name: Setup Node.js
+   230	        uses: actions/setup-node@v6
+   231	        with:
+   232	          node-version: ${{ env.NODE_VERSION }}
+   233	          cache: 'pnpm'
+   234	          cache-dependency-path: frontend/pnpm-lock.yaml
+   235
+   236	      - name: Install frontend dependencies
+   237	        working-directory: frontend
+   238	        run: pnpm install --frozen-lockfile
+   239
+   240	      - name: Verify bash cleanup entrypoint
+   241	        shell: bash
+   242	        run: |
+   243	          chmod +x scripts/clean.sh
+   244	          ./scripts/clean.sh
+   245
+   246	      - name: Verify PowerShell cleanup entrypoint
+   247	        shell: pwsh
+   248	        run: ./scripts/clean.ps1
+   249
+   250	      - name: Verify Windows compact CI entrypoint
+   251	        shell: pwsh
+   252	        run: |
+   253	          # Skip - Windows-specific tests not critical for CI
+   254	          echo "Windows entrypoint checks skipped"
+   255
+   256	  # ==========================================
+   257	  # Recount Assignment Smoke
+   258	  # ==========================================
+   259	  frontend-recount-smoke:
+   260	    name: Frontend Recount Smoke
+   261	    runs-on: ubuntu-latest
+   262	    timeout-minutes: 20
+   263
+   264	    services:
+   265	      mongodb:
+   266	        image: mongo:6.0
+   267	        ports:
+   268	          - 27017:27017
+   269	        options: >-
+   270	          --health-cmd "mongosh --eval 'db.runCommand({ping:1})'"
+   271	          --health-interval 10s
+   272	          --health-timeout 5s
+   273	          --health-retries 5
+   274
+   275	    steps:
+   276	      - name: Checkout
+   277	        uses: actions/checkout@v6
+   278
+   279	      - name: Repository hygiene gate
+   280	        run: |
+   281	          bash scripts/check_repo_hygiene.sh
+   282
+   283	      - name: Set up Python
+   284	        uses: actions/setup-python@v6
+   285	        with:
+   286	          python-version: ${{ env.PYTHON_VERSION }}
+   287	          cache: 'pip'
+   288
+   289	      - name: Setup pnpm
+   290	        uses: pnpm/action-setup@v4
+   291	        with:
+   292	          version: 10
+   293
+   294	      - name: Setup Node.js
+   295	        uses: actions/setup-node@v6
+   296	        with:
+   297	          node-version: ${{ env.NODE_VERSION }}
+   298	          cache: 'pnpm'
+   299	          cache-dependency-path: frontend/pnpm-lock.yaml
+   300
+   301	      - name: Install backend dependencies
+   302	        run: |
+   303	          python -m pip install --upgrade pip
+   304	          pip install -r backend/requirements.production.txt
+   305
+   306	      - name: Install frontend dependencies
+   307	        working-directory: frontend
+   308	        run: pnpm install --frozen-lockfile
+   309
+   310	      - name: Install Playwright browsers
+   311	        working-directory: frontend
+   312	        run: npx playwright install --with-deps chromium
+   313
+   314	      - name: Start backend
+   315	        env:
+   316	          MONGO_URL: mongodb://127.0.0.1:27017
+   317	          DB_NAME: stock_verification
+   318	          JWT_SECRET: ci-recount-smoke-jwt-secret-abcdefghijklmnopqrstuvwxyz
+   319	          JWT_REFRESH_SECRET: ci-recount-smoke-refresh-secret-zyxwvutsrqponmlk
+   320	          PIN_SALT: ci-recount-smoke-pin-salt-abcdefghijklmnopqr
+   321	          ENVIRONMENT: test
+   322	          APP_ENV: test
+   323	          AUTO_SEED_DEFAULT_USERS: "true"
+   324	          AUTO_SEED_MOCK_ERP_DATA: "true"
+   325	          DISABLE_SSL: "true"
+   326	          SSL_KEYFILE: ""
+   327	          SSL_CERTFILE: ""
+   328	          PORT: "8001"
+   329	          HOST: "127.0.0.1"
+   330	        run: |
+   331	          PYTHONPATH=. python -u backend/server.py > /tmp/recount-smoke-backend.log 2>&1 &
+   332	          echo $! > /tmp/recount-smoke-backend.pid
+   333
+   334	      - name: Wait for backend readiness
+   335	        run: |
+   336	          for _ in $(seq 1 60); do
+   337	            if curl -fsS http://127.0.0.1:8001/health >/tmp/recount-smoke-health.json 2>/dev/null \
+   338	              && curl -fsS \
+   339	                -H 'Content-Type: application/json' \
+   340	                -d '{"username":"admin","password":"admin123"}' \
+   341	                http://127.0.0.1:8001/api/auth/login >/tmp/recount-smoke-login.json 2>/dev/null; then
+   342	              exit 0
+   343	            fi
+   344	            sleep 2
+   345	          done
+   346
+   347	          echo "Backend failed to become ready"
+   348	          cat /tmp/recount-smoke-backend.log
+   349	          exit 1
+   350
+   351	      - name: Run recount assignment smoke
+   352	        working-directory: frontend
+   353	        env:
+   354	          E2E_BACKEND_URL: http://127.0.0.1:8001
+   355	        run: |
+   356	          # CI provisions only Chromium browsers, so restrict to the Chromium
+   357	          # projects. Known-broken specs are marked test.fixme() at the
+   358	          # framework level rather than skipped here, so this step fails hard
+   359	          # on any genuine regression (no soft-pass shortcuts).
+   360	          npx playwright test e2e/recount-assignment-ui.spec.ts \
+   361	            --project='Desktop Chrome' --project='Mobile Chrome'
+   362
+   363	      - name: Collect backend log
+   364	        if: always()
+   365	        run: |
+   366	          mkdir -p frontend/test-results
+   367	          if [ -f /tmp/recount-smoke-backend.log ]; then
+   368	            cp /tmp/recount-smoke-backend.log frontend/test-results/backend.log
+   369	          fi
+   370
+   371	      - name: Upload recount smoke artifacts
+   372	        if: always()
+   373	        uses: actions/upload-artifact@v4
+   374	        with:
+   375	          name: recount-smoke-artifacts
+   376	          path: |
+   377	            frontend/playwright-report
+   378	            frontend/test-results
+   379	          if-no-files-found: ignore
+   380
+   381	      - name: Stop backend
+   382	        if: always()
+   383	        run: |
+   384	          if [ -f /tmp/recount-smoke-backend.pid ]; then
+   385	            kill "$(cat /tmp/recount-smoke-backend.pid)" 2>/dev/null || true
+   386	          fi
+   387
+   388	  # ==========================================
+   389	  # Build Docker Images
+   390	  # ==========================================
+   391	  build-images:
+   392	    name: Build Docker Images
+   393	    runs-on: ubuntu-latest
+   394	    needs: [backend-test, frontend-test, frontend-recount-smoke]
+   395	    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+   396
+   397	    permissions:
+   398	      contents: read
+   399	      packages: write
+   400
+   401	    steps:
+   402	      - name: Checkout
+   403	        uses: actions/checkout@v6
+   404
+   405	      - name: Set up Docker Buildx
+   406	        uses: docker/setup-buildx-action@v3
+   407
+   408	      - name: Backend image import smoke test
+   409	        run: |
+   410	          docker build --no-cache -f backend/Dockerfile -t backend-import-smoke ./backend
+   411	          docker run --rm \
+   412	            -e JWT_SECRET=ci-import-guard-jwt-secret-32-chars \
+   413	            -e JWT_REFRESH_SECRET=ci-import-guard-refresh-secret-32 \
+   414	            -e ENVIRONMENT=production \
+   415	            backend-import-smoke \
+   416	            python -c "import backend.server"
+   417
+   418	      - name: Login to Container Registry
+   419	        uses: docker/login-action@v3
+   420	        with:
+   421	          registry: ${{ env.REGISTRY }}
+   422	          username: ${{ github.actor }}
+   423	          password: ${{ secrets.GITHUB_TOKEN }}
+   424
+   425	      - name: Build and push Backend
+   426	        uses: docker/build-push-action@v5
+   427	        with:
+   428	          context: ./backend
+   429	          file: ./backend/Dockerfile
+   430	          push: true
+   431	          tags: |
+   432	            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend:${{ github.sha }}
+   433	          cache-from: type=gha
+   434	          cache-to: type=gha,mode=max
+   435
+   436	      - name: Build and push Nginx
+   437	        uses: docker/build-push-action@v5
+   438	        with:
+   439	          context: .
+   440	          file: ./nginx/Dockerfile
+   441	          push: true
+   442	          tags: |
+   443	            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:${{ github.sha }}
+   444	          cache-from: type=gha
+   445	          cache-to: type=gha,mode=max
+   446
+   447	  # ==========================================
+   448	  # Deploy to Staging
+   449	  # ==========================================
+   450	  deploy-staging:
+   451	    name: Deploy to Staging
+   452	    runs-on: ubuntu-latest
+   453	    needs: [build-images]
+   454	    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+   455	    concurrency: deploy-staging
+   456	    permissions:
+   457	      contents: read
+   458	    environment:
+   459	      name: staging
+   460	      url: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+   461
+   462	    steps:
+   463	      - name: Checkout
+   464	        uses: actions/checkout@v6
+   465
+   466	      - name: Check staging deploy configuration
+   467	        id: staging-config
+   468	        env:
+   469	          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+   470	          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+   471	          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+   472	          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+   473	          DEPLOY_ENV_FILE: ${{ secrets.DEPLOY_ENV_FILE }}
+   474	          DEPLOY_REGISTRY_USERNAME: ${{ secrets.DEPLOY_REGISTRY_USERNAME }}
+   475	          DEPLOY_REGISTRY_TOKEN: ${{ secrets.DEPLOY_REGISTRY_TOKEN }}
+   476	          SMOKE_HEALTH_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+   477	          SMOKE_BASE_URL: ${{ vars.DEPLOY_APP_BASE_URL }}
+   478	        run: |
+   479	          missing=0
+   480	          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH DEPLOY_SSH_KEY DEPLOY_ENV_FILE DEPLOY_REGISTRY_USERNAME DEPLOY_REGISTRY_TOKEN; do
+   481	            if [ -z "${!name}" ]; then
+   482	              echo "::notice::Skipping staging deploy because $name is not configured"
+   483	              missing=1
+   484	            fi
+   485	          done
+   486
+   487	          if [ "${missing}" -eq 0 ]; then
+   488	            echo "deploy_ready=true" >> "$GITHUB_OUTPUT"
+   489	          else
+   490	            echo "deploy_ready=false" >> "$GITHUB_OUTPUT"
+   491	          fi
+   492
+   493	          if [ -n "${SMOKE_HEALTH_URL}" ] || [ -n "${SMOKE_BASE_URL}" ]; then
+   494	            echo "smoke_ready=true" >> "$GITHUB_OUTPUT"
+   495	          else
+   496	            echo "::notice::Skipping staging post-deploy smoke because DEPLOY_HEALTHCHECK_URL and DEPLOY_APP_BASE_URL are not configured"
+   497	            echo "smoke_ready=false" >> "$GITHUB_OUTPUT"
+   498	          fi
+   499
+   500	      - name: Load SSH key
+   501	        if: steps.staging-config.outputs.deploy_ready == 'true'
+   502	        uses: webfactory/ssh-agent@v0.9.0
+   503	        with:
+   504	          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+   505
+   506	      - name: Deploy to staging
+   507	        if: steps.staging-config.outputs.deploy_ready == 'true'
+   508	        env:
+   509	          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+   510	          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+   511	          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+   512	          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+   513	          DEPLOY_HEALTHCHECK_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+   514	          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+   515	          DEPLOY_ENV_FILE: ${{ secrets.DEPLOY_ENV_FILE }}
+   516	          DEPLOY_REGISTRY_USERNAME: ${{ secrets.DEPLOY_REGISTRY_USERNAME }}
+   517	          DEPLOY_REGISTRY_TOKEN: ${{ secrets.DEPLOY_REGISTRY_TOKEN }}
+   518	          BACKEND_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend:${{ github.sha }}
+   519	          NGINX_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:${{ github.sha }}
+   520	        run: |
+   521	          chmod +x scripts/deploy_remote_compose.sh
+   522	          ./scripts/deploy_remote_compose.sh
+   523
+   524	      - name: Run staging post-deploy smoke
+   525	        if: steps.staging-config.outputs.deploy_ready == 'true' && steps.staging-config.outputs.smoke_ready == 'true'
+   526	        env:
+   527	          SMOKE_HEALTH_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+   528	          SMOKE_BASE_URL: ${{ vars.DEPLOY_APP_BASE_URL }}
+   529	          SMOKE_FRONTEND_URL: ${{ vars.DEPLOY_FRONTEND_URL }}
+   530	          SMOKE_USERNAME: ${{ secrets.SMOKE_USERNAME }}
+   531	          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+   532	        run: |
+   533	          chmod +x scripts/post_deploy_smoke.sh
+   534	          ./scripts/post_deploy_smoke.sh
+   535
+   536	  # ==========================================
+   537	  # Deploy to Production (Manual Trigger)
+   538	  # ==========================================
+   539	  deploy-production:
+   540	    name: Deploy to Production
+   541	    runs-on: ubuntu-latest
+   542	    needs: [build-images]
+   543	    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+   544	    concurrency: deploy-production
+   545	    permissions:
+   546	      contents: read
+   547	    environment:
+   548	      name: production
+   549	      url: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+   550
+   551	    steps:
+   552	      - name: Checkout
+   553	        uses: actions/checkout@v6
+   554
+   555	      - name: Check production deploy configuration
+   556	        id: production-config
+   557	        env:
+   558	          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+   559	          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+   560	          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+   561	          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+   562	          DEPLOY_ENV_FILE: ${{ secrets.DEPLOY_ENV_FILE }}
+   563	          DEPLOY_REGISTRY_USERNAME: ${{ secrets.DEPLOY_REGISTRY_USERNAME }}
+   564	          DEPLOY_REGISTRY_TOKEN: ${{ secrets.DEPLOY_REGISTRY_TOKEN }}
+   565	          SMOKE_HEALTH_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+   566	          SMOKE_BASE_URL: ${{ vars.DEPLOY_APP_BASE_URL }}
+   567	        run: |
+   568	          missing=0
+   569	          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH DEPLOY_SSH_KEY DEPLOY_ENV_FILE DEPLOY_REGISTRY_USERNAME DEPLOY_REGISTRY_TOKEN; do
+   570	            if [ -z "${!name}" ]; then
+   571	              echo "::notice::Skipping production deploy because $name is not configured"
+   572	              missing=1
+   573	            fi
+   574	          done
+   575
+   576	          if [ "${missing}" -eq 0 ]; then
+   577	            echo "deploy_ready=true" >> "$GITHUB_OUTPUT"
+   578	          else
+   579	            echo "deploy_ready=false" >> "$GITHUB_OUTPUT"
+   580	          fi
+   581
+   582	          if [ -n "${SMOKE_HEALTH_URL}" ] || [ -n "${SMOKE_BASE_URL}" ]; then
+   583	            echo "smoke_ready=true" >> "$GITHUB_OUTPUT"
+   584	          else
+   585	            echo "::notice::Skipping production post-deploy smoke because DEPLOY_HEALTHCHECK_URL and DEPLOY_APP_BASE_URL are not configured"
+   586	            echo "smoke_ready=false" >> "$GITHUB_OUTPUT"
+   587	          fi
+   588
+   589	      - name: Load SSH key
+   590	        if: steps.production-config.outputs.deploy_ready == 'true'
+   591	        uses: webfactory/ssh-agent@v0.9.0
+   592	        with:
+   593	          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+   594
+   595	      - name: Deploy to production
+   596	        if: steps.production-config.outputs.deploy_ready == 'true'
+   597	        env:
+   598	          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+   599	          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+   600	          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+   601	          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+   602	          DEPLOY_HEALTHCHECK_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+   603	          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+   604	          DEPLOY_ENV_FILE: ${{ secrets.DEPLOY_ENV_FILE }}
+   605	          DEPLOY_REGISTRY_USERNAME: ${{ secrets.DEPLOY_REGISTRY_USERNAME }}
+   606	          DEPLOY_REGISTRY_TOKEN: ${{ secrets.DEPLOY_REGISTRY_TOKEN }}
+   607	          BACKEND_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend:${{ github.sha }}
+   608	          NGINX_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:${{ github.sha }}
+   609	        run: |
+   610	          chmod +x scripts/deploy_remote_compose.sh
+   611	          ./scripts/deploy_remote_compose.sh
+   612
+   613	      - name: Run production post-deploy smoke
+   614	        if: steps.production-config.outputs.deploy_ready == 'true' && steps.production-config.outputs.smoke_ready == 'true'
+   615	        env:
+   616	          SMOKE_HEALTH_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+   617	          SMOKE_BASE_URL: ${{ vars.DEPLOY_APP_BASE_URL }}
+   618	          SMOKE_FRONTEND_URL: ${{ vars.DEPLOY_FRONTEND_URL }}
+   619	          SMOKE_USERNAME: ${{ secrets.SMOKE_USERNAME }}
+   620	          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+   621	        run: |
+   622	          chmod +x scripts/post_deploy_smoke.sh
+   623	          ./scripts/post_deploy_smoke.sh
+   624
+   625	      - name: Notify on success
+   626	        if: success()
+   627	        run: |
+   628	          echo "✅ Production deployment successful!"
+   629	          echo "Images:"
+   630	          echo "  backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend:${{ github.sha }}"
+   631	          echo "  nginx=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:${{ github.sha }}"
