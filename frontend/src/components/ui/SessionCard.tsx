@@ -123,6 +123,9 @@ export const SessionCard: React.FC<SessionCardProps> = ({
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         activeOpacity={1}
+        accessibilityRole="button"
+        accessibilityLabel={`Session: ${name}. Status: ${statusInfo.label}. ${totalItems ? `${itemCount} of ${totalItems} items` : `${itemCount} items`}`}
+        accessibilityHint="Double tap to open session details"
       >
         {/* Card Header */}
         <View style={styles.header}>
@@ -178,7 +181,12 @@ export const SessionCard: React.FC<SessionCardProps> = ({
           </View>
 
           {onResume && status !== "completed" && (
-            <TouchableOpacity style={styles.resumeButton} onPress={onResume}>
+            <TouchableOpacity
+              style={styles.resumeButton}
+              onPress={onResume}
+              accessibilityRole="button"
+              accessibilityLabel="Resume session"
+            >
               <Ionicons name="play" size={14} color={uiSemanticColors.text.inverse} />
               <Text style={styles.resumeText}>Resume</Text>
             </TouchableOpacity>
