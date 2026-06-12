@@ -141,7 +141,9 @@ class ErrorLogService:
             if include_stack_trace:
                 try:
                     stack_trace = "".join(
-                        traceback.format_exception(type(error), error, error.__traceback__)
+                        traceback.format_exception(
+                            type(error), error, error.__traceback__
+                        )
                     )
                 except Exception:
                     stack_trace = traceback.format_exc()
@@ -280,7 +282,10 @@ class ErrorLogService:
             skip = (page - 1) * page_size
 
             cursor = (
-                self.collection.find(filter_query).sort("timestamp", -1).skip(skip).limit(page_size)
+                self.collection.find(filter_query)
+                .sort("timestamp", -1)
+                .skip(skip)
+                .limit(page_size)
             )
             errors = await cursor.to_list(page_size)
 
@@ -352,61 +357,92 @@ class ErrorLogService:
                 if end_date:
                     filter_query["timestamp"]["$lte"] = end_date
 
-            # Total errors
-            total = await self.collection.count_documents(filter_query)
-
-            # By severity
-            critical_count = await self.collection.count_documents(
-                {**filter_query, "severity": "critical"}
+            # Recent errors filter setup (last 24 hours)
+            last_24h = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
+                hours=24
             )
-            error_count = await self.collection.count_documents(
-                {**filter_query, "severity": "error"}
-            )
-            warning_count = await self.collection.count_documents(
-                {**filter_query, "severity": "warning"}
-            )
-            info_count = await self.collection.count_documents({**filter_query, "severity": "info"})
-
-            # Unresolved errors
-            unresolved_count = await self.collection.count_documents(
-                {**filter_query, "resolved": False}
-            )
-
-            # By error type (top 10)
-            top_error_types_pipeline: list[dict[str, Any]] = [
-                {"$match": filter_query} if filter_query else {"$match": {}},
-                {"$group": {"_id": "$error_type", "count": {"$sum": 1}}},
-                {"$sort": {"count": -1}},
-                {"$limit": 10},
-            ]
-            top_error_types = await self.collection.aggregate(top_error_types_pipeline).to_list(10)
-
-            # By endpoint (top 10)
-            top_endpoints_pipeline: list[dict[str, Any]] = [
-                (
-                    {
-                        "$match": {
-                            **filter_query,
-                            "endpoint": {"$exists": True, "$ne": None},
-                        }
-                    }
-                    if filter_query
-                    else {"$match": {"endpoint": {"$exists": True, "$ne": None}}}
-                ),
-                {"$group": {"_id": "$endpoint", "count": {"$sum": 1}}},
-                {"$sort": {"count": -1}},
-                {"$limit": 10},
-            ]
-            top_endpoints = await self.collection.aggregate(top_endpoints_pipeline).to_list(10)
-
-            # Recent errors (last 24 hours)
-            last_24h = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=24)
             recent_filter = {**filter_query, "timestamp": {"$gte": last_24h}}
             if filter_query.get("timestamp"):
                 recent_filter["timestamp"]["$gte"] = max(
                     filter_query["timestamp"].get("$gte", last_24h), last_24h
                 )
+
+            # ⚡ Bolt: Consolidate 7 queries into single $facet.
+            # This reduces database round-trips from 7 to 1, significantly improving performance.
+            facet_pipeline = [
+                {"$match": filter_query} if filter_query else {"$match": {}},
+                {
+                    "$facet": {
+                        "total": [{"$count": "count"}],
+                        "severity_counts": [
+                            {"$group": {"_id": "$severity", "count": {"$sum": 1}}}
+                        ],
+                        "unresolved": [
+                            {"$match": {"resolved": False}},
+                            {"$count": "count"},
+                        ],
+                        "top_error_types": [
+                            {"$group": {"_id": "$error_type", "count": {"$sum": 1}}},
+                            {"$sort": {"count": -1}},
+                            {"$limit": 10},
+                        ],
+                        "top_endpoints": [
+                            {"$match": {"endpoint": {"$exists": True, "$ne": None}}},
+                            {"$group": {"_id": "$endpoint", "count": {"$sum": 1}}},
+                            {"$sort": {"count": -1}},
+                            {"$limit": 10},
+                        ],
+                    }
+                },
+            ]
+
+            facet_result = await self.collection.aggregate(facet_pipeline).to_list(1)
+
+            # We still need a separate count for recent_filter due to different timestamp range.
             recent_count = await self.collection.count_documents(recent_filter)
+
+            if facet_result:
+                data = facet_result[0]
+                total = (
+                    data.get("total", [{"count": 0}])[0]["count"]
+                    if data.get("total")
+                    else 0
+                )
+
+                # Process severity counts
+                critical_count = 0
+                error_count = 0
+                warning_count = 0
+                info_count = 0
+
+                for severity_item in data.get("severity_counts", []):
+                    severity = severity_item.get("_id")
+                    count = severity_item.get("count", 0)
+                    if severity == "critical":
+                        critical_count = count
+                    elif severity == "error":
+                        error_count = count
+                    elif severity == "warning":
+                        warning_count = count
+                    elif severity == "info":
+                        info_count = count
+
+                unresolved_count = (
+                    data.get("unresolved", [{"count": 0}])[0]["count"]
+                    if data.get("unresolved")
+                    else 0
+                )
+                top_error_types = data.get("top_error_types", [])
+                top_endpoints = data.get("top_endpoints", [])
+            else:
+                total = 0
+                critical_count = 0
+                error_count = 0
+                warning_count = 0
+                info_count = 0
+                unresolved_count = 0
+                top_error_types = []
+                top_endpoints = []
 
             return {
                 "total": total,
@@ -419,10 +455,12 @@ class ErrorLogService:
                 "unresolved": unresolved_count,
                 "recent_24h": recent_count,
                 "top_error_types": [
-                    {"type": item["_id"], "count": item["count"]} for item in top_error_types
+                    {"type": item["_id"], "count": item["count"]}
+                    for item in top_error_types
                 ],
                 "top_endpoints": [
-                    {"endpoint": item["_id"], "count": item["count"]} for item in top_endpoints
+                    {"endpoint": item["_id"], "count": item["count"]}
+                    for item in top_endpoints
                 ],
             }
         except Exception as e:
