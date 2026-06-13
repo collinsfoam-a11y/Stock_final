@@ -24,6 +24,8 @@ import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { haptics } from "@/services/haptics";
+
 import { font, radius, icon, touch, gap } from "@/theme/staffUiScale";
 import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
@@ -467,7 +469,10 @@ const StaffHome = React.memo(function StaffHome() {
             <TouchableOpacity
               style={[s.iconBtn, { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.08) }]}
               hitSlop={HIT_SLOP}
-              onPress={() => router.push("/notifications" as any)}
+              onPress={() => {
+                void haptics.light();
+                router.push("/notifications" as any);
+              }}
               accessibilityRole="button"
               accessibilityLabel={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
             >
@@ -475,6 +480,9 @@ const StaffHome = React.memo(function StaffHome() {
                 name={unreadCount > 0 ? "notifications" : "notifications-outline"}
                 size={20}
                 color={uiTokens.colors.accent}
+                accessibilityElementsHidden={true}
+                importantForAccessibility="no"
+                aria-hidden={true}
               />
               {unreadCount > 0 && (
                 <View style={[s.badge, { backgroundColor: uiTokens.colors.error }]}>
@@ -487,22 +495,42 @@ const StaffHome = React.memo(function StaffHome() {
             <TouchableOpacity
               style={[s.iconBtn, { backgroundColor: colorWithAlpha(uiTokens.colors.textSecondary, 0.08) }]}
               hitSlop={HIT_SLOP}
-              onPress={() => router.push("/staff/settings" as any)}
+              onPress={() => {
+                void haptics.light();
+                router.push("/staff/settings" as any);
+              }}
               accessibilityRole="button"
               accessibilityLabel="Settings"
             >
-              <Ionicons name="settings-outline" size={20} color={uiTokens.colors.textSecondary} />
+              <Ionicons
+                name="settings-outline"
+                size={20}
+                color={uiTokens.colors.textSecondary}
+                accessibilityElementsHidden={true}
+                importantForAccessibility="no"
+                aria-hidden={true}
+              />
             </TouchableOpacity>
 
             {/* Logout */}
             <TouchableOpacity
               style={[s.iconBtn, { backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.08) }]}
               hitSlop={HIT_SLOP}
-              onPress={handleLogout}
+              onPress={() => {
+                void haptics.light();
+                void handleLogout();
+              }}
               accessibilityRole="button"
               accessibilityLabel="Sign out"
             >
-              <Ionicons name="log-out-outline" size={20} color={uiTokens.colors.error} />
+              <Ionicons
+                name="log-out-outline"
+                size={20}
+                color={uiTokens.colors.error}
+                accessibilityElementsHidden={true}
+                importantForAccessibility="no"
+                aria-hidden={true}
+              />
             </TouchableOpacity>
           </View>
         }
@@ -659,11 +687,21 @@ const StaffHome = React.memo(function StaffHome() {
             <TouchableOpacity
               style={[s.modalClose, { backgroundColor: colorWithAlpha(uiTokens.colors.textSecondary, 0.08) }]}
               hitSlop={HIT_SLOP}
-              onPress={resetModal}
+              onPress={() => {
+                void haptics.light();
+                resetModal();
+              }}
               accessibilityRole="button"
               accessibilityLabel="Close"
             >
-              <Ionicons name="close" size={20} color={uiTokens.colors.textSecondary} />
+              <Ionicons
+                name="close"
+                size={20}
+                color={uiTokens.colors.textSecondary}
+                accessibilityElementsHidden={true}
+                importantForAccessibility="no"
+                aria-hidden={true}
+              />
             </TouchableOpacity>
           </View>
 

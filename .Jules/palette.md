@@ -12,3 +12,7 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+
+## 2026-06-13 - [Icon-Only Button Accessibility and Tactile Feedback]
+**Learning:** Icon-only buttons (like header actions or modal close buttons) often redundantly announce their icon name if the parent already has an `accessibilityLabel`. They also lack physical confirmation on mobile when pressed.
+**Action:** Always add `accessibilityElementsHidden={true}`, `importantForAccessibility="no"`, and `aria-hidden={true}` to the inner icon of an icon-only button, and trigger `void haptics.light()` on the parent's `onPress` handler to provide tactile feedback.
