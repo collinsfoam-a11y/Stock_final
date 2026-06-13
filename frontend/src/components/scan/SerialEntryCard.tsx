@@ -13,7 +13,8 @@ interface SerialEntryCardProps {
   onRemove: () => void;
 }
 
-export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
+// ⚡ Bolt: Wrapped in React.memo to prevent unnecessary re-renders of individual serial entry cards when the parent list updates.
+export const SerialEntryCard = React.memo<SerialEntryCardProps>(({
   entry,
   index,
   validationError,
@@ -101,4 +102,5 @@ export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
       {validationError && <Text style={styles.errorText}>{validationError}</Text>}
     </View>
   );
-};
+});
+SerialEntryCard.displayName = 'SerialEntryCard';
