@@ -33,6 +33,8 @@ import {
   modernBorderRadius,
   modernShadows,
 } from "../../styles/unifiedSystem";
+import { getDecorativeIconProps, getAccessibleButtonProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
@@ -59,6 +61,7 @@ interface QuickStatCardProps {
   animate?: boolean;
   style?: ViewStyle;
   index?: number;
+  testID?: string;
 }
 
 const trendConfig: Record<
@@ -85,6 +88,7 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
   animate = true,
   style,
   index = 0,
+  testID,
 }) => {
   const scale = useSharedValue(1);
   const animatedValue = useSharedValue(0);
@@ -136,7 +140,12 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
         <View
           style={[styles.iconContainer, { backgroundColor: `${iconColor}15` }]}
         >
-          <Ionicons name={icon} size={24} color={iconColor} />
+          <Ionicons
+            {...getDecorativeIconProps()}
+            name={icon}
+            size={24}
+            color={iconColor}
+          />
         </View>
       )}
 
@@ -165,6 +174,7 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
             ]}
           >
             <Ionicons
+              {...getDecorativeIconProps()}
               name={trendConfig[trend.direction].icon}
               size={12}
               color={trendConfig[trend.direction].color}
@@ -213,16 +223,25 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
     );
 
   if (onPress) {
+    const accessibleProps = getAccessibleButtonProps({
+      label: `${title}: ${prefix || ""}${value}${suffix || ""}`,
+    });
+
     return (
       <Animated.View
         entering={FadeInUp.delay(index * 75).springify()}
         style={animatedStyle}
       >
         <AnimatedTouchableOpacity
+          {...accessibleProps}
           onPress={onPress}
-          onPressIn={handlePressIn}
+          onPressIn={() => {
+            void haptics.light();
+            handlePressIn();
+          }}
           onPressOut={handlePressOut}
           activeOpacity={1}
+          testID={testID}
         >
           {card}
         </AnimatedTouchableOpacity>
@@ -231,7 +250,7 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
   }
 
   return (
-    <Animated.View entering={FadeInUp.delay(index * 75).springify()}>
+    <Animated.View testID={testID} entering={FadeInUp.delay(index * 75).springify()}>
       {card}
     </Animated.View>
   );
