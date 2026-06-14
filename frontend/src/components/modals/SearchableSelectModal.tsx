@@ -102,11 +102,16 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
               style={styles.closeButton}
               onPress={handleClose}
               testID={`${testID}-close`}
+              accessibilityRole="button"
+              accessibilityLabel="Close modal"
             >
               <Ionicons
                 name="close"
                 size={24}
                 color={modernColors.text.primary}
+                accessibilityElementsHidden={true}
+                importantForAccessibility="no"
+                aria-hidden={true}
               />
             </TouchableOpacity>
           </View>
@@ -133,11 +138,16 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
               <TouchableOpacity
                 onPress={() => setSearchQuery("")}
                 style={styles.clearButton}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
               >
                 <Ionicons
                   name="close-circle"
                   size={20}
                   color={modernColors.text.tertiary}
+                  accessibilityElementsHidden={true}
+                  importantForAccessibility="no"
+                  aria-hidden={true}
                 />
               </TouchableOpacity>
             )}
