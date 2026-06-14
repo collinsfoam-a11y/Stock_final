@@ -6,10 +6,11 @@
 
 import React, { useEffect, useRef } from "react";
 import { Text, StyleSheet, Animated } from "react-native";
-import * as Haptics from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { colors as uiColors, semanticColors, shadows } from "@/theme/legacyCompat";
+import { haptics, HapticNotification } from "@/services/haptics";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 interface SuccessFeedbackProps {
   visible: boolean;
   message?: string;
@@ -38,21 +39,21 @@ export const SuccessFeedback: React.FC<SuccessFeedbackProps> = ({
           color: uiColors.warning[600],
           bgColor: uiColors.warning[50],
           icon: "warning" as const,
-          hapticType: Haptics.NotificationFeedbackType.Warning,
+          hapticType: "warning" as HapticNotification,
         };
       case "error":
         return {
           color: uiColors.error[600],
           bgColor: uiColors.error[50],
           icon: "close-circle" as const,
-          hapticType: Haptics.NotificationFeedbackType.Error,
+          hapticType: "error" as HapticNotification,
         };
       case "info":
         return {
           color: uiColors.primary[500],
           bgColor: uiColors.primary[50],
           icon: "information-circle" as const,
-          hapticType: Haptics.NotificationFeedbackType.Success,
+          hapticType: "success" as HapticNotification,
         };
       case "success":
       default:
@@ -60,18 +61,19 @@ export const SuccessFeedback: React.FC<SuccessFeedbackProps> = ({
           color: uiColors.success[600],
           bgColor: uiColors.success[50],
           icon: "checkmark-circle" as const,
-          hapticType: Haptics.NotificationFeedbackType.Success,
+          hapticType: "success" as HapticNotification,
         };
     }
   };
 
   const config = getVariantConfig();
+  const decorativeIconProps = getDecorativeIconProps();
 
   useEffect(() => {
     if (visible) {
       // Trigger haptic feedback
       if (haptic) {
-        Haptics.notificationAsync(config.hapticType);
+        void haptics.notification(config.hapticType);
       }
 
       // Animate in
@@ -137,7 +139,12 @@ export const SuccessFeedback: React.FC<SuccessFeedbackProps> = ({
       ]}
     >
       <Animated.View style={{ transform: [{ scale: iconScale }] }}>
-        <Ionicons name={config.icon} size={32} color={config.color} />
+        <Ionicons
+          {...decorativeIconProps}
+          name={config.icon}
+          size={32}
+          color={config.color}
+        />
       </Animated.View>
       <Text style={[styles.message, { color: config.color }]}>{message}</Text>
     </Animated.View>
@@ -182,7 +189,7 @@ export const ToastFeedback: React.FC<ToastFeedbackProps> = ({
 
   useEffect(() => {
     if (visible) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void haptics.light();
 
       Animated.parallel([
         Animated.spring(translateY, {

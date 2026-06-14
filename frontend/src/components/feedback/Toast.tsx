@@ -11,6 +11,8 @@ import Animated, {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { getTokenShadowStyle } from "../../theme/themeTokens";
+import { haptics } from "../../services/haptics";
+import { getDecorativeIconProps } from "../../utils/accessibility";
 
 interface ToastProps {
   message: string;
@@ -34,6 +36,13 @@ export const Toast: React.FC<ToastProps> = ({
 
   useEffect(() => {
     if (visible) {
+      // Trigger haptic feedback based on type
+      if (type === "success" || type === "error" || type === "warning") {
+        void haptics.notification(type);
+      } else {
+        void haptics.light();
+      }
+
       if (!tokens.motion.enabled) {
         opacity.value = 1;
         translateY.value = 0;
@@ -95,6 +104,7 @@ export const Toast: React.FC<ToastProps> = ({
     tokens.motion.enabled,
     tokens.motion.normal,
     translateY,
+    type,
   ]);
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -108,6 +118,7 @@ export const Toast: React.FC<ToastProps> = ({
 
   const statusColor = getToastColor(type, tokens);
   const statusBackground = withAlpha(statusColor, tokens.mode === "dark" ? 0.18 : 0.1);
+  const decorativeIconProps = getDecorativeIconProps();
 
   const getIcon = () => {
     switch (type) {
@@ -141,7 +152,12 @@ export const Toast: React.FC<ToastProps> = ({
       ]}
     >
       <View style={[styles.iconBadge, { backgroundColor: statusBackground }]}>
-        <Ionicons name={getIcon()} size={19} color={statusColor} />
+        <Ionicons
+          {...decorativeIconProps}
+          name={getIcon()}
+          size={19}
+          color={statusColor}
+        />
       </View>
       <Text style={[styles.message, { color: tokens.colors.textPrimary }]}>{message}</Text>
     </Animated.View>
