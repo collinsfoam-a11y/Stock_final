@@ -132,8 +132,10 @@ class SyncConflictsService:
             "resolved_by": None,
             "resolved_at": None,
             "created_at": datetime.now(UTC),
-            "local_timestamp": local_data.get("updated_at") or local_data.get("created_at"),
-            "server_timestamp": server_data.get("updated_at") or server_data.get("created_at"),
+            "local_timestamp": local_data.get("updated_at")
+            or local_data.get("created_at"),
+            "server_timestamp": server_data.get("updated_at")
+            or server_data.get("created_at"),
         }
 
         result = await self.db.sync_conflicts.insert_one(conflict_doc)
@@ -142,7 +144,9 @@ class SyncConflictsService:
             await self.event_service.record_sync_queue_event(
                 event_type="SYNC_CONFLICT_RECORDED",
                 session_id=session_id,
-                item_code=str(local_data.get("item_code") or server_data.get("item_code") or ""),
+                item_code=str(
+                    local_data.get("item_code") or server_data.get("item_code") or ""
+                ),
                 strategy="pending_review",
                 details={
                     "conflict_id": conflict_id,
@@ -154,7 +158,9 @@ class SyncConflictsService:
             )
         except Exception:
             logger.debug(
-                "Sync queue projection skipped for conflict %s", conflict_id, exc_info=True
+                "Sync queue projection skipped for conflict %s",
+                conflict_id,
+                exc_info=True,
             )
 
         logger.warning(
@@ -225,7 +231,9 @@ class SyncConflictsService:
         query = self._build_conflicts_query(status, session_id, user, entity_type)
         return await self.db.sync_conflicts.count_documents(query)
 
-    async def get_conflict_by_id(self, conflict_id: str) -> Optional[dict[str, Optional[Any]]]:
+    async def get_conflict_by_id(
+        self, conflict_id: str
+    ) -> Optional[dict[str, Optional[Any]]]:
         """Get a specific conflict by ID"""
         conflict = await self.db.sync_conflicts.find_one({"_id": ObjectId(conflict_id)})
 
@@ -332,7 +340,9 @@ class SyncConflictsService:
                 resolution_update,
             )
 
-        logger.info(f"Conflict {conflict_id} resolved with {resolution.value} by {resolved_by}")
+        logger.info(
+            f"Conflict {conflict_id} resolved with {resolution.value} by {resolved_by}"
+        )
 
         return {
             "conflict_id": conflict_id,
@@ -425,7 +435,9 @@ class SyncConflictsService:
         kwargs = {"session": db_session} if db_session is not None else {}
         try:
             if entity_type == "session":
-                session_doc = await self._find_session_for_entity(entity_id, db_session=db_session)
+                session_doc = await self._find_session_for_entity(
+                    entity_id, db_session=db_session
+                )
                 if not session_doc:
                     logger.warning("Session conflict target not found: %s", entity_id)
                     return
@@ -436,7 +448,9 @@ class SyncConflictsService:
                 fields = self._sanitize_session_resolution_fields(dict(data))
                 status = fields.pop("status", None)
                 if isinstance(status, str) and status.strip():
-                    current_status = str(session_doc.get("status") or "").strip().upper()
+                    current_status = (
+                        str(session_doc.get("status") or "").strip().upper()
+                    )
                     target_status = status.strip().upper()
                     if target_status != current_status:
                         await self.lifecycle_service.transition_session(
@@ -459,9 +473,13 @@ class SyncConflictsService:
                 return
 
             if entity_type == "count_line":
-                count_line = await self.db.count_lines.find_one(_entity_lookup(entity_id), **kwargs)
+                count_line = await self.db.count_lines.find_one(
+                    _entity_lookup(entity_id), **kwargs
+                )
                 if not count_line:
-                    logger.warning("Count-line conflict target not found: %s", entity_id)
+                    logger.warning(
+                        "Count-line conflict target not found: %s", entity_id
+                    )
                     return
 
                 raw_data = dict(data)
@@ -488,13 +506,17 @@ class SyncConflictsService:
                 merged_batches = existing_batches
                 if incoming_batches:
                     existing_batch_ids = {
-                        str(batch.get("batch_id") or batch.get("batch_no") or "").strip()
+                        str(
+                            batch.get("batch_id") or batch.get("batch_no") or ""
+                        ).strip()
                         for batch in existing_batches
                     }
                     additive_batches = [
                         batch
                         for batch in incoming_batches
-                        if str(batch.get("batch_id") or batch.get("batch_no") or "").strip()
+                        if str(
+                            batch.get("batch_id") or batch.get("batch_no") or ""
+                        ).strip()
                         not in existing_batch_ids
                     ]
                     if additive_batches:
@@ -574,14 +596,20 @@ class SyncConflictsService:
                 if await self._resolve_single_conflict(conflict, strategy):
                     resolved_count += 1
             except (PyMongoError, ValueError) as e:
-                logger.error(f"Failed to auto-resolve conflict {conflict['id']}: {str(e)}")
+                logger.error(
+                    f"Failed to auto-resolve conflict {conflict['id']}: {str(e)}"
+                )
                 continue
 
-        logger.info(f"Auto-resolved {resolved_count} conflicts using '{strategy}' strategy")
+        logger.info(
+            f"Auto-resolved {resolved_count} conflicts using '{strategy}' strategy"
+        )
 
         return resolved_count
 
-    async def _resolve_single_conflict(self, conflict: dict[str, Any], strategy: str) -> bool:
+    async def _resolve_single_conflict(
+        self, conflict: dict[str, Any], strategy: str
+    ) -> bool:
         """Helper to resolve a single conflict based on strategy"""
         # Determine resolution based on strategy
         if strategy == "server_wins":
@@ -597,7 +625,9 @@ class SyncConflictsService:
         await self.resolve_conflict(conflict["id"], resolution, "system_auto_resolve")
         return True
 
-    def _determine_newest_wins_resolution(self, conflict: dict[str, Any]) -> ConflictResolution:
+    def _determine_newest_wins_resolution(
+        self, conflict: dict[str, Any]
+    ) -> ConflictResolution:
         """Determine resolution based on timestamps"""
         local_ts = conflict.get("local_timestamp")
         server_ts = conflict.get("server_timestamp")
@@ -618,23 +648,48 @@ class SyncConflictsService:
 
     async def get_conflict_stats(self) -> dict[str, Any]:
         """Get statistics about sync conflicts"""
-        total = await self.db.sync_conflicts.count_documents({})
-        pending = await self.db.sync_conflicts.count_documents(
-            {"status": ConflictStatus.PENDING.value}
-        )
-        resolved = await self.db.sync_conflicts.count_documents(
-            {"status": ConflictStatus.RESOLVED.value}
-        )
-        ignored = await self.db.sync_conflicts.count_documents(
-            {"status": ConflictStatus.IGNORED.value}
-        )
+        # ⚡ Bolt: Consolidated multiple sequential count_documents and aggregate queries into a single aggregation
+        # pipeline using the $facet stage to significantly reduce database round-trips from 5 to 1.
+        pipeline = [
+            {
+                "$facet": {
+                    "total": [{"$count": "count"}],
+                    "status_counts": [
+                        {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+                    ],
+                    "by_entity_type": [
+                        {"$group": {"_id": "$entity_type", "count": {"$sum": 1}}}
+                    ],
+                }
+            }
+        ]
 
-        # Get conflicts by entity type
-        pipeline = [{"$group": {"_id": "$entity_type", "count": {"$sum": 1}}}]
+        result = await self.db.sync_conflicts.aggregate(pipeline).to_list(1)
 
+        total = 0
+        pending = 0
+        resolved = 0
+        ignored = 0
         by_entity_type = {}
-        async for result in self.db.sync_conflicts.aggregate(pipeline):
-            by_entity_type[result["_id"]] = result["count"]
+
+        if result and len(result) > 0:
+            data = result[0]
+
+            if data.get("total") and len(data["total"]) > 0:
+                total = data["total"][0]["count"]
+
+            for status_data in data.get("status_counts", []):
+                status = status_data["_id"]
+                count = status_data["count"]
+                if status == ConflictStatus.PENDING.value:
+                    pending = count
+                elif status == ConflictStatus.RESOLVED.value:
+                    resolved = count
+                elif status == ConflictStatus.IGNORED.value:
+                    ignored = count
+
+            for entity_data in data.get("by_entity_type", []):
+                by_entity_type[entity_data["_id"]] = entity_data["count"]
 
         return {
             "total": total,
