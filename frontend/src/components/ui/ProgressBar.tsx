@@ -6,11 +6,7 @@
 
 import React, { useEffect } from "react";
 import { View, Text, StyleSheet, ViewStyle } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import { colorPalette, spacing, typography } from "@/theme/designTokens";
 
 export type ProgressBarVariant = "default" | "success" | "warning" | "error";
@@ -25,6 +21,7 @@ interface ProgressBarProps {
   animated?: boolean;
   indeterminate?: boolean;
   style?: ViewStyle;
+  testID?: string;
 }
 
 const variantColors: Record<ProgressBarVariant, string> = {
@@ -34,10 +31,7 @@ const variantColors: Record<ProgressBarVariant, string> = {
   error: colorPalette.error[500],
 };
 
-const sizeStyles: Record<
-  ProgressBarSize,
-  { height: number; fontSize: number }
-> = {
+const sizeStyles: Record<ProgressBarSize, { height: number; fontSize: number }> = {
   sm: { height: 4, fontSize: typography.fontSize.xs },
   md: { height: 8, fontSize: typography.fontSize.sm },
   lg: { height: 12, fontSize: typography.fontSize.base },
@@ -52,8 +46,10 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   animated = true,
   indeterminate: _indeterminate = false,
   style,
+  testID,
 }) => {
   const progressValue = useSharedValue(0);
+  const clampedProgress = Math.min(Math.max(progress, 0), 100);
   const sizes = sizeStyles[size];
   const color = variantColors[variant];
 
@@ -77,7 +73,17 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   const displayLabel = label || `${Math.round(progress)}%`;
 
   return (
-    <View style={[styles.container, style]}>
+    <View
+      style={[styles.container, style]}
+      testID={testID}
+      accessibilityRole="progressbar"
+      accessibilityValue={{
+        min: 0,
+        max: 100,
+        now: clampedProgress,
+      }}
+      accessibilityLabel={label || "Progress"}
+    >
       {showLabel && (
         <Text
           style={[
