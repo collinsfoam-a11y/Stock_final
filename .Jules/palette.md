@@ -12,3 +12,7 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+
+## 2026-06-03 - ProgressBar Accessibility and Testing
+**Learning:** Standard `getByRole("progressbar")` queries in React Native testing (using jest-expo/TLRN) may fail even when the role is correctly applied.
+**Action:** Use `getByTestId` to access the component and verify `accessibilityRole` and `accessibilityValue` props directly to ensure correct screen reader integration.

@@ -6,11 +6,7 @@
 
 import React, { useEffect } from "react";
 import { View, Text, StyleSheet, ViewStyle } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import { colorPalette, spacing, typography } from "@/theme/designTokens";
 
 export type ProgressBarVariant = "default" | "success" | "warning" | "error";
@@ -25,6 +21,8 @@ interface ProgressBarProps {
   animated?: boolean;
   indeterminate?: boolean;
   style?: ViewStyle;
+  testID?: string;
+  accessibilityLabel?: string;
 }
 
 const variantColors: Record<ProgressBarVariant, string> = {
@@ -34,10 +32,7 @@ const variantColors: Record<ProgressBarVariant, string> = {
   error: colorPalette.error[500],
 };
 
-const sizeStyles: Record<
-  ProgressBarSize,
-  { height: number; fontSize: number }
-> = {
+const sizeStyles: Record<ProgressBarSize, { height: number; fontSize: number }> = {
   sm: { height: 4, fontSize: typography.fontSize.xs },
   md: { height: 8, fontSize: typography.fontSize.sm },
   lg: { height: 12, fontSize: typography.fontSize.base },
@@ -52,14 +47,16 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   animated = true,
   indeterminate: _indeterminate = false,
   style,
+  testID,
+  accessibilityLabel,
 }) => {
   const progressValue = useSharedValue(0);
   const sizes = sizeStyles[size];
   const color = variantColors[variant];
 
-  useEffect(() => {
-    const clampedProgress = Math.min(Math.max(progress, 0), 100);
+  const clampedProgress = Math.min(Math.max(progress, 0), 100);
 
+  useEffect(() => {
     if (animated) {
       progressValue.value = withSpring(clampedProgress, {
         damping: 15,
@@ -68,16 +65,27 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     } else {
       progressValue.value = clampedProgress;
     }
-  }, [progress, animated, progressValue]);
+  }, [clampedProgress, animated, progressValue]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     width: `${progressValue.value}%`,
   }));
 
-  const displayLabel = label || `${Math.round(progress)}%`;
+  const displayLabel = label || `${Math.round(clampedProgress)}%`;
 
   return (
-    <View style={[styles.container, style]}>
+    <View
+      style={[styles.container, style]}
+      testID={testID}
+      accessibilityRole="progressbar"
+      accessibilityLabel={accessibilityLabel || label || "Progress"}
+      accessibilityValue={{
+        min: 0,
+        max: 100,
+        now: Math.round(clampedProgress),
+        text: displayLabel,
+      }}
+    >
       {showLabel && (
         <Text
           style={[
