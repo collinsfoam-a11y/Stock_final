@@ -12,3 +12,6 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+## 2024-06-17 - Add ARIA Labels to icon-only buttons
+**Learning:** Decorative icons inside interactive elements (like `TouchableOpacity`) should be explicitly hidden from screen readers to prevent redundant or confusing readout, while the parent element must have an `accessibilityRole="button"` and a descriptive `accessibilityLabel`.
+**Action:** Use the provided `getDecorativeIconProps()` from `@/utils/accessibility` on the icon component, and add `accessibilityRole` and `accessibilityLabel` to the parent wrapper for all icon-only buttons.
