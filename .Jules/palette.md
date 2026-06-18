@@ -12,3 +12,6 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+## 2026-06-18 - [ProgressBar Accessibility]
+**Learning:** React Native's `accessibilityRole="progressbar"` and `accessibilityValue` (`min`, `max`, `now`) are crucial for screen reader users to understand progress state without relying on visual labels alone. Clamping the `now` value between 0-100 ensures consistent announcements even if raw data is out of bounds.
+**Action:** Always include `accessibilityRole="progressbar"` and `accessibilityValue` when implementing or enhancing progress indicators.
