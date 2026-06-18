@@ -23,6 +23,7 @@ import Animated, {
 import { useThemeContext } from "../../context/ThemeContext";
 import { AppTheme } from "../../theme/themes";
 import { BrandLogo } from "../branding/BrandLogo";
+import { getDecorativeIconProps } from "../../utils/accessibility";
 
 interface PremiumHeaderProps {
   title?: string;
@@ -95,6 +96,8 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
     </Animated.View>
   );
 
+  const decorativeIconProps = getDecorativeIconProps();
+
   const renderRightAction = () => {
     if (rightAction) {
       return (
@@ -102,8 +105,11 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
           style={[styles.actionButton, { backgroundColor: "rgba(99, 102, 241, 0.15)" }]}
           onPress={rightAction.onPress}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Header action"
         >
           <Ionicons
+            {...decorativeIconProps}
             name={rightAction.icon}
             size={22}
             color={rightAction.color || theme.colors.primary[400]}
@@ -118,16 +124,24 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
           style={[styles.actionButton, styles.logoutButton]}
           onPress={onLogout}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Logout"
         >
-          <Ionicons name="log-out-outline" size={22} color={theme.colors.error.main} />
+          <Ionicons {...decorativeIconProps} name="log-out-outline" size={22} color={theme.colors.error.main} />
         </TouchableOpacity>
       );
     }
 
     if (onMenuPress) {
       return (
-        <TouchableOpacity style={styles.actionButton} onPress={onMenuPress} activeOpacity={0.7}>
-          <Ionicons name="menu-outline" size={24} color={theme.colors.text.primary} />
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={onMenuPress}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Menu"
+        >
+          <Ionicons {...decorativeIconProps} name="menu-outline" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
       );
     }
