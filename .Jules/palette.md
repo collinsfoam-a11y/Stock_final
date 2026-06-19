@@ -12,3 +12,7 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+
+## 2026-06-03 - Propagating Disabled State in Touchables
+**Learning:** Found that when spreading `getAccessibleButtonProps` on `TouchableOpacity`, the `accessibilityState={disabled: true}` is passed down but the core top-level component does not actually become disabled.
+**Action:** When adding accessible props to custom components or icon buttons, explicitly pass `disabled={true}` or `disabled={disabled}` to the top-level element to physically prevent interactions alongside generating accessible state updates.

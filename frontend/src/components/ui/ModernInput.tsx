@@ -182,10 +182,11 @@ export const ModernInput: React.FC<ModernInputProps> = ({
               onIconPress?.();
             }}
             style={styles.iconContainer}
-            disabled={!onIconPress}
+            disabled={!onIconPress || disabled}
             {...(onIconPress
               ? getAccessibleButtonProps({
                   label: `${label || "Input"} action`,
+                  disabled: !onIconPress || disabled,
                 })
               : {})}
           >
@@ -229,8 +230,10 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           <TouchableOpacity
             onPress={handleClear}
             style={styles.iconContainer}
+            disabled={disabled}
             {...getAccessibleButtonProps({
               label: `Clear ${label || "input"}`,
+              disabled,
             })}
           >
             <Ionicons name="close-circle" size={20} color={uiTokens.colors.textSecondary} />
@@ -241,8 +244,10 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           <TouchableOpacity
             onPress={togglePasswordVisibility}
             style={styles.iconContainer}
+            disabled={disabled}
             {...getAccessibleButtonProps({
               label: isPasswordVisible ? "Hide password" : "Show password",
+              disabled,
             })}
           >
             <Ionicons
@@ -260,10 +265,11 @@ export const ModernInput: React.FC<ModernInputProps> = ({
               onRightIconPress?.();
             }}
             style={styles.iconContainer}
-            disabled={!onRightIconPress}
+            disabled={!onRightIconPress || disabled}
             {...(onRightIconPress
               ? getAccessibleButtonProps({
                   label: `${label || "Input"} right action`,
+                  disabled: !onRightIconPress || disabled,
                 })
               : {})}
           >

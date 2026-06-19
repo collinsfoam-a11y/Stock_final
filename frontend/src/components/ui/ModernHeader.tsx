@@ -127,9 +127,11 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
             <TouchableOpacity
               onPress={handleBackPress}
               style={styles.backButton}
+              disabled={false}
               {...getAccessibleButtonProps({
                 label: "Go back",
                 hint: "Returns to the previous operational screen.",
+                disabled: false,
               })}
             >
               <Ionicons
@@ -195,9 +197,11 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
             <TouchableOpacity
               onPress={onPressSettings}
               style={styles.backButton}
+              disabled={false}
               {...getAccessibleButtonProps({
                 label: "Open settings",
                 hint: "Opens settings for the current role.",
+                disabled: false,
               })}
             >
               <Ionicons
@@ -215,8 +219,10 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
                 rightAction.onPress();
               }}
               style={styles.backButton}
+              disabled={false}
               {...getAccessibleButtonProps({
                 label: rightAction.label ?? "Header action",
+                disabled: false,
               })}
             >
               <Ionicons
