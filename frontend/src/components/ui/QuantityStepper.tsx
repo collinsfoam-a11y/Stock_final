@@ -1,9 +1,9 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useThemeContext } from "../../context/ThemeContext";
-import { haptics } from "../../services/haptics";
-import { getDecorativeIconProps } from "../../utils/accessibility";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { haptics } from "@/services/haptics";
+import { getDecorativeIconProps, getAccessibleButtonProps } from "@/utils/accessibility";
 
 interface Props {
   value: number;
@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function QuantityStepper({ value, onChange, min = 0, max, disabled, testID }: Props) {
-  const { themeLegacy: theme } = useThemeContext();
+  const uiTokens = useUiTokens();
 
   const clamp = (n: number) => {
     const lower = Math.max(min, isFinite(min) ? min : 0);
@@ -31,49 +31,62 @@ export function QuantityStepper({ value, onChange, min = 0, max, disabled, testI
     }
   };
 
+  const isDecrementDisabled = disabled || value <= min;
+  const isIncrementDisabled = disabled || (typeof max === "number" && value >= max);
+
   const buttonStyle = {
-    backgroundColor: theme.colors.surfaceElevated,
-    borderColor: theme.colors.border,
+    backgroundColor: uiTokens.colors.surfaceElevated,
+    borderColor: uiTokens.colors.border,
+    width: 44, // Minimum touch target per AGENT_UI_UX_RULES.md
+    height: 44,
+    borderRadius: uiTokens.radius.sm,
+  };
+
+  const valueBoxStyle = {
+    borderColor: uiTokens.colors.border,
+    backgroundColor: uiTokens.colors.surface,
+    marginHorizontal: uiTokens.spacing.sm,
+    borderRadius: uiTokens.radius.sm,
   };
 
   return (
     <View style={[styles.container, disabled && { opacity: 0.6 }]} testID={testID}>
       <TouchableOpacity
         onPress={() => handleChange(-1)}
-        disabled={disabled || value <= min}
-        style={[styles.button, buttonStyle, (disabled || value <= min) && styles.buttonDisabled]}
-        accessibilityLabel="decrement"
-        accessibilityRole="button"
-        accessibilityState={{ disabled: disabled || value <= min }}
+        disabled={isDecrementDisabled}
+        style={[styles.button, buttonStyle, isDecrementDisabled && styles.buttonDisabled]}
+        {...getAccessibleButtonProps({
+          label: "Decrease quantity",
+          disabled: isDecrementDisabled,
+        })}
       >
-        <Ionicons {...getDecorativeIconProps()} name="remove" size={20} color={theme.colors.text} />
+        <Ionicons
+          {...getDecorativeIconProps()}
+          name="remove"
+          size={20}
+          color={isDecrementDisabled ? uiTokens.colors.textMuted : uiTokens.colors.textPrimary}
+        />
       </TouchableOpacity>
 
-      <View
-        style={[
-          styles.valueBox,
-          {
-            borderColor: theme.colors.border,
-            backgroundColor: theme.colors.surface,
-          },
-        ]}
-      >
-        <Text style={[styles.valueText, { color: theme.colors.text }]}>{value}</Text>
+      <View style={[styles.valueBox, valueBoxStyle]}>
+        <Text style={[styles.valueText, { color: uiTokens.colors.textPrimary }]}>{value}</Text>
       </View>
 
       <TouchableOpacity
         onPress={() => handleChange(1)}
-        disabled={disabled || (typeof max === "number" && value >= max)}
-        style={[
-          styles.button,
-          buttonStyle,
-          (disabled || (typeof max === "number" && value >= max)) && styles.buttonDisabled,
-        ]}
-        accessibilityLabel="increment"
-        accessibilityRole="button"
-        accessibilityState={{ disabled: disabled || (typeof max === "number" && value >= max) }}
+        disabled={isIncrementDisabled}
+        style={[styles.button, buttonStyle, isIncrementDisabled && styles.buttonDisabled]}
+        {...getAccessibleButtonProps({
+          label: "Increase quantity",
+          disabled: isIncrementDisabled,
+        })}
       >
-        <Ionicons {...getDecorativeIconProps()} name="add" size={20} color={theme.colors.text} />
+        <Ionicons
+          {...getDecorativeIconProps()}
+          name="add"
+          size={20}
+          color={isIncrementDisabled ? uiTokens.colors.textMuted : uiTokens.colors.textPrimary}
+        />
       </TouchableOpacity>
     </View>
   );
@@ -85,9 +98,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   button: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
@@ -97,10 +107,8 @@ const styles = StyleSheet.create({
   },
   valueBox: {
     minWidth: 56,
-    marginHorizontal: 8,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 8,
     borderWidth: 1,
     alignItems: "center",
   },
