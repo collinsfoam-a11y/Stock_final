@@ -27,6 +27,7 @@ interface AvatarProps {
   badgeColor?: string;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  accessibilityLabel?: string;
 }
 
 const sizeStyles: Record<
@@ -74,6 +75,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   badgeColor = colorPalette.success[500],
   style,
   textStyle,
+  accessibilityLabel,
 }) => {
   const sizes = sizeStyles[size];
   const backgroundColor = name
@@ -117,8 +119,16 @@ export const Avatar: React.FC<AvatarProps> = ({
     );
   };
 
+  const avatarAccessibilityLabel =
+    accessibilityLabel ||
+    `${name ? `Avatar for ${name}` : "User avatar"}${badge ? ", online" : ""}`;
+
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessibilityRole="image"
+      accessibilityLabel={avatarAccessibilityLabel}
+    >
       <View
         style={[
           styles.avatar,
@@ -147,6 +157,7 @@ export const Avatar: React.FC<AvatarProps> = ({
               borderColor: colorPalette.neutral[0],
             },
           ]}
+          importantForAccessibility="no-hide-descendants"
         />
       )}
     </View>
