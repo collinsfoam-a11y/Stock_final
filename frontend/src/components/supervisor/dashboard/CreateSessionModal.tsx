@@ -67,7 +67,6 @@ export function CreateSessionModal({
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create New Session</Text>
               <TouchableOpacity
-                accessibilityRole="button"
                 onPress={() => {
                   void haptics.light();
                   onClose();
