@@ -1,2 +1,5 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260513-43304:
+      reason: "Open Redirect vulnerability in Authlib 1.6.11. This component is not exposed as an OpenID Provider in this application; redirect_uri validation is handled at the application level."
+      expires: "2026-12-31"
