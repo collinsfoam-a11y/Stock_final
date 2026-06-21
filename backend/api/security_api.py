@@ -194,12 +194,20 @@ async def get_security_sessions(
         cursor = db.refresh_tokens.find(query).sort("created_at", -1).limit(limit)
         tokens = await cursor.to_list(limit)
 
+        # ⚡ Bolt: Resolve N+1 query by pre-fetching all users into a dictionary cache
+        usernames = list({t.get("username") for t in tokens if t.get("username")})
+        user_cache = {}
+        if usernames:
+            users_cursor = db.users.find({"username": {"$in": usernames}})
+            async for u in users_cursor:
+                user_cache[u["username"]] = u
+
         # Get user info for each token
         sessions: list[dict[str, Any]] = []
         for token in tokens:
             username = token.get("username")
             if username:
-                user = await db.users.find_one({"username": username})
+                user = user_cache.get(username)
                 if user:
                     sessions.append(
                         {
