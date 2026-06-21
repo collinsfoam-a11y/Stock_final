@@ -19,6 +19,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { borderRadius, colors, semanticColors } from "@/theme/legacyCompat";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 type BadgeVariant =
   | "success"
@@ -36,6 +37,7 @@ interface StatusBadgeProps {
   icon?: keyof typeof Ionicons.glyphMap;
   pulse?: boolean;
   style?: ViewStyle;
+  accessibilityLabel?: string;
 }
 
 const variantColors: Record<
@@ -96,9 +98,11 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   icon,
   pulse = false,
   style,
+  accessibilityLabel,
 }) => {
   const colors = variantColors[variant];
   const sizeConfig = sizeStyles[size];
+  const finalAccessibilityLabel = accessibilityLabel ?? `${variant} status: ${label}`;
 
   // Pulse animation
   const pulseOpacity = useSharedValue(1);
@@ -145,7 +149,12 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   const content = (
     <>
       {icon && (
-        <Ionicons name={icon} size={sizeConfig.iconSize} color={colors.text} />
+        <Ionicons
+          name={icon}
+          size={sizeConfig.iconSize}
+          color={colors.text}
+          {...getDecorativeIconProps()}
+        />
       )}
       <Text
         style={[
@@ -163,13 +172,25 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   if (pulse) {
     return (
-      <Animated.View style={[containerStyle, animatedStyle, style]}>
+      <Animated.View
+        style={[containerStyle, animatedStyle, style]}
+        accessible={true}
+        accessibilityLabel={finalAccessibilityLabel}
+      >
         {content}
       </Animated.View>
     );
   }
 
-  return <View style={[containerStyle, style]}>{content}</View>;
+  return (
+    <View
+      style={[containerStyle, style]}
+      accessible={true}
+      accessibilityLabel={finalAccessibilityLabel}
+    >
+      {content}
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
