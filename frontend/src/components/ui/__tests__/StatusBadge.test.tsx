@@ -1,6 +1,7 @@
 import React from "react";
 import { render } from "@testing-library/react-native";
 import { StatusBadge } from "../StatusBadge";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 describe("StatusBadge", () => {
   it("renders correctly with label", () => {
@@ -33,7 +34,7 @@ describe("StatusBadge", () => {
       <StatusBadge label="Info" variant="info" icon="information-circle" />
     );
     // Find Ionicons component
-    const icon = UNSAFE_getByType("Ionicons");
+    const icon = UNSAFE_getByType(Ionicons);
     expect(icon.props.importantForAccessibility).toBe("no");
     expect(icon.props.accessibilityElementsHidden).toBe(true);
   });
