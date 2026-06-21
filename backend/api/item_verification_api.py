@@ -7,7 +7,6 @@ import csv
 import io
 import json
 import logging
-from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, cast
 
@@ -740,27 +739,46 @@ async def get_filtered_items(
             search=search,
         )
 
-        verified_filter = deepcopy(filter_query)
-        verified_filter["verified"] = True
-
         items_task = (
             db.erp_items.find(filter_query, {"_id": 0})  # Added projection to exclude _id
             .skip(skip)
             .limit(limit)
             .to_list(length=limit)
         )
-        total_count_task = db.erp_items.count_documents(filter_query)
-        verified_count_task = db.erp_items.count_documents(verified_filter)
-        total_qty_task = db.erp_items.aggregate(
-            [{"$match": filter_query}, {"$group": {"_id": None, "total": {"$sum": "$stock_qty"}}}]
-        ).to_list(length=1)
 
-        items, total_count, verified_count, total_qty_result = await asyncio.gather(
-            items_task, total_count_task, verified_count_task, total_qty_task
-        )
+        # ⚡ Bolt: Consolidated 3 aggregation queries into 1 using $facet
+        stats_pipeline = [
+            {"$match": filter_query},
+            {
+                "$facet": {
+                    "total_count": [{"$count": "count"}],
+                    "verified_count": [{"$match": {"verified": True}}, {"$count": "count"}],
+                    "total_qty": [{"$group": {"_id": None, "total": {"$sum": "$stock_qty"}}}],
+                }
+            },
+        ]
+        stats_task = db.erp_items.aggregate(stats_pipeline).to_list(length=1)
+
+        items, stats_result = await asyncio.gather(items_task, stats_task)
 
         items = [serialize_item_document(item) for item in items]
-        total_qty = total_qty_result[0]["total"] if total_qty_result else 0.0
+
+        stats = stats_result[0] if stats_result else {}
+        total_count = (
+            stats.get("total_count", [{"count": 0}])[0].get("count", 0)
+            if stats.get("total_count")
+            else 0
+        )
+        verified_count = (
+            stats.get("verified_count", [{"count": 0}])[0].get("count", 0)
+            if stats.get("verified_count")
+            else 0
+        )
+        total_qty = (
+            stats.get("total_qty", [{"total": 0.0}])[0].get("total", 0.0)
+            if stats.get("total_qty")
+            else 0.0
+        )
 
         return {
             "success": True,
