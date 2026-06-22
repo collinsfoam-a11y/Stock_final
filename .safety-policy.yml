@@ -1,2 +1,5 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260513-43304:
+      reason: "Open Redirect in authlib <= 1.6.11. This app does not use the vulnerable OpenID Implicit/Hybrid grant validation logic in production. Update planned for v2.2."
+      expires: "2026-07-30"
