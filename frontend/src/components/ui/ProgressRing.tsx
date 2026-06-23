@@ -41,17 +41,18 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
   const animatedProgress = useSharedValue(0);
   const resolvedColors = colors ?? [uiTokens.colors.accent, uiTokens.colors.accentStrong];
   const animationDuration = getOperationalMotionDuration(uiTokens, "slow", prefersReducedMotion);
+  const clampedProgress = Math.min(Math.max(progress, 0), 100);
 
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const center = size / 2;
 
   useEffect(() => {
-    animatedProgress.value = withTiming(progress, {
+    animatedProgress.value = withTiming(clampedProgress, {
       duration: animationDuration,
       easing: Easing.bezier(0.25, 0.1, 0.25, 1),
     });
-  }, [animatedProgress, animationDuration, progress]);
+  }, [animatedProgress, animationDuration, clampedProgress]);
 
   const animatedProps = useAnimatedProps(() => {
     const strokeDashoffset = circumference - (circumference * animatedProgress.value) / 100;
@@ -61,7 +62,17 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
   });
 
   return (
-    <View style={[styles.container, { width: size, height: size }]}>
+    <View
+      style={[styles.container, { width: size, height: size }]}
+      accessible={true}
+      accessibilityRole="progressbar"
+      accessibilityValue={{
+        min: 0,
+        max: 100,
+        now: Math.round(clampedProgress),
+      }}
+      accessibilityLabel={label || "Progress"}
+    >
       <Svg width={size} height={size}>
         <Defs>
           <SvgLinearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">

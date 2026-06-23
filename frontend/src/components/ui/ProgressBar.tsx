@@ -56,10 +56,9 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   const progressValue = useSharedValue(0);
   const sizes = sizeStyles[size];
   const color = variantColors[variant];
+  const clampedProgress = Math.min(Math.max(progress, 0), 100);
 
   useEffect(() => {
-    const clampedProgress = Math.min(Math.max(progress, 0), 100);
-
     if (animated) {
       progressValue.value = withSpring(clampedProgress, {
         damping: 15,
@@ -68,16 +67,26 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     } else {
       progressValue.value = clampedProgress;
     }
-  }, [progress, animated, progressValue]);
+  }, [clampedProgress, animated, progressValue]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     width: `${progressValue.value}%`,
   }));
 
-  const displayLabel = label || `${Math.round(progress)}%`;
+  const displayLabel = label || `${Math.round(clampedProgress)}%`;
 
   return (
-    <View style={[styles.container, style]}>
+    <View
+      style={[styles.container, style]}
+      accessible={true}
+      accessibilityRole="progressbar"
+      accessibilityValue={{
+        min: 0,
+        max: 100,
+        now: Math.round(clampedProgress),
+      }}
+      accessibilityLabel={label || "Progress"}
+    >
       {showLabel && (
         <Text
           style={[
