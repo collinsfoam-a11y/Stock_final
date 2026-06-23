@@ -1,3 +1,4 @@
+import asyncio
 import io
 import logging
 from collections import defaultdict
@@ -66,7 +67,16 @@ class SystemReportService:
         start_dt, end_dt = self._normalize_date_range(start_date, end_date)
         activities: list[dict[str, Any]] = []
 
-        for log in await self._fetch_collection_documents("activity_logs", limit=300):
+        # ⚡ Bolt: Use asyncio.gather to fetch independent collections concurrently instead of sequentially
+        activity_logs_future = self._fetch_collection_documents("activity_logs", limit=300)
+        login_history_future = self._fetch_collection_documents("login_history", limit=300)
+        audit_logs_future = self._fetch_collection_documents("audit_logs", limit=300)
+
+        activity_logs, login_history, audit_logs = await asyncio.gather(
+            activity_logs_future, login_history_future, audit_logs_future
+        )
+
+        for log in activity_logs:
             timestamp = self._extract_timestamp(log, "timestamp")
             if not self._is_in_range(timestamp, start_dt, end_dt):
                 continue
@@ -83,7 +93,7 @@ class SystemReportService:
                 )
             )
 
-        for log in await self._fetch_collection_documents("login_history", limit=300):
+        for log in login_history:
             timestamp = self._extract_timestamp(log, "timestamp", "created_at")
             if not self._is_in_range(timestamp, start_dt, end_dt):
                 continue
@@ -100,7 +110,7 @@ class SystemReportService:
                 )
             )
 
-        for log in await self._fetch_collection_documents("audit_logs", limit=300):
+        for log in audit_logs:
             timestamp = self._extract_timestamp(log, "timestamp")
             if not self._is_in_range(timestamp, start_dt, end_dt):
                 continue
@@ -126,7 +136,16 @@ class SystemReportService:
         start_dt, end_dt = self._normalize_date_range(start_date, end_date)
         history: list[dict[str, Any]] = []
 
-        for log in await self._fetch_collection_documents("sync_history", limit=300):
+        # ⚡ Bolt: Use asyncio.gather to fetch independent collections concurrently instead of sequentially
+        sync_history_future = self._fetch_collection_documents("sync_history", limit=300)
+        sync_metadata_future = self._fetch_collection_documents("sync_metadata", limit=50)
+        erp_sync_metadata_future = self._fetch_collection_documents("erp_sync_metadata", limit=50)
+
+        sync_history, sync_metadata, erp_sync_metadata = await asyncio.gather(
+            sync_history_future, sync_metadata_future, erp_sync_metadata_future
+        )
+
+        for log in sync_history:
             timestamp = self._extract_timestamp(log, "timestamp", "last_sync", "last_synced")
             if not self._is_in_range(timestamp, start_dt, end_dt):
                 continue
@@ -143,7 +162,7 @@ class SystemReportService:
                 )
             )
 
-        for log in await self._fetch_collection_documents("sync_metadata", limit=50):
+        for log in sync_metadata:
             timestamp = self._extract_timestamp(log, "last_sync", "timestamp")
             if not self._is_in_range(timestamp, start_dt, end_dt):
                 continue
@@ -165,7 +184,7 @@ class SystemReportService:
                 )
             )
 
-        for log in await self._fetch_collection_documents("erp_sync_metadata", limit=50):
+        for log in erp_sync_metadata:
             timestamp = self._extract_timestamp(log, "last_sync", "last_synced", "timestamp")
             if not self._is_in_range(timestamp, start_dt, end_dt):
                 continue
