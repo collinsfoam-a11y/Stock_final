@@ -1,2 +1,5 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260513-43304:
+      reason: "Not using OAuth2 server features, only decoding JWTs. Safe."
+      expires: 2026-12-31
