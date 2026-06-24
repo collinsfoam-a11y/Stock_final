@@ -3,6 +3,7 @@ Sync Conflicts Service
 Detect and resolve synchronization conflicts between local and server data
 """
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from enum import Enum
@@ -618,23 +619,22 @@ class SyncConflictsService:
 
     async def get_conflict_stats(self) -> dict[str, Any]:
         """Get statistics about sync conflicts"""
-        total = await self.db.sync_conflicts.count_documents({})
-        pending = await self.db.sync_conflicts.count_documents(
-            {"status": ConflictStatus.PENDING.value}
-        )
-        resolved = await self.db.sync_conflicts.count_documents(
-            {"status": ConflictStatus.RESOLVED.value}
-        )
-        ignored = await self.db.sync_conflicts.count_documents(
-            {"status": ConflictStatus.IGNORED.value}
-        )
 
-        # Get conflicts by entity type
-        pipeline = [{"$group": {"_id": "$entity_type", "count": {"$sum": 1}}}]
+        async def fetch_entity_types() -> dict[str, int]:
+            pipeline = [{"$group": {"_id": "$entity_type", "count": {"$sum": 1}}}]
+            by_entity_type = {}
+            async for result in self.db.sync_conflicts.aggregate(pipeline):
+                by_entity_type[result["_id"]] = result["count"]
+            return by_entity_type
 
-        by_entity_type = {}
-        async for result in self.db.sync_conflicts.aggregate(pipeline):
-            by_entity_type[result["_id"]] = result["count"]
+        # Run queries concurrently
+        total, pending, resolved, ignored, by_entity_type = await asyncio.gather(
+            self.db.sync_conflicts.count_documents({}),
+            self.db.sync_conflicts.count_documents({"status": ConflictStatus.PENDING.value}),
+            self.db.sync_conflicts.count_documents({"status": ConflictStatus.RESOLVED.value}),
+            self.db.sync_conflicts.count_documents({"status": ConflictStatus.IGNORED.value}),
+            fetch_entity_types(),
+        )
 
         return {
             "total": total,
