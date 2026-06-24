@@ -61,8 +61,17 @@ export const Badge: React.FC<BadgeProps> = ({
   const sizes = sizeStyles[size];
 
   if (dot) {
+    const dotLabel =
+      (typeof label === "string" && label.length > 0) ||
+      typeof label === "number"
+        ? `${label} indicator`
+        : `${variant} indicator`;
+
     return (
       <View
+        accessible={true}
+        accessibilityRole="text"
+        accessibilityLabel={dotLabel}
         style={[
           styles.dot,
           {
@@ -76,8 +85,16 @@ export const Badge: React.FC<BadgeProps> = ({
     );
   }
 
+  const a11yLabel =
+    typeof label === "string" || typeof label === "number"
+      ? String(label)
+      : undefined;
+
   return (
     <View
+      accessible={true}
+      accessibilityRole="text"
+      accessibilityLabel={a11yLabel}
       style={[
         styles.badge,
         {
