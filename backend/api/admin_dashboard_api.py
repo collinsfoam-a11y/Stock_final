@@ -100,13 +100,68 @@ async def calculate_total_stock_value(db) -> float:
 async def calculate_verified_value(db) -> float:
     """Calculate value of verified stock."""
     try:
-        total_value = 0.0
-        cursor = db.count_lines.find({"status": "locked"})
-        async for line in cursor:
-            qty = float(line.get("counted_qty") or 0.0)
-            unit_value = float(line.get("mrp_counted") or line.get("mrp_erp") or 0.0)
-            total_value += qty * unit_value
-        return total_value
+        pipeline = [
+            {"$match": {"status": "locked"}},
+            {
+                "$group": {
+                    "_id": None,
+                    "total_value": {
+                        "$sum": {
+                            "$multiply": [
+                                {
+                                    "$cond": {
+                                        "if": {
+                                            "$and": [
+                                                {"$ne": ["$counted_qty", None]},
+                                                {"$ne": ["$counted_qty", ""]},
+                                            ]
+                                        },
+                                        "then": {
+                                            "$convert": {
+                                                "input": "$counted_qty",
+                                                "to": "double",
+                                                "onError": 0,
+                                                "onNull": 0,
+                                            }
+                                        },
+                                        "else": 0,
+                                    }
+                                },
+                                {
+                                    "$cond": {
+                                        "if": {
+                                            "$and": [
+                                                {"$ne": ["$mrp_counted", None]},
+                                                {"$ne": ["$mrp_counted", ""]},
+                                                {"$ne": ["$mrp_counted", 0]},
+                                            ]
+                                        },
+                                        "then": {
+                                            "$convert": {
+                                                "input": "$mrp_counted",
+                                                "to": "double",
+                                                "onError": 0,
+                                                "onNull": 0,
+                                            }
+                                        },
+                                        "else": {
+                                            "$convert": {
+                                                "input": "$mrp_erp",
+                                                "to": "double",
+                                                "onError": 0,
+                                                "onNull": 0,
+                                            }
+                                        },
+                                    }
+                                },
+                            ]
+                        }
+                    },
+                }
+            },
+        ]
+        result = await db.count_lines.aggregate(pipeline).to_list(1)
+        return result[0]["total_value"] if result else 0.0
     except Exception as e:
         logger.error("Error calculating verified value: %s", sanitize_for_logging(str(e)))
         return 0.0
