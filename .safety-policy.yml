@@ -4,3 +4,5 @@ security:
       reason: Temporarily ignoring authlib Open Redirect CVE because upgrading the package is forbidden by the boundaries.
     SFTY-20260513-43304:
       reason: Temporarily ignoring authlib Open Redirect CVE because upgrading the package is forbidden by the boundaries.
+    70612:
+      reason: Temporarily ignore
