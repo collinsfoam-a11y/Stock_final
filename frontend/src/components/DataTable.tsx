@@ -5,7 +5,6 @@
 
 import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { FlashList } from "@shopify/flash-list";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
@@ -115,9 +114,9 @@ export const DataTable: React.FC<DataTableProps> = ({
   );
 
   // Render row
-  const renderRow = (item: TableData, index: number) => (
+  const renderRow = (item: TableData, index: number, key: string) => (
     <TouchableOpacity
-      key={index}
+      key={key}
       style={[styles.row, index % 2 === 0 && styles.rowEven]}
       onPress={() => onRowPress?.(item)}
       disabled={!onRowPress}
@@ -179,11 +178,9 @@ export const DataTable: React.FC<DataTableProps> = ({
     );
   };
 
-  // FlashList no longer requires estimatedItemSize in newer versions
-
   // For horizontal scrolling tables, we need a different approach
-  // FlashList doesn't work well nested in ScrollView, so we'll use a hybrid approach
-  // Use FlashList for vertical scrolling, but keep horizontal scroll wrapper
+  // FlashList doesn't work well nested in ScrollView, and since we disable scrolling on it anyway,
+  // we use a standard View mapping for the list content. This removes virtualization overhead for small paginated lists.
   return (
     <View style={styles.container}>
       {renderHeader()}
@@ -193,18 +190,14 @@ export const DataTable: React.FC<DataTableProps> = ({
           showsHorizontalScrollIndicator={true}
           style={styles.horizontalScroll}
         >
+          {/* ⚡ Bolt: Replaced FlashList with standard View mapping for unscrollable list to remove virtualization overhead. */}
           <View style={styles.tableContent}>
-            <FlashList
-              data={paginatedData}
-              renderItem={({ item, index }) => renderRow(item, index)}
-              keyExtractor={(item, index) => {
-                // Create a stable key from item data
-                const keyParts = columns.map((col) => String(item[col.key] || "")).join("-");
-                return `row-${index}-${keyParts.substring(0, 30)}`;
-              }}
-              extraData={sortColumn}
-              scrollEnabled={false} // Disable FlashList scrolling since we're in a ScrollView
-            />
+            {paginatedData.map((item, index) => {
+              // Create a stable key from item data based on original FlashList implementation
+              const keyParts = columns.map((col) => String(item[col.key] || "")).join("-");
+              const stableKey = `row-${index}-${keyParts.substring(0, 30)}`;
+              return renderRow(item, index, stableKey);
+            })}
           </View>
         </ScrollView>
       </View>
