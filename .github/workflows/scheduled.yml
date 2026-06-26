@@ -35,7 +35,7 @@ jobs:
         run: |
           pip install safety pip-audit
           echo "## Security Audit" > audit-report.md
-          safety check -r backend/requirements.production.txt --full-report >> audit-report.md || true
+          safety check -r backend/requirements.production.txt --full-report || true >> audit-report.md || true
           pip-audit -r backend/requirements.production.txt >> audit-report.md || true
 
       - name: Upload audit report
