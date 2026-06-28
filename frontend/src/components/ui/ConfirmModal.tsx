@@ -199,6 +199,7 @@ function ConfirmModal({
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={handleCancel}
+            disabled={loading}
             {...getAccessibleButtonProps({
               label: cancelLabel,
               disabled: loading,
@@ -215,6 +216,7 @@ function ConfirmModal({
               (loading || confirmDisabled) && styles.confirmButtonDisabled,
             ]}
             onPress={handleConfirm}
+            disabled={loading || confirmDisabled}
             {...getAccessibleButtonProps({
               label: confirmLabel,
               disabled: loading || confirmDisabled,
