@@ -18,7 +18,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
 import { colorPalette, spacing, typography, borderRadius, shadows } from "@/theme/designTokens";
 import { haptics } from "@/services/haptics";
-import { getAccessibleButtonProps } from "@/utils/accessibility";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -124,6 +124,7 @@ const AccordionItemComponent: React.FC<AccordionItemComponentProps> = ({
       >
         {item.icon && (
           <Ionicons
+            {...getDecorativeIconProps()}
             name={item.icon}
             size={20}
             color={colorPalette.neutral[700]}
@@ -134,7 +135,12 @@ const AccordionItemComponent: React.FC<AccordionItemComponentProps> = ({
         <Text style={styles.title}>{item.title}</Text>
 
         <Animated.View style={iconStyle}>
-          <Ionicons name="chevron-down" size={20} color={colorPalette.neutral[600]} />
+          <Ionicons
+            {...getDecorativeIconProps()}
+            name="chevron-down"
+            size={20}
+            color={colorPalette.neutral[600]}
+          />
         </Animated.View>
       </TouchableOpacity>
 

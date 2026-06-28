@@ -22,6 +22,7 @@ import {
   hitSlop,
 } from "@/theme/legacyCompat";
 import { haptics } from "@/services/haptics";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 interface CheckboxProps {
   checked: boolean;
@@ -85,6 +86,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
       >
         <Animated.View style={checkmarkStyle}>
           <Ionicons
+            {...getDecorativeIconProps()}
             name={indeterminate ? "remove" : "checkmark"}
             size={16}
             color={disabled ? colors.neutral[700] : colors.white}
