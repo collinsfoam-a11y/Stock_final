@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from "react";
-import { FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { SerialEntryData } from "@/types/scan";
 import { useUiTokens } from "@/hooks/useUiTokens";
@@ -150,20 +150,14 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
         </View>
       )}
 
-      <FlatList
-        data={serialEntries}
-        keyExtractor={(entry) => entry.id}
-        renderItem={renderSerialEntry}
-        extraData={serialValidationMessages}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        nestedScrollEnabled={Platform.OS === "android"}
-        scrollEnabled={false}
-        initialNumToRender={8}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-        removeClippedSubviews={Platform.OS === "android"}
-      />
+      {/* ⚡ Bolt: Replaced FlatList (scrollEnabled={false}) with direct map to avoid virtualization overhead */}
+      <View style={[styles.list, styles.listContent]}>
+        {serialEntries.map((entry, index) => (
+          <React.Fragment key={entry.id}>
+            {renderSerialEntry({ item: entry, index })}
+          </React.Fragment>
+        ))}
+      </View>
 
       <TouchableOpacity style={styles.addButton} onPress={onAddSerial}>
         <Ionicons name="add-circle-outline" size={20} color={uiTokens.colors.accentStrong} />
