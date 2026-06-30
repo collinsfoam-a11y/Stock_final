@@ -9,7 +9,6 @@ import { FlashList } from "@shopify/flash-list";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
-import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 export interface TableColumn {
   key: string;
   label: string;
@@ -150,13 +149,8 @@ export const DataTable: React.FC<DataTableProps> = ({
           style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
           onPress={() => setCurrentPage(currentPage - 1)}
           disabled={currentPage === 1}
-          {...getAccessibleButtonProps({
-            label: "Previous page",
-            disabled: currentPage === 1,
-          })}
         >
           <Ionicons
-            {...getDecorativeIconProps()}
             name="chevron-back"
             size={20}
             color={currentPage === 1 ? uiColors.neutral[300] : uiColors.info[500]}
@@ -174,13 +168,8 @@ export const DataTable: React.FC<DataTableProps> = ({
           ]}
           onPress={() => setCurrentPage(currentPage + 1)}
           disabled={currentPage === totalPages}
-          {...getAccessibleButtonProps({
-            label: "Next page",
-            disabled: currentPage === totalPages,
-          })}
         >
           <Ionicons
-            {...getDecorativeIconProps()}
             name="chevron-forward"
             size={20}
             color={currentPage === totalPages ? uiColors.neutral[300] : uiColors.info[500]}

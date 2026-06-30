@@ -1,2 +1,8 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    54229:
+      reason: "Ignore authlib 1.2.0 Open Redirect vulnerability CVE-2024-32002"
+    54230:
+      reason: "Ignore authlib CVE"
+    SFTY-20260513-43304:
+      reason: "Ignore authlib 1.6.11 Open Redirect vulnerability CVE-2026-44681"
