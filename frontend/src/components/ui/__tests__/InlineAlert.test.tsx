@@ -1,5 +1,6 @@
 import React from "react";
 import { render } from "@testing-library/react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { InlineAlert } from "../InlineAlert";
 import { ThemeProvider } from "../../../context/ThemeContext";
 
@@ -14,7 +15,7 @@ describe("InlineAlert", () => {
     expect(container.props.accessible).toBe(true);
     expect(container.props.accessibilityRole).toBe("alert");
 
-    const icons = UNSAFE_getAllByType("Ionicons");
+    const icons = UNSAFE_getAllByType(Ionicons);
     expect(icons[0].props.accessibilityElementsHidden).toBe(true);
     expect(icons[0].props.importantForAccessibility).toBe("no");
   });
