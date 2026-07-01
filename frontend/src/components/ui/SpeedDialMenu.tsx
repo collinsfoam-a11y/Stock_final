@@ -25,6 +25,7 @@ import { zIndex as uiZIndex } from "@/theme/designTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha, getTokenShadowStyle, type ThemeTokens } from "@/theme/themeTokens";
 import { semanticColors } from "@/theme/legacyCompat";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 export interface SpeedDialAction {
   icon: keyof typeof Ionicons.glyphMap;
@@ -87,8 +88,7 @@ const SpeedDialActionItem: React.FC<SpeedDialActionItemProps> = ({
       ]}
       onPress={() => onPress(action)}
       activeOpacity={0.9}
-      accessibilityRole="button"
-      accessibilityLabel={action.label}
+      {...getAccessibleButtonProps({ label: action.label })}
     >
       <View
         style={[
@@ -131,7 +131,7 @@ const SpeedDialActionItem: React.FC<SpeedDialActionItemProps> = ({
             },
           ]}
         >
-          <Ionicons name={action.icon} size={22} color={actionColor} />
+          <Ionicons {...getDecorativeIconProps()} name={action.icon} size={22} color={actionColor} />
           {action.badge !== undefined && action.badge > 0 && (
             <View
               style={[
@@ -274,11 +274,10 @@ const SpeedDialMenu: React.FC<SpeedDialMenuProps> = ({
           ]}
           onPress={toggleMenu}
           activeOpacity={0.9}
-          accessibilityRole="button"
-          accessibilityLabel={isOpen ? "Close quick actions" : "Open quick actions"}
+          {...getAccessibleButtonProps({ label: isOpen ? "Close quick actions" : "Open quick actions" })}
         >
           <Animated.View style={mainRotationStyle}>
-            <Ionicons name={mainIcon} size={28} color={semanticColors.text.inverse} />
+            <Ionicons {...getDecorativeIconProps()} name={mainIcon} size={28} color={semanticColors.text.inverse} />
           </Animated.View>
         </TouchableOpacity>
       </View>

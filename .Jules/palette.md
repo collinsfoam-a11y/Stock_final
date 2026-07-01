@@ -12,3 +12,7 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+
+## 2026-06-05 - SpeedDialMenu Accessibility Improvements
+**Learning:** Found that custom speed dial components in React Native need explicit accessibility attributes, and that raw `<Ionicons>` often need to be explicitly hidden from screen readers to avoid redundant readouts.
+**Action:** When creating or updating interactive components with icons, actively use `getAccessibleButtonProps` for the touchable wrapper and `getDecorativeIconProps()` for the icon from `@/utils/accessibility` to enhance the screen reader experience.
