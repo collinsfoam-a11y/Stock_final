@@ -1,6 +1,7 @@
 import React from "react";
 import { render } from "@testing-library/react-native";
 import { StatusBadge } from "../StatusBadge";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 describe("StatusBadge", () => {
   it("renders correctly with label", () => {
@@ -20,7 +21,7 @@ describe("StatusBadge", () => {
   it("hides decorative icon from accessibility tree", () => {
     const { UNSAFE_getByType } = render(<StatusBadge label="SYNCING" icon="sync" />);
 
-    const icon = UNSAFE_getByType("Ionicons");
+    const icon = UNSAFE_getByType(Ionicons);
     expect(icon.props.accessibilityElementsHidden).toBe(true);
     expect(icon.props.importantForAccessibility).toBe("no");
     expect(icon.props["aria-hidden"]).toBe(true);
