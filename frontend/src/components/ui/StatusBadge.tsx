@@ -19,14 +19,9 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { borderRadius, colors, semanticColors } from "@/theme/legacyCompat";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
-type BadgeVariant =
-  | "success"
-  | "warning"
-  | "error"
-  | "info"
-  | "neutral"
-  | "primary";
+type BadgeVariant = "success" | "warning" | "error" | "info" | "neutral" | "primary";
 type BadgeSize = "small" | "medium" | "large";
 
 interface StatusBadgeProps {
@@ -107,20 +102,14 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   React.useEffect(() => {
     if (pulse) {
       pulseOpacity.value = withRepeat(
-        withSequence(
-          withTiming(0.6, { duration: 800 }),
-          withTiming(1, { duration: 800 }),
-        ),
+        withSequence(withTiming(0.6, { duration: 800 }), withTiming(1, { duration: 800 })),
         -1,
-        true,
+        true
       );
       pulseScale.value = withRepeat(
-        withSequence(
-          withTiming(1.02, { duration: 800 }),
-          withTiming(1, { duration: 800 }),
-        ),
+        withSequence(withTiming(1.02, { duration: 800 }), withTiming(1, { duration: 800 })),
         -1,
-        true,
+        true
       );
     }
   }, [pulse, pulseOpacity, pulseScale]);
@@ -142,10 +131,21 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     borderColor: colors.border,
   };
 
+  const accessibilityProps = {
+    accessible: true,
+    accessibilityRole: "text" as const,
+    accessibilityLabel: label,
+  };
+
   const content = (
     <>
       {icon && (
-        <Ionicons name={icon} size={sizeConfig.iconSize} color={colors.text} />
+        <Ionicons
+          name={icon}
+          size={sizeConfig.iconSize}
+          color={colors.text}
+          {...getDecorativeIconProps()}
+        />
       )}
       <Text
         style={[
@@ -163,13 +163,17 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   if (pulse) {
     return (
-      <Animated.View style={[containerStyle, animatedStyle, style]}>
+      <Animated.View style={[containerStyle, animatedStyle, style]} {...accessibilityProps}>
         {content}
       </Animated.View>
     );
   }
 
-  return <View style={[containerStyle, style]}>{content}</View>;
+  return (
+    <View style={[containerStyle, style]} {...accessibilityProps}>
+      {content}
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
