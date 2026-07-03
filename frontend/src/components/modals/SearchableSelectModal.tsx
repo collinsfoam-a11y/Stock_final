@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { VirtualList } from "../common/VirtualList";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "../../utils/accessibility";
 import {
   modernColors,
   modernTypography,
@@ -70,6 +71,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
   const renderOption = ({ item }: { item: string }) => (
     <TouchableOpacity
       style={styles.optionItem}
+      {...getAccessibleButtonProps({ label: `Select ${item}` })}
       onPress={() => handleSelect(item)}
       testID={`${testID}-option-${item}`}
     >
@@ -78,6 +80,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
         name="chevron-forward"
         size={20}
         color={modernColors.text.tertiary}
+        {...getDecorativeIconProps()}
       />
     </TouchableOpacity>
   );
@@ -100,6 +103,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
             <Text style={styles.title}>{title}</Text>
             <TouchableOpacity
               style={styles.closeButton}
+              {...getAccessibleButtonProps({ label: "Close modal" })}
               onPress={handleClose}
               testID={`${testID}-close`}
             >
@@ -107,6 +111,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
                 name="close"
                 size={24}
                 color={modernColors.text.primary}
+                {...getDecorativeIconProps()}
               />
             </TouchableOpacity>
           </View>
@@ -131,6 +136,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity
+                {...getAccessibleButtonProps({ label: "Clear search query" })}
                 onPress={() => setSearchQuery("")}
                 style={styles.clearButton}
               >
@@ -138,6 +144,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
                   name="close-circle"
                   size={20}
                   color={modernColors.text.tertiary}
+                  {...getDecorativeIconProps()}
                 />
               </TouchableOpacity>
             )}
