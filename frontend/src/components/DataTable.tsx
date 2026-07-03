@@ -5,7 +5,6 @@
 
 import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { FlashList } from "@shopify/flash-list";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
@@ -115,9 +114,9 @@ export const DataTable: React.FC<DataTableProps> = ({
   );
 
   // Render row
-  const renderRow = (item: TableData, index: number) => (
+  const renderRow = (item: TableData, index: number, key?: string) => (
     <TouchableOpacity
-      key={index}
+      key={key ?? index}
       style={[styles.row, index % 2 === 0 && styles.rowEven]}
       onPress={() => onRowPress?.(item)}
       disabled={!onRowPress}
@@ -179,11 +178,9 @@ export const DataTable: React.FC<DataTableProps> = ({
     );
   };
 
-  // FlashList no longer requires estimatedItemSize in newer versions
-
   // For horizontal scrolling tables, we need a different approach
-  // FlashList doesn't work well nested in ScrollView, so we'll use a hybrid approach
-  // Use FlashList for vertical scrolling, but keep horizontal scroll wrapper
+  // Since the table content should not scroll vertically independently, we replace FlashList
+  // with a standard map to avoid unnecessary virtualization overhead.
   return (
     <View style={styles.container}>
       {renderHeader()}
@@ -194,17 +191,12 @@ export const DataTable: React.FC<DataTableProps> = ({
           style={styles.horizontalScroll}
         >
           <View style={styles.tableContent}>
-            <FlashList
-              data={paginatedData}
-              renderItem={({ item, index }) => renderRow(item, index)}
-              keyExtractor={(item, index) => {
-                // Create a stable key from item data
-                const keyParts = columns.map((col) => String(item[col.key] || "")).join("-");
-                return `row-${index}-${keyParts.substring(0, 30)}`;
-              }}
-              extraData={sortColumn}
-              scrollEnabled={false} // Disable FlashList scrolling since we're in a ScrollView
-            />
+            {paginatedData.map((item, index) => {
+              // Create a stable key from item data
+              const keyParts = columns.map((col) => String(item[col.key] || "")).join("-");
+              const key = `row-${index}-${keyParts.substring(0, 30)}`;
+              return renderRow(item, index, key);
+            })}
           </View>
         </ScrollView>
       </View>
