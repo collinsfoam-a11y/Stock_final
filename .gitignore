@@ -132,3 +132,4 @@ docker-compose.override.yml
 
 # Test / tooling caches
 .hypothesis/
+venv/
