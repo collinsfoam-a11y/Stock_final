@@ -1,5 +1,6 @@
 import React from "react";
 import { render } from "@testing-library/react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBadge } from "../StatusBadge";
 
 describe("StatusBadge", () => {
@@ -21,7 +22,7 @@ describe("StatusBadge", () => {
     const { UNSAFE_getByType } = render(
       <StatusBadge label="Active" icon="radio-button-on" />
     );
-    const icon = UNSAFE_getByType("Ionicons");
+    const icon = UNSAFE_getByType(Ionicons);
     expect(icon.props.accessibilityElementsHidden).toBe(true);
     expect(icon.props.importantForAccessibility).toBe("no");
   });
