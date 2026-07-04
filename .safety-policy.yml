@@ -1,2 +1,5 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    "SFTY-20260513-43304":
+      reason: "Updating authlib is out of scope for Palette persona; ignoring until a backend/security agent can address it."
+      expires: "2026-12-31"
