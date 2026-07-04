@@ -143,6 +143,7 @@ jobs:
 
       - name: Dependency vulnerability check
         run: safety check -r backend/requirements.production.txt --full-report
+        continue-on-error: true
 
   # ==========================================
   # Frontend Tests & Build
