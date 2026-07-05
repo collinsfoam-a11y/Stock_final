@@ -12,3 +12,7 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+
+## 2026-06-03 - QuantityStepper Accessibility and Testing
+**Learning:** The `QuantityStepper` component required improved accessibility for its increment/decrement buttons and value display. Descriptive labels like "Increase quantity" are better than "increment". Grouping the value display with an `accessibilityLabel` provides better context for screen readers. In tests, mocking `useThemeContext` must align with the component's internal destructuring (e.g., providing `themeLegacy`).
+**Action:** Use `getAccessibleButtonProps` for control buttons and provide meaningful labels. Ensure container views for values are marked as `accessible` with a summary label.
