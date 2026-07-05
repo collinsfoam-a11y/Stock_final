@@ -5,7 +5,6 @@
 
 import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { FlashList } from "@shopify/flash-list";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
@@ -182,8 +181,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   // FlashList no longer requires estimatedItemSize in newer versions
 
   // For horizontal scrolling tables, we need a different approach
-  // FlashList doesn't work well nested in ScrollView, so we'll use a hybrid approach
-  // Use FlashList for vertical scrolling, but keep horizontal scroll wrapper
+  // Using direct mapping since scrolling is disabled and handled by wrapper if needed
   return (
     <View style={styles.container}>
       {renderHeader()}
@@ -194,17 +192,12 @@ export const DataTable: React.FC<DataTableProps> = ({
           style={styles.horizontalScroll}
         >
           <View style={styles.tableContent}>
-            <FlashList
-              data={paginatedData}
-              renderItem={({ item, index }) => renderRow(item, index)}
-              keyExtractor={(item, index) => {
-                // Create a stable key from item data
-                const keyParts = columns.map((col) => String(item[col.key] || "")).join("-");
-                return `row-${index}-${keyParts.substring(0, 30)}`;
-              }}
-              extraData={sortColumn}
-              scrollEnabled={false} // Disable FlashList scrolling since we're in a ScrollView
-            />
+            {paginatedData.map((item, index) => {
+              // Create a stable key from item data just like the old keyExtractor
+              const keyParts = columns.map((col) => String(item[col.key] || "")).join("-");
+              const rowKey = `row-${index}-${keyParts.substring(0, 30)}`;
+              return <React.Fragment key={rowKey}>{renderRow(item, index)}</React.Fragment>;
+            })}
           </View>
         </ScrollView>
       </View>
