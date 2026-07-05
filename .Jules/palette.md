@@ -12,3 +12,6 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+## 2025-07-05 - Hide Decorative Icons in Composite Interactive Components
+**Learning:** In composite interactive components like an Accordion header, the parent `TouchableOpacity` already fully describes the state (label, expanded status) to screen readers via `getAccessibleButtonProps`. Inner visual indicators, such as chevrons or state icons, are decorative to the screen reader experience and should be hidden to prevent redundant or confusing audio clutter.
+**Action:** Always apply `getDecorativeIconProps()` to child structural or visual icons when the parent interactive wrapper is already managing accessibility attributes.
