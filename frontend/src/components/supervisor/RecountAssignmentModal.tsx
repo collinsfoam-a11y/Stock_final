@@ -65,6 +65,10 @@ export default function RecountAssignmentModal({
     return new Map(staffOptions.map((user) => [formatStaffLabel(user), user.username]));
   }, [staffOptions]);
 
+  // ⚡ Bolt: Memoize the options array derived from the Map keys to prevent
+  // creating a new array on every render, which avoids unnecessary re-renders of SearchableSelectModal.
+  const staffOptionLabels = useMemo(() => Array.from(usernameByLabel.keys()), [usernameByLabel]);
+
   const selectedLabel =
     (selectedAssignee && labelByUsername.get(selectedAssignee)) || "Choose assignee";
 
@@ -146,7 +150,7 @@ export default function RecountAssignmentModal({
             setSelectedAssignee(username);
           }
         }}
-        options={staffOptions.map(formatStaffLabel)}
+        options={staffOptionLabels}
         title="Select Staff Assignee"
         placeholder="Search staff"
         testID="recount-assignee-picker"
