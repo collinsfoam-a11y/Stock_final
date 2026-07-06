@@ -106,7 +106,7 @@ export const LiveIndicator: React.FC<LiveIndicatorProps> = ({
           ]}
         />
       </View>
-      {label && (
+      {!!label && (
         <Text
           style={[
             styles.label,

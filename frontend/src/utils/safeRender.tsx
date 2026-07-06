@@ -63,7 +63,15 @@ export async function safeAsync<T>(
       requestError.code === "ERR_NETWORK" ||
       requestError.name === "AbortError"
     );
-    if (__DEV__ && !isHandledRequestError) {
+    // AppErrors flagged user-facing/network are expected control-flow outcomes
+    // (e.g. "item not found") that the caller already surfaces to the user.
+    // Logging them at error severity trips the dev redbox and inflates
+    // production error monitoring for non-bugs.
+    const isExpectedAppError = Boolean(
+      (requestError as { name?: string }).name === "AppError" &&
+        (requestError as { isUserFacing?: boolean }).isUserFacing
+    );
+    if (__DEV__ && !isHandledRequestError && !isExpectedAppError) {
       console.error("Safe async error:", err);
     }
     if (onError) {

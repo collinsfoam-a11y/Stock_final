@@ -242,7 +242,7 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
           <Text style={styles.title}>Change PIN</Text>
           <Text style={styles.subtitle}>Enter your current PIN and choose a new one</Text>
 
-          {error && <Text style={styles.error}>{error}</Text>}
+          {!!error && <Text style={styles.error}>{error}</Text>}
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Current PIN</Text>

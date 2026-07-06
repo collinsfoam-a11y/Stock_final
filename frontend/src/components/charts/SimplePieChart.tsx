@@ -36,7 +36,7 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
   if (!data || data.length === 0) {
     return (
       <View style={styles.container}>
-        {title && <Text style={styles.title}>{title}</Text>}
+        {!!title && <Text style={styles.title}>{title}</Text>}
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>No data available</Text>
         </View>
@@ -127,7 +127,7 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
 
   return (
     <View style={styles.container}>
-      {title && <Text style={styles.title}>{title}</Text>}
+      {!!title && <Text style={styles.title}>{title}</Text>}
       <View style={styles.chartWrapper}>
         <View style={styles.pieContainer}>
           {renderPieChart()}

@@ -48,7 +48,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         <Text accessibilityRole="header" style={[styles.title, { color: theme.colors.text }]}>
           {title}
         </Text>
-        {message && (
+        {!!message && (
           <Text style={[styles.message, { color: theme.colors.textSecondary }]}>{message}</Text>
         )}
       </View>

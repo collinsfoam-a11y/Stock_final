@@ -273,6 +273,9 @@ export const useDeferredItemSubmission = ({
   const [submitting, setSubmitting] = useState(false);
   const [submitCountdown, setSubmitCountdown] = useState<number | null>(null);
   const submitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks an armed-but-not-yet-executed countdown so an unmount can flush the
+  // submit instead of silently discarding the staff member's count.
+  const pendingCountdownRef = useRef(false);
 
   const validateBeforeSubmit = useCallback(() => {
     if (!item || !sessionId) return false;
@@ -337,9 +340,10 @@ export const useDeferredItemSubmission = ({
     validateSerials,
   ]);
 
-  const executeSubmit = useCallback(async () => {
+  const executeSubmit = useCallback(async (options?: { silent?: boolean }) => {
     if (!item || !sessionId) return;
 
+    pendingCountdownRef.current = false;
     setSubmitCountdown(null);
     setSubmitting(true);
 
@@ -372,9 +376,21 @@ export const useDeferredItemSubmission = ({
         recountTargetId,
       });
       const result = await createCountLine(payload);
+      if (options?.silent) {
+        // Unmount flush: the screen is gone, so skip haptics and navigation
+        // callbacks — persisting the count is all that matters here.
+        toastService.show("Item verified successfully", { type: "success" });
+        return;
+      }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await handleSubmissionResult(result, onSuccess);
     } catch (error: any) {
+      if (options?.silent) {
+        toastService.show("Could not save the pending count. Please recount the item.", {
+          type: "error",
+        });
+        return;
+      }
       showSubmissionError(error);
     } finally {
       setSubmitting(false);
@@ -429,13 +445,32 @@ export const useDeferredItemSubmission = ({
 
   const handleSubmitPress = useCallback(() => {
     if (!validateBeforeSubmit()) return;
+    pendingCountdownRef.current = true;
     setSubmitCountdown(countdownSeconds);
   }, [countdownSeconds, validateBeforeSubmit]);
 
   const cancelSubmit = useCallback(() => {
+    pendingCountdownRef.current = false;
     if (submitTimerRef.current) clearTimeout(submitTimerRef.current);
     setSubmitCountdown(null);
   }, []);
+
+  const executeSubmitRef = useRef(executeSubmit);
+  useEffect(() => {
+    executeSubmitRef.current = executeSubmit;
+  }, [executeSubmit]);
+
+  useEffect(
+    () => () => {
+      // Unmounting mid-countdown (back navigation, screen swap) must not drop
+      // the count: flush it now without navigation side effects.
+      if (pendingCountdownRef.current) {
+        pendingCountdownRef.current = false;
+        void executeSubmitRef.current({ silent: true });
+      }
+    },
+    []
+  );
 
   return {
     submitting,

@@ -273,7 +273,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         <Text style={[styles.titleText, { color: colors.text }]} numberOfLines={1}>
           {title}
         </Text>
-        {subtitle && (
+        {!!subtitle && (
           <Text style={[styles.subtitleText, { color: colors.textSecondary }]} numberOfLines={1}>
             {subtitle}
           </Text>
@@ -303,7 +303,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
       </View>
 
       {/* Center Section (overlay-centered, avoids overlap with left/right content) */}
-      {title && (
+      {!!title && (
         <View
           style={[
             styles.centerOverlay,

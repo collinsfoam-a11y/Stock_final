@@ -167,7 +167,7 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
           },
         ]}
       >
-        {label && (
+        {!!label && (
           <Animated.Text
             style={[
               styles.label,
@@ -196,7 +196,7 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
           autoCorrect={false}
         />
       </Animated.View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {!!error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
 };

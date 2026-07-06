@@ -1,12 +1,9 @@
-import { Platform } from "react-native";
-
 export async function initMobileRuntime(
   isDev: boolean,
 ): Promise<() => void> {
-  if (Platform.OS === "web") {
-    return () => {};
-  }
-
+  // Web uses the same offline-first stack (SQLite queue, network store), so it
+  // needs the network listener and sync scheduler too — without them, queued
+  // counts on web only flush via a manual sync tap.
   const [
     { initializeNetworkListener },
     { initializeSyncService, startSyncService, stopSyncService },

@@ -48,7 +48,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
   return (
     <View style={styles.container}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {!!label && <Text style={styles.label}>{label}</Text>}
       <View style={styles.dateRow}>
         <TouchableOpacity
           style={styles.dateButton}

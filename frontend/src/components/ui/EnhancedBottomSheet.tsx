@@ -219,7 +219,7 @@ export const EnhancedBottomSheet: React.FC<EnhancedBottomSheetProps> = ({
             </View>
           )}
 
-          {title && (
+          {!!title && (
             <View style={styles.titleContainer}>
               <Text style={styles.title}>{title}</Text>
               <TouchableOpacity

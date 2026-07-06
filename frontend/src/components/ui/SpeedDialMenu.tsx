@@ -153,7 +153,9 @@ const SpeedDialActionItem: React.FC<SpeedDialActionItemProps> = ({
 
 const SpeedDialMenu: React.FC<SpeedDialMenuProps> = ({
   actions,
-  mainIcon = "menu",
+  // "flash" distinguishes the quick-actions dial from the navigation
+  // drawer FAB, which uses the "menu" glyph in the opposite corner.
+  mainIcon = "flash",
   mainColor,
   position = "bottom-right",
 }) => {

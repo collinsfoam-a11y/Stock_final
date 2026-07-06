@@ -676,13 +676,18 @@ export const initializeSyncService = () => {
     };
   }
 
-  let networkReady = useNetworkStore.getState().isOnline;
+  const initialState = useNetworkStore.getState();
+  // Writes are gated on confirmed reachability (isInternetReachable === true),
+  // not just isOnline. On web/LAN, NetInfo leaves reachability unknown and the
+  // backend health check is what flips it — so treat that flip as "came
+  // online" too, or queued counts wait for a manual sync tap.
+  let networkReady = initialState.isOnline && initialState.isInternetReachable === true;
 
   const unsubscribe = useNetworkStore.subscribe((state) => {
     const wasOnline = networkReady;
-    networkReady = state.isOnline;
+    networkReady = state.isOnline && state.isInternetReachable === true;
 
-    if (state.isOnline && !wasOnline) {
+    if (networkReady && !wasOnline) {
       const settings = useSettingsStore.getState().settings;
       if (
         settings.offlineMode ||

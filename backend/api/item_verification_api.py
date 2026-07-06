@@ -599,6 +599,73 @@ def _build_item_update_doc(
     return {"$set": update_fields}
 
 
+async def record_count_line_variance(
+    database,
+    count_line: dict[str, Any],
+    *,
+    approved_by: str,
+    approved_at: datetime,
+) -> None:
+    """Mirror an approved count-line variance into item_variances.
+
+    The supervisor variance report and its CSV/XLSX exports read the
+    item_variances collection, which historically only the item-verification
+    flow populated. Approved stock-count variances must land there too or the
+    reconciliation report misses the main counting workflow.
+    Upserts on count_line_id so re-approval cannot duplicate rows.
+
+    Lives in this module because it is the sanctioned writer of verified-qty
+    reporting documents (see test_governance_contracts).
+    """
+    try:
+        counted_qty = float(count_line.get("counted_qty") or 0.0)
+        erp_qty = float(count_line.get("erp_qty") or 0.0)
+        variance = count_line.get("variance")
+        variance = float(variance) if variance is not None else counted_qty - erp_qty
+        if variance == 0:
+            return
+
+        item_code = count_line.get("item_code", "")
+        erp_item = await database.erp_items.find_one(
+            {"item_code": item_code},
+            {"category": 1, "subcategory": 1, "warehouse": 1},
+        )
+        erp_item = erp_item or {}
+
+        line_id = str(count_line.get("id") or count_line.get("_id") or "")
+        await database.item_variances.update_one(
+            {"count_line_id": line_id},
+            {
+                "$set": {
+                    "item_code": item_code,
+                    "item_name": count_line.get("item_name", ""),
+                    "system_qty": erp_qty,
+                    "verified_qty": counted_qty,
+                    "damaged_qty": count_line.get("damaged_qty"),
+                    "variance": variance,
+                    "variance_reason": count_line.get("variance_reason"),
+                    "verified_by": approved_by,
+                    "verified_at": approved_at,
+                    "category": erp_item.get("category", ""),
+                    "subcategory": erp_item.get("subcategory", ""),
+                    "floor": count_line.get("floor_no") or count_line.get("floor_id") or "",
+                    "rack": count_line.get("rack_no") or count_line.get("rack_id") or "",
+                    "warehouse": erp_item.get("warehouse", ""),
+                    "session_id": count_line.get("session_id"),
+                    "count_line_id": line_id,
+                    "item_condition": count_line.get("item_condition"),
+                    "source": "count_line_approval",
+                }
+            },
+            upsert=True,
+        )
+    except Exception as e:  # Reporting mirror must never block the approval itself.
+        logger.error(
+            "Failed to record count line variance: %s",
+            _safe_log_value(e, max_length=200),
+        )
+
+
 def _build_verification_log_doc(
     request: VerificationRequest,
     current_user: dict,

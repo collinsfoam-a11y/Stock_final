@@ -87,7 +87,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
       <View style={styles.container}>
         <Text style={styles.description}>This action requires supervisor authorization.</Text>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {!!error && <Text style={styles.errorText}>{error}</Text>}
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Supervisor Username</Text>

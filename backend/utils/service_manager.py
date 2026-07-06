@@ -58,9 +58,12 @@ class ServiceManager:
                             except (ValueError, IndexError):
                                 pass
             else:
-                # Unix/Mac: lsof -ti:PORT
+                # Unix/Mac: restrict to LISTEN sockets — a bare lsof -ti:PORT
+                # also returns established *client* connections (e.g. a browser
+                # talking to the server), whose pid would masquerade as the
+                # service and break process-identity checks.
                 result = subprocess.run(
-                    ["lsof", "-ti", f":{port}"],
+                    ["lsof", "-ti", f":{port}", "-sTCP:LISTEN"],
                     capture_output=True,
                     text=True,
                     timeout=5,

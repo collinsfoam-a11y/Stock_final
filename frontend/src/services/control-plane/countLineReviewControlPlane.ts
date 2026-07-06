@@ -1,6 +1,7 @@
 import api from "@/services/httpClient";
 import { useAuthStore } from "@/store/authStore";
 import { controlPlaneFlags } from "@/core/config/controlPlaneFlags";
+import { createLogger } from "@/services/logging";
 import { generateUUID } from "@/utils/uuid";
 import {
   createCountLineApprovedEvent,
@@ -28,6 +29,8 @@ type ReviewCommandOptions = {
   notes?: string;
   assign_to?: string;
 };
+
+const log = createLogger("countLineReviewControlPlane");
 
 const isOnline = () => getNetworkStatus().status === "ONLINE";
 
@@ -275,7 +278,19 @@ export const overlayCountLineReviewState = async <T extends Record<string, any>>
     return rows;
   }
 
-  const projectedStates = await getProjectedCountLineReviewStates(lineIds);
+  // The projection overlay is a local-cache enhancement, not the source of
+  // truth. If the SQLite projection store is unavailable (e.g. the WASM
+  // worker on web, or a not-yet-migrated table), degrade to the server rows
+  // instead of failing the whole list read.
+  let projectedStates: Awaited<ReturnType<typeof getProjectedCountLineReviewStates>>;
+  try {
+    projectedStates = await getProjectedCountLineReviewStates(lineIds);
+  } catch (error) {
+    log.warn("Count-line review projection overlay unavailable; using server rows", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return rows;
+  }
   if (projectedStates.length === 0) {
     return rows;
   }

@@ -269,7 +269,7 @@ export const StatsCardPreset: React.FC<StatsCardProps> = ({
         <Animated.Text style={statsStyles.title}>{title}</Animated.Text>
       </Animated.View>
       <Animated.Text style={statsStyles.value}>{value}</Animated.Text>
-      {subtitle && <Animated.Text style={statsStyles.subtitle}>{subtitle}</Animated.Text>}
+      {!!subtitle && <Animated.Text style={statsStyles.subtitle}>{subtitle}</Animated.Text>}
     </AnimatedCard>
   );
 };

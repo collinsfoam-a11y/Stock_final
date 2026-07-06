@@ -164,7 +164,13 @@ export default function SessionsList() {
 
               <View style={[styles.statItem, { marginLeft: "auto" }]}>
                 <Text style={styles.dateText}>
-                  {new Date(item.created_at).toLocaleDateString()}
+                  {(() => {
+                    const raw = item.started_at || item.created_at;
+                    const parsed = raw ? new Date(raw) : null;
+                    return parsed && !Number.isNaN(parsed.getTime())
+                      ? parsed.toLocaleDateString()
+                      : "—";
+                  })()}
                 </Text>
               </View>
             </View>

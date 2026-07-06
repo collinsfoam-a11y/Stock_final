@@ -50,7 +50,7 @@ export const SimpleLineChart: React.FC<
   if (!data || data.length === 0) {
     return (
       <View style={styles.container}>
-        {title && <Text style={[styles.title, { color: textColor }]}>{title}</Text>}
+        {!!title && <Text style={[styles.title, { color: textColor }]}>{title}</Text>}
         <View style={styles.emptyState}>
           <Text style={[styles.emptyText, { color: textColor }]}>No data available</Text>
         </View>
@@ -95,7 +95,7 @@ export const SimpleLineChart: React.FC<
 
   return (
     <View style={styles.container}>
-      {title && <Text style={[styles.title, { color: textColor }]}>{title}</Text>}
+      {!!title && <Text style={[styles.title, { color: textColor }]}>{title}</Text>}
       {yAxisLabel && <Text style={[styles.yAxisLabel, { color: textColor }]}>{yAxisLabel}</Text>}
       <View style={styles.chartContainer}>
         {/* Y-axis labels */}

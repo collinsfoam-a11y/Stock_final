@@ -164,7 +164,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && (
+      {!!label && (
         <Text style={getLabelStyles()}>
           {label}
           {required && <Text style={styles.required}> *</Text>}

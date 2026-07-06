@@ -3,6 +3,7 @@ import { withTimeout } from "./withTimeout";
 import { initMonitoringAndDevTools } from "./initDevTools";
 import { initAuthAndSettings } from "./initAuthAndSettings";
 import { initMobileRuntime } from "./initMobileRuntime";
+import { installWebAlertShim } from "./installWebAlertShim";
 import { createLogger } from "../services/logging";
 import { useAuthStore } from "../store/authStore";
 
@@ -71,6 +72,8 @@ export async function initializeApp(options: InitializeAppOptions): Promise<Init
     onProgress,
   } = options;
   const reportProgress = createProgressReporter(onProgress);
+
+  installWebAlertShim();
 
   reportProgress({
     phase: "monitoring",

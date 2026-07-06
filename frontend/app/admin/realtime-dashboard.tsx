@@ -372,7 +372,7 @@ export default function RealtimeDashboard() {
           </ModernCard>
         )}
 
-        {error && (
+        {!!error && (
           <ModernCard style={styles.errorNotice}>
             <Text style={styles.errorText}>{error}</Text>
           </ModernCard>

@@ -514,9 +514,12 @@ const StaffHome = React.memo(function StaffHome() {
           <View style={[s.summaryIconWrap, { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.1) }]}>
             <Ionicons name="layers-outline" size={22} color={uiTokens.colors.accent} />
           </View>
-          <View>
+          <View style={s.summaryLeftText}>
             <Text style={[s.summaryEyebrow, { color: uiTokens.colors.accent }]}>Active Workload</Text>
-            <Text style={[s.summaryTitle, { color: uiTokens.colors.textPrimary }]}>
+            <Text
+              style={[s.summaryTitle, { color: uiTokens.colors.textPrimary }]}
+              numberOfLines={1}
+            >
               {uniqueActiveSessions.length} {uniqueActiveSessions.length === 1 ? "session" : "sessions"}
             </Text>
           </View>
@@ -735,7 +738,7 @@ const StaffHome = React.memo(function StaffHome() {
             </View>
 
             {/* Floor chips */}
-            {locationType && (
+            {!!locationType && (
               <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(220)}>
                 <Text style={[s.sectionLabel, { color: uiTokens.colors.textSecondary }]}>Select Floor / Area</Text>
                 <View style={s.chips}>
@@ -773,7 +776,7 @@ const StaffHome = React.memo(function StaffHome() {
             )}
 
             {/* Rack input */}
-            {selectedFloor && (
+            {!!selectedFloor && (
               <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(220)}>
                 <ModernInput
                   label="Rack / Shelf Number"
@@ -782,7 +785,7 @@ const StaffHome = React.memo(function StaffHome() {
                   onChangeText={setRackName}
                   autoCapitalize="characters"
                 />
-                {rackName.trim() && (
+                {!!rackName.trim() && (
                   <View style={[s.previewBanner, { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.08), borderColor: colorWithAlpha(uiTokens.colors.accent, 0.2) }]}>
                     <Ionicons name="information-circle-outline" size={14} color={uiTokens.colors.accent} />
                     <Text style={[s.previewText, { color: uiTokens.colors.accent }]}>
@@ -835,7 +838,8 @@ const createStyles = (t: ReturnType<typeof useUiTokens>) =>
       borderRadius: radius.xl, borderWidth: 1, padding: gap.md,
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     },
-    summaryLeft: { flexDirection: "row", alignItems: "center", gap: gap.md, flex: 1 },
+    summaryLeft: { flexDirection: "row", alignItems: "center", gap: gap.md, flex: 1, minWidth: 0 },
+    summaryLeftText: { flex: 1, minWidth: 0 },
     summaryIconWrap: {
       width: touch.min, height: touch.min,
       borderRadius: radius.lg, alignItems: "center", justifyContent: "center",
@@ -845,7 +849,7 @@ const createStyles = (t: ReturnType<typeof useUiTokens>) =>
       textTransform: "uppercase", letterSpacing: font.tracking.wide,
     },
     summaryTitle: { fontSize: font.size.xl, fontWeight: font.weight.extrabold, marginTop: 2 },
-    summaryMetrics: { flexDirection: "row", borderRadius: radius.md, borderWidth: 1, overflow: "hidden" },
+    summaryMetrics: { flexDirection: "row", borderRadius: radius.md, borderWidth: 1, overflow: "hidden", flexShrink: 0, marginLeft: gap.sm },
     summaryMetric: { paddingHorizontal: gap.md, paddingVertical: gap.sm, alignItems: "center" },
     summaryNum: { fontSize: font.size.display, fontWeight: font.weight.extrabold },
     summaryMeta: { fontSize: font.size.label, fontWeight: font.weight.semibold, marginTop: 2 },

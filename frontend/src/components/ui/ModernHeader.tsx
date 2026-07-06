@@ -151,7 +151,7 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
           {showLogo ? (
             <View style={styles.logoContainer}>
               <LogoWithBorder size={48} surfaceColor={uiTokens.colors.surface} />
-              {subtitle && (
+              {!!subtitle && (
                 <Text style={[styles.subtitle, { color: uiTokens.colors.textSecondary }]}>
                   {subtitle}
                 </Text>
@@ -165,7 +165,7 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
               >
                 {title}
               </Text>
-              {subtitle && (
+              {!!subtitle && (
                 <Text style={[styles.subtitle, { color: uiTokens.colors.textSecondary }]}>
                   {subtitle}
                 </Text>

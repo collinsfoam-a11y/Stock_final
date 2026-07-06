@@ -154,7 +154,7 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
         </View>
 
         {/* Subtitle */}
-        {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+        {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
 
         {/* Trend */}
         {trend && (

@@ -370,7 +370,7 @@ export const PINLoginScreen: React.FC<{
   return (
     <View style={styles.screenContainer}>
       <PINPad onPINComplete={handlePINComplete} onCancel={onCancel} title="Enter Your PIN" />
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {!!error && <Text style={styles.errorText}>{error}</Text>}
       {isVerifying && <Text style={styles.verifyingText}>Verifying...</Text>}
     </View>
   );

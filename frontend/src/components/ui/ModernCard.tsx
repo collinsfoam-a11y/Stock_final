@@ -229,8 +229,8 @@ export const ModernCard: React.FC<ModernCardProps> = ({
               </View>
             )}
             <View style={styles.headerText}>
-              {title && <Text style={dynamicStyles.title}>{title}</Text>}
-              {subtitle && <Text style={dynamicStyles.subtitle}>{subtitle}</Text>}
+              {!!title && <Text style={dynamicStyles.title}>{title}</Text>}
+              {!!subtitle && <Text style={dynamicStyles.subtitle}>{subtitle}</Text>}
             </View>
           </View>
         )}

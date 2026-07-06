@@ -38,7 +38,7 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
   if (!data || data.length === 0) {
     return (
       <View style={styles.container}>
-        {title && <Text style={styles.title}>{title}</Text>}
+        {!!title && <Text style={styles.title}>{title}</Text>}
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>No data available</Text>
         </View>
@@ -65,7 +65,7 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
 
   return (
     <View style={styles.container}>
-      {title && <Text style={styles.title}>{title}</Text>}
+      {!!title && <Text style={styles.title}>{title}</Text>}
       <View style={styles.chartContainer}>
         {/* Y-axis labels */}
         <View style={styles.yAxis}>

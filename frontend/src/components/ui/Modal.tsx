@@ -169,7 +169,7 @@ export const Modal: React.FC<ModalProps> = ({
             >
               {(title || showCloseButton) && (
                 <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-                  {title && (
+                  {!!title && (
                     <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
                   )}
                   {showCloseButton && (

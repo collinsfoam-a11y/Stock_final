@@ -9,6 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createLogger } from "./logging";
 import { isValidBackendHealthResponse } from "./healthRequest";
 import { shouldMonitorConnectionHealth } from "./connectionMonitoring";
+import { useNetworkStore } from "../store/networkStore";
 
 const log = createLogger("ConnectionManager");
 
@@ -292,7 +293,15 @@ class ConnectionManager {
       });
 
       clearTimeout(timeout);
-      return await isValidBackendHealthResponse(response);
+      const healthy = await isValidBackendHealthResponse(response);
+      if (healthy) {
+        // NetInfo cannot confirm reachability on web/LAN-only setups, which
+        // leaves the app in UNKNOWN and silently diverts writes offline.
+        // A successful backend health check is a stronger signal: mark the
+        // backend as reachable so mutations flow to the API.
+        useNetworkStore.getState().setIsInternetReachable(true);
+      }
+      return healthy;
     } catch (error: any) {
       if (error && error.name !== "AbortError") {
         log.debug(`Health check failed for ${url}`, { error });
@@ -420,6 +429,9 @@ class ConnectionManager {
 
         // If current connection is unhealthy, try to find new one
         if (!isHealthy) {
+          // Backend became unreachable: drop reachability back to UNKNOWN so
+          // writes are queued offline instead of failing against a dead host.
+          useNetworkStore.getState().setIsInternetReachable(null);
           log.info("Current connection unhealthy, re-detecting...");
           await this.detectAndSetConnection();
         }

@@ -94,13 +94,13 @@ export const Checkbox: React.FC<CheckboxProps> = ({
 
       {(label || description) && (
         <View style={styles.labelContainer}>
-          {label && (
+          {!!label && (
             <Text style={[styles.label, disabled && styles.labelDisabled]}>
               {label}
             </Text>
           )}
 
-          {description && (
+          {!!description && (
             <Text
               style={[styles.description, disabled && styles.descriptionDisabled]}
             >

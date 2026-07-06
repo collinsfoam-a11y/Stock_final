@@ -723,7 +723,7 @@ async def get_session_by_id(
 
 def _get_db_client(db_override=None):
     """Resolve the active database client, raising if not initialized."""
-    db_client = db_override or db
+    db_client = db_override if db_override is not None else db
     if db_client is None:
         raise HTTPException(status_code=500, detail="Database is not initialized")
     return db_client

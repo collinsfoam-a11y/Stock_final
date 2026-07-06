@@ -133,7 +133,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
           {title}
         </Text>
 
-        {subtitle && (
+        {!!subtitle && (
           <Text
             style={[
               styles.subtitle,

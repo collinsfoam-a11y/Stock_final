@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel
 
+from backend.api.item_verification_api import record_count_line_variance
 from backend.api.schemas import BulkCountLineUpdate, CountLineCreate
 from backend.auth.dependencies import get_current_user
 from backend.core.websocket_manager import manager
@@ -623,6 +624,8 @@ def _build_count_line_document(
     financial_impact: float,
     is_misplaced: bool,
     recount_update_target: Optional[dict[str, Any]],
+    *,
+    session: Optional[dict[str, Any]] = None,
 ) -> tuple[dict[str, Any], datetime]:
     count_line_id = str(uuid.uuid4())
     previous_version_id = (
@@ -642,9 +645,16 @@ def _build_count_line_document(
     count_line = {
         "id": count_line_id,
         "session_id": line_data.session_id,
-        "location_id": line_data.location_id,
-        "floor_id": line_data.floor_id,
-        "rack_id": line_data.rack_id,
+        # Mobile/web clients send the human-readable floor_no/rack_no aliases and
+        # rely on the session for location context. Fall back so the governance
+        # guard's full-context invariant is satisfied for those clients.
+        "location_id": line_data.location_id
+        or (session or {}).get("location_type")
+        or (session or {}).get("warehouse"),
+        "floor_id": line_data.floor_id
+        or line_data.floor_no
+        or (session or {}).get("location_name"),
+        "rack_id": line_data.rack_id or line_data.rack_no or (session or {}).get("rack_no"),
         "idempotency_key": idempotency_key,
         "recount_of_id": recount_root_id,
         "version": version,
@@ -855,6 +865,7 @@ async def _create_and_persist_count_line(
             financial_impact,
             is_misplaced,
             recount_update_target,
+            session=session,
         )
         await _persist_count_line_document(
             db,
@@ -1173,6 +1184,7 @@ async def create_count_line(
             financial_impact,
             is_misplaced,
             recount_update_target,
+            session=session,
         )
         await _persist_count_line_document(
             db,
@@ -1554,6 +1566,9 @@ async def approve_count_line(
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Count line not found")
 
+        await record_count_line_variance(
+            db, count_line, approved_by=current_user["username"], approved_at=approved_at
+        )
         await _recompute_session_totals(db, str(count_line.get("session_id") or ""))
         await _broadcast_dashboard_refresh(
             "count_line_approved",
@@ -2226,6 +2241,15 @@ async def bulk_approve_count_lines(
                 "governance_mode": "mutable_session",
             },
         )
+
+        bulk_approved_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        for candidate in candidate_lines:
+            await record_count_line_variance(
+                db,
+                candidate,
+                approved_by=current_user["username"],
+                approved_at=bulk_approved_at,
+            )
 
         for session_id in session_ids:
             await _recompute_session_totals(db, session_id)

@@ -43,7 +43,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
 
     return (
       <View style={[styles.container, containerStyle]}>
-        {label && <Text style={[styles.label, { color: theme.colors.text }]}>{label}</Text>}
+        {!!label && <Text style={[styles.label, { color: theme.colors.text }]}>{label}</Text>}
         <View
           style={[
             styles.inputContainer,
@@ -99,7 +99,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             </TouchableOpacity>
           )}
         </View>
-        {error && <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>}
+        {!!error && <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>}
       </View>
     );
   }

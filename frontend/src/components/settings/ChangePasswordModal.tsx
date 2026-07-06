@@ -319,7 +319,7 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
             <Text style={styles.title}>Change Password</Text>
             <Text style={styles.subtitle}>Choose a strong password with at least 8 characters</Text>
 
-            {error && <Text style={styles.error}>{error}</Text>}
+            {!!error && <Text style={styles.error}>{error}</Text>}
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Current Password</Text>

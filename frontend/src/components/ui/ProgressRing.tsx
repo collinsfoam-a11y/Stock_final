@@ -111,7 +111,7 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
             {Math.round(progress)}%
           </Text>
         )}
-        {label && (
+        {!!label && (
           <Text
             style={[
               styles.label,

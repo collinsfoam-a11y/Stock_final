@@ -173,54 +173,55 @@ export const modernColors = {
     contrast: "#FFFFFF",
   },
 
-  // Background Colors (Dark Mode) - Deeper & Richer
+  // Background Colors (Light Mode) — the app shell renders on light surfaces,
+  // so this shared palette must be light or its text becomes invisible.
   background: {
-    default: "#020617", // Slate 950
-    paper: "#0F172A", // Slate 900
-    elevated: "#1E293B", // Slate 800
-    overlay: "rgba(2, 6, 23, 0.9)",
-    glass: "rgba(15, 23, 42, 0.75)", // Glassmorphism
+    default: "#F8FAFC", // Slate 50
+    paper: "#FFFFFF",
+    elevated: "#FFFFFF",
+    overlay: "rgba(15, 23, 42, 0.45)",
+    glass: "rgba(255, 255, 255, 0.75)", // Glassmorphism
     // Alias for legacy Aurora support
-    primary: "#0F172A",
-    secondary: "#1E293B",
-    tertiary: "#334155",
-    elevatedLegacy: "#475569",
-    blur: "rgba(30, 41, 59, 0.5)",
+    primary: "#FFFFFF",
+    secondary: "#F1F5F9",
+    tertiary: "#E2E8F0",
+    elevatedLegacy: "#F8FAFC",
+    blur: "rgba(241, 245, 249, 0.5)",
   },
 
   // Surface Colors for legacy Aurora support
   surface: {
-    base: "#0F172A",
-    primary: "#0F172A",
-    secondary: "#1E293B",
-    tertiary: "#334155",
-    elevated: "#475569",
-    card: "#1E293B",
-    overlay: "rgba(15, 23, 42, 0.95)",
-    glass: "rgba(30, 41, 59, 0.7)",
+    base: "#FFFFFF",
+    primary: "#FFFFFF",
+    secondary: "#F8FAFC",
+    tertiary: "#F1F5F9",
+    elevated: "#FFFFFF",
+    card: "#FFFFFF",
+    overlay: "rgba(248, 250, 252, 0.95)",
+    glass: "rgba(255, 255, 255, 0.7)",
   },
 
   // Text Colors - Higher Contrast
   text: {
-    primary: "#F8FAFC", // Slate 50
-    secondary: "#94A3B8", // Slate 400
+    primary: "#0F172A", // Slate 900
+    secondary: "#475569", // Slate 600
     tertiary: "#64748B", // Slate 500
-    muted: "#94A3B8", // Alias
-    disabled: "#475569", // Slate 600
-    inverse: "#020617", // Slate 950
-    link: "#38BDF8", // Sky 400
-    linkHover: "#7DD3FC", // Sky 300
+    muted: "#64748B", // Alias
+    disabled: "#94A3B8", // Slate 400
+    inverse: "#F8FAFC", // Slate 50
+    link: "#0284C7", // Sky 600
+    linkHover: "#0369A1", // Sky 700
   },
 
   // Border Colors - Subtle & Clean
   border: {
-    light: "#1E293B", // Slate 800
-    medium: "#334155", // Slate 700
-    strong: "#475569", // Slate 600
-    dark: "#475569", // Slate 600
+    light: "#E2E8F0", // Slate 200
+    medium: "#CBD5E1", // Slate 300
+    strong: "#94A3B8", // Slate 400
+    dark: "#64748B", // Slate 500
     focus: "#0EA5E9", // Sky 500
     error: "#EF4444", // Red 500
-    subtle: "#1E293B", // Alias
+    subtle: "#E2E8F0", // Alias
     success: "#10B981", // Alias
   },
 
