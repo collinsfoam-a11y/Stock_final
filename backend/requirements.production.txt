@@ -22,7 +22,6 @@ redis==7.3.0  # Redis client
 passlib[argon2]==1.7.4
 bcrypt==4.0.1  # Pinned <4.1: passlib 1.7.x requires bcrypt.__about__.__version__ (removed in 4.1+)
 python-multipart==0.0.27
-authlib==1.6.11  # JWT provider (authlib.jose)
 PyJWT==2.13.0  # Secure JWT implementation
 cryptography==46.0.7  # Security: CVE fixes
 
