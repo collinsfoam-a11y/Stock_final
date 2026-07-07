@@ -1201,6 +1201,22 @@ async def create_count_line(
             status_code=409,
             detail="Session was modified concurrently; reload the session and retry.",
         ) from exc
+    except DuplicateKeyError as exc:
+        # A concurrent request (double-tap, or a client retry racing the
+        # original still-in-flight request) can pass the pre-insert
+        # idempotency/semantic-hash checks before either commits, then lose
+        # the race against MongoDB's own unique index. If the winning
+        # document matches this request's idempotency key, this was a true
+        # retry -- return the winner's result instead of erroring, same as
+        # the non-race idempotent-submission path. Otherwise it's a genuine
+        # duplicate scan; reject it cleanly.
+        existing_idempotent = await _find_idempotent_count_line(db, line_data)
+        if existing_idempotent:
+            return existing_idempotent
+        raise HTTPException(
+            status_code=409,
+            detail="This item was already counted for this session/location.",
+        ) from exc
     finally:
         await _release_count_line_locks(lock_state, current_user["username"])
 

@@ -625,6 +625,96 @@ class TestCreateCountLine:
         assert "Duplicate Scan" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
+    async def test_create_count_line_race_loser_returns_existing_on_true_retry(
+        self, mock_db, line_data, erp_item
+    ):
+        """A retry that races the original request and loses the unique-index
+        insert should return the winner's result, not error -- it's the same
+        client request (matching idempotency_key), not a new duplicate scan."""
+        line_data.idempotency_key = "same-client-key"
+        mock_db.sessions.find_one.return_value = {
+            "id": "session123",
+            "session_id": "session123",
+            "status": "ACTIVE",
+        }
+        mock_db.erp_items.find_one.return_value = erp_item
+        mock_db.count_lines.count_documents = AsyncMock(return_value=0)
+
+        winning_doc = {
+            "_id": "mongo-id-1",
+            "id": "existing-line",
+            "session_id": "session123",
+            "idempotency_key": "same-client-key",
+            "item_code": "ITEM001",
+            "counted_qty": 50,
+        }
+
+        # The pre-write idempotency lookup misses (nothing committed yet);
+        # the post-race re-check (same query shape, after losing the insert
+        # race) hits, since the winner has since committed.
+        call_count = {"n": 0}
+
+        async def _find_one_side_effect(query, *args, **kwargs):
+            if "idempotency_key" in query:
+                call_count["n"] += 1
+                return winning_doc if call_count["n"] > 1 else None
+            return None
+
+        mock_db.count_lines.find_one = AsyncMock(side_effect=_find_one_side_effect)
+
+        with (
+            patch("backend.api.count_lines_routes.get_db", return_value=mock_db),
+            patch(
+                "backend.services.count_line_write_service.CountLineWriteService.process_write",
+                new=AsyncMock(side_effect=DuplicateKeyError("E11000 duplicate key error")),
+            ),
+        ):
+            result = await create_count_line(
+                request=AsyncMock(),
+                line_data=line_data,
+                current_user={"username": "testuser"},
+            )
+
+        assert result["id"] == "existing-line"
+        assert "_id" not in result
+
+    @pytest.mark.asyncio
+    async def test_create_count_line_race_loser_rejects_genuine_duplicate(
+        self, mock_db, line_data, erp_item
+    ):
+        """A different request that races the original and loses the unique-
+        index insert, but does NOT match by idempotency_key, is a genuine
+        duplicate scan and must be rejected cleanly, not with a raw 500."""
+        mock_db.sessions.find_one.return_value = {
+            "id": "session123",
+            "session_id": "session123",
+            "status": "ACTIVE",
+        }
+        mock_db.erp_items.find_one.return_value = erp_item
+        mock_db.count_lines.count_documents = AsyncMock(return_value=0)
+        # No matching idempotency_key found for this request -- it's a
+        # different manual submission that happened to be semantically
+        # identical (same session/item/location/qty), not a retry.
+        mock_db.count_lines.find_one = AsyncMock(return_value=None)
+
+        with (
+            patch("backend.api.count_lines_routes.get_db", return_value=mock_db),
+            patch(
+                "backend.services.count_line_write_service.CountLineWriteService.process_write",
+                new=AsyncMock(side_effect=DuplicateKeyError("E11000 duplicate key error")),
+            ),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await create_count_line(
+                    request=AsyncMock(),
+                    line_data=line_data,
+                    current_user={"username": "testuser"},
+                )
+
+        assert exc_info.value.status_code == 409
+        assert "already counted" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
     async def test_create_count_line_high_risk(self, mock_db, line_data, erp_item):
         """Test count line creation with high-risk flags"""
         # Create scenario with high variance
