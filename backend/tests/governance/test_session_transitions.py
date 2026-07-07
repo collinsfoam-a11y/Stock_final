@@ -5,14 +5,6 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from backend.server import app
-from backend.services.session_state_machine import SessionStateMachine
-
-
-@pytest.mark.governance
-def test_session_state_machine_guard():
-    assert SessionStateMachine.can_transition("ACTIVE", "RECONCILE") is True
-    assert SessionStateMachine.can_transition("COMPLETED", "ACTIVE") is False
-    assert SessionStateMachine.can_transition("CLOSED", "ACTIVE") is False
 
 
 @pytest.mark.asyncio

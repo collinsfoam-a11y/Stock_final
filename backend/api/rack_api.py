@@ -12,10 +12,10 @@ from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
-from backend.services.governance_guard import raise_forbidden_direct_write
+from backend.services.governance_guard import normalize_session_status
 from backend.services.lock_manager import get_lock_manager
 from backend.services.pubsub_service import get_pubsub_service
-from backend.services.session_state_machine import SessionStateMachine
+from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.redis_service import get_redis
 from backend.utils.api_utils import sanitize_for_logging
 
@@ -47,6 +47,9 @@ class RackClaimRequest(BaseModel):
     """Rack claim request"""
 
     floor: str = Field(..., description="Floor where rack is located")
+    warehouse: Optional[str] = Field(
+        None, description="Warehouse where rack is located (defaults to floor if omitted)"
+    )
 
 
 class RackClaimResponse(BaseModel):
@@ -249,7 +252,26 @@ async def claim_rack(
         # Create session
         session_id = f"session_{user_id}_{rack_id}_{int(time.time())}"
 
-        raise_forbidden_direct_write("rack_api.claim_rack.verification_sessions_insert")
+        lifecycle_service = SessionLifecycleService(db)
+        session_doc = {
+            "id": session_id,
+            "session_id": session_id,
+            "warehouse": request.warehouse or request.floor,
+            "location_type": "rack",
+            "location_name": rack_id,
+            "rack_no": rack_id,
+            "floor_id": request.floor,
+            "staff_user": user_id,
+            "staff_name": current_user.get("full_name", user_id),
+            "type": "STANDARD",
+        }
+        await lifecycle_service.create_session(session_doc=session_doc, username=user_id)
+        await lifecycle_service.transition_session(
+            session_id=session_id,
+            target_status="ACTIVE",
+            actor=user_id,
+            note="Session activated on rack claim",
+        )
 
         # Create session lock in Redis
         await lock_manager.create_session_lock(session_id, user_id, rack_id, ttl=3600)
@@ -346,17 +368,22 @@ async def release_rack(
     # Update rack status
     await update_rack_status(db, rack_id, status="available")
 
-    # Update session status
+    # Move the session to review if it's still active. Releasing a rack does
+    # not finalize the session (finalization has its own readiness gate and
+    # is a separate, deliberate action) -- it just signals this user's
+    # counting work is done and ready for supervisor review. If the session
+    # already moved on (REVIEW/FINALIZED) or doesn't exist, there's nothing
+    # to do here; the rack still becomes available.
     if rack["session_id"]:
         session = await db.verification_sessions.find_one({"session_id": rack["session_id"]})
-        if session and not SessionStateMachine.can_transition(
-            session.get("status", ""), "completed"
-        ):
-            raise HTTPException(
-                status_code=409,
-                detail=(f"Invalid session transition: {session.get('status')} -> completed"),
+        if session and normalize_session_status(session.get("status")) == "ACTIVE":
+            lifecycle_service = SessionLifecycleService(db)
+            await lifecycle_service.transition_session(
+                session_id=rack["session_id"],
+                target_status="REVIEW",
+                actor=user_id,
+                note="Session moved to review on rack release",
             )
-        raise_forbidden_direct_write("rack_api.release_rack.verification_sessions_update")
 
     # Broadcast update
     await pubsub_service.publish_rack_update(rack_id, "released", {"user_id": user_id})
@@ -404,15 +431,10 @@ async def pause_rack(
         lock_expires_at=rack["lock_expires_at"],
     )
 
-    # Update session
-    if rack["session_id"]:
-        session = await db.verification_sessions.find_one({"session_id": rack["session_id"]})
-        if session and not SessionStateMachine.can_transition(session.get("status", ""), "paused"):
-            raise HTTPException(
-                status_code=409,
-                detail=f"Invalid session transition: {session.get('status')} -> paused",
-            )
-        raise_forbidden_direct_write("rack_api.pause_rack.verification_sessions_update")
+    # Pausing only affects the rack's own claim state -- the underlying
+    # session stays ACTIVE the whole time (there's no "paused" canonical
+    # session status; "keep the lock" means the session itself hasn't
+    # stopped, the user has just stepped away from it briefly).
 
     # Broadcast update
     await pubsub_service.publish_rack_update(rack_id, "paused", {"user_id": user_id})
@@ -461,15 +483,9 @@ async def resume_rack(
         lock_expires_at=rack["lock_expires_at"],
     )
 
-    # Update session
-    if rack["session_id"]:
-        session = await db.verification_sessions.find_one({"session_id": rack["session_id"]})
-        if session and not SessionStateMachine.can_transition(session.get("status", ""), "active"):
-            raise HTTPException(
-                status_code=409,
-                detail=f"Invalid session transition: {session.get('status')} -> active",
-            )
-        raise_forbidden_direct_write("rack_api.resume_rack.verification_sessions_update")
+    # Resuming, like pausing, only affects the rack's own claim state -- the
+    # underlying session was never transitioned away from ACTIVE, so there's
+    # nothing to restore on the session side.
 
     # Broadcast update
     await pubsub_service.publish_rack_update(rack_id, "resumed", {"user_id": user_id})
