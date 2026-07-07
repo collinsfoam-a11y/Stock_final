@@ -202,6 +202,31 @@ GOVERNANCE_MODE_PROFILES: dict[str, CountLineGovernanceModeProfile] = {
 DEFAULT_VALIDATION_MODE = "enforce"
 VALIDATION_MODES = {"enforce", "repair_skip"}
 
+# Fields ValidationService.enforce_count_line_business_rules can normalize
+# from the item master (see validation_service.normalize_quantity_for_item)
+# that matter enough to sync back after insert (BSR follow-up: the response
+# returned to the caller was showing different UOM/quantity values than what
+# was actually persisted). Deliberately excludes quantity_precision,
+# allow_fraction, is_serial_item, serial_numbers, and item_code: those are
+# always computed with a concrete default even when nothing about this line
+# involves UOM conversion, so comparing them against _build_count_line_
+# document's un-set (None) starting value would trigger a sync write on
+# every single insert, not just the ones this fix targets.
+_NORMALIZED_COUNT_LINE_FIELDS = (
+    "counted_qty",
+    "input_qty",
+    "input_uom",
+    "base_uom",
+    "uom_code",
+    "uom_name",
+    "conversion_factor",
+)
+
+# Subset of _NORMALIZED_COUNT_LINE_FIELDS that only change when a real UOM
+# conversion/identity is actually involved (unlike input_qty/counted_qty,
+# which always resolve to a concrete value regardless).
+_UOM_IDENTITY_FIELDS = ("input_uom", "base_uom", "uom_code", "uom_name", "conversion_factor")
+
 
 class CountLineWriteService:
     """Authoritative write-side governance for count-line mutations."""
@@ -729,7 +754,36 @@ class CountLineWriteService:
             if isinstance(document, dict):
                 if hasattr(resolved_result, "inserted_id") and "_id" not in document:
                     document["_id"] = getattr(resolved_result, "inserted_id")
+                # enforce_count_line_business_rules (invoked by
+                # validate_count_line) normalizes UOM/quantity fields from
+                # the item master and mutates `document` in place, but by
+                # this point the document was already inserted -- without
+                # syncing the normalized values back, the response returned
+                # to the caller (built from this same in-memory dict) would
+                # show different UOM values than what's actually persisted.
+                before = {key: document.get(key) for key in _NORMALIZED_COUNT_LINE_FIELDS}
                 await self.validation_service.validate_count_line(document)
+                # input_qty defaults to counted_qty whenever no UOM
+                # conversion is involved, so it "changes" (None -> a
+                # concrete value) on every insert even when nothing about
+                # this line's UOM matters. Only sync back (including
+                # counted_qty/input_qty) when an actual UOM identity field
+                # changed, so the common no-UOM-context submission doesn't
+                # pay for a second write.
+                uom_changed = any(
+                    document.get(key) != before[key] for key in _UOM_IDENTITY_FIELDS
+                )
+                if uom_changed and document.get("id"):
+                    changed = {
+                        key: document.get(key)
+                        for key in _NORMALIZED_COUNT_LINE_FIELDS
+                        if document.get(key) != before[key]
+                    }
+                    await self._execute_authorized_write(
+                        lambda: self.db.count_lines.update_one(
+                            {"id": document["id"]}, {"$set": changed}, **kwargs
+                        )
+                    )
             return
 
         if operation == "update_one":

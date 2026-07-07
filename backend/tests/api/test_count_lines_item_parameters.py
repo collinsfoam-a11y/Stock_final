@@ -15,6 +15,16 @@ existing, correct behavior (frontend input is low trust; server-side
 validation is mandatory) uncovered while testing this fix, not something
 this change alters. The persistence tests below seed the item master with
 its own UOM so the assertions reflect the real, intended contract.
+
+This also uncovered and fixes a separate bug: that server-side UOM
+normalization ran *after* insert_one and was never written back to
+storage, so the API response could show different UOM values than what
+was actually persisted. CountLineWriteService._run_post_write_validation
+now syncs the normalized UOM/quantity fields back after validation, but
+only when a genuine UOM identity field actually changed -- not on every
+insert (input_qty/counted_qty always resolve to a concrete value even
+with no UOM context at all, so gating on them alone would trigger a
+second write on every single count-line submission).
 """
 
 from unittest.mock import AsyncMock, patch
@@ -103,18 +113,16 @@ async def test_create_count_line_persists_batch_id_and_uom_context():
     assert result["input_uom"] == "BOX"
     assert result["conversion_factor"] == 1.0
 
-    # batch_id is set directly from the request in _build_count_line_document
-    # (not touched by ValidationService's post-insert UOM normalization), so
-    # it round-trips to storage exactly. uom_code/uom_name are intentionally
-    # not asserted against the stored document here: ValidationService.
-    # enforce_count_line_business_rules normalizes them from the item master
-    # *after* the insert already ran, so the persisted document retains
-    # whatever _build_count_line_document wrote pre-normalization -- a
-    # separate, pre-existing return-value-vs-persisted-value inconsistency
-    # this test surfaced but which is out of this fix's scope (see BSR
-    # report's Remaining Gaps).
+    # The persisted document must match what was returned: ValidationService.
+    # enforce_count_line_business_rules normalizes uom_code/uom_name from the
+    # item master *after* insert_one already ran, so without syncing that
+    # normalization back to storage, the response would show different UOM
+    # values than what's actually in count_lines (fixed in
+    # CountLineWriteService._run_post_write_validation).
     persisted = await db.count_lines.find_one({"id": result["id"]})
     assert persisted["batch_id"] == "BATCH-001"
+    assert persisted["uom_code"] == "BOX"
+    assert persisted["uom_name"] == "Box"
 
 
 @pytest.mark.asyncio
