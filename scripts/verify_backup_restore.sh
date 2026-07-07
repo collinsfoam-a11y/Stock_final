@@ -4,6 +4,7 @@ set -euo pipefail
 
 if ! command -v mongosh >/dev/null 2>&1; then
   echo "mongosh is required to verify backup/restore." >&2
+  echo "Install: brew install mongosh (macOS) | https://www.mongodb.com/docs/mongodb-shell/install/" >&2
   exit 1
 fi
 
@@ -27,18 +28,26 @@ mongosh "mongodb://${MONGO_HOST}:${MONGO_PORT}/${TEMP_DB}" --quiet --eval \
   'db.restore_probe.insertOne({ marker: "stock-verify-backup-restore", created_at: new Date() })' >/dev/null
 
 echo "Running backup"
-MONGO_DATABASE="${TEMP_DB}" \
+BACKUP_OUTPUT="$(MONGO_DATABASE="${TEMP_DB}" \
 BACKUP_DIR="${BACKUP_DIR}" \
 BACKUP_PREFIX="${BACKUP_PREFIX}" \
 MONGO_HOST="${MONGO_HOST}" \
 MONGO_PORT="${MONGO_PORT}" \
 MONGO_USERNAME="${MONGO_USERNAME}" \
 MONGO_PASSWORD="${MONGO_PASSWORD}" \
-bash ./scripts/backup.sh
+bash ./scripts/backup.sh)"
+echo "${BACKUP_OUTPUT}"
 
-BACKUP_FILE="$(ls -t "${BACKUP_DIR}/${BACKUP_PREFIX}"_*.tar.gz 2>/dev/null | head -n 1)"
-if [ -z "${BACKUP_FILE}" ]; then
+# Read the exact archive name backup.sh just created instead of globbing the
+# directory with `ls -t`, which picks the wrong file if two backups race.
+BACKUP_FILE_NAME="$(echo "${BACKUP_OUTPUT}" | sed -n 's/^Backup compressed: //p' | tail -n 1)"
+if [ -z "${BACKUP_FILE_NAME}" ]; then
   echo "Backup verification failed: no backup artifact was created." >&2
+  exit 1
+fi
+BACKUP_FILE="${BACKUP_DIR}/${BACKUP_FILE_NAME}"
+if [ ! -f "${BACKUP_FILE}" ]; then
+  echo "Backup verification failed: expected artifact ${BACKUP_FILE} not found." >&2
   exit 1
 fi
 
