@@ -460,7 +460,7 @@ async def dashboard_stream(
                 error_data = json.dumps(
                     {
                         "type": "error",
-                        "message": str(e),
+                        "message": "Dashboard stream error. Please retry.",
                         "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
                     }
                 )

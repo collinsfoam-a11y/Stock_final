@@ -3,6 +3,10 @@ Backfill empty session snapshots from ERP inventory data.
 
 Repairs legacy `session_snapshots` documents with `item_count = 0` and keeps the
 parent `sessions.snapshot_hash` metadata aligned with the repaired snapshot.
+
+Safe to re-run: dry_run defaults to True, and the scan query only matches
+documents still at item_count=0, so already-repaired snapshots are naturally
+excluded from subsequent runs.
 """
 
 import argparse

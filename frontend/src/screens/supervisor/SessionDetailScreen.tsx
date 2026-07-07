@@ -66,6 +66,7 @@ const getSessionStatusTone = (status: string): BadgeTone => {
     case "ACTIVE":
       return "info";
     case "RECONCILE":
+    case "REVIEW":
     case "PENDING":
       return "warning";
     case "COMPLETED":

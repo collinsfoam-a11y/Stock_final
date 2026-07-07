@@ -71,7 +71,7 @@ class CacheService:
                 self.use_redis = False
         else:
             self.use_redis = False
-            logger.debug("Using in-memory cache")
+            logger.info("REDIS_URL not configured; using in-memory cache")
 
     async def initialize(self):
         """Initialize Redis connection"""

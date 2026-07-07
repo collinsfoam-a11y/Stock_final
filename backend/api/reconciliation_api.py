@@ -203,4 +203,4 @@ async def get_session_reconciliation_summary(
             _safe_log_value(session_id),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=f"Reconciliation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Reconciliation failed") from e

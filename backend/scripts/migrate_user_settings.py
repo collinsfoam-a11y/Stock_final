@@ -2,6 +2,9 @@
 User Settings Migration Script
 
 Ensures each user has a normalized user settings document.
+
+Safe to re-run: each user is looked up by user_id before writing, so a repeat
+run always takes the replace_one(upsert=True) branch and never double-inserts.
 """
 
 import asyncio

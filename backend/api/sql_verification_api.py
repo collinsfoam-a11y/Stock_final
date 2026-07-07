@@ -66,5 +66,5 @@ async def verify_item_quantity(
         )
         raise HTTPException(
             status_code=500,
-            detail={"code": "INTERNAL_ERROR", "message": f"An unexpected error occurred: {str(e)}"},
-        )
+            detail={"code": "INTERNAL_ERROR", "message": "An unexpected error occurred"},
+        ) from e

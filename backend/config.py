@@ -9,7 +9,7 @@ import logging
 import os
 from typing import Optional
 from pathlib import Path
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 try:
     from pydantic_settings import BaseSettings as PydanticBaseSettings  # type: ignore[no-redef]  # noqa: E402
@@ -268,6 +268,18 @@ class Settings(PydanticBaseSettings):
         if v and not (1 <= v <= 65535):
             raise ValueError("SQL_SERVER_PORT must be between 1 and 65535")
         return v
+
+    @model_validator(mode="after")
+    def validate_sql_server_database_required_with_host(self) -> "Settings":
+        # SQL_SERVER_USER/PASSWORD are legitimately optional (the connector
+        # falls back to Windows/integrated auth when unset), but a host with
+        # no target database is unambiguously incomplete in either auth mode
+        # and would otherwise fail later with a confusing connection error.
+        if self.SQL_SERVER_HOST and not self.SQL_SERVER_DATABASE:
+            raise ValueError(
+                "SQL_SERVER_DATABASE is required when SQL_SERVER_HOST is set"
+            )
+        return self
 
     # Security
     # CRITICAL: These MUST be set via env variables - no defaults allowed

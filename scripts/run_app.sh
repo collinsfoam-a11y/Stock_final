@@ -43,7 +43,7 @@ info "Launching Backend in a new Terminal window..."
 osascript -e "
 tell application \"Terminal\"
     activate
-    set backendTab to do script \"clear && echo '🐍 ═══ Backend Server ═══' && cd '$PROJECT_ROOT' && export PYTHONPATH='$PROJECT_ROOT:\$PYTHONPATH' && export USE_CONNECTION_POOL=False && export SQL_SERVER_HOST='' && export SSL_KEYFILE='' && export SSL_CERTFILE='' && export DISABLE_SSL=true && unset DEBUG && cd '$PROJECT_ROOT/backend' && '$SCRIPT_DIR/python.sh' server.py 2>&1 | tee backend_startup.log\"
+    set backendTab to do script \"clear && echo '🐍 ═══ Backend Server ═══' && cd '$PROJECT_ROOT' && export PYTHONPATH='$PROJECT_ROOT:\$PYTHONPATH' && export USE_CONNECTION_POOL=False && export SSL_KEYFILE='' && export SSL_CERTFILE='' && export DISABLE_SSL=true && unset DEBUG && cd '$PROJECT_ROOT/backend' && '$SCRIPT_DIR/python.sh' server.py 2>&1 | tee backend_startup.log\"
     set custom title of front window to \"Backend\"
 end tell
 "

@@ -1,4 +1,9 @@
-"""Rebuild item projection rows from authoritative raw count-line data."""
+"""Rebuild item projection rows from authoritative raw count-line data.
+
+Safe to re-run: defaults to dry-run (pass --execute for real writes), takes a
+per-session lock before writing, and rebuilds projections from source data
+rather than applying incremental deltas.
+"""
 
 from __future__ import annotations
 

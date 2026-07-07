@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, mock_open, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.api.admin_control_api import _is_backend_process, _is_frontend_process
 from backend.auth import get_current_user
 from backend.server import app
 
@@ -83,6 +84,42 @@ def test_get_services_status(
     assert services["backend"]["running"] is True
     assert services["mongodb"]["running"] is True
     assert services["sql_server"]["running"] is True
+
+
+@pytest.mark.parametrize(
+    "cmdline",
+    [
+        "python server.py",
+        "python backend/server.py",
+        "python -m uvicorn backend.server:app --host 0.0.0.0 --port 8001",
+        "gunicorn backend.server:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8001",
+    ],
+)
+def test_backend_process_matcher_accepts_supported_launch_commands(cmdline):
+    assert _is_backend_process(cmdline) is True
+
+
+@pytest.mark.parametrize(
+    "cmdline",
+    [
+        "python unrelated.py --port 8001",
+        "node app.js --port 8001",
+        "mongod --port 27017",
+    ],
+)
+def test_backend_process_matcher_rejects_unrelated_commands(cmdline):
+    assert _is_backend_process(cmdline) is False
+
+
+@pytest.mark.parametrize(
+    "cmdline",
+    [
+        "node node_modules/expo/bin/cli start --web --port 8081",
+        "node metro start",
+    ],
+)
+def test_frontend_process_matcher_accepts_supported_launch_commands(cmdline):
+    assert _is_frontend_process(cmdline) is True
 
 
 def test_get_service_logs_backend():

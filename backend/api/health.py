@@ -557,7 +557,7 @@ async def check_version(
     Usage: App startup version check, update prompts
     """
     try:
-        from config import settings
+        from backend.config import settings
 
         current_version = getattr(settings, "APP_VERSION", "1.0.0")
         min_version = getattr(settings, "MIN_CLIENT_VERSION", "1.0.0")

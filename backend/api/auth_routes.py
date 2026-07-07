@@ -60,12 +60,16 @@ def _get_request_device_id(request: Request) -> Optional[str]:
 # Helper functions for login
 
 
-async def check_rate_limit(ip_address: str) -> Result[bool, Exception]:
+async def check_rate_limit(
+    ip_address: str, namespace: str = "login_attempts"
+) -> Result[bool, Exception]:
     """
-    Check if the IP has exceeded the login attempt limit.
+    Check if the IP has exceeded the attempt limit for the given namespace.
 
     Rate limiting is configurable via RATE_LIMIT_ENABLED environment variable.
-    Default: Enabled in production, disabled in development.
+    Default: Enabled in production, disabled in development. The namespace
+    keeps counters independent across call sites (e.g. login attempts vs.
+    password-reset OTP requests) so one flow can't exhaust another's budget.
     """
     cache_service = get_cache_service()
     # Check if rate limiting is enabled (default: True for production)
@@ -75,7 +79,6 @@ async def check_rate_limit(ip_address: str) -> Result[bool, Exception]:
         logger.debug("Rate limiting disabled for IP: %s", sanitize_for_logging(ip_address))
         return Ok(True)
 
-    namespace = "login_attempts"
     key = ip_address
 
     # Get current attempt count
@@ -1219,7 +1222,7 @@ async def change_password(
 
 
 @router.post("/auth/password-reset/request", response_model=ApiResponse[dict])
-async def password_reset_request(request: PasswordResetRequest):
+async def password_reset_request(request: PasswordResetRequest, http_request: Request):
     """
     Request a password reset OTP.
     Sends an OTP to the user's registered phone number via WhatsApp.
@@ -1238,6 +1241,19 @@ async def password_reset_request(request: PasswordResetRequest):
                 "message": (
                     "Password reset is temporarily unavailable because phone delivery is not configured."
                 )
+            }
+        )
+
+    # Rate limit after the (side-effect-free) delivery-config check but before
+    # any OTP generation or WhatsApp send, so this endpoint can't be used to
+    # spam a victim's phone or burn through OTP send quota.
+    client_ip = http_request.client.host if http_request.client else ""
+    rate_limit_result = await check_rate_limit(client_ip, namespace="password_reset_attempts")
+    if rate_limit_result.is_err:
+        return ApiResponse.error_response(
+            {
+                "message": "Too many password reset requests. Please try again later.",
+                "code": "RATE_LIMIT_EXCEEDED",
             }
         )
 

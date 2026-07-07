@@ -127,6 +127,11 @@ class CanonicalSessionStatus(str, Enum):
     ACTIVE = "ACTIVE"
     PAUSED = "PAUSED"
     RECONCILE = "RECONCILE"
+    # REVIEW/FINALIZED are real lifecycle states (Finish Rack moves a session
+    # to REVIEW; supervisors finalize from there). Without them the single-
+    # session endpoint coerced those sessions to UNKNOWN.
+    REVIEW = "REVIEW"
+    FINALIZED = "FINALIZED"
     COMPLETED = "COMPLETED"
     CLOSED = "CLOSED"
     CANCELLED = "CANCELLED"

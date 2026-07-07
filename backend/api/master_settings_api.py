@@ -153,8 +153,8 @@ async def update_system_parameters(
         logger.error("Error updating system parameters: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update system parameters: {str(e)}",
-        )
+            detail="Failed to update system parameters",
+        ) from e
 
 
 @master_settings_router.get("/categories")
@@ -266,5 +266,5 @@ async def reset_to_defaults(
         logger.error("Error resetting settings: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to reset settings: {str(e)}",
-        )
+            detail="Failed to reset settings",
+        ) from e

@@ -5,6 +5,8 @@ Safe by default:
 - dry-run unless --execute is provided
 - projections are rebuilt only with --execute --rebuild-projections
 - mismatches are reported, never auto-fixed
+- safe to re-run: each event's idempotency key is checked via _event_exists
+  before insert, so a repeat run skips already-migrated count lines
 """
 
 from __future__ import annotations

@@ -40,6 +40,13 @@ from backend.utils.service_manager import ServiceManager  # noqa: E402
 
 # Constants
 BACKEND_PROCESS_NEEDLE = "server.py"
+BACKEND_PROCESS_MARKERS = (
+    BACKEND_PROCESS_NEEDLE,
+    "backend.server:app",
+    "backend/server.py",
+    "backend\\server.py",
+)
+FRONTEND_PROCESS_MARKERS = ("expo", "metro")
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +149,19 @@ def require_admin(current_user: dict = Depends(get_current_user)):
     return current_user
 
 
+def _cmdline_contains_marker(cmdline: str, markers: Iterable[str]) -> bool:
+    normalized = cmdline.lower()
+    return any(marker.lower() in normalized for marker in markers)
+
+
+def _is_backend_process(cmdline: str) -> bool:
+    return _cmdline_contains_marker(cmdline, BACKEND_PROCESS_MARKERS)
+
+
+def _is_frontend_process(cmdline: str) -> bool:
+    return _cmdline_contains_marker(cmdline, FRONTEND_PROCESS_MARKERS)
+
+
 def _match_process_on_ports(
     ports: Iterable[int], matcher: Callable[[str], bool]
 ) -> Optional[tuple[int, int, psutil.Process]]:
@@ -178,10 +198,7 @@ def _get_backend_status() -> ServiceStatus:
         "uptime": None,
     }
 
-    def is_backend_process(cmd: str) -> bool:
-        return BACKEND_PROCESS_NEEDLE in cmd
-
-    result = _match_process_on_ports(_get_backend_ports(), is_backend_process)
+    result = _match_process_on_ports(_get_backend_ports(), _is_backend_process)
     if result:
         port, pid, process = result
         status["running"] = True
@@ -200,10 +217,7 @@ def _get_frontend_status() -> ServiceStatus:
         "url": None,
     }
 
-    def is_frontend_process(cmd: str) -> bool:
-        return "expo" in cmd.lower() or "metro" in cmd.lower()
-
-    result = _match_process_on_ports(_get_frontend_ports(), is_frontend_process)
+    result = _match_process_on_ports(_get_frontend_ports(), _is_frontend_process)
     if result:
         port, pid, _ = result
         status["running"] = True
@@ -271,16 +285,16 @@ def _terminate_backend_processes() -> int:
         pid = ServiceManager.get_process_using_port(port)
         if not pid:
             continue
-        if _terminate_if_matches(pid, BACKEND_PROCESS_NEEDLE):
+        if _terminate_if_matches(pid, _is_backend_process):
             killed += 1
     return killed
 
 
-def _terminate_if_matches(pid: int, needle: str) -> bool:
-    """Terminate process if its command line contains the needle."""
+def _terminate_if_matches(pid: int, matcher: Callable[[str], bool]) -> bool:
+    """Terminate process if its command line matches the expected service process."""
     try:
         process = psutil.Process(pid)
-        if needle not in " ".join(process.cmdline()):
+        if not matcher(" ".join(process.cmdline())):
             return False
         _terminate_process(process)
         return True
@@ -414,7 +428,7 @@ def _find_running_backend_process() -> Optional[dict[str, Any]]:
 
         try:
             process = psutil.Process(pid)
-            if BACKEND_PROCESS_NEEDLE in " ".join(process.cmdline()):
+            if _is_backend_process(" ".join(process.cmdline())):
                 return {
                     "success": True,
                     "message": "Backend is already running",
@@ -489,7 +503,7 @@ async def start_frontend(current_user: dict = Depends(require_admin)):
                     try:
                         process = psutil.Process(pid)
                         cmdline = " ".join(process.cmdline())
-                        if "expo" in cmdline.lower() or "metro" in cmdline.lower():
+                        if _is_frontend_process(cmdline):
                             return {
                                 "success": True,
                                 "message": "Frontend is already running",
