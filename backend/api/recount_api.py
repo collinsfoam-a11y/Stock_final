@@ -163,6 +163,25 @@ async def create_recount_request(
                 assigned_to=request.assign_to,
             )
 
+        try:
+            from backend.models.audit import AuditEventType
+            from backend.services.audit_service import AuditService
+
+            await AuditService(db).log_event(
+                event_type=AuditEventType.COUNT_LINE_RECOUNT_REQUESTED,
+                actor_id=current_user["username"],
+                actor_username=current_user["username"],
+                actor_role=current_user.get("role"),
+                entity_type="count_line",
+                entity_id=request.count_line_id,
+                count_line_id=request.count_line_id,
+                session_id=count_line.get("session_id"),
+                item_code=count_line.get("item_code"),
+                reason=request.reason,
+            )
+        except Exception as exc:
+            logger.warning("Failed to audit recount request: %s", sanitize_for_logging(str(exc)))
+
         return RecountResponse(
             id=recount_doc["id"],
             count_line_id=recount_doc["count_line_id"],
@@ -187,7 +206,7 @@ async def create_recount_request(
         raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
         logger.error("Error creating recount request: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to create recount request") from e
 
 
 @router.get("/list", response_model=dict)
@@ -493,6 +512,28 @@ async def complete_recount_request(
                     db_session=tx,
                 )
 
+            try:
+                from backend.models.audit import AuditEventType
+                from backend.services.audit_service import AuditService
+
+                await AuditService(db).log_event(
+                    event_type=AuditEventType.COUNT_LINE_RECOUNT_SUBMITTED,
+                    actor_id=username,
+                    actor_username=username,
+                    actor_role=current_user.get("role"),
+                    entity_type="count_line",
+                    entity_id=new_line["id"],
+                    count_line_id=new_line["id"],
+                    session_id=session_id,
+                    item_code=new_line.get("item_code"),
+                    before={"count_line_id": previous_line_id},
+                    after={"counted_qty": request.result_qty},
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to audit recount submission: %s", sanitize_for_logging(str(exc))
+                )
+
         notification_service = NotificationService(db)
         await notification_service.create_notification(
             user_id=recount["created_by"],
@@ -512,7 +553,7 @@ async def complete_recount_request(
         raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
         logger.error("Error completing recount: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to complete recount") from e
 
 
 @router.post("/{recount_id}/cancel")

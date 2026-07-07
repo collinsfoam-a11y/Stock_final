@@ -48,6 +48,34 @@ class UnknownItemService:
                 return await result
             return result
 
+    async def _audit_canonical(
+        self,
+        *,
+        event_type_name: str,
+        entity_id: str,
+        session_id: Optional[str],
+        actor_id: str,
+        details: Optional[dict[str, Any]] = None,
+    ) -> None:
+        """Canonical audit event alongside the existing GovernanceAuditService
+        call (bridge pattern -- BSR remediation). Best-effort by contract."""
+        try:
+            from backend.models.audit import AuditEventType
+            from backend.services.audit_service import AuditService
+
+            await AuditService(self.db).log_event(
+                event_type=AuditEventType[event_type_name],
+                actor_id=actor_id,
+                actor_username=actor_id,
+                entity_type="unknown_item",
+                entity_id=entity_id,
+                session_id=session_id,
+                details=details or {},
+            )
+        except Exception:
+            # Never let audit logging failure block the unknown-item write.
+            pass
+
     async def _map_unknown_to_known_item(
         self,
         *,
@@ -157,6 +185,17 @@ class UnknownItemService:
             },
             db_session=db_session,
         )
+        await self._audit_canonical(
+            event_type_name="UNKNOWN_ITEM_MAPPED",
+            entity_id=item_id,
+            session_id=session_id,
+            actor_id=actor_id,
+            details={
+                "target_item_code": item_code,
+                "count_line_id": new_count_line["id"],
+                "manual_sku_created": manual_sku_created,
+            },
+        )
 
         return {
             "unknown_item_id": item_id,
@@ -216,6 +255,13 @@ class UnknownItemService:
                 version=int(doc.get("version") or 1),
                 metadata={"unknown_item_id": doc["id"]},
                 db_session=tx,
+            )
+            await self._audit_canonical(
+                event_type_name="UNKNOWN_ITEM_REPORTED",
+                entity_id=doc["id"],
+                session_id=session_id,
+                actor_id=actor_id,
+                details={"barcode": doc.get("barcode"), "location_id": location_id},
             )
 
         return doc
@@ -482,5 +528,12 @@ class UnknownItemService:
                 version=int(resolved_doc.get("version") or expected_version + 1),
                 metadata={"unknown_item_id": str(resolved_doc.get("id") or item_id)},
                 db_session=tx,
+            )
+            await self._audit_canonical(
+                event_type_name="UNKNOWN_ITEM_DISMISSED",
+                entity_id=str(resolved_doc.get("id") or item_id),
+                session_id=session_id or None,
+                actor_id=actor_id,
+                details={"reason": reason} if reason else {},
             )
             return resolved_doc

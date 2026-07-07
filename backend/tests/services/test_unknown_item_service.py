@@ -69,6 +69,41 @@ async def test_register_unknown_item_sets_defaults_and_audit_fields():
     assert stored["floor_no"] == "F1"
     assert stored["rack_no"] == "R1"
 
+    audit_events = await db.audit_logs.find({"event_type": "UNKNOWN_ITEM_REPORTED"}).to_list(None)
+    assert len(audit_events) == 1
+    assert audit_events[0]["entity_id"] == created["id"]
+    assert audit_events[0]["actor_username"] == "staff1"
+
+
+@pytest.mark.asyncio
+async def test_dismiss_unknown_item_writes_canonical_audit_event():
+    db = InMemoryDatabase()
+    await _seed_active_session(db, "sess-dismiss")
+    await db.unknown_items.insert_one(
+        {
+            "id": "unknown-dismiss",
+            "session_id": "sess-dismiss",
+            "location_id": "LOC-1",
+            "barcode": "510001",
+            "status": "OPEN",
+            "version": 1,
+        }
+    )
+    install_db_write_guards(db)
+    service = UnknownItemService(db)
+
+    await service.dismiss_unknown_item(
+        item_id="unknown-dismiss", actor_id="supervisor1", reason="Wrong barcode label"
+    )
+
+    audit_events = await db.audit_logs.find(
+        {"event_type": "UNKNOWN_ITEM_DISMISSED"}
+    ).to_list(None)
+    assert len(audit_events) == 1
+    assert audit_events[0]["entity_id"] == "unknown-dismiss"
+    assert audit_events[0]["actor_username"] == "supervisor1"
+    assert audit_events[0]["details"]["reason"] == "Wrong barcode label"
+
 
 @pytest.mark.asyncio
 async def test_create_manual_sku_and_resolve_rolls_back_insert_on_failure(monkeypatch):
