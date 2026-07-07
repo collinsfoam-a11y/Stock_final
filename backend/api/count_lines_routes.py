@@ -956,6 +956,18 @@ async def _release_count_line_locks(lock_state: dict[str, Any], username: str) -
         await _lock_service.release_lock(lock_state["session_variant_lock"], username)
 
 
+class _IdempotentRetryDetected(Exception):
+    """Raised by _resolve_recount_target when the same-location duplicate it
+    found is actually this same client operation racing itself (matching
+    idempotency_key), not a new duplicate scan (BSR rule #17). Callers
+    should return the existing document as a success/existing result
+    instead of erroring."""
+
+    def __init__(self, existing: dict[str, Any]):
+        super().__init__("Idempotent retry detected at same-location duplicate check")
+        self.existing = existing
+
+
 async def _resolve_recount_target(
     db: Any,
     line_data: CountLineCreate,
@@ -966,6 +978,9 @@ async def _resolve_recount_target(
     if existing_count and can_reuse_rejected_count_line(existing_count, line_payload):
         return existing_count
     if existing_count:
+        normalized_key = _normalize_idempotency_key(line_data.idempotency_key)
+        if normalized_key and existing_count.get("idempotency_key") == normalized_key:
+            raise _IdempotentRetryDetected(existing_count)
         if current_user is not None:
             await _audit_duplicate_scan_attempt(
                 db,
@@ -1491,6 +1506,117 @@ async def save_count_line_draft(
     }
 
 
+async def _persist_count_line_or_recover_duplicate(
+    db: Any,
+    line_data: CountLineCreate,
+    current_user: dict[str, Any],
+    *,
+    session: dict[str, Any],
+    erp_item: dict[str, Any],
+    erp_qty: float,
+    baseline_hash: str,
+    governance: CountLineGovernanceDecision,
+    risk_flags: list[str],
+    is_misplaced: bool,
+    financial_impact: float,
+    write_service: CountLineWriteService,
+) -> tuple[dict[str, Any], Optional[datetime], bool]:
+    """Persist a new count line, recovering gracefully from concurrent
+    duplicate races (BSR rule #17: true idempotent retry vs genuine
+    duplicate). Extracted so the exact production race-handling logic can
+    be exercised directly by the real-MongoDB concurrency integration test,
+    not just through the full create_count_line HTTP orchestration.
+
+    Returns (count_line, counted_at, is_existing_retry). When
+    is_existing_retry is True, counted_at is None and the caller must
+    return count_line immediately without further post-processing (no new
+    write happened).
+    """
+    lock_state = await _acquire_count_line_locks(
+        line_data,
+        erp_item,
+        current_user["username"],
+    )
+    try:
+        recount_update_target = await _resolve_recount_target(db, line_data, current_user)
+        count_line, counted_at = _build_count_line_document(
+            line_data,
+            erp_item,
+            current_user,
+            erp_qty,
+            baseline_hash,
+            governance,
+            risk_flags,
+            financial_impact,
+            is_misplaced,
+            recount_update_target,
+            session=session,
+        )
+        await _persist_count_line_document(
+            db,
+            line_data,
+            current_user["username"],
+            count_line,
+            counted_at,
+            recount_update_target,
+            write_service=write_service,
+            session=session,
+        )
+        return count_line, counted_at, False
+    except _IdempotentRetryDetected as exc:
+        exc.existing.pop("_id", None)
+        return exc.existing, None, True
+    except ConcurrencyError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="Session was modified concurrently; reload the session and retry.",
+        ) from exc
+    except DuplicateKeyError as exc:
+        # A concurrent request (double-tap, or a client retry racing the
+        # original still-in-flight request) can pass the pre-insert
+        # idempotency/semantic-hash checks before either commits, then lose
+        # the race against MongoDB's own unique index. If the winning
+        # document matches this request's idempotency key, this was a true
+        # retry -- return the winner's result instead of erroring, same as
+        # the non-race idempotent-submission path (not a duplicate scan per
+        # BSR rule #17; do not audit as one). Otherwise it's a genuine
+        # duplicate scan; reject it cleanly and audit it.
+        existing_idempotent = await _find_idempotent_count_line(db, line_data)
+        if existing_idempotent:
+            return existing_idempotent, None, True
+        await _audit_duplicate_scan_attempt(
+            db, line_data, current_user, reason_code="SEMANTIC_DUPLICATE"
+        )
+        raise HTTPException(
+            status_code=409,
+            detail="This item was already counted for this session/location.",
+        ) from exc
+    except GovernanceViolation as exc:
+        # Non-race duplicate rejection: the pre-insert idempotency/semantic-
+        # hash checks in count_line_write_service.py found an existing
+        # document before any insert was attempted (e.g. a double-tap whose
+        # first request had already committed by the time this one reached
+        # that check, a wider window than the pure DB-level race above).
+        message = str(exc)
+        if "Duplicate idempotency_key" in message:
+            # Same idempotency_key means this is the same client request,
+            # not a new duplicate scan (BSR rule #17) -- return the
+            # already-committed result instead of erroring.
+            existing_idempotent = await _find_idempotent_count_line(db, line_data)
+            if existing_idempotent:
+                return existing_idempotent, None, True
+        if "Duplicate idempotency_key" in message or "Duplicate semantic hash" in message:
+            reason_code = (
+                "IDEMPOTENT_RETRY" if "idempotency_key" in message else "SEMANTIC_DUPLICATE"
+            )
+            await _audit_duplicate_scan_attempt(
+                db, line_data, current_user, reason_code=reason_code
+            )
+        raise
+    finally:
+        await _release_count_line_locks(lock_state, current_user["username"])
+
+
 @router.post("/count-lines")
 async def create_count_line(
     request: Request,
@@ -1539,85 +1665,22 @@ async def create_count_line(
         erp_qty,
     )
 
-    lock_state = await _acquire_count_line_locks(
+    count_line, counted_at, is_existing_retry = await _persist_count_line_or_recover_duplicate(
+        db,
         line_data,
-        erp_item,
-        current_user["username"],
+        current_user,
+        session=session,
+        erp_item=erp_item,
+        erp_qty=erp_qty,
+        baseline_hash=baseline_hash,
+        governance=governance,
+        risk_flags=risk_flags,
+        is_misplaced=is_misplaced,
+        financial_impact=financial_impact,
+        write_service=write_service,
     )
-    try:
-        recount_update_target = await _resolve_recount_target(db, line_data, current_user)
-        count_line, counted_at = _build_count_line_document(
-            line_data,
-            erp_item,
-            current_user,
-            erp_qty,
-            baseline_hash,
-            governance,
-            risk_flags,
-            financial_impact,
-            is_misplaced,
-            recount_update_target,
-            session=session,
-        )
-        await _persist_count_line_document(
-            db,
-            line_data,
-            current_user["username"],
-            count_line,
-            counted_at,
-            recount_update_target,
-            write_service=write_service,
-            session=session,
-        )
-    except ConcurrencyError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail="Session was modified concurrently; reload the session and retry.",
-        ) from exc
-    except DuplicateKeyError as exc:
-        # A concurrent request (double-tap, or a client retry racing the
-        # original still-in-flight request) can pass the pre-insert
-        # idempotency/semantic-hash checks before either commits, then lose
-        # the race against MongoDB's own unique index. If the winning
-        # document matches this request's idempotency key, this was a true
-        # retry -- return the winner's result instead of erroring, same as
-        # the non-race idempotent-submission path (not a duplicate scan per
-        # BSR rule #17; do not audit as one). Otherwise it's a genuine
-        # duplicate scan; reject it cleanly and audit it.
-        existing_idempotent = await _find_idempotent_count_line(db, line_data)
-        if existing_idempotent:
-            return existing_idempotent
-        await _audit_duplicate_scan_attempt(
-            db, line_data, current_user, reason_code="SEMANTIC_DUPLICATE"
-        )
-        raise HTTPException(
-            status_code=409,
-            detail="This item was already counted for this session/location.",
-        ) from exc
-    except GovernanceViolation as exc:
-        # Non-race duplicate rejection: the pre-insert idempotency/semantic-
-        # hash checks in count_line_write_service.py found an existing
-        # document before any insert was attempted (e.g. a double-tap whose
-        # first request had already committed by the time this one reached
-        # that check, a wider window than the pure DB-level race above).
-        message = str(exc)
-        if "Duplicate idempotency_key" in message:
-            # Same idempotency_key means this is the same client request,
-            # not a new duplicate scan (BSR rule #17) -- return the
-            # already-committed result instead of erroring.
-            existing_idempotent = await _find_idempotent_count_line(db, line_data)
-            if existing_idempotent:
-                return existing_idempotent
-        if "Duplicate idempotency_key" in message or "Duplicate semantic hash" in message:
-            reason_code = (
-                "IDEMPOTENT_RETRY" if "idempotency_key" in message else "SEMANTIC_DUPLICATE"
-            )
-            await _audit_duplicate_scan_attempt(
-                db, line_data, current_user, reason_code=reason_code
-            )
-        raise
-    finally:
-        await _release_count_line_locks(lock_state, current_user["username"])
+    if is_existing_retry:
+        return count_line
 
     await _broadcast_scan_created(line_data, count_line, governance.variance)
     await _broadcast_dashboard_refresh(
