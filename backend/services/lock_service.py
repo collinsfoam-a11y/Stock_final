@@ -71,20 +71,33 @@ class LockService:
             existing_lock = await self.collection.find_one({"_id": key})
 
             if existing_lock:
-                # Check for explicit expiration logic just in case
-                if existing_lock["expires_at"] < datetime.now(timezone.utc).replace(tzinfo=None):
-                    # It's stale, try to delete and re-acquire (optimistic concurrency)
-                    await self.collection.delete_one(
-                        {"_id": key, "expires_at": existing_lock["expires_at"]}
-                    )
-                    # Recursive retry? Better to just fail and let caller retry or handle
-                    # But for now, let's just fail fast.
-                    pass
-
                 if existing_lock.get("owner") == owner:
                     # We already own it, extend lease?
                     # For this use case, we treat it as valid.
                     return True
+
+                # Check for explicit expiration logic just in case
+                if existing_lock["expires_at"] < datetime.now(timezone.utc).replace(tzinfo=None):
+                    # It's stale, delete it and retry the insert once. A caller
+                    # that correctly detected and cleared a stale lock should
+                    # not be rejected for a lock that no longer exists.
+                    await self.collection.delete_one(
+                        {"_id": key, "expires_at": existing_lock["expires_at"]}
+                    )
+                    try:
+                        await self.collection.insert_one(
+                            {
+                                "_id": key,
+                                "owner": owner,
+                                "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                                "expires_at": expires_at,
+                            }
+                        )
+                        logger.debug(f"Lock acquired: {key} by {owner} (after clearing stale lock)")
+                        return True
+                    except DuplicateKeyError:
+                        # Someone else raced in immediately after we cleared it.
+                        existing_lock = await self.collection.find_one({"_id": key})
 
             logger.warning(
                 f"Failed to acquire lock: {key} is held by {existing_lock.get('owner') if existing_lock else 'unknown'}"
