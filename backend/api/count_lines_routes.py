@@ -1206,71 +1206,6 @@ async def _persist_count_line_document(
             await draft_update_result
 
 
-async def _create_and_persist_count_line(
-    db: Any,
-    *,
-    session: dict[str, Any],
-    line_data: CountLineCreate,
-    current_user: dict[str, Any],
-    write_service: CountLineWriteService,
-) -> tuple[dict[str, Any], datetime, CountLineGovernanceDecision, list[str], float]:
-    erp_item = await _get_erp_item_for_count_line(db, line_data)
-    erp_qty, baseline_hash = await write_service.resolve_baseline(
-        session_id=line_data.session_id,
-        item_code=line_data.item_code,
-        username=current_user["username"],
-        erp_item=erp_item,
-    )
-    governance = await write_service.evaluate_new_count_line(
-        session=session,
-        item_code=line_data.item_code,
-        counted_qty=line_data.counted_qty,
-        erp_item=erp_item,
-        expected_qty=erp_qty,
-        variance_reason=line_data.variance_reason,
-        correction_reason=line_data.correction_reason,
-        location=line_data.floor_id,
-    )
-    risk_flags, is_misplaced, financial_impact = _build_count_line_risk_context(
-        session,
-        erp_item,
-        line_data,
-        governance.variance,
-        erp_qty,
-    )
-
-    lock_state = await _acquire_count_line_locks(line_data, erp_item, current_user["username"])
-    try:
-        recount_update_target = await _resolve_recount_target(db, line_data, current_user)
-        count_line, counted_at = _build_count_line_document(
-            line_data,
-            erp_item,
-            current_user,
-            erp_qty,
-            baseline_hash,
-            governance,
-            risk_flags,
-            financial_impact,
-            is_misplaced,
-            recount_update_target,
-            session=session,
-        )
-        await _persist_count_line_document(
-            db,
-            line_data,
-            current_user["username"],
-            count_line,
-            counted_at,
-            recount_update_target,
-            write_service=write_service,
-            session=session,
-        )
-    finally:
-        await _release_count_line_locks(lock_state, current_user["username"])
-
-    return count_line, counted_at, governance, risk_flags, financial_impact
-
-
 def _build_count_line_mutation_update(
     *,
     count_line: dict[str, Any],
@@ -1617,28 +1552,27 @@ async def _persist_count_line_or_recover_duplicate(
         await _release_count_line_locks(lock_state, current_user["username"])
 
 
-@router.post("/count-lines")
-async def create_count_line(
-    request: Request,
+async def _prepare_and_persist_count_line(
+    db: Any,
     line_data: CountLineCreate,
-    current_user: dict = Depends(get_current_user),
-):
-    """Create or resubmit a count line while preserving snapshot and review semantics."""
-    db = _get_db_client()
-    write_service = _get_count_line_write_service(db)
-    session = await _get_mutable_session_or_409(db, line_data.session_id)
-    await _enforce_count_line_session_logic(
-        db=db,
-        session=session,
-        request=request,
-        current_user=current_user,
-        operation_name="create_count_line",
-    )
-    _ensure_session_accepts_counts(session)
+    current_user: dict[str, Any],
+    *,
+    session: dict[str, Any],
+    write_service: CountLineWriteService,
+) -> tuple[dict[str, Any], Optional[datetime], bool]:
+    """Single source of truth for "create or recover" a count line, shared by
+    both the single-submit endpoint and the batch endpoint so they behave
+    identically for idempotent retries and genuine duplicates (BSR: batch
+    must not be a second, inconsistent code path).
 
+    Returns (count_line, counted_at, is_existing_retry). Raises
+    HTTPException/GovernanceViolation the same way
+    _persist_count_line_or_recover_duplicate does for genuine duplicates,
+    finalized-session mutations, and lock contention.
+    """
     existing_idempotent = await _find_idempotent_count_line(db, line_data)
     if existing_idempotent:
-        return existing_idempotent
+        return existing_idempotent, None, True
 
     erp_item = await _get_erp_item_for_count_line(db, line_data)
     erp_qty, baseline_hash = await write_service.resolve_baseline(
@@ -1665,7 +1599,7 @@ async def create_count_line(
         erp_qty,
     )
 
-    count_line, counted_at, is_existing_retry = await _persist_count_line_or_recover_duplicate(
+    return await _persist_count_line_or_recover_duplicate(
         db,
         line_data,
         current_user,
@@ -1679,10 +1613,38 @@ async def create_count_line(
         financial_impact=financial_impact,
         write_service=write_service,
     )
+
+
+@router.post("/count-lines")
+async def create_count_line(
+    request: Request,
+    line_data: CountLineCreate,
+    current_user: dict = Depends(get_current_user),
+):
+    """Create or resubmit a count line while preserving snapshot and review semantics."""
+    db = _get_db_client()
+    write_service = _get_count_line_write_service(db)
+    session = await _get_mutable_session_or_409(db, line_data.session_id)
+    await _enforce_count_line_session_logic(
+        db=db,
+        session=session,
+        request=request,
+        current_user=current_user,
+        operation_name="create_count_line",
+    )
+    _ensure_session_accepts_counts(session)
+
+    count_line, counted_at, is_existing_retry = await _prepare_and_persist_count_line(
+        db,
+        line_data,
+        current_user,
+        session=session,
+        write_service=write_service,
+    )
     if is_existing_retry:
         return count_line
 
-    await _broadcast_scan_created(line_data, count_line, governance.variance)
+    await _broadcast_scan_created(line_data, count_line, float(count_line.get("variance") or 0.0))
     await _broadcast_dashboard_refresh(
         "count_line_created",
         session_id=line_data.session_id,
@@ -1704,7 +1666,7 @@ async def create_count_line(
             line_data,
             count_line,
             list(count_line.get("risk_flags") or []),
-            float(count_line.get("variance") or governance.variance),
+            float(count_line.get("variance") or 0.0),
             float(count_line.get("financial_impact") or 0.0),
         )
 
@@ -2922,6 +2884,52 @@ class CountLineBatchCreate(BaseModel):
     lines: list[CountLineCreate]
 
 
+async def _resolve_existing_count_line_id_for_batch_error(
+    db: Any, error_code: str, line_data: CountLineCreate
+) -> Optional[str]:
+    """Best-effort lookup of the existing count line an errored batch line
+    collided with, for the response's `existing_count_line_id` (BSR Part A:
+    "where applicable"). Read-only; never allowed to fail the response."""
+    try:
+        if error_code in ("IDEMPOTENT_RETRY", "SEMANTIC_DUPLICATE"):
+            existing = await _find_idempotent_count_line(db, line_data)
+            if existing:
+                return str(existing.get("id") or "") or None
+        if error_code == "DUPLICATE_SCAN_ATTEMPT":
+            existing = await find_duplicate_count_line(db, line_data.model_dump(mode="json"))
+            if existing:
+                return str(existing.get("id") or existing.get("_id") or "") or None
+    except Exception:
+        return None
+    return None
+
+
+def _classify_batch_line_failure(exc: Exception) -> tuple[str, str]:
+    """Map an exception raised by _prepare_and_persist_count_line into
+    (error_code, message) for the structured per-line batch error response
+    (BSR Part A). error_code is one of IDEMPOTENT_RETRY / SEMANTIC_DUPLICATE
+    / DUPLICATE_SCAN_ATTEMPT / FINALIZED_SESSION / GOVERNANCE_VIOLATION."""
+    if isinstance(exc, HTTPException):
+        detail = str(exc.detail)
+        if "already counted for this session/location" in detail:
+            return "SEMANTIC_DUPLICATE", detail
+        if "Duplicate Scan" in detail:
+            return "DUPLICATE_SCAN_ATTEMPT", detail
+        if "finalized" in detail.lower():
+            return "FINALIZED_SESSION", detail
+        return "GOVERNANCE_VIOLATION", detail
+    if isinstance(exc, GovernanceViolation):
+        message = str(exc)
+        if "Duplicate idempotency_key" in message:
+            return "IDEMPOTENT_RETRY", message
+        if "Duplicate semantic hash" in message:
+            return "SEMANTIC_DUPLICATE", message
+        if "finalized" in message.lower():
+            return "FINALIZED_SESSION", message
+        return "GOVERNANCE_VIOLATION", message
+    return "GOVERNANCE_VIOLATION", "Failed to create count line"
+
+
 @router.post("/count-lines/batch")
 async def create_count_lines_batch(
     request: Request,
@@ -2946,33 +2954,70 @@ async def create_count_lines_batch(
         raise HTTPException(status_code=400, detail="Session is not active")
 
     for idx, line_data in enumerate(batch_data.lines):
+        enriched_line = CountLineCreate.model_validate(
+            {
+                **line_data.model_dump(mode="json"),
+                "session_id": batch_data.session_id,
+                "batch_id": (
+                    line_data.batch_id
+                    or f"batch_{datetime.now(timezone.utc).replace(tzinfo=None).isoformat()}"
+                ),
+            }
+        )
         try:
-            enriched_line = CountLineCreate.model_validate(
-                {
-                    **line_data.model_dump(mode="json"),
-                    "session_id": batch_data.session_id,
-                    "batch_id": (
-                        line_data.batch_id
-                        or f"batch_{datetime.now(timezone.utc).replace(tzinfo=None).isoformat()}"
-                    ),
-                }
-            )
-            (
-                count_line,
-                _counted_at,
-                _governance,
-                _risk_flags,
-                _financial_impact,
-            ) = await _create_and_persist_count_line(
+            count_line, _counted_at, is_existing_retry = await _prepare_and_persist_count_line(
                 db,
+                enriched_line,
+                current_user,
                 session=session,
-                line_data=enriched_line,
-                current_user=current_user,
                 write_service=write_service,
             )
-            results.append({"index": idx, "id": str(count_line.get("id") or ""), "success": True})
-        except Exception as e:
-            errors.append({"index": idx, "error": str(e)})
+            results.append(
+                {
+                    "index": idx,
+                    "id": str(count_line.get("id") or ""),
+                    "success": True,
+                    "idempotent_retry": is_existing_retry,
+                }
+            )
+        except (HTTPException, GovernanceViolation) as exc:
+            error_code, message = _classify_batch_line_failure(exc)
+            existing_count_line_id = await _resolve_existing_count_line_id_for_batch_error(
+                db, error_code, enriched_line
+            )
+            errors.append(
+                {
+                    "success": False,
+                    "error_code": error_code,
+                    "message": message,
+                    "existing_count_line_id": existing_count_line_id,
+                    "line_index": idx,
+                    "item_code": enriched_line.item_code,
+                    "idempotency_key": _normalize_idempotency_key(enriched_line.idempotency_key),
+                    # Legacy field, preserved for existing consumers.
+                    "index": idx,
+                    "error": message,
+                }
+            )
+        except Exception as exc:
+            logger.error(
+                "Unexpected error creating batch count line %d: %s",
+                idx,
+                _safe_log_value(exc, max_length=200),
+            )
+            errors.append(
+                {
+                    "success": False,
+                    "error_code": "GOVERNANCE_VIOLATION",
+                    "message": "Failed to create count line",
+                    "existing_count_line_id": None,
+                    "line_index": idx,
+                    "item_code": enriched_line.item_code,
+                    "idempotency_key": _normalize_idempotency_key(enriched_line.idempotency_key),
+                    "index": idx,
+                    "error": "Failed to create count line",
+                }
+            )
 
     await _recompute_session_totals(db, batch_data.session_id)
 

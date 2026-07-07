@@ -11,7 +11,7 @@ production duplicate-recovery code (_persist_count_line_or_recover_duplicate
 in count_lines_routes.py) that create_count_line uses.
 
 Note on scope: these tests call the count-line write pipeline directly
-(mirroring what _create_and_persist_count_line does for the batch endpoint)
+(the same _prepare_and_persist_count_line steps the batch endpoint uses)
 rather than going through the full create_count_line HTTP route. Driving
 two literally-concurrent requests through the full route also races an
 unrelated session-level optimistic-concurrency check (session.version, bumped
@@ -122,51 +122,17 @@ def _make_line_data(
 async def _submit_count_line(db, line_data: CountLineCreate, current_user: dict):
     """Exercise the real production write + duplicate-recovery pipeline
     directly, avoiding the unrelated session-OCC confound of the full HTTP
-    route (see module docstring)."""
+    route (see module docstring). This is the exact same
+    _prepare_and_persist_count_line single source of truth that both the
+    single-submit and batch endpoints call."""
     session = await find_session(db, line_data.session_id)
     write_service = count_lines_routes._get_count_line_write_service(db)
-
-    existing_idempotent = await count_lines_routes._find_idempotent_count_line(db, line_data)
-    if existing_idempotent:
-        return existing_idempotent
-
-    erp_item = await count_lines_routes._get_erp_item_for_count_line(db, line_data)
-    erp_qty, baseline_hash = await write_service.resolve_baseline(
-        session_id=line_data.session_id,
-        item_code=line_data.item_code,
-        username=current_user["username"],
-        erp_item=erp_item,
-    )
-    governance = await write_service.evaluate_new_count_line(
-        session=session,
-        item_code=line_data.item_code,
-        counted_qty=line_data.counted_qty,
-        erp_item=erp_item,
-        expected_qty=erp_qty,
-        variance_reason=line_data.variance_reason,
-        correction_reason=line_data.correction_reason,
-        location=line_data.floor_id,
-    )
-    risk_flags, is_misplaced, financial_impact = count_lines_routes._build_count_line_risk_context(
-        session,
-        erp_item,
-        line_data,
-        governance.variance,
-        erp_qty,
-    )
     count_line, _counted_at, _is_existing_retry = (
-        await count_lines_routes._persist_count_line_or_recover_duplicate(
+        await count_lines_routes._prepare_and_persist_count_line(
             db,
             line_data,
             current_user,
             session=session,
-            erp_item=erp_item,
-            erp_qty=erp_qty,
-            baseline_hash=baseline_hash,
-            governance=governance,
-            risk_flags=risk_flags,
-            is_misplaced=is_misplaced,
-            financial_impact=financial_impact,
             write_service=write_service,
         )
     )

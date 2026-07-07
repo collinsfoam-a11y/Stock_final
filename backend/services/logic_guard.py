@@ -9,6 +9,7 @@ from typing import Any, Literal, Optional
 from fastapi import HTTPException, Request
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from backend.services.concurrency import coerce_version
 from backend.services.flag_resolver import (
     FlagResolution,
     FlagResolutionError,
@@ -249,12 +250,26 @@ async def persist_pin_if_needed(*, db, session, context: LogicExecutionContext) 
         logic_scope_source=context.pin_scope_source,
     )
 
+    # persist_logic_pin does an OCC-guarded $inc on session.version. Reflect
+    # that increment back onto the caller's in-memory session so a later
+    # expected_session_version check (e.g. the count-line write that
+    # triggered this pin) compares against the *current* version instead of
+    # the now-stale value captured before this call -- otherwise a session's
+    # very first count-line write (which is what pins the logic version)
+    # would spuriously fail with "Session was modified concurrently" even
+    # with no concurrent request involved.
+    bumped_version = coerce_version(
+        session.get("version") if isinstance(session, dict) else getattr(session, "version", None)
+    ) + 1
+
     if isinstance(session, dict):
         session["logic_version"] = context.pin_logic_version
         session["logic_scope_source"] = context.pin_scope_source
+        session["version"] = bumped_version
     else:
         setattr(session, "logic_version", context.pin_logic_version)
         setattr(session, "logic_scope_source", context.pin_scope_source)
+        setattr(session, "version", bumped_version)
 
 
 def apply_pin_to_new_session(session, context: LogicExecutionContext) -> None:

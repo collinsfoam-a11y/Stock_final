@@ -1642,10 +1642,11 @@ class TestCountLinesAPIEdgeCases:
             part == {"$or": [{"id": "session123"}, {"session_id": "session123"}]}
             for part in filter_query["$and"]
         )
-        assert any(
-            part == {"$or": [{"version": 0}, {"version": {"$exists": False}}]}
-            for part in filter_query["$and"]
-        )
+        # The session's logic-version pin persists (bumping version 0 -> 1)
+        # before this barcode update runs, so the barcode update's own OCC
+        # check must compare against the current version (1), not the
+        # pre-pin value -- see logic_guard.persist_pin_if_needed.
+        assert any(part == {"version": 1} for part in filter_query["$and"])
 
     @pytest.mark.asyncio
     async def test_create_count_line_auto_approves_zero_variance(self):
