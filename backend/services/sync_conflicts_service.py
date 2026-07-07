@@ -139,6 +139,21 @@ class SyncConflictsService:
         result = await self.db.sync_conflicts.insert_one(conflict_doc)
         conflict_id = str(result.inserted_id)
         try:
+            from backend.models.audit import AuditEventType
+            from backend.services.audit_service import AuditService
+
+            await AuditService(self.db).log_event(
+                event_type=AuditEventType.SYNC_CONFLICT_CREATED,
+                actor_id=user,
+                actor_username=user,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                session_id=session_id,
+                details={"conflict_id": conflict_id, "fields": [c["field"] for c in conflicts]},
+            )
+        except Exception as exc:
+            logger.warning("Failed to audit sync conflict creation: %s", exc)
+        try:
             await self.event_service.record_sync_queue_event(
                 event_type="SYNC_CONFLICT_RECORDED",
                 session_id=session_id,
@@ -313,6 +328,9 @@ class SyncConflictsService:
                             resolved_data,
                             db_session=tx,
                         )
+                        await self._audit_conflict_resolved(
+                            conflict, conflict_id, "FORKED", resolved_by
+                        )
                         return {
                             "conflict_id": conflict_id,
                             "resolution": "FORKED",
@@ -334,11 +352,37 @@ class SyncConflictsService:
 
         logger.info(f"Conflict {conflict_id} resolved with {resolution.value} by {resolved_by}")
 
+        await self._audit_conflict_resolved(conflict, conflict_id, resolution.value, resolved_by)
+
         return {
             "conflict_id": conflict_id,
             "resolution": resolution.value,
             "resolved_data": resolved_data,
         }
+
+    async def _audit_conflict_resolved(
+        self,
+        conflict: dict[str, Any],
+        conflict_id: str,
+        resolution_value: str,
+        resolved_by: str,
+    ) -> None:
+        try:
+            from backend.models.audit import AuditEventType
+            from backend.services.audit_service import AuditService
+
+            await AuditService(self.db).log_event(
+                event_type=AuditEventType.SYNC_CONFLICT_RESOLVED,
+                actor_id=resolved_by,
+                actor_username=resolved_by,
+                entity_type=str(conflict.get("entity_type") or ""),
+                entity_id=str(conflict.get("entity_id") or ""),
+                session_id=conflict.get("session_id"),
+                decision=resolution_value,
+                details={"conflict_id": conflict_id},
+            )
+        except Exception as exc:
+            logger.warning("Failed to audit sync conflict resolution: %s", exc)
 
     async def _fork_approved_record(
         self,

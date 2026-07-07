@@ -552,6 +552,23 @@ async def create_user(
         current_user.get("username"),
     )
 
+    try:
+        from backend.models.audit import AuditEventType
+        from backend.services.audit_service import AuditService
+
+        await AuditService(db).log_event(
+            event_type=AuditEventType.USER_CREATED,
+            actor_id=current_user.get("username"),
+            actor_username=current_user.get("username"),
+            actor_role=current_user.get("role"),
+            entity_type="user",
+            entity_id=str(result.inserted_id),
+            resource_id=request.username,
+            after={"username": request.username, "role": request.role},
+        )
+    except Exception as exc:
+        logger.warning("Failed to audit user creation: %s", sanitize_for_logging(str(exc)))
+
     return _user_to_detail(user_doc)
 
 
@@ -591,6 +608,38 @@ async def update_user(
         sanitize_for_logging(existing_doc["username"]),
         current_user.get("username"),
     )
+
+    try:
+        from backend.models.audit import AuditEventType
+        from backend.services.audit_service import AuditService
+
+        audit_service = AuditService(db)
+        if "role" in update and update["role"] != existing_doc.get("role"):
+            await audit_service.log_event(
+                event_type=AuditEventType.USER_ROLE_CHANGED,
+                actor_id=current_user.get("username"),
+                actor_username=current_user.get("username"),
+                actor_role=current_user.get("role"),
+                entity_type="user",
+                entity_id=str(oid),
+                resource_id=existing_doc.get("username"),
+                before={"role": existing_doc.get("role")},
+                after={"role": update["role"]},
+            )
+        if "is_active" in update and update["is_active"] is False and existing_doc.get(
+            "is_active"
+        ) is not False:
+            await audit_service.log_event(
+                event_type=AuditEventType.USER_DISABLED,
+                actor_id=current_user.get("username"),
+                actor_username=current_user.get("username"),
+                actor_role=current_user.get("role"),
+                entity_type="user",
+                entity_id=str(oid),
+                resource_id=existing_doc.get("username"),
+            )
+    except Exception as exc:
+        logger.warning("Failed to audit user update: %s", sanitize_for_logging(str(exc)))
 
     if not updated:
         _raise_http_error(status.HTTP_404_NOT_FOUND, "User not found", "NOT_FOUND")

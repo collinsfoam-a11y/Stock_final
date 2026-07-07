@@ -27,6 +27,41 @@ class AuditEventType(str, Enum):
     WATCHDOG_TRIGGER = "WATCHDOG_TRIGGER"
     USER_SETTINGS_UPDATE = "USER_SETTINGS_UPDATE"
 
+    # Count-line lifecycle (BSR canonical audit coverage)
+    COUNT_LINE_SUBMITTED = "COUNT_LINE_SUBMITTED"
+    COUNT_LINE_APPROVED = "COUNT_LINE_APPROVED"
+    COUNT_LINE_REJECTED = "COUNT_LINE_REJECTED"
+    COUNT_LINE_RECOUNT_REQUESTED = "COUNT_LINE_RECOUNT_REQUESTED"
+    COUNT_LINE_RECOUNT_SUBMITTED = "COUNT_LINE_RECOUNT_SUBMITTED"
+    DUPLICATE_SCAN_ATTEMPT = "DUPLICATE_SCAN_ATTEMPT"
+
+    # Unknown item lifecycle
+    UNKNOWN_ITEM_REPORTED = "UNKNOWN_ITEM_REPORTED"
+    UNKNOWN_ITEM_MAPPED = "UNKNOWN_ITEM_MAPPED"
+    UNKNOWN_ITEM_DISMISSED = "UNKNOWN_ITEM_DISMISSED"
+
+    # Session lifecycle (only states that are real in this codebase's
+    # canonical CREATED->ACTIVE->REVIEW->FINALIZED model -- see
+    # governance_guard.SESSION_TRANSITIONS. PAUSED/RESUMED/LOCKED/UNLOCKED/
+    # REOPEN/CANCELLED are not implemented as session-level states and are
+    # deliberately not added here; see the BSR remediation report.)
+    SESSION_CREATED = "SESSION_CREATED"
+    SESSION_ACTIVATED = "SESSION_ACTIVATED"
+    SESSION_REVIEW_STARTED = "SESSION_REVIEW_STARTED"
+    SESSION_FINALIZED = "SESSION_FINALIZED"
+
+    # User management
+    USER_CREATED = "USER_CREATED"
+    USER_ROLE_CHANGED = "USER_ROLE_CHANGED"
+    USER_DISABLED = "USER_DISABLED"
+
+    # Admin / operational
+    ADMIN_SETTING_CHANGED = "ADMIN_SETTING_CHANGED"
+    EXPORT_GENERATED = "EXPORT_GENERATED"
+    SYNC_CONFLICT_CREATED = "SYNC_CONFLICT_CREATED"
+    SYNC_CONFLICT_RESOLVED = "SYNC_CONFLICT_RESOLVED"
+    GOVERNANCE_VIOLATION = "GOVERNANCE_VIOLATION"
+
 
 class AuditLogStatus(str, Enum):
     SUCCESS = "SUCCESS"
@@ -44,5 +79,21 @@ class AuditLog(BaseModel):
     resource_id: Optional[str] = None
     details: Dict[str, Any] = Field(default_factory=dict)
     status: AuditLogStatus = Field(default=AuditLogStatus.SUCCESS)
+
+    # Canonical audit fields (BSR remediation). All optional so existing
+    # callers and existing stored documents remain valid.
+    entity_type: Optional[str] = None
+    entity_id: Optional[str] = None
+    session_id: Optional[str] = None
+    count_line_id: Optional[str] = None
+    item_code: Optional[str] = None
+    location_context: Optional[Dict[str, Any]] = None
+    actor_role: Optional[str] = None
+    decision: Optional[str] = None
+    reason: Optional[str] = None
+    before: Optional[Dict[str, Any]] = None
+    after: Optional[Dict[str, Any]] = None
+    request_id: Optional[str] = None
+    device_id: Optional[str] = None
 
     model_config = ConfigDict(populate_by_name=True)

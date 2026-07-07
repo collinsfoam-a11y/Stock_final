@@ -9,6 +9,7 @@ import pytest
 from fastapi import HTTPException
 from pymongo.errors import DuplicateKeyError
 
+from backend.models.audit import AuditEventType
 from backend.api.count_lines_routes import (
     BulkCountLineUpdate,
     CountLineApprovalRequest,
@@ -483,7 +484,13 @@ class TestCreateCountLine:
         mock_db.count_lines.insert_one = AsyncMock()
         mock_db.sessions.update_one = AsyncMock()
 
-        with patch("backend.api.count_lines_routes.get_db", return_value=mock_db):
+        audit_service = AsyncMock()
+        audit_service.log_event = AsyncMock()
+
+        with (
+            patch("backend.api.count_lines_routes.get_db", return_value=mock_db),
+            patch("backend.services.audit_service.AuditService", return_value=audit_service),
+        ):
             result = await create_count_line(
                 request=AsyncMock(),
                 line_data=line_data,
@@ -500,6 +507,15 @@ class TestCreateCountLine:
         inserted_count_line = mock_db.count_lines.insert_one.await_args.args[0]
         assert inserted_count_line["idempotency_key"] == result["idempotency_key"]
         mock_db.count_line_drafts.update_many.assert_awaited_once()
+
+        audit_service.log_event.assert_awaited_once()
+        audit_kwargs = audit_service.log_event.await_args.kwargs
+        assert audit_kwargs["event_type"] == AuditEventType.COUNT_LINE_SUBMITTED
+        assert audit_kwargs["entity_type"] == "count_line"
+        assert audit_kwargs["entity_id"] == result["id"]
+        assert audit_kwargs["actor_username"] == "testuser"
+        assert audit_kwargs["session_id"] == "session123"
+        assert audit_kwargs["item_code"] == "ITEM001"
 
     @pytest.mark.asyncio
     async def test_create_count_line_broadcasts_dashboard_refresh(
@@ -613,7 +629,13 @@ class TestCreateCountLine:
         }
         mock_db.count_lines.find = Mock(return_value=AsyncIter([existing_line]))
 
-        with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
+        audit_service = AsyncMock()
+        audit_service.log_event = AsyncMock()
+
+        with (
+            patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db),
+            patch("backend.services.audit_service.AuditService", return_value=audit_service),
+        ):
             with pytest.raises(HTTPException) as exc_info:
                 await create_count_line(
                     request=AsyncMock(),
@@ -623,6 +645,13 @@ class TestCreateCountLine:
 
         assert exc_info.value.status_code == 409
         assert "Duplicate Scan" in str(exc_info.value.detail)
+
+        audit_service.log_event.assert_awaited_once()
+        audit_kwargs = audit_service.log_event.await_args.kwargs
+        assert audit_kwargs["event_type"] == AuditEventType.DUPLICATE_SCAN_ATTEMPT
+        assert audit_kwargs["reason"] == "SAME_LOCATION_DUPLICATE"
+        assert audit_kwargs["entity_id"] == "existing"
+        assert audit_kwargs["actor_username"] == "testuser"
 
     @pytest.mark.asyncio
     async def test_create_count_line_race_loser_returns_existing_on_true_retry(
@@ -697,12 +726,16 @@ class TestCreateCountLine:
         # identical (same session/item/location/qty), not a retry.
         mock_db.count_lines.find_one = AsyncMock(return_value=None)
 
+        audit_service = AsyncMock()
+        audit_service.log_event = AsyncMock()
+
         with (
             patch("backend.api.count_lines_routes.get_db", return_value=mock_db),
             patch(
                 "backend.services.count_line_write_service.CountLineWriteService.process_write",
                 new=AsyncMock(side_effect=DuplicateKeyError("E11000 duplicate key error")),
             ),
+            patch("backend.services.audit_service.AuditService", return_value=audit_service),
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await create_count_line(
@@ -713,6 +746,13 @@ class TestCreateCountLine:
 
         assert exc_info.value.status_code == 409
         assert "already counted" in str(exc_info.value.detail)
+
+        audit_service.log_event.assert_awaited_once()
+        audit_kwargs = audit_service.log_event.await_args.kwargs
+        assert audit_kwargs["event_type"] == AuditEventType.DUPLICATE_SCAN_ATTEMPT
+        assert audit_kwargs["reason"] == "SEMANTIC_DUPLICATE"
+        assert audit_kwargs["actor_username"] == "testuser"
+        assert audit_kwargs["session_id"] == "session123"
 
     @pytest.mark.asyncio
     async def test_create_count_line_high_risk(self, mock_db, line_data, erp_item):
@@ -1167,6 +1207,13 @@ class TestApprovalWorkflow:
         assert update_doc["verified_by"] == "supervisor"
         assert update_doc["verified_at"] is not None
         audit_service.log_event.assert_awaited_once()
+        audit_kwargs = audit_service.log_event.await_args.kwargs
+        assert audit_kwargs["event_type"] == AuditEventType.COUNT_LINE_APPROVED
+        assert audit_kwargs["entity_type"] == "count_line"
+        assert audit_kwargs["entity_id"] == "line123"
+        assert audit_kwargs["actor_username"] == "supervisor"
+        assert audit_kwargs["decision"] == "APPROVED"
+        assert "DevPass123" not in str(audit_kwargs)
         notification_service.notify_count_approved.assert_awaited_once_with(
             user_id="staff1",
             count_line_id="line123",
@@ -1251,6 +1298,13 @@ class TestApprovalWorkflow:
             assigned_to="staff2",
         )
         audit_service.log_event.assert_awaited_once()
+        audit_kwargs = audit_service.log_event.await_args.kwargs
+        assert audit_kwargs["event_type"] == AuditEventType.COUNT_LINE_REJECTED
+        assert audit_kwargs["entity_type"] == "count_line"
+        assert audit_kwargs["entity_id"] == "line456"
+        assert audit_kwargs["actor_username"] == "supervisor"
+        assert audit_kwargs["decision"] == "REJECTED"
+        assert audit_kwargs["reason"] == "Recount with fresh check"
 
     @pytest.mark.asyncio
     async def test_bulk_approve_count_lines_sets_verified_and_logs_audit(self):
@@ -1304,7 +1358,11 @@ class TestApprovalWorkflow:
         assert set_doc["verified_by"] == "supervisor"
         assert set_doc["verified_at"] is not None
         audit_service.log_event.assert_awaited_once()
-        assert audit_service.log_event.await_args.kwargs["resource_id"] == "line123,line456"
+        audit_kwargs = audit_service.log_event.await_args.kwargs
+        assert audit_kwargs["resource_id"] == "line123,line456"
+        assert audit_kwargs["event_type"] == AuditEventType.COUNT_LINE_APPROVED
+        assert audit_kwargs["actor_username"] == "supervisor"
+        assert audit_kwargs["decision"] == "APPROVED"
 
     @pytest.mark.asyncio
     async def test_bulk_reject_count_lines_clears_verified_and_logs_audit(self):
@@ -1354,7 +1412,10 @@ class TestApprovalWorkflow:
         assert set_doc["verified_by"] is None
         assert set_doc["verified_at"] is None
         audit_service.log_event.assert_awaited_once()
-        assert audit_service.log_event.await_args.kwargs["resource_id"] == "line123"
+        audit_kwargs = audit_service.log_event.await_args.kwargs
+        assert audit_kwargs["resource_id"] == "line123"
+        assert audit_kwargs["event_type"] == AuditEventType.COUNT_LINE_REJECTED
+        assert audit_kwargs["decision"] == "REJECTED"
 
 
 class TestGetCountLines:

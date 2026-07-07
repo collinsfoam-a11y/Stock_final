@@ -33,6 +33,7 @@ from backend.services.count_line_write_service import (
     CountLineGovernanceDecision,
     CountLineWriteService,
 )
+from backend.services.governance_guard import GovernanceViolation
 from backend.services.lock_service import LockService, ResourceLockedError
 from backend.services.logic_guard import build_request_context, enforce_session_logic
 from backend.services.notification_service import NotificationService
@@ -422,6 +423,51 @@ async def _find_idempotent_count_line(
     return existing_idempotent
 
 
+async def _audit_duplicate_scan_attempt(
+    db: Any,
+    line_data: CountLineCreate,
+    current_user: dict[str, Any],
+    *,
+    reason_code: str,
+    existing_count_line_id: Optional[str] = None,
+) -> None:
+    """Record a backend-detected duplicate/near-duplicate count submission.
+
+    Best-effort: audit failure must never block the primary duplicate
+    response (BSR audit design rule). Never call this for a true idempotent
+    retry -- that's a distinct business case (BSR rule #17), not a duplicate
+    scan.
+    """
+    try:
+        from backend.services.audit_service import AuditService
+
+        await AuditService(db).log_event(
+            event_type=AuditEventType.DUPLICATE_SCAN_ATTEMPT,
+            status=AuditLogStatus.WARNING,
+            actor_id=current_user.get("username"),
+            actor_username=current_user.get("username"),
+            actor_role=current_user.get("role"),
+            entity_type="count_line",
+            entity_id=existing_count_line_id,
+            session_id=line_data.session_id,
+            item_code=line_data.item_code,
+            location_context={
+                "location_id": line_data.location_id,
+                "floor_id": line_data.floor_id,
+                "rack_id": line_data.rack_id,
+            },
+            reason=reason_code,
+            details={
+                "reason_code": reason_code,
+                "barcode": getattr(line_data, "barcode", None),
+                "idempotency_key": _normalize_idempotency_key(line_data.idempotency_key),
+                "existing_count_line_id": existing_count_line_id,
+            },
+        )
+    except Exception as exc:
+        logger.warning("Failed to audit duplicate scan attempt: %s", _safe_log_value(exc))
+
+
 async def _find_erp_item_for_count_line(
     db: Any, line_data: CountLineCreate
 ) -> Optional[dict[str, Any]]:
@@ -597,12 +643,23 @@ async def _release_count_line_locks(lock_state: dict[str, Any], username: str) -
 async def _resolve_recount_target(
     db: Any,
     line_data: CountLineCreate,
+    current_user: Optional[dict[str, Any]] = None,
 ) -> Optional[dict[str, Any]]:
     line_payload = line_data.model_dump(mode="json")
     existing_count = await find_duplicate_count_line(db, line_payload)
     if existing_count and can_reuse_rejected_count_line(existing_count, line_payload):
         return existing_count
     if existing_count:
+        if current_user is not None:
+            await _audit_duplicate_scan_attempt(
+                db,
+                line_data,
+                current_user,
+                reason_code="SAME_LOCATION_DUPLICATE",
+                existing_count_line_id=str(
+                    existing_count.get("id") or existing_count.get("_id") or ""
+                ),
+            )
         raise HTTPException(
             status_code=409,
             detail=(
@@ -853,7 +910,7 @@ async def _create_and_persist_count_line(
 
     lock_state = await _acquire_count_line_locks(line_data, erp_item, current_user["username"])
     try:
-        recount_update_target = await _resolve_recount_target(db, line_data)
+        recount_update_target = await _resolve_recount_target(db, line_data, current_user)
         count_line, counted_at = _build_count_line_document(
             line_data,
             erp_item,
@@ -1172,7 +1229,7 @@ async def create_count_line(
         current_user["username"],
     )
     try:
-        recount_update_target = await _resolve_recount_target(db, line_data)
+        recount_update_target = await _resolve_recount_target(db, line_data, current_user)
         count_line, counted_at = _build_count_line_document(
             line_data,
             erp_item,
@@ -1208,15 +1265,41 @@ async def create_count_line(
         # the race against MongoDB's own unique index. If the winning
         # document matches this request's idempotency key, this was a true
         # retry -- return the winner's result instead of erroring, same as
-        # the non-race idempotent-submission path. Otherwise it's a genuine
-        # duplicate scan; reject it cleanly.
+        # the non-race idempotent-submission path (not a duplicate scan per
+        # BSR rule #17; do not audit as one). Otherwise it's a genuine
+        # duplicate scan; reject it cleanly and audit it.
         existing_idempotent = await _find_idempotent_count_line(db, line_data)
         if existing_idempotent:
             return existing_idempotent
+        await _audit_duplicate_scan_attempt(
+            db, line_data, current_user, reason_code="SEMANTIC_DUPLICATE"
+        )
         raise HTTPException(
             status_code=409,
             detail="This item was already counted for this session/location.",
         ) from exc
+    except GovernanceViolation as exc:
+        # Non-race duplicate rejection: the pre-insert idempotency/semantic-
+        # hash checks in count_line_write_service.py found an existing
+        # document before any insert was attempted (e.g. a double-tap whose
+        # first request had already committed by the time this one reached
+        # that check, a wider window than the pure DB-level race above).
+        message = str(exc)
+        if "Duplicate idempotency_key" in message:
+            # Same idempotency_key means this is the same client request,
+            # not a new duplicate scan (BSR rule #17) -- return the
+            # already-committed result instead of erroring.
+            existing_idempotent = await _find_idempotent_count_line(db, line_data)
+            if existing_idempotent:
+                return existing_idempotent
+        if "Duplicate idempotency_key" in message or "Duplicate semantic hash" in message:
+            reason_code = (
+                "IDEMPOTENT_RETRY" if "idempotency_key" in message else "SEMANTIC_DUPLICATE"
+            )
+            await _audit_duplicate_scan_attempt(
+                db, line_data, current_user, reason_code=reason_code
+            )
+        raise
     finally:
         await _release_count_line_locks(lock_state, current_user["username"])
 
@@ -1245,6 +1328,30 @@ async def create_count_line(
             float(count_line.get("variance") or governance.variance),
             float(count_line.get("financial_impact") or 0.0),
         )
+
+    try:
+        from backend.services.audit_service import AuditService
+
+        await AuditService(db).log_event(
+            event_type=AuditEventType.COUNT_LINE_SUBMITTED,
+            actor_id=current_user.get("username"),
+            actor_username=current_user.get("username"),
+            actor_role=current_user.get("role"),
+            entity_type="count_line",
+            entity_id=str(count_line.get("id") or ""),
+            session_id=line_data.session_id,
+            count_line_id=str(count_line.get("id") or ""),
+            item_code=line_data.item_code,
+            location_context={
+                "location_id": line_data.location_id,
+                "floor_id": line_data.floor_id,
+                "rack_id": line_data.rack_id,
+            },
+            decision=count_line.get("approval_status"),
+            after={"counted_qty": count_line.get("counted_qty"), "variance": count_line.get("variance")},
+        )
+    except Exception as exc:
+        logger.warning("Failed to audit count-line submission: %s", _safe_log_value(exc))
 
     count_line.pop("_id", None)
     return count_line
@@ -1614,10 +1721,19 @@ async def approve_count_line(
 
             audit_service = AuditService(db)
             await audit_service.log_event(
-                event_type=AuditEventType.STOCK_COUNT_SUBMITTED,  # Using closest type or add generic stock event
+                event_type=AuditEventType.COUNT_LINE_APPROVED,
                 status=AuditLogStatus.SUCCESS,
+                actor_id=current_user["username"],
                 actor_username=current_user["username"],
+                actor_role=current_user.get("role"),
                 resource_id=line_id,
+                entity_type="count_line",
+                entity_id=line_id,
+                session_id=str(count_line.get("session_id") or ""),
+                count_line_id=line_id,
+                item_code=count_line.get("item_code"),
+                decision="APPROVED",
+                reason=request.notes if request else None,
                 details={"action": "approve_count_line", "line_id": line_id},
             )
         except Exception as e:
@@ -1743,10 +1859,19 @@ async def reject_count_line(
 
             audit_service = AuditService(db)
             await audit_service.log_event(
-                event_type=AuditEventType.STOCK_COUNT_SUBMITTED,
+                event_type=AuditEventType.COUNT_LINE_REJECTED,
                 status=AuditLogStatus.SUCCESS,
+                actor_id=current_user["username"],
                 actor_username=current_user["username"],
+                actor_role=current_user.get("role"),
                 resource_id=line_id,
+                entity_type="count_line",
+                entity_id=line_id,
+                session_id=str(count_line.get("session_id") or ""),
+                count_line_id=line_id,
+                item_code=count_line.get("item_code"),
+                decision="REJECTED",
+                reason=rejection_reason,
                 details={"action": "reject_count_line", "line_id": line_id},
             )
         except Exception as e:
@@ -2300,10 +2425,16 @@ async def bulk_approve_count_lines(
 
             audit_service = AuditService(db)
             await audit_service.log_event(
-                event_type=AuditEventType.STOCK_COUNT_SUBMITTED,
+                event_type=AuditEventType.COUNT_LINE_APPROVED,
                 status=AuditLogStatus.SUCCESS,
+                actor_id=current_user["username"],
                 actor_username=current_user["username"],
+                actor_role=current_user.get("role"),
                 resource_id=",".join(ids),
+                entity_type="count_line",
+                session_id=",".join(session_ids) if session_ids else None,
+                decision="APPROVED",
+                reason=update_data.notes,
                 details={"action": "bulk_approve_count_lines", "line_ids": ids},
             )
         except Exception as e:
@@ -2464,10 +2595,16 @@ async def bulk_reject_count_lines(
 
             audit_service = AuditService(db)
             await audit_service.log_event(
-                event_type=AuditEventType.STOCK_COUNT_SUBMITTED,
+                event_type=AuditEventType.COUNT_LINE_REJECTED,
                 status=AuditLogStatus.SUCCESS,
+                actor_id=current_user["username"],
                 actor_username=current_user["username"],
+                actor_role=current_user.get("role"),
                 resource_id=",".join(ids),
+                entity_type="count_line",
+                session_id=",".join(session_ids) if session_ids else None,
+                decision="REJECTED",
+                reason=update_data.notes,
                 details={"action": "bulk_reject_count_lines", "line_ids": ids},
             )
         except Exception as e:

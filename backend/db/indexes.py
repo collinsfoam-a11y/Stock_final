@@ -315,6 +315,12 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("actor_username", 1), ("timestamp", -1)], {"name": "idx_audit_username_time"}),
         # Resource tracking
         ([("resource_id", 1), ("timestamp", -1)], {"name": "idx_audit_resource_time"}),
+        # Canonical audit fields (BSR queryability requirement)
+        (
+            [("entity_type", 1), ("entity_id", 1), ("timestamp", -1)],
+            {"name": "idx_audit_entity"},
+        ),
+        ([("session_id", 1), ("timestamp", -1)], {"name": "idx_audit_session"}),
     ],
     # Rate Limits Collection (MM7 fix: TTL cleanup for PIN rate limiting)
     "rate_limits": [

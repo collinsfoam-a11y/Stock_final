@@ -319,6 +319,11 @@ async def test_export_items_csv_route_returns_erpnext_headers(
     first_line = response.text.splitlines()[0]
     assert first_line.startswith("ID,item_code,item_name,barcode")
 
+    audit_events = await test_db.audit_logs.find({"event_type": "EXPORT_GENERATED"}).to_list(None)
+    assert len(audit_events) == 1
+    assert audit_events[0]["details"]["export_type"] == "items"
+    assert audit_events[0]["details"]["format"] == "csv"
+
 
 @pytest.mark.asyncio
 async def test_export_items_xlsx_route_returns_erpnext_headers(

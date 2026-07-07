@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Optional
 
@@ -19,6 +20,8 @@ from backend.services.governance_guard import (
 from backend.services.projection_write_service import ProjectionWriteService
 from backend.services.transaction_manager import mongo_transaction
 from backend.services.validation_service import ValidationService
+
+logger = logging.getLogger(__name__)
 
 
 def _utc_now() -> datetime:
@@ -304,6 +307,25 @@ class SessionLifecycleService:
             version=int(created_doc.get("version", 0) or 0),
             db_session=db_session,
         )
+        try:
+            from backend.models.audit import AuditEventType
+            from backend.services.audit_service import AuditService
+
+            await AuditService(self.db).log_event(
+                event_type=AuditEventType.SESSION_CREATED,
+                actor_id=username,
+                actor_username=username,
+                entity_type="session",
+                entity_id=str(created_doc["id"]),
+                session_id=str(created_doc["id"]),
+                location_context={
+                    "location_id": created_doc.get("location_id"),
+                    "floor_id": created_doc.get("floor_id"),
+                    "rack_no": created_doc.get("rack_no"),
+                },
+            )
+        except Exception as exc:  # pragma: no cover - best-effort by contract
+            logger.warning("Failed to audit session creation: %s", exc)
         await self._sync_session_projection(
             session_id=str(created_doc["id"]),
             trigger="session.create",
@@ -402,6 +424,33 @@ class SessionLifecycleService:
             metadata={"from": current, "to": target, "note": note},
             db_session=db_session,
         )
+        try:
+            from backend.models.audit import AuditEventType
+            from backend.services.audit_service import AuditService
+
+            # Only the 3 real canonical transitions have a distinct event
+            # type; there is no session-level PAUSED/RESUMED/LOCKED/REOPEN
+            # state in this codebase (see BSR remediation report).
+            transition_event = {
+                "ACTIVE": AuditEventType.SESSION_ACTIVATED,
+                "REVIEW": AuditEventType.SESSION_REVIEW_STARTED,
+                "FINALIZED": AuditEventType.SESSION_FINALIZED,
+            }.get(target)
+            if transition_event:
+                await AuditService(self.db).log_event(
+                    event_type=transition_event,
+                    actor_id=actor,
+                    actor_username=actor,
+                    entity_type="session",
+                    entity_id=session_id,
+                    session_id=session_id,
+                    decision=target,
+                    reason=note,
+                    before={"status": current},
+                    after={"status": target},
+                )
+        except Exception as exc:  # pragma: no cover - best-effort by contract
+            logger.warning("Failed to audit session transition: %s", exc)
         await self._sync_session_projection(
             session_id=session_id,
             trigger="session.transition",
@@ -841,6 +890,23 @@ class SessionLifecycleService:
             metadata={"note": note},
             db_session=db_session,
         )
+        try:
+            from backend.models.audit import AuditEventType
+            from backend.services.audit_service import AuditService
+
+            await AuditService(self.db).log_event(
+                event_type=AuditEventType.SESSION_FINALIZED,
+                actor_id=actor,
+                actor_username=actor,
+                entity_type="session",
+                entity_id=session_id,
+                session_id=session_id,
+                decision="FINALIZED",
+                reason=note,
+                after={"finalized_at": str(finalized_at)},
+            )
+        except Exception as exc:  # pragma: no cover - best-effort by contract
+            logger.warning("Failed to audit session finalization: %s", exc)
         await self._sync_session_projection(
             session_id=session_id,
             trigger="session.finalize",

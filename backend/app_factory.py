@@ -257,6 +257,26 @@ async def _governance_violation_handler(request: Request, exc: GovernanceViolati
     logger.warning(
         "Unhandled GovernanceViolation on %s %s: %s", request.method, request.url.path, exc
     )
+    try:
+        # This handler only receives (request, exc) -- FastAPI does not expose
+        # resolved route dependencies (e.g. current_user) here, and this
+        # codebase does not stash the authenticated user on request.state.
+        # Call sites that raise GovernanceViolation with a real actor in
+        # scope (e.g. count-line duplicate handling) log their own
+        # attributed event separately; this is the unattributed safety net
+        # for anything that reaches here uncaught.
+        from backend.db.runtime import get_db
+        from backend.models.audit import AuditEventType, AuditLogStatus
+        from backend.services.audit_service import AuditService
+
+        await AuditService(get_db()).log_event(
+            event_type=AuditEventType.GOVERNANCE_VIOLATION,
+            status=AuditLogStatus.FAILURE,
+            details={"path": request.url.path, "method": request.method, "detail": str(exc)},
+        )
+    except Exception:
+        # Audit logging must never block the error response itself.
+        pass
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 

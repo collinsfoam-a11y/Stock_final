@@ -1,7 +1,8 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from backend.models.audit import AuditEventType
 from backend.services.sync_conflicts_service import ConflictResolution, SyncConflictsService
 
 
@@ -23,21 +24,66 @@ async def test_resolve_conflict_handles_non_object_id_entity_ids():
             "status": "pending",
             "entity_type": "count_line",
             "entity_id": "offline-line-1",
+            "session_id": "sess-1",
             "server_data": {"field": "server"},
             "local_data": {"field": "local"},
         }
     )
 
-    result = await service.resolve_conflict(
-        "507f1f77bcf86cd799439011",
-        ConflictResolution.ACCEPT_SERVER,
-        "supervisor1",
-    )
+    audit_service = AsyncMock()
+    audit_service.log_event = AsyncMock()
+
+    with patch("backend.services.audit_service.AuditService", return_value=audit_service):
+        result = await service.resolve_conflict(
+            "507f1f77bcf86cd799439011",
+            ConflictResolution.ACCEPT_SERVER,
+            "supervisor1",
+        )
 
     assert result["resolution"] == ConflictResolution.ACCEPT_SERVER.value
     assert db.count_lines.find_one.await_args.args[0] == {"id": "offline-line-1"}
     process_write_call = service.count_line_write_service.process_write.await_args
     assert process_write_call.args[0]["filter"] == {"id": "offline-line-1"}
+
+    audit_service.log_event.assert_awaited_once()
+    kwargs = audit_service.log_event.await_args.kwargs
+    assert kwargs["event_type"] == AuditEventType.SYNC_CONFLICT_RESOLVED
+    assert kwargs["entity_id"] == "offline-line-1"
+    assert kwargs["actor_username"] == "supervisor1"
+    assert kwargs["decision"] == "accept_server"
+
+
+@pytest.mark.asyncio
+async def test_detect_conflict_writes_canonical_audit_event():
+    db = MagicMock()
+    db.sync_conflicts.insert_one = AsyncMock(
+        return_value=MagicMock(inserted_id="conflict-id-1")
+    )
+
+    service = SyncConflictsService(db)
+    service.event_service.record_sync_queue_event = AsyncMock(return_value=None)
+
+    audit_service = AsyncMock()
+    audit_service.log_event = AsyncMock()
+
+    with patch("backend.services.audit_service.AuditService", return_value=audit_service):
+        conflict_id = await service.detect_conflict(
+            entity_type="count_line",
+            entity_id="line-1",
+            local_data={"counted_qty": 5},
+            server_data={"counted_qty": 3},
+            user="staff1",
+            session_id="sess-1",
+        )
+
+    assert conflict_id == "conflict-id-1"
+    audit_service.log_event.assert_awaited_once()
+    kwargs = audit_service.log_event.await_args.kwargs
+    assert kwargs["event_type"] == AuditEventType.SYNC_CONFLICT_CREATED
+    assert kwargs["entity_type"] == "count_line"
+    assert kwargs["entity_id"] == "line-1"
+    assert kwargs["session_id"] == "sess-1"
+    assert kwargs["actor_username"] == "staff1"
 
 
 @pytest.mark.asyncio

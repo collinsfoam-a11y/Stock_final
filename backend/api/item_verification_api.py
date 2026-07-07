@@ -46,6 +46,34 @@ def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
     return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
+async def _audit_export_generated(
+    current_user: dict[str, Any],
+    *,
+    export_type: str,
+    export_format: str,
+    filters: Optional[dict[str, Any]] = None,
+) -> None:
+    """Record that an export was generated (BSR canonical audit coverage).
+
+    Best-effort: audit failure must never block the export itself.
+    """
+    try:
+        from backend.models.audit import AuditEventType
+        from backend.services.audit_service import AuditService
+
+        await AuditService(db).log_event(
+            event_type=AuditEventType.EXPORT_GENERATED,
+            actor_id=current_user.get("username"),
+            actor_username=current_user.get("username"),
+            actor_role=current_user.get("role"),
+            entity_type="export",
+            entity_id=f"{export_type}_{export_format}",
+            details={"export_type": export_type, "format": export_format, "filters": filters or {}},
+        )
+    except Exception as exc:
+        logger.warning("Failed to audit export generation: %s", _safe_log_value(exc))
+
+
 def _regex_filter(value: Optional[str]) -> Optional[dict[str, str]]:
     if not value:
         return None
@@ -1024,6 +1052,12 @@ async def export_items_csv(
             f"{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')}.csv"
         )
 
+        await _audit_export_generated(
+            current_user,
+            export_type="items",
+            export_format="csv",
+            filters=filter_query,
+        )
         return StreamingResponse(
             generate_csv_rows(),
             media_type="text/csv",
@@ -1067,6 +1101,12 @@ async def export_items_json(
             f"{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')}.json"
         )
 
+        await _audit_export_generated(
+            current_user,
+            export_type="items",
+            export_format="json",
+            filters=filter_query,
+        )
         return StreamingResponse(
             iter([json.dumps({"items": rows}, default=str)]),
             media_type="application/json",
@@ -1111,6 +1151,12 @@ async def export_items_xlsx(
             f"{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')}.xlsx"
         )
 
+        await _audit_export_generated(
+            current_user,
+            export_type="items",
+            export_format="xlsx",
+            filters=filter_query,
+        )
         return StreamingResponse(
             iter([content]),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1120,7 +1166,7 @@ async def export_items_xlsx(
         raise
     except Exception as e:
         logger.error("Error exporting items to XLSX: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Excel export failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Excel export failed") from e
 
 
 @verification_router.get("/variances")
@@ -1243,6 +1289,12 @@ async def export_variances_csv(
             f"variances_erpnext_import_"
             f"{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')}.csv"
         )
+        await _audit_export_generated(
+            current_user,
+            export_type="variances",
+            export_format="csv",
+            filters={"category": category, "floor": floor, "rack": rack, "warehouse": warehouse},
+        )
         return StreamingResponse(
             iter([output.getvalue()]),
             media_type="text/csv",
@@ -1253,7 +1305,7 @@ async def export_variances_csv(
             "Error exporting variances to CSV: %s",
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=f"Variance CSV export failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Variance CSV export failed") from e
 
 
 @verification_router.get("/variances/export/xlsx")
@@ -1279,6 +1331,12 @@ async def export_variances_xlsx(
             f"variances_erpnext_import_"
             f"{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')}.xlsx"
         )
+        await _audit_export_generated(
+            current_user,
+            export_type="variances",
+            export_format="xlsx",
+            filters={"category": category, "floor": floor, "rack": rack, "warehouse": warehouse},
+        )
         return StreamingResponse(
             iter([content]),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1291,7 +1349,7 @@ async def export_variances_xlsx(
             "Error exporting variances to XLSX: %s",
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=f"Variance Excel export failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Variance Excel export failed") from e
 
 
 @verification_router.get("/live/users")

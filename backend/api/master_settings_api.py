@@ -132,16 +132,29 @@ async def update_system_parameters(
 
         await db.config_versions.insert_one(config_version.model_dump())
 
-        # Log the change
-        await db.audit_logs.insert_one(
-            {
-                "action": "update_system_parameters",
-                "user": current_user.get("username", "admin"),
-                "timestamp": datetime.now().isoformat(),
-                "changes": params_dict,
-                "config_version_id": config_version.id,
-            }
-        )
+        # Canonical audit event (BSR remediation). Previously this wrote an
+        # ad-hoc document directly to db.audit_logs with a shape incompatible
+        # with the AuditLog model (no event_type) -- AuditService.get_logs()
+        # would have failed to parse it back. Replaced with the proper
+        # canonical event; config_versions remains the source of truth for
+        # the actual before/after payload diff.
+        try:
+            from backend.models.audit import AuditEventType
+            from backend.services.audit_service import AuditService
+
+            await AuditService(db).log_event(
+                event_type=AuditEventType.ADMIN_SETTING_CHANGED,
+                actor_id=current_user.get("username", "admin"),
+                actor_username=current_user.get("username", "admin"),
+                actor_role=current_user.get("role"),
+                entity_type="system_settings",
+                entity_id="parameters",
+                details={"config_version_id": config_version.id, "version_hash": version_hash},
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to audit system parameter update: %s", sanitize_for_logging(str(exc))
+            )
 
         return {
             "success": True,
@@ -257,6 +270,25 @@ async def reset_to_defaults(
             params_dict["updated_at"] = datetime.now().isoformat()
 
             await db.system_settings.replace_one({"_id": "parameters"}, params_dict, upsert=True)
+
+        try:
+            from backend.models.audit import AuditEventType
+            from backend.services.audit_service import AuditService
+
+            await AuditService(db).log_event(
+                event_type=AuditEventType.ADMIN_SETTING_CHANGED,
+                actor_id=current_user.get("username", "admin"),
+                actor_username=current_user.get("username", "admin"),
+                actor_role=current_user.get("role"),
+                entity_type="system_settings",
+                entity_id="parameters",
+                decision="RESET",
+                details={"category": category or "all"},
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to audit settings reset: %s", sanitize_for_logging(str(exc))
+            )
 
         return {
             "success": True,
