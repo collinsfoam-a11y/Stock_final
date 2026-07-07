@@ -2987,14 +2987,23 @@ async def create_count_lines_batch(
         raise HTTPException(status_code=400, detail="Session is not active")
 
     for idx, line_data in enumerate(batch_data.lines):
+        # Do not fabricate a batch_id when the client doesn't supply one.
+        # batch_id represents a real inventory batch/lot (see
+        # canonical_inventory.find_duplicate_count_line's batch-aware
+        # matching, and the batch-level reconciliation grouping in
+        # projection_service.py/read_router.py, which fall back to the
+        # shared "NO_BATCH" bucket for lines with no batch context). This
+        # previously auto-generated a unique-per-request timestamp value
+        # instead, which corrupted batch-level reporting for any line
+        # submitted without an explicit batch_id, and silently defeated
+        # same-location duplicate detection for the whole batch endpoint
+        # once that detection became batch_id-aware (BSR Part D): every
+        # line got treated as its own distinct "batch", so two submissions
+        # of the same item/location were never recognized as duplicates.
         enriched_line = CountLineCreate.model_validate(
             {
                 **line_data.model_dump(mode="json"),
                 "session_id": batch_data.session_id,
-                "batch_id": (
-                    line_data.batch_id
-                    or f"batch_{datetime.now(timezone.utc).replace(tzinfo=None).isoformat()}"
-                ),
             }
         )
         try:

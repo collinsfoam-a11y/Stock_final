@@ -24,6 +24,17 @@ the session version fresh immediately before each write instead of reusing
 the value captured at request start (see count_lines_routes.
 _persist_count_line_document and logic_guard.persist_pin_if_needed).
 
+TestBatchConcurrency (BSR Part A follow-up, batch concurrency verification):
+create_count_lines_batch shares _prepare_and_persist_count_line with the
+single-submit route (verified this pass, not assumed), but that only proves
+the *per-line* logic is identical -- it doesn't prove two concurrent full
+batch *requests* behave correctly, since each batch request also calls
+_enforce_count_line_session_logic (the same first-time logic-pin path fixed
+in BSR Part B) once per request, and loops multiple lines sequentially
+within itself. These tests drive create_count_lines_batch itself under real
+concurrency to prove that end-to-end, not just the shared helper in
+isolation.
+
 Requires a reachable MongoDB at MONGO_URL (see backend/tests/conftest.py).
 
 Marked `manual` (excluded from the default `-m "not manual"` suite run, see
@@ -46,7 +57,11 @@ import pytest
 from fastapi import HTTPException
 
 import backend.api.count_lines_routes as count_lines_routes
-from backend.api.count_lines_routes import create_count_line
+from backend.api.count_lines_routes import (
+    CountLineBatchCreate,
+    create_count_line,
+    create_count_lines_batch,
+)
 from backend.api.schemas import CountLineCreate
 from backend.db.indexes import create_indexes
 from backend.models.audit import AuditEventType
@@ -391,3 +406,313 @@ class TestFullRouteConcurrency:
         assert isinstance(result, HTTPException)
         assert result.status_code == 409
         assert "finalized" in str(result.detail).lower()
+
+
+async def _submit_batch(db, batch: CountLineBatchCreate, username: str):
+    """Drive create_count_lines_batch itself (not the shared per-line
+    helper) so a raw 500 at the batch-request level -- as opposed to a
+    structured per-line error -- would actually be caught."""
+    with patch("backend.api.count_lines_routes.get_db", return_value=db):
+        return await create_count_lines_batch(
+            request=_FakeRequest(),
+            batch_data=batch,
+            current_user={"username": username, "role": "staff"},
+        )
+
+
+class TestBatchConcurrency:
+    """BSR Part A follow-up: create_count_lines_batch under real concurrent
+    conditions, not just the shared per-line helper in isolation."""
+
+    @pytest.mark.asyncio
+    async def test_two_concurrent_batches_same_idempotency_key_persist_once(self, real_db):
+        """Two concurrent batch requests, each with one line, same
+        session/item/location/idempotency_key: exactly one persisted
+        document, neither batch call raises, both report the line as a
+        success (one as the winner, one as idempotent_retry), and no false
+        DUPLICATE_SCAN_ATTEMPT audit for the true retry."""
+        session_id = "concur-batch-idem"
+        item_code = "ITEM-BATCH-IDEM"
+        idempotency_key = "concur-batch-idem-key"
+        await _seed_common_fixtures(real_db, session_id=session_id, item_code=item_code)
+
+        batch_a = CountLineBatchCreate(
+            session_id=session_id,
+            lines=[
+                _make_line_data(
+                    session_id=session_id, item_code=item_code, idempotency_key=idempotency_key
+                )
+            ],
+        )
+        batch_b = CountLineBatchCreate(
+            session_id=session_id,
+            lines=[
+                _make_line_data(
+                    session_id=session_id, item_code=item_code, idempotency_key=idempotency_key
+                )
+            ],
+        )
+
+        response_a, response_b = await asyncio.gather(
+            _submit_batch(real_db, batch_a, "staff-a"),
+            _submit_batch(real_db, batch_b, "staff-b"),
+        )
+
+        for response in (response_a, response_b):
+            assert response["failed"] == 0, f"Expected no failures, got: {response['errors']}"
+            assert response["created"] == 1
+            assert response["results"][0]["success"] is True
+
+        persisted = await real_db.count_lines.count_documents(
+            {"session_id": session_id, "idempotency_key": idempotency_key}
+        )
+        assert persisted == 1, "Exactly one count_line must be persisted for a true retry"
+
+        ids = {response_a["results"][0]["id"], response_b["results"][0]["id"]}
+        assert len(ids) == 1, "Both batch responses must reference the same persisted line"
+
+        # Exactly one of the two calls is the "real" insert; the other is
+        # the idempotent-retry recovery. Order isn't guaranteed under real
+        # concurrency, so check the union of both responses.
+        retry_flags = [
+            response_a["results"][0]["idempotent_retry"],
+            response_b["results"][0]["idempotent_retry"],
+        ]
+        assert True in retry_flags, "At least one response must report idempotent_retry"
+
+        false_duplicate_audits = await real_db.audit_logs.count_documents(
+            {
+                "event_type": AuditEventType.DUPLICATE_SCAN_ATTEMPT.value,
+                "session_id": session_id,
+                "item_code": item_code,
+            }
+        )
+        assert false_duplicate_audits == 0, (
+            "A true idempotent retry must not be recorded as a duplicate scan (BSR rule #17)"
+        )
+
+    @pytest.mark.asyncio
+    async def test_two_concurrent_batches_genuine_duplicate_race(self, real_db):
+        """Two concurrent batch requests, each with one line, same
+        session/item/location, different idempotency_key, same semantic
+        content: exactly one persisted, the loser's batch response carries
+        a structured per-line error (never a raw 500 at the batch level),
+        and DUPLICATE_SCAN_ATTEMPT is audited for the rejection."""
+        session_id = "concur-batch-semantic"
+        item_code = "ITEM-BATCH-SEM"
+        await _seed_common_fixtures(real_db, session_id=session_id, item_code=item_code)
+
+        batch_a = CountLineBatchCreate(
+            session_id=session_id,
+            lines=[
+                _make_line_data(
+                    session_id=session_id,
+                    item_code=item_code,
+                    idempotency_key="concur-batch-sem-key-a",
+                    counted_qty=100.0,
+                )
+            ],
+        )
+        batch_b = CountLineBatchCreate(
+            session_id=session_id,
+            lines=[
+                _make_line_data(
+                    session_id=session_id,
+                    item_code=item_code,
+                    idempotency_key="concur-batch-sem-key-b",
+                    counted_qty=100.0,
+                )
+            ],
+        )
+
+        response_a, response_b = await asyncio.gather(
+            _submit_batch(real_db, batch_a, "staff-a"),
+            _submit_batch(real_db, batch_b, "staff-b"),
+        )
+
+        responses = [response_a, response_b]
+        successes = [r for r in responses if r["created"] == 1 and r["failed"] == 0]
+        failures = [r for r in responses if r["failed"] == 1 and r["created"] == 0]
+
+        assert len(successes) == 1, f"Exactly one batch should succeed: {responses}"
+        assert len(failures) == 1, f"Exactly one batch should fail cleanly: {responses}"
+
+        loser_error = failures[0]["errors"][0]
+        assert loser_error["success"] is False
+        assert loser_error["error_code"] in ("SEMANTIC_DUPLICATE", "DUPLICATE_SCAN_ATTEMPT")
+        assert loser_error["line_index"] == 0
+        assert loser_error["item_code"] == item_code
+
+        persisted = await real_db.count_lines.count_documents({"session_id": session_id})
+        assert persisted == 1, "Exactly one count_line must be persisted for genuine duplicates"
+
+        duplicate_audits = await real_db.audit_logs.count_documents(
+            {
+                "event_type": AuditEventType.DUPLICATE_SCAN_ATTEMPT.value,
+                "session_id": session_id,
+                "item_code": item_code,
+            }
+        )
+        assert duplicate_audits >= 1, "The rejected duplicate must be audited"
+
+    @pytest.mark.asyncio
+    async def test_mixed_batch_new_retry_and_duplicate_lines(self, real_db):
+        """One batch with three lines -- new, true idempotent retry, and
+        genuine duplicate -- must succeed on the first two without being
+        rolled back by the third, and audit only the genuine duplicate."""
+        session_id = "concur-batch-mixed"
+        item_new, item_retry, item_dup = (
+            "ITEM-BATCH-MIXED-NEW",
+            "ITEM-BATCH-MIXED-RETRY",
+            "ITEM-BATCH-MIXED-DUP",
+        )
+        await real_db.sessions.insert_one(
+            {"id": session_id, "session_id": session_id, "status": "ACTIVE", "version": 0}
+        )
+        for item_code in (item_new, item_retry, item_dup):
+            await real_db.erp_items.insert_one(
+                {
+                    "item_code": item_code,
+                    "barcode": f"BC-{item_code}",
+                    "item_name": "Concurrency Test Item",
+                    "stock_qty": 100.0,
+                    "mrp": 50.0,
+                }
+            )
+        await real_db.session_snapshots.insert_one(
+            {
+                "session_id": session_id,
+                "snapshot_hash": f"hash-{session_id}",
+                "items": [
+                    {"item_code": item_code, "stock_qty": 100.0}
+                    for item_code in (item_new, item_retry, item_dup)
+                ],
+            }
+        )
+
+        # Pre-existing line B's target: same idempotency_key as what the
+        # batch will submit for item_retry -- a true retry.
+        await real_db.count_lines.insert_one(
+            {
+                "id": "existing-retry-line",
+                "session_id": session_id,
+                "item_code": item_retry,
+                "idempotency_key": "mixed-retry-key",
+                "floor_no": "F1",
+                "rack_no": "R1",
+                "status": "pending",
+                "version": 1,
+            }
+        )
+        # Pre-existing line C's target: same location, different
+        # idempotency_key than what the batch will submit for item_dup --
+        # a genuine same-location duplicate.
+        await real_db.count_lines.insert_one(
+            {
+                "id": "existing-dup-line",
+                "session_id": session_id,
+                "item_code": item_dup,
+                "idempotency_key": "mixed-dup-original-key",
+                "floor_no": "F1",
+                "rack_no": "R1",
+                "status": "pending",
+                "version": 1,
+            }
+        )
+
+        batch = CountLineBatchCreate(
+            session_id=session_id,
+            lines=[
+                _make_line_data(  # line A: brand new
+                    session_id=session_id, item_code=item_new, idempotency_key="mixed-new-key"
+                ),
+                _make_line_data(  # line B: true idempotent retry
+                    session_id=session_id, item_code=item_retry, idempotency_key="mixed-retry-key"
+                ),
+                _make_line_data(  # line C: genuine duplicate (different key, same location)
+                    session_id=session_id, item_code=item_dup, idempotency_key="mixed-dup-new-key"
+                ),
+            ],
+        )
+
+        response = await _submit_batch(real_db, batch, "staff-a")
+
+        assert response["created"] == 2, f"Expected lines A and B to succeed: {response}"
+        assert response["failed"] == 1, f"Expected line C to fail: {response}"
+
+        results_by_index = {r["index"]: r for r in response["results"]}
+        assert 0 in results_by_index and results_by_index[0]["success"] is True
+        assert results_by_index[0]["idempotent_retry"] is False
+        assert 1 in results_by_index and results_by_index[1]["success"] is True
+        assert results_by_index[1]["idempotent_retry"] is True
+        assert results_by_index[1]["id"] == "existing-retry-line"
+
+        assert len(response["errors"]) == 1
+        error_c = response["errors"][0]
+        assert error_c["line_index"] == 2
+        assert error_c["item_code"] == item_dup
+        assert error_c["success"] is False
+
+        # Line A's new document exists and was not rolled back by line C's failure.
+        line_a_doc = await real_db.count_lines.find_one(
+            {"session_id": session_id, "item_code": item_new}
+        )
+        assert line_a_doc is not None
+
+        # Only line C (the genuine duplicate) is audited; line B (true retry) is not.
+        audits = await real_db.audit_logs.find(
+            {"event_type": AuditEventType.DUPLICATE_SCAN_ATTEMPT.value, "session_id": session_id}
+        ).to_list(None)
+        audited_items = {a.get("item_code") for a in audits}
+        assert item_dup in audited_items
+        assert item_retry not in audited_items
+        assert item_new not in audited_items
+
+    @pytest.mark.asyncio
+    async def test_batch_persists_normalized_uom_correctly(self, real_db):
+        """BSR Priority #1 regression check for the batch path specifically.
+        create_count_lines_batch's response only echoes back an id (not the
+        full line), so there's nothing to compare it against directly --
+        what matters is that the *persisted* document carries the item
+        master's normalized UOM, not whatever pre-normalization value
+        _build_count_line_document wrote before insert_one ran. This proves
+        CountLineWriteService._run_post_write_validation's post-insert sync
+        (fixed under Priority #1) applies to batch inserts too, since it's
+        a caller-agnostic fix inside the shared write service."""
+        session_id = "concur-batch-uom"
+        item_code = "ITEM-BATCH-UOM"
+        await real_db.sessions.insert_one(
+            {"id": session_id, "session_id": session_id, "status": "ACTIVE", "version": 0}
+        )
+        await real_db.erp_items.insert_one(
+            {
+                "item_code": item_code,
+                "barcode": f"BC-{item_code}",
+                "item_name": "Concurrency UOM Item",
+                "stock_qty": 100.0,
+                "mrp": 50.0,
+                "uom_code": "BOX",
+                "uom_name": "Box",
+            }
+        )
+        await real_db.session_snapshots.insert_one(
+            {
+                "session_id": session_id,
+                "snapshot_hash": f"hash-{session_id}",
+                "items": [{"item_code": item_code, "stock_qty": 100.0}],
+            }
+        )
+
+        line = _make_line_data(
+            session_id=session_id, item_code=item_code, idempotency_key="batch-uom-key"
+        )
+        batch = CountLineBatchCreate(session_id=session_id, lines=[line])
+
+        response = await _submit_batch(real_db, batch, "staff-a")
+        assert response["created"] == 1
+
+        persisted = await real_db.count_lines.find_one(
+            {"id": response["results"][0]["id"]}
+        )
+        assert persisted["uom_code"] == "BOX"
+        assert persisted["uom_name"] == "Box"
