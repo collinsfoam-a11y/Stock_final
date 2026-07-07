@@ -1549,8 +1549,16 @@ async def update_session_status(
 
     requested = str(status or "").strip().upper()
     requested_canonical = normalize_canonical_session_status(requested)
-    if requested == "PAUSED":
-        requested_canonical = "ACTIVE"
+    # RECONCILE is a legitimate legacy alias for the real REVIEW state (see
+    # governance_guard.LEGACY_TO_CANONICAL_STATUS's identical mapping) --
+    # not a fake status. PAUSED is not: no session-level pause feature
+    # exists (only rack-level Redis locks, which deliberately never touch
+    # session.status), so it must not be silently coerced to ACTIVE, which
+    # previously made a client's "pause" request return 200 with a
+    # heartbeat-only no-op instead of the pause it asked for. It now falls
+    # through to the same explicit 400 that CANCELLED/LOCKED/UNLOCKED
+    # already get below, consistent with those (BSR: do not silently coerce
+    # unsupported statuses).
     if requested in {"RECONCILE", "REVIEW"}:
         requested_canonical = "REVIEW"
     if requested in {"COMPLETED", "CLOSED", "FINALIZED"}:
@@ -1561,10 +1569,7 @@ async def update_session_status(
         "ACTIVE",
         "REVIEW",
         "FINALIZED",
-    } and requested not in {
-        "PAUSED",
-        "RECONCILE",
-    }:
+    } and requested not in {"RECONCILE"}:
         raise HTTPException(status_code=400, detail=f"Unsupported session status: {requested}")
 
     lifecycle_service = SessionLifecycleService(db)
