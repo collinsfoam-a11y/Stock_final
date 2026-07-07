@@ -3,3 +3,9 @@
 **Action:** When working with potentially long lists in this codebase (especially in search or data tables), always prefer `VirtualList` over `FlatList`. Ensure you calculate an accurate `estimatedItemSize` by inspecting the item's layout and styles (padding, margins, font sizes) rather than guessing.## 2024-06-04 - N+1 query fix in sql_sync_service
 **Learning:** Pre-fetching database documents into a local cache dictionary before a large batch loop drastically reduces network and I/O latency, effectively changing an O(n) querying pattern to an O(1) bulk fetch and an O(n) local lookup. In our sync logic, using motor.find({}) instead of loop-wise find_one(...) reduced processing time by 50%.
 **Action:** Implemented dictionary-based cache argument `mongo_items_cache` for `_sync_single_item` and hydrated it in `nightly_full_sync` and `sync_quantities_only`.
+## 2024-05-19 - Avoid FlatList/FlashList with scrollEnabled={false}
+**Learning:** Using virtualized lists like `FlatList` or `FlashList` with `scrollEnabled={false}` introduces unnecessary virtualization overhead (and can cause 0px height collapse issues with `FlashList`) without providing any performance benefits, since all items are forced to render anyway when placed inside a standard `ScrollView`.
+**Action:** When a list does not need to scroll independently (e.g. nested inside a ScrollView or small lists), use a standard `Array.map` over the data inside a regular `View` instead.
+## 2024-05-19 - Ensure Array.map keys in React Native
+**Learning:** When replacing virtualized lists (`FlatList`, `FlashList`) with standard `Array.map()` arrays due to `scrollEnabled={false}`, failing to manually assign unique React `key` props (which was handled implicitly by `keyExtractor`) will cause significant UI reconciliation bugs.
+**Action:** Always provide stable `key` props to elements rendered within `.map()` loops when refactoring list structures in React Native.
