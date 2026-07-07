@@ -224,6 +224,8 @@ export default function VarianceDetailsScreen() {
             <AnimatedPressable
               onPress={() => safeBackNavigation(router, { fallbackHref: "/supervisor/variances" })}
               style={styles.backButton}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
               <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
             </AnimatedPressable>
@@ -403,10 +405,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: theme.spacing.xs,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: theme.colors.background.secondary,
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: theme.colors.border.light,
   },
   headerTitle: {
     fontSize: 24,
@@ -500,9 +502,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   secondaryButton: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: theme.colors.background.secondary,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: theme.colors.border.light,
   },
   secondaryButtonText: {
     color: theme.colors.text.primary,

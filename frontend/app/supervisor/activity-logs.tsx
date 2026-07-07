@@ -235,6 +235,8 @@ export default function ActivityLogsScreen() {
             <AnimatedPressable
               onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
               <Ionicons name="arrow-back" size={24} color={operationalTheme.colors.text.primary} />
             </AnimatedPressable>

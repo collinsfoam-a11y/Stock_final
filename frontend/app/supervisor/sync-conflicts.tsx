@@ -262,6 +262,8 @@ export default function SyncConflictsScreen() {
             <AnimatedPressable
               onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
               <Ionicons name="arrow-back" size={24} color={operationalTheme.colors.text.primary} />
             </AnimatedPressable>
@@ -736,7 +738,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
   modalInput: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: operationalTheme.colors.background.secondary,
     color: operationalTheme.colors.text.primary,
     padding: 12,
     borderRadius: operationalTheme.borderRadius.md,

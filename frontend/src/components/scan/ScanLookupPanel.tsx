@@ -237,6 +237,8 @@ export function ScanLookupPanel({
             onPress={searchQuery.trim() ? onSubmitSearch : onOpenScanner}
             disabled={loading}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={searchQuery.trim() ? "Search" : "Open barcode scanner"}
           >
             <Ionicons
               name={searchQuery.trim() ? "arrow-forward" : "scan"}

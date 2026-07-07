@@ -443,7 +443,11 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
             >
               <View style={styles.manualHeader}>
                 <Text style={styles.manualTitle}>Manual / Bulk Input</Text>
-                <TouchableOpacity onPress={() => setShowManualInput(false)}>
+                <TouchableOpacity
+                  onPress={() => setShowManualInput(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close"
+                >
                   <Ionicons name="close" size={28} color={colors.neutral[900]} />
                 </TouchableOpacity>
               </View>

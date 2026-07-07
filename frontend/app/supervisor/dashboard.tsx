@@ -20,15 +20,15 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 
-import { useToast } from "../../src/components/feedback/ToastProvider";
-import { CreateSessionModal } from "../../src/components/supervisor/dashboard/CreateSessionModal";
+import { useToast } from "@/components/feedback/ToastProvider";
+import { CreateSessionModal } from "@/components/supervisor/dashboard/CreateSessionModal";
 import {
   OverviewAction,
   SupervisorOverviewCard,
-} from "../../src/components/supervisor/dashboard/SupervisorOverviewCard";
-import { SupervisorStatsSection } from "../../src/components/supervisor/dashboard/SupervisorStatsSection";
-import { SupervisorActivitySection } from "../../src/components/supervisor/dashboard/SupervisorActivitySection";
-import { SupervisorRecentSessionsSection } from "../../src/components/supervisor/dashboard/SupervisorRecentSessionsSection";
+} from "@/components/supervisor/dashboard/SupervisorOverviewCard";
+import { SupervisorStatsSection } from "@/components/supervisor/dashboard/SupervisorStatsSection";
+import { SupervisorActivitySection } from "@/components/supervisor/dashboard/SupervisorActivitySection";
+import { SupervisorRecentSessionsSection } from "@/components/supervisor/dashboard/SupervisorRecentSessionsSection";
 import {
   ActivityItem,
   DashboardStats,
@@ -36,7 +36,7 @@ import {
   getFallbackWarehouses,
   WarehouseOption,
   ZoneOption,
-} from "../../src/components/supervisor/dashboard/supervisorDashboardShared";
+} from "@/components/supervisor/dashboard/supervisorDashboardShared";
 import {
   ActivityType,
   AnimatedPressable,
@@ -44,12 +44,12 @@ import {
   ScreenContainer,
   SpeedDialAction,
   SpeedDialMenu,
-} from "../../src/components/ui";
-import { useUiTokens } from "../../src/hooks/useUiTokens";
-import { createSession, getSessions, getWarehouses, getZones } from "../../src/services/api/api";
-import { theme } from "../../src/styles/modernDesignSystem";
-import { colorWithAlpha } from "../../src/theme/themeTokens";
-import { Session } from "../../src/types";
+} from "@/components/ui";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { createSession, getSessions, getWarehouses, getZones } from "@/services/api/api";
+import { theme } from "@/styles/modernDesignSystem";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { Session } from "@/types";
 
 export default function SupervisorDashboard() {
   const router = useRouter();

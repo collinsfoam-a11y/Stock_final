@@ -64,7 +64,12 @@ export function CreateSessionModal({
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create New Session</Text>
-              <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.modalCloseButton}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+              >
                 <Ionicons name="close" size={24} color={theme.colors.text.primary} />
               </TouchableOpacity>
             </View>

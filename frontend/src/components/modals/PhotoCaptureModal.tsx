@@ -169,7 +169,12 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         <SafeAreaView style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
-            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={handleClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+            >
               <Ionicons name="close" size={24} color={modernColors.text.primary} />
             </TouchableOpacity>
           </View>
@@ -216,7 +221,12 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={handleClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
             <Ionicons name="close" size={24} color={modernColors.text.primary} />
           </TouchableOpacity>
         </View>

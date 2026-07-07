@@ -3,9 +3,9 @@ import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } fr
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 
-import { usePermission } from "../../src/hooks/usePermission";
-import { useUiTokens } from "../../src/hooks/useUiTokens";
-import { AppearanceSettings } from "../../src/components/ui/AppearanceSettings";
+import { usePermission } from "@/hooks/usePermission";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { AppearanceSettings } from "@/components/ui/AppearanceSettings";
 import {
   SettingsActionRow,
   SettingsActionSection,
@@ -14,12 +14,12 @@ import {
   SettingsSyncStatus,
   SettingsTextInputRow,
   UserSettingsSections,
-} from "../../src/components/settings";
-import { ScreenContainer } from "../../src/components/ui";
-import ModernCard from "../../src/components/ui/ModernCard";
-import { getSystemSettings, updateSystemSettings } from "../../src/services/api";
-import { useSettingsStore } from "../../src/store/settingsStore";
-import { colorWithAlpha } from "../../src/theme/themeTokens";
+} from "@/components/settings";
+import { ScreenContainer } from "@/components/ui";
+import ModernCard from "@/components/ui/ModernCard";
+import { getSystemSettings, updateSystemSettings } from "@/services/api";
+import { useSettingsStore } from "@/store/settingsStore";
+import { colorWithAlpha } from "@/theme/themeTokens";
 import { safeBackNavigation } from "@/utils/navigation";
 
 type SystemSettings = Record<string, unknown>;

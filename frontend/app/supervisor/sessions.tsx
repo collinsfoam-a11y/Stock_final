@@ -221,6 +221,8 @@ export default function SessionsList() {
             <AnimatedPressable
               onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
               <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
             </AnimatedPressable>
@@ -231,7 +233,12 @@ export default function SessionsList() {
               </Text>
             </View>
           </View>
-          <AnimatedPressable onPress={handleRefresh} style={styles.refreshButton}>
+          <AnimatedPressable
+            onPress={handleRefresh}
+            style={styles.refreshButton}
+            accessibilityRole="button"
+            accessibilityLabel="Refresh"
+          >
             <Ionicons name="refresh" size={24} color={theme.colors.primary[500]} />
           </AnimatedPressable>
         </Animated.View>
@@ -335,10 +342,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: theme.spacing.xs,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: theme.colors.background.secondary,
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderColor: theme.colors.border.light,
   },
   pageTitle: {
     fontSize: 32,
@@ -350,7 +357,7 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     padding: theme.spacing.sm,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: theme.colors.background.secondary,
     borderRadius: theme.borderRadius.full,
   },
   centerContainer: {
@@ -419,7 +426,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.lg,
     paddingTop: theme.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.1)",
+    borderTopColor: theme.colors.border.light,
   },
   statItem: {
     flexDirection: "row",

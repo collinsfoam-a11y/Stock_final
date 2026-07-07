@@ -355,6 +355,8 @@ export default function VariancesScreen() {
               <AnimatedPressable
                 onPress={() => setSelectedIds(new Set())}
                 style={styles.backButton}
+                accessibilityRole="button"
+                accessibilityLabel="Clear selection"
               >
                 <Ionicons name="close" size={24} color={theme.colors.text.primary} />
               </AnimatedPressable>
@@ -362,6 +364,8 @@ export default function VariancesScreen() {
               <AnimatedPressable
                 onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
                 style={styles.backButton}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
               >
                 <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
               </AnimatedPressable>
@@ -380,7 +384,14 @@ export default function VariancesScreen() {
 
           <View style={{ flexDirection: "row", gap: 8 }}>
             {isSelectionMode && (
-              <AnimatedPressable style={styles.exportButton} onPress={handleSelectAll}>
+              <AnimatedPressable
+                style={styles.exportButton}
+                onPress={handleSelectAll}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  selectedIds.size === variances.length ? "Deselect all" : "Select all"
+                }
+              >
                 <ModernCard variant="outlined" elevation="none" padding={8}>
                   <Ionicons
                     name={
@@ -568,10 +579,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: theme.spacing.xs,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: theme.colors.background.secondary,
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: theme.colors.border.light,
   },
   pageTitle: {
     fontSize: 32,
@@ -645,7 +656,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: theme.spacing.md,
     marginBottom: theme.spacing.sm,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: theme.colors.background.secondary,
     padding: theme.spacing.sm,
     borderRadius: theme.borderRadius.sm,
   },
@@ -655,7 +666,7 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: "80%",
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: theme.colors.border.light,
   },
   qtyLabel: {
     fontSize: 12,
@@ -693,7 +704,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
     paddingTop: theme.spacing.xs,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.05)",
+    borderTopColor: theme.colors.border.light,
   },
   verificationInfoText: {
     fontSize: 12,

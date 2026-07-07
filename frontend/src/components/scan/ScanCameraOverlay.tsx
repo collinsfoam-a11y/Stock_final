@@ -71,7 +71,12 @@ export function ScanCameraOverlay({
       >
         <SafeAreaView style={styles.cameraOverlay}>
           <View style={styles.cameraHeader}>
-            <TouchableOpacity onPress={onClose} style={styles.closeCameraButton}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeCameraButton}
+              accessibilityRole="button"
+              accessibilityLabel="Close camera"
+            >
               <Ionicons name="close" size={28} color={colors.white} />
             </TouchableOpacity>
             <Text style={styles.cameraTitle}>Scan Barcode</Text>

@@ -74,18 +74,6 @@ jest.mock("../../../src/components/ui/AuroraBackground", () => ({
   AuroraBackground: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-jest.mock("../../../src/components/ui/GlassCard", () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const React = require("react");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { View } = require("react-native");
-
-  return {
-    GlassCard: ({ children, ...props }: { children: React.ReactNode }) =>
-      React.createElement(View, props, children),
-  };
-});
-
 jest.mock("../../../src/components/ui/AnimatedPressable", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require("react");

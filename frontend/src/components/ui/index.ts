@@ -16,7 +16,6 @@ export { ConfirmDialog } from "./ConfirmDialog";
 export type { ConfirmDialogProps } from "./ConfirmDialog";
 export { SyncIndicator } from "./SyncIndicator";
 export type { SyncIndicatorProps } from "./SyncIndicator";
-export * from "./GlassCard";
 export { EmptyState } from "./EmptyState";
 export { LoadingSpinner } from "./LoadingSpinner";
 // Deprecated facades retained for incremental migration. New operational UI must use App*.
@@ -50,7 +49,6 @@ export { FloatingScanButton } from "./FloatingScanButton";
 export { AnimatedCounter } from "./AnimatedCounter";
 export { Shimmer, ShimmerPlaceholder } from "./Shimmer";
 export { ParticleField } from "./ParticleField";
-export { RippleButton } from "./RippleButton";
 export * from "./SyncStatusPill";
 export { EnhancedBottomSheet } from "./EnhancedBottomSheet";
 
@@ -106,8 +104,6 @@ export type { ResponsiveTextProps, TextVariant } from "./ResponsiveText";
 // Enhanced UI/UX Components (v3.0 - Best Practices Design Kit)
 export { MyPressable, PressablePresets } from "./MyPressable";
 export type { MyPressableProps } from "./MyPressable";
-export { EnhancedButton } from "./EnhancedButton";
-export type { EnhancedButtonProps, ButtonType, ButtonSize, IconPosition } from "./EnhancedButton";
 
 // Missing UI Components (Complete implementations found)
 export { AdminResponsiveGrid } from "./AdminResponsiveGrid";
@@ -127,8 +123,6 @@ export { Separator, SeparatorPresets } from "./Separator";
 export type { SeparatorProps, SeparatorOrientation } from "./Separator";
 export { AnimatedListItem, ListAnimationPresets } from "./AnimatedListItem";
 export type { AnimatedListItemProps } from "./AnimatedListItem";
-export { EnhancedInput } from "./EnhancedInput";
-export type { EnhancedInputProps, InputSize, LabelPosition } from "./EnhancedInput";
 
 // Unified Design System Components (v3.0 - Token-based)
 export { UnifiedText } from "./UnifiedText";

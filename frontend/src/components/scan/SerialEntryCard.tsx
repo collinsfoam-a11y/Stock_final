@@ -74,7 +74,12 @@ export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.label}>Unit #{index + 1}</Text>
-        <TouchableOpacity style={styles.removeButton} onPress={onRemove}>
+        <TouchableOpacity
+          style={styles.removeButton}
+          onPress={onRemove}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove unit ${index + 1}`}
+        >
           <Ionicons name="trash-outline" size={18} color={uiTokens.colors.error} />
         </TouchableOpacity>
       </View>

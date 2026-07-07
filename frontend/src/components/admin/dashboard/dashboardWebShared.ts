@@ -359,13 +359,19 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   },
   serviceRow: {
     flexDirection: "row",
+    // Columns wrap onto their own line on narrow layouts instead of the
+    // unbreakable service name painting over the port/pid column.
+    flexWrap: "wrap",
     alignItems: "center",
+    gap: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: dashboardTheme.colors.border.light,
   },
   serviceInfo: {
-    flex: 2,
+    flexGrow: 2,
+    flexBasis: 150,
+    minWidth: 0,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
@@ -374,12 +380,16 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     width: 8,
     height: 8,
     borderRadius: 4,
+    flexShrink: 0,
   },
   serviceName: {
     ...typography.bodyStrong,
+    flexShrink: 1,
   },
   serviceDetails: {
-    flex: 2,
+    flexGrow: 2,
+    flexBasis: 130,
+    minWidth: 0,
   },
   serviceDetailText: {
     ...typography.small,
@@ -389,7 +399,8 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     alignItems: "flex-end",
   },
   serviceActions: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 110,
     alignItems: "flex-end",
     gap: 10,
   },

@@ -11,15 +11,15 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import ModernHeader from "../src/components/ui/ModernHeader";
-import ModernCard from "../src/components/ui/ModernCard";
-import ModernInput from "../src/components/ui/ModernInput";
-import ModernButton from "../src/components/ui/ModernButton";
-import apiClient from "../src/services/httpClient";
-import { toastService } from "../src/services/toastService";
-import { useAuthStore } from "../src/store/authStore";
-import { useUiTokens } from "../src/hooks/useUiTokens";
-import { colorWithAlpha } from "../src/theme/themeTokens";
+import ModernHeader from "@/components/ui/ModernHeader";
+import ModernCard from "@/components/ui/ModernCard";
+import ModernInput from "@/components/ui/ModernInput";
+import ModernButton from "@/components/ui/ModernButton";
+import apiClient from "@/services/httpClient";
+import { toastService } from "@/services/toastService";
+import { useAuthStore } from "@/store/authStore";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 import { safeBackNavigation } from "@/utils/navigation";
 
 const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {

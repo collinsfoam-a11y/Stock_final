@@ -266,6 +266,8 @@ export default function ItemsScreen() {
             <AnimatedPressable
               onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
               style={styles.backButton}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
               <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
             </AnimatedPressable>
@@ -427,10 +429,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: theme.spacing.xs,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: theme.colors.background.secondary,
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: theme.colors.border.light,
   },
   pageTitle: {
     fontSize: 32,
@@ -492,7 +494,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: theme.colors.background.secondary,
     padding: theme.spacing.xs,
     borderRadius: theme.borderRadius.sm,
   },
@@ -532,7 +534,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
     marginTop: theme.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.05)",
+    borderTopColor: theme.colors.border.light,
     paddingTop: theme.spacing.xs,
   },
   verificationInfoText: {

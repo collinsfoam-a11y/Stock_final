@@ -22,6 +22,7 @@ interface InputProps extends TextInputProps {
   rightIcon?: keyof typeof Ionicons.glyphMap;
   rightIconColor?: string;
   onRightIconPress?: () => void;
+  rightIconAccessibilityLabel?: string;
   containerStyle?: object;
 }
 
@@ -34,6 +35,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
       rightIcon,
       rightIconColor,
       onRightIconPress,
+      rightIconAccessibilityLabel,
       containerStyle,
       ...textInputProps
     },
@@ -90,6 +92,8 @@ export const Input = React.forwardRef<TextInput, InputProps>(
               onPress={onRightIconPress}
               style={styles.rightIcon}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={rightIconAccessibilityLabel || "Icon action"}
             >
               <Ionicons
                 name={rightIcon}

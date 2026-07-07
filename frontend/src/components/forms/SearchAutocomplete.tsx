@@ -301,7 +301,13 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
         )}
 
         {query.length > 0 && !isSearching && (
-          <TouchableOpacity style={styles.clearButton} onPress={handleClear} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.clearButton}
+            onPress={handleClear}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Clear search"
+          >
             <Ionicons name="close-circle" size={20} color={theme.colors.placeholder} />
           </TouchableOpacity>
         )}

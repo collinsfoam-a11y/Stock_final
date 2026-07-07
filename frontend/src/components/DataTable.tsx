@@ -149,6 +149,8 @@ export const DataTable: React.FC<DataTableProps> = ({
           style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
           onPress={() => setCurrentPage(currentPage - 1)}
           disabled={currentPage === 1}
+          accessibilityRole="button"
+          accessibilityLabel="Previous page"
         >
           <Ionicons
             name="chevron-back"
@@ -168,6 +170,8 @@ export const DataTable: React.FC<DataTableProps> = ({
           ]}
           onPress={() => setCurrentPage(currentPage + 1)}
           disabled={currentPage === totalPages}
+          accessibilityRole="button"
+          accessibilityLabel="Next page"
         >
           <Ionicons
             name="chevron-forward"
