@@ -1551,6 +1551,9 @@ async def approve_count_line(
                         "approval_status": "APPROVED",
                         "approved_by": current_user["username"],
                         "approved_at": approved_at,
+                        "verified": True,
+                        "verified_by": current_user["username"],
+                        "verified_at": approved_at,
                         "approval_note": request.notes if request else None,
                         "rejection_reason": None,
                         "assigned_to": None,
@@ -1717,6 +1720,23 @@ async def reject_count_line(
                 assigned_by=current_user["username"],
                 assigned_to=assigned_to,
                 **notification_kwargs,
+            )
+
+        try:
+            from backend.services.audit_service import AuditService
+
+            audit_service = AuditService(db)
+            await audit_service.log_event(
+                event_type=AuditEventType.STOCK_COUNT_SUBMITTED,
+                status=AuditLogStatus.SUCCESS,
+                actor_username=current_user["username"],
+                resource_id=line_id,
+                details={"action": "reject_count_line", "line_id": line_id},
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to write audit log: %s",
+                _safe_log_value(e, max_length=200),
             )
 
         return {
@@ -2259,6 +2279,23 @@ async def bulk_approve_count_lines(
                 session_ids=session_ids,
             )
 
+        try:
+            from backend.services.audit_service import AuditService
+
+            audit_service = AuditService(db)
+            await audit_service.log_event(
+                event_type=AuditEventType.STOCK_COUNT_SUBMITTED,
+                status=AuditLogStatus.SUCCESS,
+                actor_username=current_user["username"],
+                resource_id=",".join(ids),
+                details={"action": "bulk_approve_count_lines", "line_ids": ids},
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to write audit log: %s",
+                _safe_log_value(e, max_length=200),
+            )
+
         return {
             "success": True,
             "message": f"Approved {result.modified_count} items",
@@ -2385,6 +2422,8 @@ async def bulk_reject_count_lines(
                         "rejected_by": current_user["username"],
                         "rejected_at": datetime.now(timezone.utc).replace(tzinfo=None),
                         "verified": False,
+                        "verified_by": None,
+                        "verified_at": None,
                         "rejection_reason": update_data.notes,
                     }
                 },
@@ -2402,6 +2441,23 @@ async def bulk_reject_count_lines(
             await _broadcast_dashboard_refresh(
                 "count_lines_bulk_rejected",
                 session_ids=session_ids,
+            )
+
+        try:
+            from backend.services.audit_service import AuditService
+
+            audit_service = AuditService(db)
+            await audit_service.log_event(
+                event_type=AuditEventType.STOCK_COUNT_SUBMITTED,
+                status=AuditLogStatus.SUCCESS,
+                actor_username=current_user["username"],
+                resource_id=",".join(ids),
+                details={"action": "bulk_reject_count_lines", "line_ids": ids},
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to write audit log: %s",
+                _safe_log_value(e, max_length=200),
             )
 
         return {

@@ -10,10 +10,13 @@ from fastapi import HTTPException
 from pymongo.errors import DuplicateKeyError
 
 from backend.api.count_lines_routes import (
+    BulkCountLineUpdate,
     CountLineApprovalRequest,
     CountLineRejectRequest,
     _require_supervisor,
     approve_count_line,
+    bulk_approve_count_lines,
+    bulk_reject_count_lines,
     check_item_counted,
     check_item_scan_status,
     calculate_financial_impact,
@@ -1070,6 +1073,10 @@ class TestApprovalWorkflow:
         assert update_doc["status"] == "approved"
         assert update_doc["approval_status"] == "APPROVED"
         assert update_doc["approval_note"] == "Looks good"
+        assert update_doc["verified"] is True
+        assert update_doc["verified_by"] == "supervisor"
+        assert update_doc["verified_at"] is not None
+        audit_service.log_event.assert_awaited_once()
         notification_service.notify_count_approved.assert_awaited_once_with(
             user_id="staff1",
             count_line_id="line123",
@@ -1106,6 +1113,8 @@ class TestApprovalWorkflow:
         notification_service = AsyncMock()
         notification_service.notify_count_rejected = AsyncMock()
         notification_service.notify_recount_assigned = AsyncMock()
+        audit_service = AsyncMock()
+        audit_service.log_event = AsyncMock()
 
         with (
             patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db),
@@ -1113,6 +1122,7 @@ class TestApprovalWorkflow:
                 "backend.api.count_lines_routes.NotificationService",
                 return_value=notification_service,
             ),
+            patch("backend.services.audit_service.AuditService", return_value=audit_service),
         ):
             result = await reject_count_line(
                 line_id="line456",
@@ -1150,6 +1160,111 @@ class TestApprovalWorkflow:
             barcode="654321",
             assigned_to="staff2",
         )
+        audit_service.log_event.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_bulk_approve_count_lines_sets_verified_and_logs_audit(self):
+        candidate_lines = [
+            {"_id": "mongo-id-1", "id": "line123", "session_id": "session123"},
+            {"_id": "mongo-id-2", "id": "line456", "session_id": "session123"},
+        ]
+        mock_db = AsyncMock()
+        mock_db.count_lines.find = Mock(
+            return_value=Mock(to_list=AsyncMock(return_value=candidate_lines))
+        )
+
+        audit_service = AsyncMock()
+        audit_service.log_event = AsyncMock()
+        write_service = AsyncMock()
+        write_service.process_write = AsyncMock(return_value=Mock(modified_count=2))
+
+        with (
+            patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db),
+            patch(
+                "backend.api.count_lines_routes._get_count_line_write_service",
+                return_value=write_service,
+            ),
+            patch(
+                "backend.api.count_lines_routes._ensure_count_line_mutable", AsyncMock()
+            ),
+            patch(
+                "backend.api.count_lines_routes._enforce_count_line_logic_from_line",
+                AsyncMock(),
+            ),
+            patch(
+                "backend.api.count_lines_routes.record_count_line_variance", AsyncMock()
+            ),
+            patch(
+                "backend.api.count_lines_routes._recompute_session_totals", AsyncMock()
+            ),
+            patch(
+                "backend.api.count_lines_routes._broadcast_dashboard_refresh", AsyncMock()
+            ),
+            patch("backend.services.audit_service.AuditService", return_value=audit_service),
+        ):
+            result = await bulk_approve_count_lines(
+                request=Mock(),
+                update_data=BulkCountLineUpdate(count_line_ids=["line123", "line456"]),
+                current_user={"username": "supervisor", "role": "supervisor"},
+            )
+
+        assert result["success"] is True
+        set_doc = write_service.process_write.call_args.args[0]["update"]["$set"]
+        assert set_doc["verified"] is True
+        assert set_doc["verified_by"] == "supervisor"
+        assert set_doc["verified_at"] is not None
+        audit_service.log_event.assert_awaited_once()
+        assert audit_service.log_event.await_args.kwargs["resource_id"] == "line123,line456"
+
+    @pytest.mark.asyncio
+    async def test_bulk_reject_count_lines_clears_verified_and_logs_audit(self):
+        candidate_lines = [
+            {"_id": "mongo-id-1", "id": "line123", "session_id": "session123"},
+        ]
+        mock_db = AsyncMock()
+        mock_db.count_lines.find = Mock(
+            return_value=Mock(to_list=AsyncMock(return_value=candidate_lines))
+        )
+
+        audit_service = AsyncMock()
+        audit_service.log_event = AsyncMock()
+        write_service = AsyncMock()
+        write_service.process_write = AsyncMock(return_value=Mock(modified_count=1))
+
+        with (
+            patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db),
+            patch(
+                "backend.api.count_lines_routes._get_count_line_write_service",
+                return_value=write_service,
+            ),
+            patch(
+                "backend.api.count_lines_routes._ensure_count_line_mutable", AsyncMock()
+            ),
+            patch(
+                "backend.api.count_lines_routes._enforce_count_line_logic_from_line",
+                AsyncMock(),
+            ),
+            patch(
+                "backend.api.count_lines_routes._recompute_session_totals", AsyncMock()
+            ),
+            patch(
+                "backend.api.count_lines_routes._broadcast_dashboard_refresh", AsyncMock()
+            ),
+            patch("backend.services.audit_service.AuditService", return_value=audit_service),
+        ):
+            result = await bulk_reject_count_lines(
+                request=Mock(),
+                update_data=BulkCountLineUpdate(count_line_ids=["line123"], notes="Bad count"),
+                current_user={"username": "supervisor", "role": "supervisor"},
+            )
+
+        assert result["success"] is True
+        set_doc = write_service.process_write.call_args.args[0]["update"]["$set"]
+        assert set_doc["verified"] is False
+        assert set_doc["verified_by"] is None
+        assert set_doc["verified_at"] is None
+        audit_service.log_event.assert_awaited_once()
+        assert audit_service.log_event.await_args.kwargs["resource_id"] == "line123"
 
 
 class TestGetCountLines:

@@ -274,7 +274,13 @@ async def get_watchtower_stats(
         db = get_db()
 
         # 1. Active Sessions
-        active_sessions_count = await db.sessions.count_documents({"status": "OPEN"})
+        # No live session is ever created with status "OPEN" -- sessions go
+        # CREATED -> ACTIVE (see session_lifecycle_service.py). Match the
+        # same status set used elsewhere for "in progress" sessions (e.g.
+        # session_management_api.py's active-session lookups).
+        active_sessions_count = await db.sessions.count_documents(
+            {"status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]}}
+        )
 
         # 2. Total Scans Today
         now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -339,7 +345,9 @@ async def get_watchtower_stats(
 
         # 6. AI Predicted Risks (Summary)
         # Get active sessions and count high-risk items
-        active_sessions = await db.sessions.find({"status": "OPEN"}).to_list(length=10)
+        active_sessions = await db.sessions.find(
+            {"status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]}}
+        ).to_list(length=10)
         risk_predictions = []
         total_high_risk = 0
 

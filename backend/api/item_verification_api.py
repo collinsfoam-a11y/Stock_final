@@ -775,7 +775,7 @@ async def verify_item(
             _safe_log_value(barcode),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Verification failed") from e
 
 
 @verification_router.get("/filtered")
