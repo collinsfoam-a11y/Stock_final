@@ -88,11 +88,14 @@ async def test_verify_item_success(setup_mocks):
     updated_item = existing_item.copy()
     updated_item["_id"] = "mock_id"
     mock_db.erp_items.find_one.side_effect = [existing_item, updated_item]
+    mock_db.variance_threshold_configs.find_one = AsyncMock(return_value=None)
 
     request = VerificationRequest(
         verified=True, verified_qty=8.0, damaged_qty=1.0, floor="New Floor", notes="Test notes"
     )
-    current_user = {"username": "testuser"}
+    # Variance is 1.0 unit, which trips the default "require_supervisor"
+    # quantity threshold -- this call must come from a supervisor/admin.
+    current_user = {"username": "testuser", "role": "supervisor"}
 
     response = await verify_item(item_code, request, current_user)
 
@@ -115,6 +118,62 @@ async def test_verify_item_success(setup_mocks):
     # Verify logs
     mock_db.verification_logs.insert_one.assert_called_once()
     mock_db.item_variances.insert_one.assert_called_once()  # Variance is not 0
+
+
+@pytest.mark.asyncio
+async def test_verify_item_blocks_supervisor_gated_variance_for_staff(setup_mocks):
+    """A variance that trips the default 'require_supervisor' threshold must
+    be rejected for a non-supervisor caller, not silently written."""
+    mock_db, _ = setup_mocks
+
+    item_code = "CODE123"
+    existing_item = {
+        "item_code": item_code,
+        "stock_qty": 10.0,
+        "floor": "Old Floor",
+        "barcode": "510001",
+    }
+    mock_db.erp_items.find_one.side_effect = [existing_item]
+    mock_db.variance_threshold_configs.find_one = AsyncMock(return_value=None)
+
+    request = VerificationRequest(verified=True, verified_qty=8.0, floor="Old Floor")
+    current_user = {"username": "staff1", "role": "staff"}
+
+    with pytest.raises(HTTPException) as exc:
+        await verify_item(item_code, request, current_user)
+
+    assert exc.value.status_code == 403
+    mock_db.erp_items.update_one.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_verify_item_requires_reason_for_high_value_variance(setup_mocks):
+    """A variance that trips the default 'require_reason' value threshold
+    must be rejected when no reason/notes are provided, even for a
+    supervisor -- mirrors the count-line write governance gate."""
+    mock_db, _ = setup_mocks
+
+    item_code = "CODE123"
+    existing_item = {
+        "item_code": item_code,
+        "stock_qty": 10.0,
+        "floor": "Old Floor",
+        "barcode": "510001",
+        "last_cost": 1000.0,
+    }
+    mock_db.erp_items.find_one.side_effect = [existing_item]
+    mock_db.variance_threshold_configs.find_one = AsyncMock(return_value=None)
+
+    # 1 unit * 1000.0 unit price = 1000.0 value variance, over the 500.0
+    # default value threshold that requires both supervisor and a reason.
+    request = VerificationRequest(verified=True, verified_qty=9.0, floor="Old Floor")
+    current_user = {"username": "supervisor1", "role": "supervisor"}
+
+    with pytest.raises(HTTPException) as exc:
+        await verify_item(item_code, request, current_user)
+
+    assert exc.value.status_code == 400
+    mock_db.erp_items.update_one.assert_not_called()
 
 
 def test_build_item_filter_query():

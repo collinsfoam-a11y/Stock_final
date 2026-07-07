@@ -17,6 +17,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
+from backend.services.variance_service import VarianceService
 from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
@@ -558,6 +559,64 @@ def _calculate_variance(request: VerificationRequest, system_qty: float) -> Opti
     return None
 
 
+def _resolve_unit_price(item: dict[str, Any]) -> float:
+    for field_name in ("last_cost", "sale_price", "sales_price", "mrp"):
+        value = item.get(field_name)
+        if isinstance(value, (int, float)) and value:
+            return float(value)
+    return 0.0
+
+
+async def _enforce_variance_governance(
+    *,
+    request: VerificationRequest,
+    item: dict[str, Any],
+    item_code: str,
+    variance: Optional[float],
+    current_user: dict[str, Any],
+) -> None:
+    """Apply the same threshold-driven governance count-line writes enforce.
+
+    A barcode-scan verification can push the same size of variance as a
+    stock-count line, so it must clear the same bar: a reason is required
+    once a configured threshold is violated, and pushing a
+    supervisor-gated variance requires a supervisor/admin role.
+    """
+    if variance is None or variance == 0:
+        return
+
+    variance_service = VarianceService(db)
+    variance_data = await variance_service.calculate_variance(
+        item_code=item_code,
+        counted_qty=float(request.verified_qty or 0.0),
+        expected_qty=float(item.get("stock_qty", 0.0)),
+        unit_price=_resolve_unit_price(item),
+    )
+    requires_approval, violated_thresholds = await variance_service.check_thresholds(
+        variance_data,
+        item_category=item.get("category"),
+        location=request.floor or item.get("floor"),
+    )
+
+    if any(t.get("require_reason") for t in violated_thresholds) and not request.notes:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "A reason is required for this variance",
+                "violated_thresholds": violated_thresholds,
+            },
+        )
+
+    if requires_approval and current_user.get("role") not in ("supervisor", "admin"):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "This variance requires supervisor approval. "
+                "Ask a supervisor to verify this item."
+            ),
+        )
+
+
 def _build_item_update_doc(
     request: VerificationRequest, current_user: dict, existing_item: dict
 ) -> dict[str, Any]:
@@ -730,6 +789,13 @@ async def verify_item(
             )
 
         variance = _calculate_variance(request, item.get("stock_qty", 0.0))
+        await _enforce_variance_governance(
+            request=request,
+            item=item,
+            item_code=actual_item_code,
+            variance=variance,
+            current_user=current_user,
+        )
         update_doc = _build_item_update_doc(request, current_user, item)
         result = await db.erp_items.update_one(update_filter, update_doc)
         if result.matched_count == 0:

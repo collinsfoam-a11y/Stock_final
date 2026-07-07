@@ -6,8 +6,11 @@ from backend.api.item_verification_api import init_verification_api
 
 @pytest.mark.asyncio
 async def test_verify_item_with_damage_types(
-    async_client: AsyncClient, test_db, authenticated_headers
+    async_client: AsyncClient, test_db, make_auth_headers
 ):
+    # These variances trip the default "require_supervisor" quantity
+    # threshold, so the caller must be a supervisor/admin.
+    authenticated_headers = make_auth_headers("supervisor", "supervisor")
     # Ensure verification API is initialized with the test DB
     init_verification_api(test_db)
 
@@ -70,8 +73,11 @@ async def test_verify_item_with_damage_types(
 
 @pytest.mark.asyncio
 async def test_verify_item_calculation_logic(
-    async_client: AsyncClient, test_db, authenticated_headers
+    async_client: AsyncClient, test_db, make_auth_headers
 ):
+    # These variances trip the default "require_supervisor" quantity
+    # threshold, so the caller must be a supervisor/admin.
+    authenticated_headers = make_auth_headers("supervisor", "supervisor")
     # Ensure verification API is initialized with the test DB
     init_verification_api(test_db)
 
