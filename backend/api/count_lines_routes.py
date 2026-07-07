@@ -753,6 +753,7 @@ async def _evaluate_duplicate_context(
                 "location_id": location_id,
                 "counted_qty": counted_qty,
                 "version": version,
+                "batch_id": batch_id,
             }
         )
         existing_semantic = await db.count_lines.find_one({"semantic_hash": semantic_hash})
@@ -1053,6 +1054,22 @@ def _build_count_line_document(
         "erp_qty": erp_qty,
         "baseline_hash": baseline_hash,
         "counted_qty": line_data.counted_qty,
+        # BSR Part D: batch_id and UOM context were accepted on the request
+        # schema but silently dropped before persistence, losing traceability
+        # for which batch/unit-of-measure a scan was recorded against. Purely
+        # additive fields; existing consumers that don't read them are
+        # unaffected. batch_id also feeds the same-location duplicate check
+        # below (two different batches at the same location are not
+        # necessarily a duplicate).
+        "batch_id": line_data.batch_id,
+        "batches": line_data.batches,
+        "input_qty": line_data.input_qty,
+        "input_uom": line_data.input_uom,
+        "base_uom": line_data.base_uom,
+        "uom_code": line_data.uom_code,
+        "uom_name": line_data.uom_name,
+        "conversion_factor": line_data.conversion_factor,
+        "quantity_precision": line_data.quantity_precision,
         "variance": governance.variance,
         "variance_reason": line_data.variance_reason,
         "variance_note": line_data.variance_note,

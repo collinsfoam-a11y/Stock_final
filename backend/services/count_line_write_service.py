@@ -81,6 +81,13 @@ def _build_semantic_hash(document: dict[str, Any]) -> str:
         "location_id": str(document.get("location_id") or ""),
         "counted_qty": _as_float(document.get("counted_qty")),
         "version": int(document.get("version", 1) or 1),
+        # BSR Part D: two different, explicitly identified batches counted
+        # at the same session/item/location/qty are legitimately separate
+        # physical stock records, not a duplicate. Defaults to "" when
+        # absent, matching the pre-existing (no-batch-context) hash for
+        # documents/requests that don't specify a batch -- same-batch and
+        # no-batch duplicate detection is unaffected.
+        "batch_id": str(document.get("batch_id") or ""),
     }
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

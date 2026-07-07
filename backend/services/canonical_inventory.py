@@ -192,12 +192,21 @@ async def find_duplicate_count_line(
     exclude_id: Optional[str] = None,
 ) -> Optional[dict[str, Any]]:
     duplicate_filter = build_count_line_duplicate_filter(line_data)
+    requested_batch_id = line_data.get("batch_id")
     cursor = db.count_lines.find(duplicate_filter)
     async for existing in cursor:
         existing_id = extract_document_id(existing)
         if exclude_id and existing_id == exclude_id:
             continue
         if is_superseded_count_line(existing):
+            continue
+        # BSR Part D: two different, explicitly identified batches counted
+        # at the same item/location are legitimately separate counts, not a
+        # duplicate scan -- only applies when both sides actually specify a
+        # batch_id; absent batch context on either side preserves the
+        # existing (pre-batch-tracking) same-location duplicate behavior.
+        existing_batch_id = existing.get("batch_id")
+        if requested_batch_id and existing_batch_id and requested_batch_id != existing_batch_id:
             continue
         return existing
     return None
