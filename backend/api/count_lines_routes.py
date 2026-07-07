@@ -1141,16 +1141,32 @@ async def _persist_count_line_document(
     write_service: CountLineWriteService,
     session: dict[str, Any],
 ) -> None:
+    # BSR Part B: re-read the session's version immediately before writing
+    # instead of reusing the value captured back when this request started
+    # (potentially several awaited steps -- erp lookup, baseline resolve,
+    # governance evaluation, lock acquisition -- earlier). Gating the OCC
+    # check on the request-start version caused false "Session was modified
+    # concurrently" conflicts whenever ANY unrelated write finished in that
+    # window (another user's count line completing its post-persist totals
+    # recompute, or this session's own first-time logic-version pin) even
+    # though nothing about this write actually conflicts with it. Reading
+    # fresh here narrows the OCC window to just this write's own attempt,
+    # which still catches a genuine concurrent session-lifecycle change
+    # (e.g. finalization) landing in that narrow window, without rejecting
+    # non-conflicting, and even genuinely idempotent, submissions.
+    current_session = await find_session(db, line_data.session_id)
+    if is_session_finalized(current_session):
+        raise GovernanceViolation("Session is finalized. Mutation blocked.")
+
     async with mongo_transaction(db.client) as tx:
         write_context = {
             "session": session,
             "username": username,
             "db_session": tx,
             "skip_session_totals_update": True,
-            # OCC: enforce that the session has not been modified since it was
-            # loaded for this request. _capture_session_versions raises
-            # ConcurrencyError on mismatch (translated to HTTP 409 by callers).
-            "expected_session_version": coerce_version(session.get("version")),
+            "expected_session_version": coerce_version(
+                (current_session or {}).get("version")
+            ),
         }
 
         await write_service.process_write(

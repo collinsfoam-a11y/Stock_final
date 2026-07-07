@@ -10,18 +10,19 @@ concurrent asyncio tasks to exercise that race for real, calling the same
 production duplicate-recovery code (_persist_count_line_or_recover_duplicate
 in count_lines_routes.py) that create_count_line uses.
 
-Note on scope: these tests call the count-line write pipeline directly
-(the same _prepare_and_persist_count_line steps the batch endpoint uses)
-rather than going through the full create_count_line HTTP route. Driving
-two literally-concurrent requests through the full route also races an
-unrelated session-level optimistic-concurrency check (session.version, bumped
-by _recompute_session_totals after each write) -- with the Redis lock service
-disabled (as it is in this test process), that produces a spurious 409
-"Session was modified concurrently" for the loser even for a true idempotent
-retry, which is a separate, pre-existing concern from the duplicate-submission
-handling BSR Part C asks about. That interaction is called out in the BSR
-report's Remaining Gaps as worth a follow-up test in an environment with the
-real lock service wired in.
+Note on scope: the first two tests below call the count-line write pipeline
+directly (the same _prepare_and_persist_count_line steps the batch endpoint
+uses) rather than going through the full create_count_line HTTP route, to
+isolate the duplicate-submission race from unrelated request-level concerns.
+The tests further down (TestFullRouteConcurrency) exercise the full HTTP
+route for the same scenarios, plus the session-level OCC fix from BSR Part
+B: session.version being bumped by an unrelated write (another user's post-
+persist totals recompute, or this session's own first-time logic-version
+pin) used to cause a spurious "Session was modified concurrently" 409 for
+requests that weren't actually conflicting with anything -- fixed by reading
+the session version fresh immediately before each write instead of reusing
+the value captured at request start (see count_lines_routes.
+_persist_count_line_document and logic_guard.persist_pin_if_needed).
 
 Requires a reachable MongoDB at MONGO_URL (see backend/tests/conftest.py).
 
@@ -39,11 +40,13 @@ Run explicitly with `-m manual` or by direct path as its own step.
 import asyncio
 import os
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 import pytest
 from fastapi import HTTPException
 
 import backend.api.count_lines_routes as count_lines_routes
+from backend.api.count_lines_routes import create_count_line
 from backend.api.schemas import CountLineCreate
 from backend.db.indexes import create_indexes
 from backend.models.audit import AuditEventType
@@ -247,3 +250,144 @@ async def test_concurrent_different_idempotency_key_same_content_rejects_loser(r
         }
     )
     assert duplicate_audits >= 1, "The rejected duplicate must be audited"
+
+
+class _FakeRequest:
+    client = None
+    headers: dict = {}
+    url = type("_U", (), {"path": "/api/count-lines"})()
+    method = "POST"
+
+
+async def _submit_full_route(db, line_data: CountLineCreate, username: str):
+    try:
+        with patch("backend.api.count_lines_routes.get_db", return_value=db):
+            return await create_count_line(
+                request=_FakeRequest(),
+                line_data=line_data,
+                current_user={"username": username, "role": "staff"},
+            )
+    except HTTPException as exc:
+        return exc
+
+
+class TestFullRouteConcurrency:
+    """BSR Part B: the full create_count_line HTTP route (not just the
+    reduced write pipeline above) must not spuriously reject logically
+    non-conflicting concurrent count-line submissions to the same session.
+    """
+
+    @pytest.mark.asyncio
+    async def test_full_route_same_idempotency_key_persists_exactly_once(self, real_db):
+        session_id = "concur-full-idem"
+        item_code = "ITEM-FULL-IDEM"
+        idempotency_key = "concur-full-idem-key"
+        await _seed_common_fixtures(real_db, session_id=session_id, item_code=item_code)
+
+        line_a = _make_line_data(
+            session_id=session_id, item_code=item_code, idempotency_key=idempotency_key
+        )
+        line_b = _make_line_data(
+            session_id=session_id, item_code=item_code, idempotency_key=idempotency_key
+        )
+
+        result_a, result_b = await asyncio.gather(
+            _submit_full_route(real_db, line_a, "staff-a"),
+            _submit_full_route(real_db, line_b, "staff-b"),
+        )
+
+        for result in (result_a, result_b):
+            assert not isinstance(result, HTTPException), (
+                "A true idempotent retry through the full route must not fail with "
+                f"a session-version conflict: {getattr(result, 'detail', result)}"
+            )
+        assert result_a["id"] == result_b["id"]
+
+        persisted = await real_db.count_lines.count_documents({"session_id": session_id})
+        assert persisted == 1
+
+    @pytest.mark.asyncio
+    async def test_full_route_different_items_same_session_both_succeed(self, real_db):
+        """Two different staff counting two different items in the same
+        session concurrently must not fail just because an unrelated
+        session-state write (this session's own first-time logic-version
+        pin) touched session.version in between."""
+        session_id = "concur-full-multi-item"
+        item_a, item_b = "ITEM-FULL-A", "ITEM-FULL-B"
+        await _seed_common_fixtures(real_db, session_id=session_id, item_code=item_a)
+        await real_db.erp_items.insert_one(
+            {
+                "item_code": item_b,
+                "barcode": f"BC-{item_b}",
+                "item_name": "Concurrency Test Item B",
+                "stock_qty": 100.0,
+                "mrp": 50.0,
+            }
+        )
+        # _seed_common_fixtures only seeded the baseline snapshot for item_a;
+        # add item_b so its counted_qty=100.0 also resolves to zero variance
+        # (matching item_a) and doesn't require a correction_reason.
+        await real_db.session_snapshots.update_one(
+            {"session_id": session_id},
+            {"$push": {"items": {"item_code": item_b, "stock_qty": 100.0}}},
+        )
+
+        line_a = _make_line_data(
+            session_id=session_id,
+            item_code=item_a,
+            idempotency_key="concur-full-multi-key-a",
+        )
+        line_b = _make_line_data(
+            session_id=session_id,
+            item_code=item_b,
+            idempotency_key="concur-full-multi-key-b",
+        )
+
+        result_a, result_b = await asyncio.gather(
+            _submit_full_route(real_db, line_a, "staff-a"),
+            _submit_full_route(real_db, line_b, "staff-b"),
+        )
+
+        for label, result in (("a", result_a), ("b", result_b)):
+            assert not isinstance(result, HTTPException), (
+                f"Two different items in the same session must not conflict "
+                f"(line {label}): {getattr(result, 'detail', result)}"
+            )
+
+        persisted = await real_db.count_lines.count_documents({"session_id": session_id})
+        assert persisted == 2
+
+    @pytest.mark.asyncio
+    async def test_finalized_session_blocks_full_route_mutation_cleanly(self, real_db):
+        """A finalized session must still hard-block new count-line writes,
+        with a clean 409 -- never a raw 500 (this also regression-covers the
+        persist_pin_if_needed -> GovernanceViolation -> raw-500 bug found
+        while fixing the OCC false-positive)."""
+        session_id = "concur-full-finalized"
+        item_code = "ITEM-FULL-FINALIZED"
+        await real_db.sessions.insert_one(
+            {
+                "id": session_id,
+                "session_id": session_id,
+                "status": "FINALIZED",
+                "version": 0,
+            }
+        )
+        await real_db.erp_items.insert_one(
+            {
+                "item_code": item_code,
+                "barcode": f"BC-{item_code}",
+                "item_name": "Concurrency Test Item",
+                "stock_qty": 100.0,
+                "mrp": 50.0,
+            }
+        )
+
+        line_data = _make_line_data(
+            session_id=session_id, item_code=item_code, idempotency_key="concur-full-fin-key"
+        )
+        result = await _submit_full_route(real_db, line_data, "staff-a")
+
+        assert isinstance(result, HTTPException)
+        assert result.status_code == 409
+        assert "finalized" in str(result.detail).lower()

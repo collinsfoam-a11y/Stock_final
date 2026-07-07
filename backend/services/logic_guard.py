@@ -9,13 +9,14 @@ from typing import Any, Literal, Optional
 from fastapi import HTTPException, Request
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from backend.services.concurrency import coerce_version
+from backend.services.concurrency import ConcurrencyError, coerce_version
 from backend.services.flag_resolver import (
     FlagResolution,
     FlagResolutionError,
     is_global_disable_active,
     resolve_phase0_flags,
 )
+from backend.services.governance_guard import GovernanceViolation
 from backend.services.session_lifecycle_service import SessionLifecycleService
 
 logger = logging.getLogger(__name__)
@@ -222,6 +223,20 @@ async def enforce_session_logic(
         }
         logger.warning("BL V2 flag resolution rejected request", extra=payload)
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except GovernanceViolation as exc:
+        # e.g. persist_pin_if_needed's own session-mutation hit a session
+        # that a concurrent request finalized in the meantime. This is a
+        # legitimate, expected governance rejection, not a system failure --
+        # must surface as a clean 409, never a raw 500.
+        logger.info(
+            "BL V2 logic guard hit a governance violation",
+            extra={
+                "session_id": request_context.session_id,
+                "operation": request_context.operation_name,
+                "reason": str(exc),
+            },
+        )
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except HTTPException:
         raise
     except Exception as exc:
@@ -244,31 +259,50 @@ async def persist_pin_if_needed(*, db, session, context: LogicExecutionContext) 
         return
 
     lifecycle_service = SessionLifecycleService(db)
-    await lifecycle_service.persist_logic_pin(
-        session_id=session_id,
-        logic_version=context.pin_logic_version,
-        logic_scope_source=context.pin_scope_source,
-    )
-
-    # persist_logic_pin does an OCC-guarded $inc on session.version. Reflect
-    # that increment back onto the caller's in-memory session so a later
-    # expected_session_version check (e.g. the count-line write that
-    # triggered this pin) compares against the *current* version instead of
-    # the now-stale value captured before this call -- otherwise a session's
-    # very first count-line write (which is what pins the logic version)
-    # would spuriously fail with "Session was modified concurrently" even
-    # with no concurrent request involved.
-    bumped_version = coerce_version(
-        session.get("version") if isinstance(session, dict) else getattr(session, "version", None)
-    ) + 1
+    try:
+        await lifecycle_service.persist_logic_pin(
+            session_id=session_id,
+            logic_version=context.pin_logic_version,
+            logic_scope_source=context.pin_scope_source,
+        )
+        pinned_logic_version = context.pin_logic_version
+        pinned_scope_source = context.pin_scope_source
+        bumped_version = (
+            coerce_version(
+                session.get("version")
+                if isinstance(session, dict)
+                else getattr(session, "version", None)
+            )
+            + 1
+        )
+    except ConcurrencyError:
+        # The pin is a deterministic function of session state, not of the
+        # requesting user/request, so two concurrent first-time pins for the
+        # same session resolve to the same target value -- whichever request
+        # wins the OCC race persists it correctly. The loser must not
+        # surface this as a failure (BSR: unrelated concurrent count writes
+        # to the same session, e.g. two different staff on two different
+        # racks, must not fail on this session-state race). Re-read the
+        # now-committed pin instead of assuming our own values won.
+        logger.info(
+            "Logic pin already persisted by a concurrent request for session %s; "
+            "adopting the committed value instead of failing",
+            session_id,
+        )
+        fresh_session = await lifecycle_service.get_session(session_id)
+        if not fresh_session:
+            raise
+        pinned_logic_version = fresh_session.get("logic_version")
+        pinned_scope_source = fresh_session.get("logic_scope_source")
+        bumped_version = coerce_version(fresh_session.get("version"))
 
     if isinstance(session, dict):
-        session["logic_version"] = context.pin_logic_version
-        session["logic_scope_source"] = context.pin_scope_source
+        session["logic_version"] = pinned_logic_version
+        session["logic_scope_source"] = pinned_scope_source
         session["version"] = bumped_version
     else:
-        setattr(session, "logic_version", context.pin_logic_version)
-        setattr(session, "logic_scope_source", context.pin_scope_source)
+        setattr(session, "logic_version", pinned_logic_version)
+        setattr(session, "logic_scope_source", pinned_scope_source)
         setattr(session, "version", bumped_version)
 
 
