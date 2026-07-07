@@ -313,6 +313,14 @@ async def save_mapping(
     """
     Saves both connection parameters and mapping configuration.
     Expects data = { "connection": {...}, "mapping": {...} }
+
+    Only `mapping.tables`, `mapping.items_columns`, and `mapping.batch_columns`
+    (flat str->str dicts keyed by the same logical field names as
+    backend.db_mapping_config.TABLE_MAPPINGS / PRODUCTS_COLUMN_MAP /
+    BATCH_COLUMN_MAP) are actually consumed by the sync path today, via
+    db_mapping_config.load_active_mapping(). `connection` and any other
+    `mapping` keys are persisted here but not yet read by the ERP sync/
+    reconciliation services.
     """
     try:
         connection = data.get("connection", {})

@@ -722,9 +722,7 @@ class SQLVerificationService:
 
         batch_start = time.perf_counter()
         try:
-            quantities = await asyncio.to_thread(
-                self.sql_connector.get_item_quantities_only, item_codes
-            )
+            quantities = await self.sql_connector.get_item_quantities_only_async(item_codes)
             latency_ms = (time.perf_counter() - batch_start) * 1000
             return quantities, None, latency_ms
         except DatabaseConnectionError as exc:

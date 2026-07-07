@@ -367,8 +367,8 @@ class SQLSyncService:
 
                 try:
                     # Fetch only quantities - minimal SQL load
-                    sql_quantities = await asyncio.to_thread(
-                        self.sql_connector.get_item_quantities_only, batch_codes
+                    sql_quantities = await self.sql_connector.get_item_quantities_only_async(
+                        batch_codes, db=self.mongo_db
                     )
                     stats["sql_queries"] += 1
 

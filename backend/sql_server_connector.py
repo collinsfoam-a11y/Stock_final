@@ -21,7 +21,7 @@ except ImportError:
     _PYODBC_AVAILABLE = False
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from backend.db_mapping_config import SQL_TEMPLATES, get_active_mapping
+from backend.db_mapping_config import SQL_TEMPLATES, get_active_mapping, load_active_mapping
 from backend.utils.db_connection import SQLServerConnectionBuilder
 
 # Add project root to path for direct execution (debugging)
@@ -369,6 +369,17 @@ class SQLServerConnector:
         for alias, actual in self.mapping["items_columns"].items():
             cols.append(f"I.[{actual}] as [{alias}]")
         return ", ".join(cols)
+
+    async def refresh_mapping(self, db: Optional[Any] = None) -> None:
+        """Reload table/column mapping, applying any admin-saved overrides from Mongo."""
+        self.mapping = await load_active_mapping(db)
+
+    async def get_item_quantities_only_async(
+        self, item_codes: list[str], db: Optional[Any] = None
+    ) -> dict[str, float]:
+        """Async-friendly wrapper: refresh mapping, then run the sync lookup off-thread."""
+        await self.refresh_mapping(db)
+        return await asyncio.to_thread(self.get_item_quantities_only, item_codes)
 
     @retry(
         stop=stop_after_attempt(2),
@@ -947,15 +958,30 @@ class SQLServerConnector:
                 cursor = self.connection.cursor()
 
                 # Build minimal query - sum quantities by item_code from ProductBatches + Products
+                # Table/column names come from self.mapping so admin-saved overrides
+                # (backend.db_mapping_config.load_active_mapping) take effect.
                 placeholders = ", ".join("?" for _ in item_codes)
 
-                # Safe parameterized query - user input is properly parameterized
+                mapping = self.mapping
+                schema = mapping["query_options"].get("schema_name", "dbo")
+                items_table = mapping["tables"]["items"]
+                batches_table = mapping["tables"]["item_batches"]
+                item_code_col = mapping["items_columns"]["item_code"]
+                item_id_col = mapping["items_columns"]["item_id"]
+                batch_fk_col = mapping["batch_columns"]["item_code"]
+                stock_col = mapping["batch_columns"]["stock_qty"]
+
+                # Safe parameterized query - user input is properly parameterized;
+                # identifiers above are validated at mapping-load time (see
+                # db_mapping_config._sanitize_overrides).
                 query = f"""
-                    SELECT P.ProductCode as item_code, COALESCE(SUM(PB.Stock), 0) as stock_qty
-                    FROM dbo.Products P
-                    LEFT JOIN dbo.ProductBatches PB ON P.ProductID = PB.ProductID
-                    WHERE P.ProductCode IN ({placeholders})
-                    GROUP BY P.ProductCode
+                    SELECT P.[{item_code_col}] as item_code,
+                        COALESCE(SUM(PB.[{stock_col}]), 0) as stock_qty
+                    FROM [{schema}].[{items_table}] P
+                    LEFT JOIN [{schema}].[{batches_table}] PB
+                        ON P.[{item_id_col}] = PB.[{batch_fk_col}]
+                    WHERE P.[{item_code_col}] IN ({placeholders})
+                    GROUP BY P.[{item_code_col}]
                 """
 
                 self._execute_readonly(cursor, query, item_codes)

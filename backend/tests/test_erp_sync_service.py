@@ -53,6 +53,11 @@ def mock_sql_connector():
     ]
     # Mock get_item_quantities_only for variance sync
     connector.get_item_quantities_only = Mock(return_value={"ITEM001": 100.0, "ITEM002": 50.0})
+    # Production code calls the async wrapper; delegate to the (possibly
+    # test-overridden) sync mock above so per-test overrides keep working.
+    connector.get_item_quantities_only_async = AsyncMock(
+        side_effect=lambda item_codes, db=None: connector.get_item_quantities_only(item_codes)
+    )
     return connector
 
 

@@ -3,6 +3,15 @@ Database Mapping Configuration for E_MART_KITCHEN_CARE SQL Server
 Maps ERP database tables and columns to Stock Verification app schema
 """
 
+import copy
+import logging
+import re
+from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
+
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_]+$")
+
 # Table name mappings
 TABLE_MAPPINGS = {
     "items": "Products",
@@ -449,3 +458,61 @@ def get_active_mapping():
             "where_clause_additions": "AND P.IsActive = 1",
         },
     }
+
+
+def _sanitize_overrides(defaults: dict[str, str], overrides: Any) -> dict[str, str]:
+    """Return a copy of `defaults` with admin-saved overrides applied.
+
+    Only accepts overrides for keys that already exist in `defaults` (an admin
+    can rename a physical table/column, not introduce new logical fields or
+    inject arbitrary SQL fragments), and only string values that look like
+    plain SQL identifiers.
+    """
+    result = dict(defaults)
+    if not isinstance(overrides, dict):
+        return result
+
+    for key, value in overrides.items():
+        if key not in defaults:
+            continue
+        if not isinstance(value, str) or not _IDENTIFIER_RE.match(value):
+            logger.warning("Ignoring invalid erp_mapping override for '%s': %r", key, value)
+            continue
+        result[key] = value
+
+    return result
+
+
+async def load_active_mapping(db: Optional[Any] = None) -> dict:
+    """Get the active mapping, overlaying any admin-saved overrides from Mongo.
+
+    Falls back to the static defaults (identical to `get_active_mapping()`) if
+    no override document exists, the saved shape doesn't match, or the
+    database is unreachable.
+    """
+    mapping = copy.deepcopy(get_active_mapping())
+
+    try:
+        if db is None:
+            from backend.db.runtime import get_db
+
+            db = get_db()
+
+        doc = await db.config.find_one({"_id": "erp_mapping"})
+    except Exception as exc:
+        logger.warning("Could not load erp_mapping overrides, using defaults: %s", exc)
+        return mapping
+
+    saved = (doc or {}).get("mapping") or {}
+    if not isinstance(saved, dict):
+        return mapping
+
+    mapping["tables"] = _sanitize_overrides(mapping["tables"], saved.get("tables"))
+    mapping["items_columns"] = _sanitize_overrides(
+        mapping["items_columns"], saved.get("items_columns")
+    )
+    mapping["batch_columns"] = _sanitize_overrides(
+        mapping["batch_columns"], saved.get("batch_columns")
+    )
+
+    return mapping

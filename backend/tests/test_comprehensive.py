@@ -247,6 +247,11 @@ async def test_separation_of_sql_and_mongo(mock_db):
     mock_sql_connector.get_item_quantities_only = MagicMock(
         return_value={"ITEM001": 100.0}  # Different from MongoDB qty
     )
+    mock_sql_connector.get_item_quantities_only_async = AsyncMock(
+        side_effect=lambda item_codes, db=None: mock_sql_connector.get_item_quantities_only(
+            item_codes
+        )
+    )
 
     # Mock MongoDB find cursor for variance sync
     mock_db.erp_items.find = MagicMock(
