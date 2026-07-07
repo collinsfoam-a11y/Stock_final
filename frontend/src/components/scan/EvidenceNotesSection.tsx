@@ -363,6 +363,8 @@ export function EvidenceNotesSection({
                 <TouchableOpacity
                   style={styles.removePhotoBadge}
                   onPress={() => onRemoveItemPhoto(index)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove item photo ${index + 1}`}
                 >
                   <Ionicons
                     {...decorativeIconProps}

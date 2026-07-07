@@ -8,7 +8,7 @@
  * - Size variants
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, StyleSheet, ViewStyle } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, {
@@ -18,7 +18,9 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import { borderRadius, colors, semanticColors } from "@/theme/legacyCompat";
+import { borderRadius } from "@/theme/legacyCompat";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 
 type BadgeVariant =
   | "success"
@@ -38,46 +40,28 @@ interface StatusBadgeProps {
   style?: ViewStyle;
 }
 
-const variantColors: Record<
-  BadgeVariant,
-  { bg: string; text: string; glow: string; border: string }
-> = {
-  success: {
-    bg: "rgba(16, 185, 129, 0.15)",
-    text: colors.success[50],
-    glow: "rgba(16, 185, 129, 0.25)",
-    border: "rgba(16, 185, 129, 0.35)",
-  },
-  warning: {
-    bg: "rgba(245, 158, 11, 0.15)",
-    text: colors.warning[50],
-    glow: "rgba(245, 158, 11, 0.25)",
-    border: "rgba(245, 158, 11, 0.35)",
-  },
-  error: {
-    bg: "rgba(239, 68, 68, 0.15)",
-    text: colors.error[50],
-    glow: "rgba(239, 68, 68, 0.25)",
-    border: "rgba(239, 68, 68, 0.35)",
-  },
-  info: {
-    bg: "rgba(59, 130, 246, 0.15)",
-    text: colors.info[50],
-    glow: "rgba(59, 130, 246, 0.25)",
-    border: "rgba(59, 130, 246, 0.35)",
-  },
-  neutral: {
-    bg: "rgba(148, 163, 184, 0.15)",
-    text: semanticColors.text.secondary,
-    glow: "rgba(148, 163, 184, 0.25)",
-    border: "rgba(148, 163, 184, 0.35)",
-  },
-  primary: {
-    bg: "rgba(99, 102, 241, 0.15)",
-    text: colors.primary[400],
-    glow: "rgba(99, 102, 241, 0.25)",
-    border: "rgba(99, 102, 241, 0.35)",
-  },
+const buildVariantColors = (
+  uiTokens: ThemeTokens,
+): Record<BadgeVariant, { bg: string; text: string; glow: string; border: string }> => {
+  const alpha =
+    uiTokens.mode === "dark"
+      ? { bg: 0.24, glow: 0.32, border: 0.45 }
+      : { bg: 0.12, glow: 0.2, border: 0.3 };
+  const build = (base: string) => ({
+    bg: colorWithAlpha(base, alpha.bg),
+    text: base,
+    glow: colorWithAlpha(base, alpha.glow),
+    border: colorWithAlpha(base, alpha.border),
+  });
+
+  return {
+    success: build(uiTokens.colors.success),
+    warning: build(uiTokens.colors.warning),
+    error: build(uiTokens.colors.error),
+    info: build(uiTokens.colors.info),
+    neutral: build(uiTokens.colors.textSecondary),
+    primary: build(uiTokens.colors.accent),
+  };
 };
 
 const sizeStyles: Record<
@@ -97,7 +81,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   pulse = false,
   style,
 }) => {
-  const colors = variantColors[variant];
+  const uiTokens = useUiTokens();
+  const colors = useMemo(() => buildVariantColors(uiTokens)[variant], [uiTokens, variant]);
   const sizeConfig = sizeStyles[size];
 
   // Pulse animation

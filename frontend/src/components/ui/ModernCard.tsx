@@ -292,7 +292,16 @@ export const ModernCard: React.FC<ModernCardProps> = ({
       return (
         <Component {...props}>
           {isWeb ? (
-            <View style={[styles.blur, { backgroundColor: "rgba(255, 255, 255, 0.1)" }]}>
+            <View
+              style={[
+                styles.blur,
+                {
+                  backgroundColor: themeContext?.isDark
+                    ? "rgba(15, 23, 42, 0.35)"
+                    : "rgba(255, 255, 255, 0.1)",
+                },
+              ]}
+            >
               {renderContent()}
             </View>
           ) : Platform.OS === "ios" ? (
