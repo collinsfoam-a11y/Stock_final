@@ -2,6 +2,7 @@ import inspect
 import logging
 import uuid
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Any, NoReturn, Optional
 
 from bson import ObjectId
@@ -25,13 +26,17 @@ from backend.services.canonical_inventory import (
     is_count_line_locked,
     is_count_line_effectively_reviewed,
     is_session_finalized,
+    is_superseded_count_line,
     materialize_count_line_review_state,
+    normalize_count_line_status,
+    normalize_location_value,
     recompute_session_totals,
 )
 from backend.services.concurrency import ConcurrencyError, coerce_version
 from backend.services.count_line_write_service import (
     CountLineGovernanceDecision,
     CountLineWriteService,
+    _build_semantic_hash,
 )
 from backend.services.governance_guard import GovernanceViolation
 from backend.services.lock_service import LockService, ResourceLockedError
@@ -466,6 +471,317 @@ async def _audit_duplicate_scan_attempt(
         )
     except Exception as exc:
         logger.warning("Failed to audit duplicate scan attempt: %s", _safe_log_value(exc))
+
+
+class DuplicateCheckReasonCode(str, Enum):
+    """BSR-required reason codes for the proactive duplicate-check endpoints."""
+
+    IDEMPOTENT_RETRY = "IDEMPOTENT_RETRY"
+    SAME_LOCATION_DUPLICATE = "SAME_LOCATION_DUPLICATE"
+    SERIAL_DUPLICATE = "SERIAL_DUPLICATE"
+    POSSIBLE_RELOCATION = "POSSIBLE_RELOCATION"
+    RECOUNT_ALLOWED = "RECOUNT_ALLOWED"
+    FINALIZED_SESSION = "FINALIZED_SESSION"
+    NOT_DUPLICATE = "NOT_DUPLICATE"
+    SEMANTIC_DUPLICATE = "SEMANTIC_DUPLICATE"
+
+
+class DuplicateCheckResult(BaseModel):
+    is_duplicate: bool
+    severity: str
+    reason_code: DuplicateCheckReasonCode
+    message: str
+    existing_count_line_id: Optional[str] = None
+    existing_version: Optional[int] = None
+    existing_location_context: Optional[dict[str, Any]] = None
+    requested_location_context: Optional[dict[str, Any]] = None
+    requires_supervisor_review: bool = False
+
+
+class DuplicateCheckRequest(BaseModel):
+    """Structured body for POST /count-lines/check-duplicate.
+
+    Covers the full BSR duplicate-identity axes. barcode/batch_id/serial_no
+    and floor/rack (location_id) map to real count_line fields and drive
+    matching below. batch_no/warehouse/warehouse_id/zone/shelf are accepted
+    and echoed back in requested_location_context for traceability, but this
+    codebase's count_line documents do not carry those fields today, so they
+    are not (yet) used as independent match criteria -- see BSR remaining
+    gaps.
+    """
+
+    session_id: str
+    item_code: str
+    barcode: Optional[str] = None
+    batch_id: Optional[str] = None
+    batch_no: Optional[str] = None
+    serial_no: Optional[str] = None
+    warehouse_id: Optional[str] = None
+    warehouse: Optional[str] = None
+    location_id: Optional[str] = None
+    floor: Optional[str] = None
+    zone: Optional[str] = None
+    rack: Optional[str] = None
+    shelf: Optional[str] = None
+    counted_qty: Optional[float] = None
+    version: Optional[int] = None
+    idempotency_key: Optional[str] = None
+
+
+async def _evaluate_duplicate_context(
+    db: Any,
+    *,
+    session_id: str,
+    item_code: str,
+    current_user: dict[str, Any],
+    barcode: Optional[str] = None,
+    batch_id: Optional[str] = None,
+    batch_no: Optional[str] = None,
+    serial_no: Optional[str] = None,
+    warehouse_id: Optional[str] = None,
+    warehouse: Optional[str] = None,
+    location_id: Optional[str] = None,
+    floor: Optional[str] = None,
+    zone: Optional[str] = None,
+    rack: Optional[str] = None,
+    shelf: Optional[str] = None,
+    counted_qty: Optional[float] = None,
+    version: Optional[int] = None,
+    idempotency_key: Optional[str] = None,
+) -> dict[str, Any]:
+    """Shared proactive duplicate-identity evaluation for both the legacy
+    GET check endpoint and the structured POST check-duplicate endpoint.
+
+    Mirrors (does not replace) the real enforcement in
+    CountLineWriteService/_assert_mandatory_write_invariants so the
+    "proactive" answer stays consistent with what an actual submit would do.
+    Read-only: never mutates state. Audits every detected duplicate/near
+    duplicate except IDEMPOTENT_RETRY (BSR rule #17: a true retry is not a
+    duplicate) and the clean NOT_DUPLICATE case.
+    """
+    requested_location_context = {
+        "location_id": location_id,
+        "floor": floor,
+        "rack": rack,
+        "zone": zone,
+        "shelf": shelf,
+        "warehouse_id": warehouse_id,
+        "warehouse": warehouse,
+        "batch_id": batch_id,
+        "batch_no": batch_no,
+    }
+
+    async def _audit(reason_code: str, existing_id: Optional[str] = None) -> None:
+        try:
+            from backend.services.audit_service import AuditService
+
+            await AuditService(db).log_event(
+                event_type=AuditEventType.DUPLICATE_SCAN_ATTEMPT,
+                status=AuditLogStatus.WARNING,
+                actor_id=current_user.get("username"),
+                actor_username=current_user.get("username"),
+                actor_role=current_user.get("role"),
+                entity_type="count_line",
+                entity_id=existing_id,
+                session_id=session_id,
+                item_code=item_code,
+                location_context=requested_location_context,
+                reason=reason_code,
+                details={
+                    "reason_code": reason_code,
+                    "source": "proactive_check",
+                    "barcode": barcode,
+                    "serial_no": serial_no,
+                    "idempotency_key": _normalize_idempotency_key(idempotency_key),
+                },
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to audit proactive duplicate check: %s", _safe_log_value(exc)
+            )
+
+    def _result(
+        *,
+        is_duplicate: bool,
+        severity: str,
+        reason_code: DuplicateCheckReasonCode,
+        message: str,
+        existing: Optional[dict[str, Any]] = None,
+        requires_supervisor_review: bool = False,
+    ) -> dict[str, Any]:
+        existing_location_context = None
+        if existing:
+            existing_location_context = {
+                "location_id": existing.get("location_id"),
+                "floor": existing.get("floor_no") or existing.get("floor_id"),
+                "rack": existing.get("rack_no") or existing.get("rack_id"),
+            }
+        return {
+            "is_duplicate": is_duplicate,
+            "severity": severity,
+            "reason_code": reason_code.value,
+            "message": message,
+            "existing_count_line_id": extract_document_id(existing) if existing else None,
+            "existing_version": existing.get("version") if existing else None,
+            "existing_location_context": existing_location_context,
+            "requested_location_context": requested_location_context,
+            "requires_supervisor_review": requires_supervisor_review,
+        }
+
+    session = await find_session(db, session_id)
+    if is_session_finalized(session):
+        await _audit(DuplicateCheckReasonCode.FINALIZED_SESSION.value)
+        return _result(
+            is_duplicate=True,
+            severity="BLOCKING",
+            reason_code=DuplicateCheckReasonCode.FINALIZED_SESSION,
+            message="Session is finalized; new count-line submissions are blocked.",
+        )
+
+    normalized_idempotency_key = _normalize_idempotency_key(idempotency_key)
+    if normalized_idempotency_key:
+        existing_idempotent = await db.count_lines.find_one(
+            {"session_id": session_id, "idempotency_key": normalized_idempotency_key}
+        )
+        if existing_idempotent:
+            return _result(
+                is_duplicate=True,
+                severity="INFO",
+                reason_code=DuplicateCheckReasonCode.IDEMPOTENT_RETRY,
+                message=(
+                    "This exact submission was already recorded; retry is safe "
+                    "and will return the existing result."
+                ),
+                existing=existing_idempotent,
+            )
+
+    normalized_serial = (serial_no or "").strip()
+    if normalized_serial:
+        for candidate in {normalized_serial, normalized_serial.upper()}:
+            existing_serial = await db.count_lines.find_one(
+                {
+                    "session_id": session_id,
+                    "$or": [
+                        {"serial_numbers": candidate},
+                        {"serial_entries.serial_number": candidate},
+                    ],
+                }
+            )
+            if existing_serial:
+                await _audit(
+                    DuplicateCheckReasonCode.SERIAL_DUPLICATE.value,
+                    extract_document_id(existing_serial),
+                )
+                return _result(
+                    is_duplicate=True,
+                    severity="BLOCKING",
+                    reason_code=DuplicateCheckReasonCode.SERIAL_DUPLICATE,
+                    message=f"Serial number {normalized_serial} was already counted in this session.",
+                    existing=existing_serial,
+                    requires_supervisor_review=True,
+                )
+
+    normalized_floor = normalize_location_value(floor)
+    normalized_rack = normalize_location_value(rack)
+    if normalized_floor or normalized_rack:
+        existing_same_location = None
+        cursor = db.count_lines.find(
+            {
+                "session_id": session_id,
+                "item_code": item_code,
+                "floor_no": normalized_floor,
+                "rack_no": normalized_rack,
+            }
+        )
+        async for candidate_line in cursor:
+            if is_superseded_count_line(candidate_line):
+                continue
+            existing_same_location = candidate_line
+            break
+
+        if existing_same_location:
+            if normalize_count_line_status(existing_same_location.get("status")) == "rejected":
+                return _result(
+                    is_duplicate=True,
+                    severity="INFO",
+                    reason_code=DuplicateCheckReasonCode.RECOUNT_ALLOWED,
+                    message="Existing count line at this location was rejected; a recount is allowed.",
+                    existing=existing_same_location,
+                )
+            await _audit(
+                DuplicateCheckReasonCode.SAME_LOCATION_DUPLICATE.value,
+                extract_document_id(existing_same_location),
+            )
+            return _result(
+                is_duplicate=True,
+                severity="BLOCKING",
+                reason_code=DuplicateCheckReasonCode.SAME_LOCATION_DUPLICATE,
+                message="This item has already been counted at this location in this session.",
+                existing=existing_same_location,
+                requires_supervisor_review=True,
+            )
+
+        existing_elsewhere = None
+        cursor = db.count_lines.find({"session_id": session_id, "item_code": item_code})
+        async for candidate_line in cursor:
+            if is_superseded_count_line(candidate_line):
+                continue
+            existing_elsewhere = candidate_line
+            break
+        if existing_elsewhere:
+            await _audit(
+                DuplicateCheckReasonCode.POSSIBLE_RELOCATION.value,
+                extract_document_id(existing_elsewhere),
+            )
+            return _result(
+                is_duplicate=True,
+                severity="WARNING",
+                reason_code=DuplicateCheckReasonCode.POSSIBLE_RELOCATION,
+                message=(
+                    "This item was already counted at a different location in this "
+                    "session; confirm it was not relocated."
+                ),
+                existing=existing_elsewhere,
+                requires_supervisor_review=True,
+            )
+
+    if counted_qty is not None and version is not None and location_id:
+        semantic_hash = _build_semantic_hash(
+            {
+                "session_id": session_id,
+                "item_code": item_code,
+                "location_id": location_id,
+                "counted_qty": counted_qty,
+                "version": version,
+            }
+        )
+        existing_semantic = await db.count_lines.find_one({"semantic_hash": semantic_hash})
+        if existing_semantic and (
+            not normalized_idempotency_key
+            or existing_semantic.get("idempotency_key") != normalized_idempotency_key
+        ):
+            await _audit(
+                DuplicateCheckReasonCode.SEMANTIC_DUPLICATE.value,
+                extract_document_id(existing_semantic),
+            )
+            return _result(
+                is_duplicate=True,
+                severity="BLOCKING",
+                reason_code=DuplicateCheckReasonCode.SEMANTIC_DUPLICATE,
+                message=(
+                    "An identical count already exists for this session/item/"
+                    "location/quantity/version."
+                ),
+                existing=existing_semantic,
+                requires_supervisor_review=True,
+            )
+
+    return _result(
+        is_duplicate=False,
+        severity="NONE",
+        reason_code=DuplicateCheckReasonCode.NOT_DUPLICATE,
+        message="No duplicate detected.",
+    )
 
 
 async def _find_erp_item_for_count_line(
@@ -1931,8 +2247,28 @@ async def check_item_counted(
     session_id: str,
     item_code: str,
     current_user: dict = Depends(get_current_user),
+    barcode: Optional[str] = None,
+    batch_id: Optional[str] = None,
+    batch_no: Optional[str] = None,
+    serial_no: Optional[str] = None,
+    warehouse_id: Optional[str] = None,
+    warehouse: Optional[str] = None,
+    location_id: Optional[str] = None,
+    floor: Optional[str] = None,
+    zone: Optional[str] = None,
+    rack: Optional[str] = None,
+    shelf: Optional[str] = None,
+    counted_qty: Optional[float] = None,
+    version: Optional[int] = None,
+    idempotency_key: Optional[str] = None,
 ):
-    """Check if an item has already been counted in the session"""
+    """Check if an item has already been counted in the session.
+
+    Backward compatible: with no optional query params, response shape and
+    values are unchanged from the original 2-arg check. The optional params
+    additionally populate the BSR structured duplicate-check fields
+    (is_duplicate/severity/reason_code/...) alongside the legacy fields.
+    """
     db = _get_db_client()
     try:
         # Find all count lines for this item in this session
@@ -1955,6 +2291,27 @@ async def check_item_counted(
         except ProjectionReadError as exc:
             raise HTTPException(status_code=503, detail=str(exc))
 
+        duplicate_context = await _evaluate_duplicate_context(
+            db,
+            session_id=session_id,
+            item_code=item_code,
+            current_user=current_user,
+            barcode=barcode,
+            batch_id=batch_id,
+            batch_no=batch_no,
+            serial_no=serial_no,
+            warehouse_id=warehouse_id,
+            warehouse=warehouse,
+            location_id=location_id,
+            floor=floor,
+            zone=zone,
+            rack=rack,
+            shelf=shelf,
+            counted_qty=counted_qty,
+            version=version,
+            idempotency_key=idempotency_key,
+        )
+
         return {
             "already_counted": len(count_lines) > 0,
             "count_lines": count_lines,
@@ -1964,6 +2321,7 @@ async def check_item_counted(
                 "source": totals["source"],
             },
             "batch_totals": totals["batch_totals"],
+            **duplicate_context,
         }
     except HTTPException:
         raise
@@ -1973,6 +2331,47 @@ async def check_item_counted(
             _safe_log_value(e, max_length=200),
         )
         _raise_count_lines_internal_error("Failed to check item count status", e)
+
+
+@router.post("/count-lines/check-duplicate", response_model=DuplicateCheckResult)
+async def check_duplicate_count_line(
+    request: DuplicateCheckRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Structured proactive duplicate check covering the full BSR identity
+    axes (barcode, batch_id, serial_no, location, idempotency_key, semantic
+    content). Read-only; never mutates state."""
+    db = _get_db_client()
+    try:
+        duplicate_context = await _evaluate_duplicate_context(
+            db,
+            session_id=request.session_id,
+            item_code=request.item_code,
+            current_user=current_user,
+            barcode=request.barcode,
+            batch_id=request.batch_id,
+            batch_no=request.batch_no,
+            serial_no=request.serial_no,
+            warehouse_id=request.warehouse_id,
+            warehouse=request.warehouse,
+            location_id=request.location_id,
+            floor=request.floor,
+            zone=request.zone,
+            rack=request.rack,
+            shelf=request.shelf,
+            counted_qty=request.counted_qty,
+            version=request.version,
+            idempotency_key=request.idempotency_key,
+        )
+        return DuplicateCheckResult(**duplicate_context)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error evaluating duplicate check: %s",
+            _safe_log_value(e, max_length=200),
+        )
+        _raise_count_lines_internal_error("Failed to evaluate duplicate check", e)
 
 
 @router.get("/count-lines/check-serial/{session_id}/{serial_number}")
