@@ -17,6 +17,7 @@ except ImportError:
     pass
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 from starlette.requests import Request  # noqa: E402
 
@@ -95,6 +96,7 @@ from backend.exceptions import AuthenticationError  # noqa: E402
 from backend.exceptions import ValidationError  # noqa: E402
 from backend.services.canonical_inventory import build_session_lookup  # noqa: E402
 from backend.services.count_line_write_service import CountLineWriteService  # noqa: E402
+from backend.services.governance_guard import GovernanceViolation  # noqa: E402
 
 # Utils
 from backend.utils.api_utils import result_to_response, sanitize_for_logging  # noqa: E402
@@ -241,6 +243,22 @@ register_middleware(
     logger=logger,
     security_headers_middleware=SecurityHeadersMiddleware,
 )
+
+
+@app.exception_handler(GovernanceViolation)
+async def _governance_violation_handler(request: Request, exc: GovernanceViolation):
+    """
+    Safety net for GovernanceViolation raised anywhere a route doesn't catch
+    it locally. Without this, it propagates as an unhandled exception and the
+    client gets a bare 500 "Internal Server Error" instead of an actionable
+    error -- e.g. a duplicate/retried count-line submission during a network
+    hiccup should tell the client "already submitted", not crash.
+    """
+    logger.warning(
+        "Unhandled GovernanceViolation on %s %s: %s", request.method, request.url.path, exc
+    )
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
 
 # Create API router
 api_router = APIRouter()
