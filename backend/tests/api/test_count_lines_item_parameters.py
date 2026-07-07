@@ -228,3 +228,66 @@ async def test_missing_batch_context_on_both_sides_preserves_existing_duplicate_
             )
 
     assert "Duplicate Scan" in str(getattr(exc_info.value, "detail", exc_info.value))
+
+
+@pytest.mark.asyncio
+async def test_create_count_line_persists_variant_and_condition_fields():
+    """BSR Part C: variant_id, variant_barcode, mrp_source, condition_details,
+    and damage_included were accepted and Pydantic-validated on
+    CountLineCreate but never referenced in _build_count_line_document --
+    silently dropped before persistence. Now stored additively."""
+    db = InMemoryDatabase()
+    await _seed_active_session(db, "sess-param-6", "ITEM-PARAM6")
+    install_db_write_guards(db)
+
+    line_data = _line(
+        session_id="sess-param-6",
+        item_code="ITEM-PARAM6",
+        idempotency_key="key-param-6",
+        variant_id="VARIANT-001",
+        variant_barcode="BC-VARIANT-001",
+        mrp_source="manual_override",
+        condition_details="Minor packaging damage on one corner",
+        damage_included=True,
+    )
+
+    with patch("backend.api.count_lines_routes.get_db", return_value=db):
+        result = await create_count_line(
+            request=AsyncMock(), line_data=line_data, current_user=CURRENT_USER
+        )
+
+    assert result["variant_id"] == "VARIANT-001"
+    assert result["variant_barcode"] == "BC-VARIANT-001"
+    assert result["mrp_source"] == "manual_override"
+    assert result["condition_details"] == "Minor packaging damage on one corner"
+    assert result["damage_included"] is True
+
+    persisted = await db.count_lines.find_one({"id": result["id"]})
+    assert persisted["variant_id"] == "VARIANT-001"
+    assert persisted["variant_barcode"] == "BC-VARIANT-001"
+    assert persisted["mrp_source"] == "manual_override"
+    assert persisted["condition_details"] == "Minor packaging damage on one corner"
+    assert persisted["damage_included"] is True
+
+
+@pytest.mark.asyncio
+async def test_create_count_line_missing_variant_fields_persist_as_none():
+    """Absence stays null, not fabricated -- matches the rest of this suite."""
+    db = InMemoryDatabase()
+    await _seed_active_session(db, "sess-param-7", "ITEM-PARAM7")
+    install_db_write_guards(db)
+
+    line_data = _line(
+        session_id="sess-param-7", item_code="ITEM-PARAM7", idempotency_key="key-param-7"
+    )
+
+    with patch("backend.api.count_lines_routes.get_db", return_value=db):
+        result = await create_count_line(
+            request=AsyncMock(), line_data=line_data, current_user=CURRENT_USER
+        )
+
+    assert result["variant_id"] is None
+    assert result["variant_barcode"] is None
+    assert result["mrp_source"] is None
+    assert result["condition_details"] is None
+    assert result["damage_included"] is None

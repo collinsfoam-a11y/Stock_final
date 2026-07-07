@@ -1076,6 +1076,16 @@ def _build_count_line_document(
         "remark": line_data.remark,
         "photo_base64": line_data.photo_base64,
         "damaged_qty": line_data.damaged_qty,
+        # BSR Part C: these five fields were accepted on CountLineCreate and
+        # validated by Pydantic but never referenced anywhere in the write
+        # pipeline -- silently dropped before persistence, the same class
+        # of gap already fixed for batch_id/UOM context. Purely additive;
+        # no existing consumer reads these keys today.
+        "variant_id": line_data.variant_id,
+        "variant_barcode": line_data.variant_barcode,
+        "mrp_source": line_data.mrp_source,
+        "condition_details": line_data.condition_details,
+        "damage_included": line_data.damage_included,
         "item_condition": line_data.item_condition,
         "floor_no": line_data.floor_no or line_data.floor_id,
         "rack_no": line_data.rack_no or line_data.rack_id,
