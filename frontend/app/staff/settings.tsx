@@ -11,10 +11,10 @@ import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { useAuthStore } from "../../src/store/authStore";
-import { useAppVersion } from "../../src/hooks/useAppVersion";
-import ModernCard from "../../src/components/ui/ModernCard";
-import ModernHeader from "../../src/components/ui/ModernHeader";
+import { useAuthStore } from "@/store/authStore";
+import { useAppVersion } from "@/hooks/useAppVersion";
+import ModernCard from "@/components/ui/ModernCard";
+import ModernHeader from "@/components/ui/ModernHeader";
 import {
   SettingsActionRow,
   SettingsActionSection,
@@ -22,8 +22,8 @@ import {
   SettingsSectionHeading,
   SettingsSyncStatus,
   UserSettingsSections,
-} from "../../src/components/settings";
-import { AppearanceSettings } from "../../src/components/ui/AppearanceSettings";
+} from "@/components/settings";
+import { AppearanceSettings } from "@/components/ui/AppearanceSettings";
 import { font, radius, touch, gap } from "@/theme/staffUiScale";
 
 import { useUiTokens } from "@/hooks/useUiTokens";

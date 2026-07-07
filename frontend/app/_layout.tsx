@@ -2,16 +2,16 @@ import React from "react";
 import { Animated, Platform, StyleSheet, View } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
-import AppShell from "../src/bootstrap/AppShell";
-import { useAuthStore } from "../src/store/authStore";
-import { useSettingsStore } from "../src/store/settingsStore";
-import { fontAssets } from "../src/constants/fontAssets";
-import { initializeApp } from "../src/bootstrap/initApp";
-import { BootLoadingView } from "../src/bootstrap/BootStateViews";
-import { zIndex } from "../src/theme";
+import AppShell from "@/bootstrap/AppShell";
+import { useAuthStore } from "@/store/authStore";
+import { useSettingsStore } from "@/store/settingsStore";
+import { fontAssets } from "@/constants/fontAssets";
+import { initializeApp } from "@/bootstrap/initApp";
+import { BootLoadingView } from "@/bootstrap/BootStateViews";
+import { zIndex } from "@/theme";
 
 const WebAppShell = Platform.OS === "web" ? AppShell : null;
-const LazyAppShell = React.lazy(() => import("../src/bootstrap/AppShell"));
+const LazyAppShell = React.lazy(() => import("@/bootstrap/AppShell"));
 
 const BOOT_PROGRESS_READY_THRESHOLD = 80;
 const BOOT_PROGRESS_CHECK_MS = 2000;
@@ -233,7 +233,7 @@ export default function RootLayout() {
         if (__DEV__) {
           console.error("❌ Initialization error:", err);
         } else {
-          import("../src/services/sentry")
+          import("@/services/sentry")
             .then(({ captureException }) => {
               captureException(err as Error, {
                 context: "App initialization",

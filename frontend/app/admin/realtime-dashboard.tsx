@@ -1,28 +1,28 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { ModernCard, LoadingSpinner, ScreenContainer } from "../../src/components/ui";
-import { ColumnSettingsModal } from "../../src/components/admin/realtime-dashboard/ColumnSettingsModal";
-import { ItemDetailsModal } from "../../src/components/admin/realtime-dashboard/ItemDetailsModal";
-import { RealtimeDashboardSummary } from "../../src/components/admin/realtime-dashboard/RealtimeDashboardSummary";
-import { RealtimeDashboardTable } from "../../src/components/admin/realtime-dashboard/RealtimeDashboardTable";
-import { RealtimeDashboardToolbar } from "../../src/components/admin/realtime-dashboard/RealtimeDashboardToolbar";
-import { RealtimeStatsStrip } from "../../src/components/admin/realtime-dashboard/RealtimeStatsStrip";
+import { ModernCard, LoadingSpinner, ScreenContainer } from "@/components/ui";
+import { ColumnSettingsModal } from "@/components/admin/realtime-dashboard/ColumnSettingsModal";
+import { ItemDetailsModal } from "@/components/admin/realtime-dashboard/ItemDetailsModal";
+import { RealtimeDashboardSummary } from "@/components/admin/realtime-dashboard/RealtimeDashboardSummary";
+import { RealtimeDashboardTable } from "@/components/admin/realtime-dashboard/RealtimeDashboardTable";
+import { RealtimeDashboardToolbar } from "@/components/admin/realtime-dashboard/RealtimeDashboardToolbar";
+import { RealtimeStatsStrip } from "@/components/admin/realtime-dashboard/RealtimeStatsStrip";
 import {
   getRealtimeDashboardConnectionState,
   shouldRefreshRealtimeDashboard,
-} from "../../src/components/admin/realtime-dashboard/realtimeDashboardLive";
+} from "@/components/admin/realtime-dashboard/realtimeDashboardLive";
 import {
   Column,
   DashboardItem,
   DashboardStats,
   Pagination,
   Summary,
-} from "../../src/components/admin/realtime-dashboard/realtimeDashboardShared";
-import { useWebSocket } from "../../src/hooks/useWebSocket";
-import api from "../../src/services/api/api";
-import { useSettingsStore } from "../../src/store/settingsStore";
-import { saveArrayBufferExport } from "../../src/utils/fileExport";
+} from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import api from "@/services/api/api";
+import { useSettingsStore } from "@/store/settingsStore";
+import { saveArrayBufferExport } from "@/utils/fileExport";
 import { useUiTokens } from "@/hooks/useUiTokens";
 
 const DEFAULT_PAGINATION: Pagination = {

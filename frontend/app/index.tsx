@@ -4,8 +4,8 @@ import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 import { semanticColors, colors } from "@/theme/legacyCompat";
 const IndexScreen = React.lazy(() =>
   (Platform.OS === "web"
-    ? import("../src/screens/routes/IndexScreen.web")
-    : import("../src/screens/routes/IndexScreen.native")
+    ? import("@/screens/routes/IndexScreen.web")
+    : import("@/screens/routes/IndexScreen.native")
   ).then((module) => ({ default: module.IndexScreen }))
 );
 

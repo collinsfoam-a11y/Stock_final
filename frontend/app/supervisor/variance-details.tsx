@@ -14,15 +14,15 @@ import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
-import { ItemVerificationAPI } from "../../src/domains/inventory/services/itemVerificationApi";
-import { getAssignableStaffUsers } from "../../src/services/api/api";
-import { ScreenContainer, ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
-import { useSettingsStore } from "../../src/store/settingsStore";
+import { ItemVerificationAPI } from "@/domains/inventory/services/itemVerificationApi";
+import { getAssignableStaffUsers } from "@/services/api/api";
+import { ScreenContainer, ModernCard, StatsCard, AnimatedPressable } from "@/components/ui";
+import { useSettingsStore } from "@/store/settingsStore";
 import RecountAssignmentModal, {
   type AssignableStaffUser,
-} from "../../src/components/supervisor/RecountAssignmentModal";
-import { theme } from "../../src/styles/unifiedSystem";
-import { useToast } from "../../src/components/feedback/ToastProvider";
+} from "@/components/supervisor/RecountAssignmentModal";
+import { theme } from "@/styles/unifiedSystem";
+import { useToast } from "@/components/feedback/ToastProvider";
 import { safeBackNavigation } from "@/utils/navigation";
 
 export default function VarianceDetailsScreen() {

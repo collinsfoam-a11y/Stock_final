@@ -4,22 +4,22 @@ import { FlashList } from "@shopify/flash-list";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { PinEntryModal } from "../../src/components/modals/PinEntryModal";
-import { useAuthStore } from "../../src/store/authStore";
-import { deleteCountLine, getCountLines } from "../../src/services/api/api";
-import { haptics } from "../../src/services/haptics";
-import { flags } from "../../src/constants/flags";
-import { PullToRefresh } from "../../src/components/PullToRefresh";
-import { BottomSheet } from "../../src/components/ui/BottomSheet";
-import { SkeletonList } from "../../src/components/LoadingSkeleton";
-import { SwipeableRow } from "../../src/components/SwipeableRow";
+import { PinEntryModal } from "@/components/modals/PinEntryModal";
+import { useAuthStore } from "@/store/authStore";
+import { deleteCountLine, getCountLines } from "@/services/api/api";
+import { haptics } from "@/services/haptics";
+import { flags } from "@/constants/flags";
+import { PullToRefresh } from "@/components/PullToRefresh";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { SkeletonList } from "@/components/LoadingSkeleton";
+import { SwipeableRow } from "@/components/SwipeableRow";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { ModernCard } from "../../src/components/ui/ModernCard";
+import { ModernCard } from "@/components/ui/ModernCard";
 import { font, radius, gap } from "@/theme/staffUiScale";
 // unifiedColors replaced by uiTokens semantic tokens throughout
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { ScreenContainer } from "../../src/components/ui";
+import { ScreenContainer } from "@/components/ui";
 
 const getHistoryFailureReason = (error: unknown): string => {
   if (error instanceof Error && error.message) {

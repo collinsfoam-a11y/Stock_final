@@ -4,8 +4,8 @@ import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 import { semanticColors, colors } from "@/theme/legacyCompat";
 const WelcomeScreen = React.lazy(() =>
   (Platform.OS === "web"
-    ? import("../src/screens/routes/WelcomeScreen.web")
-    : import("../src/screens/routes/WelcomeScreen.native")
+    ? import("@/screens/routes/WelcomeScreen.web")
+    : import("@/screens/routes/WelcomeScreen.native")
   ).then((module) => ({ default: module.WelcomeScreen }))
 );
 

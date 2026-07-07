@@ -12,9 +12,9 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { FlashList } from "@shopify/flash-list";
 
-import { getActivityLogs, getActivityStats } from "../../src/services/api/api";
-import { useToast } from "../../src/components/feedback/ToastProvider";
-import { ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
+import { getActivityLogs, getActivityStats } from "@/services/api/api";
+import { useToast } from "@/components/feedback/ToastProvider";
+import { ModernCard, StatsCard, AnimatedPressable } from "@/components/ui";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import {

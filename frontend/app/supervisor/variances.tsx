@@ -23,13 +23,13 @@ import * as Haptics from "expo-haptics";
 import {
   ItemVerificationAPI,
   VarianceItem,
-} from "../../src/domains/inventory/services/itemVerificationApi";
-import { ItemFilters, FilterValues } from "../../src/domains/inventory/components/ItemFilters";
-import { ScreenContainer, ModernCard, AnimatedPressable } from "../../src/components/ui";
-import { useSettingsStore } from "../../src/store/settingsStore";
-import { theme } from "../../src/styles/modernDesignSystem";
-import { toastService } from "../../src/services/toastService";
-import { saveArrayBufferExport } from "../../src/utils/fileExport";
+} from "@/domains/inventory/services/itemVerificationApi";
+import { ItemFilters, FilterValues } from "@/domains/inventory/components/ItemFilters";
+import { ScreenContainer, ModernCard, AnimatedPressable } from "@/components/ui";
+import { useSettingsStore } from "@/store/settingsStore";
+import { theme } from "@/styles/modernDesignSystem";
+import { toastService } from "@/services/toastService";
+import { saveArrayBufferExport } from "@/utils/fileExport";
 import { safeBackNavigation } from "@/utils/navigation";
 
 export default function VariancesScreen() {

@@ -2,14 +2,14 @@ import React, { Suspense } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 const LazySessionDetailScreen = React.lazy(
-  () => import("../../../src/screens/supervisor/SessionDetailScreen"),
+  () => import("@/screens/supervisor/SessionDetailScreen"),
 );
 
 export default function SessionDetailRoute() {
   if (process.env.NODE_ENV === "test") {
     // Keep direct sync rendering in Jest so route-level tests stay deterministic.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Screen = require("../../../src/screens/supervisor/SessionDetailScreen")
+    const Screen = require("@/screens/supervisor/SessionDetailScreen")
       .default as React.ComponentType;
     return <Screen />;
   }

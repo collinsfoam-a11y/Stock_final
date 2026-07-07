@@ -19,14 +19,14 @@ import {
 } from "@/components/ui";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { usePermission } from "../../src/hooks/usePermission";
+import { usePermission } from "@/hooks/usePermission";
 import {
   getUnknownItems,
   mapUnknownToSku,
   createSkuFromUnknown as _createSkuFromUnknown,
   deleteUnknownItem,
-} from "../../src/services/api";
-import { useSettingsStore } from "../../src/store/settingsStore";
+} from "@/services/api";
+import { useSettingsStore } from "@/store/settingsStore";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";

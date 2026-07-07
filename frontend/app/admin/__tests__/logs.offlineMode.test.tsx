@@ -19,17 +19,17 @@ jest.mock("expo-router", () => ({
   }),
 }));
 
-jest.mock("../../../src/hooks/usePermission", () => ({
+jest.mock("@/hooks/usePermission", () => ({
   usePermission: () => ({
     hasRole: mockHasRole,
   }),
 }));
 
-jest.mock("../../../src/services/api", () => ({
+jest.mock("@/services/api", () => ({
   getServiceLogs: (...args: unknown[]) => mockGetServiceLogs(...args),
 }));
 
-jest.mock("../../../src/store/settingsStore", () => ({
+jest.mock("@/store/settingsStore", () => ({
   useSettingsStore: (selector: (state: { settings: { offlineMode: boolean } }) => unknown) =>
     selector({
       settings: {

@@ -13,11 +13,11 @@ import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
-import { getSessions } from "../../src/services/api/api";
-import { ModernCard, AnimatedPressable, ScreenContainer } from "../../src/components/ui";
-import { useSettingsStore } from "../../src/store/settingsStore";
-import { theme } from "../../src/styles/unifiedSystem";
-import { useToast } from "../../src/components/feedback/ToastProvider";
+import { getSessions } from "@/services/api/api";
+import { ModernCard, AnimatedPressable, ScreenContainer } from "@/components/ui";
+import { useSettingsStore } from "@/store/settingsStore";
+import { theme } from "@/styles/unifiedSystem";
+import { useToast } from "@/components/feedback/ToastProvider";
 import { safeBackNavigation } from "@/utils/navigation";
 
 export default function SessionsList() {

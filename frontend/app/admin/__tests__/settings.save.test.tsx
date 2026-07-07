@@ -24,13 +24,13 @@ jest.mock("expo-router", () => ({
   useRouter: () => mockRouter,
 }));
 
-jest.mock("../../../src/hooks/usePermission", () => ({
+jest.mock("@/hooks/usePermission", () => ({
   usePermission: () => ({
     hasRole: mockHasRole,
   }),
 }));
 
-jest.mock("../../../src/hooks/useUiTokens", () => ({
+jest.mock("@/hooks/useUiTokens", () => ({
   useUiTokens: () => ({
     mode: "light",
     colors: {
@@ -51,17 +51,17 @@ jest.mock("../../../src/hooks/useUiTokens", () => ({
   }),
 }));
 
-jest.mock("../../../src/services/api", () => ({
+jest.mock("@/services/api", () => ({
   getSystemSettings: (...args: unknown[]) => mockGetSystemSettings(...args),
   updateSystemSettings: (...args: unknown[]) => mockUpdateSystemSettings(...args),
 }));
 
-jest.mock("../../../src/store/settingsStore", () => ({
+jest.mock("@/store/settingsStore", () => ({
   useSettingsStore: (selector?: (state: typeof mockSettingsState) => unknown) =>
     selector ? selector(mockSettingsState) : mockSettingsState,
 }));
 
-jest.mock("../../../src/components/ui/AppearanceSettings", () => ({
+jest.mock("@/components/ui/AppearanceSettings", () => ({
   AppearanceSettings: () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { Text } = require("react-native");
@@ -69,7 +69,7 @@ jest.mock("../../../src/components/ui/AppearanceSettings", () => ({
   },
 }));
 
-jest.mock("../../../src/components/ui/ModernCard", () => {
+jest.mock("@/components/ui/ModernCard", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require("react");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -77,7 +77,7 @@ jest.mock("../../../src/components/ui/ModernCard", () => {
   return ({ children }: { children: React.ReactNode }) => <View>{children}</View>;
 });
 
-jest.mock("../../../src/components/settings", () => {
+jest.mock("@/components/settings", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require("react");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -102,7 +102,7 @@ jest.mock("../../../src/components/settings", () => {
   };
 });
 
-jest.mock("../../../src/components/ui", () => {
+jest.mock("@/components/ui", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require("react");
   // eslint-disable-next-line @typescript-eslint/no-require-imports

@@ -23,14 +23,14 @@ import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { useAuthStore } from "../src/store/authStore";
-import { useSettingsStore } from "../src/store/settingsStore";
-import ModernButton from "../src/components/ui/ModernButton";
-import ModernCard from "../src/components/ui/ModernCard";
-import ModernInput from "../src/components/ui/ModernInput";
-import ModernHeader from "../src/components/ui/ModernHeader";
-import { useAppVersion } from "../src/hooks/useAppVersion";
-import { BrandLogo } from "../src/components/branding/BrandLogo";
+import { useAuthStore } from "@/store/authStore";
+import { useSettingsStore } from "@/store/settingsStore";
+import ModernButton from "@/components/ui/ModernButton";
+import ModernCard from "@/components/ui/ModernCard";
+import ModernInput from "@/components/ui/ModernInput";
+import ModernHeader from "@/components/ui/ModernHeader";
+import { useAppVersion } from "@/hooks/useAppVersion";
+import { BrandLogo } from "@/components/branding/BrandLogo";
 import {
   colors as unifiedColors,
   semanticColors,

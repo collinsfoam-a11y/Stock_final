@@ -25,9 +25,9 @@ import {
   getSystemStats,
   startService,
   stopService,
-} from "../../src/services/api";
-import { ModernCard } from "../../src/components/ui";
-import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
+} from "@/services/api";
+import { ModernCard } from "@/components/ui";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import {
   DashboardAnalyticsPanel,
   DashboardDiagnosisPanel,
@@ -35,8 +35,8 @@ import {
   DashboardOverviewPanel,
   DashboardReportsPanel,
   DashboardTabBar,
-} from "../../src/components/admin/dashboard/DashboardPanels";
-import { DashboardReportModal } from "../../src/components/admin/dashboard/DashboardReportModal";
+} from "@/components/admin/dashboard/DashboardPanels";
+import { DashboardReportModal } from "@/components/admin/dashboard/DashboardReportModal";
 import {
   DASHBOARD_IS_WEB,
   DASHBOARD_TABS,
@@ -47,9 +47,9 @@ import {
   prepareSessionChartData,
   prepareStatusChartData,
   toYMD,
-} from "../../src/components/admin/dashboard/dashboardWebShared";
-import { ADMIN_NAV_GROUPS } from "../../src/components/navigation/adminNavShared";
-import { useSettingsStore } from "../../src/store/settingsStore";
+} from "@/components/admin/dashboard/dashboardWebShared";
+import { ADMIN_NAV_GROUPS } from "@/components/navigation/adminNavShared";
+import { useSettingsStore } from "@/store/settingsStore";
 import { useUiTokens } from "@/hooks/useUiTokens";
 
 export default function DashboardWeb() {

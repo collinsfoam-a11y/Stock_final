@@ -20,13 +20,13 @@ import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
-import { getLocalItems } from "../../src/db/localDb";
-import { ItemVerificationAPI } from "../../src/domains/inventory/services/itemVerificationApi";
-import { ItemFilters, FilterValues } from "../../src/domains/inventory/components/ItemFilters";
-import { useSettingsStore } from "../../src/store/settingsStore";
-import { ScreenContainer, ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
-import { theme } from "../../src/styles/modernDesignSystem";
-import { saveArrayBufferExport } from "../../src/utils/fileExport";
+import { getLocalItems } from "@/db/localDb";
+import { ItemVerificationAPI } from "@/domains/inventory/services/itemVerificationApi";
+import { ItemFilters, FilterValues } from "@/domains/inventory/components/ItemFilters";
+import { useSettingsStore } from "@/store/settingsStore";
+import { ScreenContainer, ModernCard, StatsCard, AnimatedPressable } from "@/components/ui";
+import { theme } from "@/styles/modernDesignSystem";
+import { saveArrayBufferExport } from "@/utils/fileExport";
 import { safeBackNavigation } from "@/utils/navigation";
 
 const filterCachedItems = (items: any[], filters: FilterValues) => {

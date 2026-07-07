@@ -16,10 +16,10 @@ import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
 
-import { getCountLineById, type Notification } from "../src/services/api/api";
-import ModernCard from "../src/components/ui/ModernCard";
-import ModernHeader from "../src/components/ui/ModernHeader";
-import { useNotificationStore } from "../src/store/notificationStore";
+import { getCountLineById, type Notification } from "@/services/api/api";
+import ModernCard from "@/components/ui/ModernCard";
+import ModernHeader from "@/components/ui/ModernHeader";
+import { useNotificationStore } from "@/store/notificationStore";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { createLogger } from "@/services/logging";
 import { toastService } from "@/services/toastService";

@@ -7,16 +7,16 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, Text, StyleSheet, Alert, RefreshControl } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { usePermission } from "../../src/hooks/usePermission";
+import { usePermission } from "@/hooks/usePermission";
 import {
   LoadingSpinner,
   AnimatedPressable,
   ModernCard,
   ScreenContainer,
-} from "../../src/components/ui";
-import { UserFiltersBar } from "../../src/components/admin/users/UserFiltersBar";
-import { UserFormModal } from "../../src/components/admin/users/UserFormModal";
-import { UsersTable } from "../../src/components/admin/users/UsersTable";
+} from "@/components/ui";
+import { UserFiltersBar } from "@/components/admin/users/UserFiltersBar";
+import { UserFormModal } from "@/components/admin/users/UserFormModal";
+import { UsersTable } from "@/components/admin/users/UsersTable";
 import {
   createEmptyUserForm,
   User,
@@ -25,9 +25,9 @@ import {
   SortField,
   SortOrder,
   userTextStyles,
-} from "../../src/components/admin/users/userManagementShared";
-import { useSettingsStore } from "../../src/store/settingsStore";
-import apiClient from "../../src/services/httpClient";
+} from "@/components/admin/users/userManagementShared";
+import { useSettingsStore } from "@/store/settingsStore";
+import apiClient from "@/services/httpClient";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";

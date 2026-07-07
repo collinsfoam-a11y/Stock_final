@@ -12,13 +12,13 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { FlashList } from "@shopify/flash-list";
 
-import { flags } from "../../src/constants/flags";
-import { getConflicts, resolveConflict } from "../../src/services/offline/offlineQueue";
-import { getOfflineQueue } from "../../src/services/offline/offlineStorage";
-import { forceSync } from "../../src/services/syncService";
-import { summarizeForceSyncResult } from "../../src/components/supervisor/offlineQueueFeedback";
-import { ModernCard, AnimatedPressable, StatsCard } from "../../src/components/ui";
-import { useSettingsStore } from "../../src/store/settingsStore";
+import { flags } from "@/constants/flags";
+import { getConflicts, resolveConflict } from "@/services/offline/offlineQueue";
+import { getOfflineQueue } from "@/services/offline/offlineStorage";
+import { forceSync } from "@/services/syncService";
+import { summarizeForceSyncResult } from "@/components/supervisor/offlineQueueFeedback";
+import { ModernCard, AnimatedPressable, StatsCard } from "@/components/ui";
+import { useSettingsStore } from "@/store/settingsStore";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import {

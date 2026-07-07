@@ -11,9 +11,9 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
 
-import { useSettingsStore } from "../../src/store/settingsStore";
-import { ScreenContainer } from "../../src/components/ui";
-import { AppearanceSettings } from "../../src/components/ui/AppearanceSettings";
+import { useSettingsStore } from "@/store/settingsStore";
+import { ScreenContainer } from "@/components/ui";
+import { AppearanceSettings } from "@/components/ui/AppearanceSettings";
 import {
   ChangePasswordModal,
   SettingsActionRow,
@@ -22,7 +22,7 @@ import {
   SettingsSectionHeading,
   SettingsSyncStatus,
   UserSettingsSections,
-} from "../../src/components/settings";
+} from "@/components/settings";
 import { safeBackNavigation } from "@/utils/navigation";
 
 export default function SettingsScreen() {

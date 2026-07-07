@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useCameraPermissions } from "../../src/services/device/expoCamera";
+import { useCameraPermissions } from "@/services/device/expoCamera";
 import * as Haptics from "expo-haptics";
 import {
   useAnimatedStyle,
@@ -28,11 +28,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDebounce } from "use-debounce";
 
-import { useSafeAsync } from "../../src/hooks/useSafeAsync";
-import { usePerformanceMonitor } from "../../src/hooks/usePerformanceMonitor";
-import { useScanSessionStore } from "../../src/store/scanSessionStore";
-import { useSettingsStore } from "../../src/store/settingsStore";
-import { useWebSocket } from "../../src/hooks/useWebSocket";
+import { useSafeAsync } from "@/hooks/useSafeAsync";
+import { usePerformanceMonitor } from "@/hooks/usePerformanceMonitor";
+import { useScanSessionStore } from "@/store/scanSessionStore";
+import { useSettingsStore } from "@/store/settingsStore";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import {
   getItemByBarcode,
   searchItems,
@@ -40,27 +40,27 @@ import {
   checkItemScanStatus,
   getSessionStats,
   SessionStatsResponse,
-} from "../../src/services/api/api";
-import { RecentItemsService } from "../../src/services/enhancedFeatures";
-import { playScanSound } from "../../src/services/scanSoundService";
-import { toastService } from "../../src/services/toastService";
-import { forceSync, getSyncStatus } from "../../src/services/syncService";
-import { localDb } from "../../src/db/localDb";
-import { validateBarcode } from "../../src/utils/validation";
+} from "@/services/api/api";
+import { RecentItemsService } from "@/services/enhancedFeatures";
+import { playScanSound } from "@/services/scanSoundService";
+import { toastService } from "@/services/toastService";
+import { forceSync, getSyncStatus } from "@/services/syncService";
+import { localDb } from "@/db/localDb";
+import { validateBarcode } from "@/utils/validation";
 import { safeBackNavigation } from "@/utils/navigation";
-import { dedupeItemsKeepingHighestStock } from "../../src/utils/itemBatchUtils";
+import { dedupeItemsKeepingHighestStock } from "@/utils/itemBatchUtils";
 
-import ModernHeader from "../../src/components/ui/ModernHeader";
-import ModernButton from "../../src/components/ui/ModernButton";
-import { SyncStatusPill } from "../../src/components/ui/SyncStatusPill";
-import { FinishRackModal } from "../../src/components/scan/FinishRackModal";
-import { ScanCameraOverlay } from "../../src/components/scan/ScanCameraOverlay";
-import { ScanLookupPanel, type ScanLookupNotice } from "../../src/components/scan/ScanLookupPanel";
-import { ScanStatsCard } from "../../src/components/scan/ScanStatsCard";
-import { ScanMissingSession } from "../../src/components/scan/ScanMissingSession";
+import ModernHeader from "@/components/ui/ModernHeader";
+import ModernButton from "@/components/ui/ModernButton";
+import { SyncStatusPill } from "@/components/ui/SyncStatusPill";
+import { FinishRackModal } from "@/components/scan/FinishRackModal";
+import { ScanCameraOverlay } from "@/components/scan/ScanCameraOverlay";
+import { ScanLookupPanel, type ScanLookupNotice } from "@/components/scan/ScanLookupPanel";
+import { ScanStatsCard } from "@/components/scan/ScanStatsCard";
+import { ScanMissingSession } from "@/components/scan/ScanMissingSession";
 import { styles } from "@/styles/screens/Scan.styles";
 
-import { useAuthStore } from "../../src/store/authStore";
+import { useAuthStore } from "@/store/authStore";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { getTokenShadowStyle } from "@/theme/themeTokens";

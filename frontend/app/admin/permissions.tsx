@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView, TextInput, Alert, Platform } from "react-native";
 import { useRouter } from "expo-router";
-import { usePermission } from "../../src/hooks/usePermission";
-import { LoadingSpinner, ScreenContainer } from "../../src/components/ui";
-import ModernCard from "../../src/components/ui/ModernCard";
-import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
+import { usePermission } from "@/hooks/usePermission";
+import { LoadingSpinner, ScreenContainer } from "@/components/ui";
+import ModernCard from "@/components/ui/ModernCard";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 import {
   getAvailablePermissions,
   getUserPermissions,
   addUserPermissions,
   removeUserPermissions,
-} from "../../src/services/api";
-import { useSettingsStore } from "../../src/store/settingsStore";
+} from "@/services/api";
+import { useSettingsStore } from "@/store/settingsStore";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";

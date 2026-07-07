@@ -22,14 +22,14 @@ import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
-import { usePermission } from "../../src/hooks/usePermission";
+import { usePermission } from "@/hooks/usePermission";
 import {
   getSyncConflicts,
   resolveSyncConflict,
   batchResolveSyncConflicts,
   getSyncConflictStats,
-} from "../../src/services/api/api";
-import { ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
+} from "@/services/api/api";
+import { ModernCard, StatsCard, AnimatedPressable } from "@/components/ui";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import {

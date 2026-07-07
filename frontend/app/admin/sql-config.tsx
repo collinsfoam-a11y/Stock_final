@@ -11,16 +11,16 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { usePermission } from "../../src/hooks/usePermission";
-import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
-import ModernCard from "../../src/components/ui/ModernCard";
-import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
-import { useSettingsStore } from "../../src/store/settingsStore";
+import { usePermission } from "@/hooks/usePermission";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
+import ModernCard from "@/components/ui/ModernCard";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { useSettingsStore } from "@/store/settingsStore";
 import {
   getSqlServerConfig,
   updateSqlServerConfig,
   testSqlServerConnection,
-} from "../../src/services/api";
+} from "@/services/api";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
