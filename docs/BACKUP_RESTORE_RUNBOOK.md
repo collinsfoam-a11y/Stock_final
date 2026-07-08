@@ -97,20 +97,23 @@ procedure above separately.
 
 ## Log retention
 
-`docker-compose.production.yml` does not currently set a `logging:` block
-on any service, so container logs use Docker's default `json-file`
-driver with no size cap. On a long-running host, add rotation explicitly
-to avoid filling disk:
+`docker-compose.production.yml` caps each long-running service
+(`mongo`, `redis`, `backend`, `nginx`) at 10MB per log file with 5 files
+retained (50MB max per service):
 
 ```yaml
-# add to each service in docker-compose.production.yml if not already
-# capped at the Docker daemon level (/etc/docker/daemon.json)
 logging:
-  driver: json-file
+  driver: "json-file"
   options:
     max-size: "10m"
     max-file: "5"
 ```
+
+`certbot` is a one-shot renewal job (no `restart:` policy), so it is not
+capped -- it doesn't run long enough to accumulate meaningful log volume.
+If you also want a host-wide default for any container that doesn't set
+its own `logging:` block, set the same options at the Docker daemon
+level in `/etc/docker/daemon.json`.
 
 The backend process itself also supports `LOG_FILE` / `LOG_MAX_BYTES` /
 `LOG_BACKUP_COUNT` (see `backend/utils/logging_config.py` and

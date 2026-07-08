@@ -8,6 +8,11 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
     volumes:
       - mongo_data:/data/db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     healthcheck:
       test:
         [
@@ -28,6 +33,11 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
       interval: 10s
@@ -76,6 +86,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8001/health"]
       interval: 30s
@@ -96,6 +111,11 @@ services:
     volumes:
       - ./nginx/ssl:/etc/nginx/ssl
       - ./certbot/www:/var/www/certbot
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://localhost/healthz | grep -q ok"]
       interval: 30s

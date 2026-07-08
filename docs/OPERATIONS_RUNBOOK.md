@@ -81,8 +81,9 @@ manual investigation (check `logs`).
 ## Log locations
 
 - Container stdout/stderr: `docker compose logs <service>` (see log
-  retention note in `BACKUP_RESTORE_RUNBOOK.md` -- no size cap is set by
-  default).
+  retention note in `BACKUP_RESTORE_RUNBOOK.md` -- `mongo`, `redis`,
+  `backend`, and `nginx` each cap `json-file` logs at 10MB x 5 files;
+  `certbot` is a one-shot job and is not capped).
 - nginx access/error logs: inside the `nginx` container at
   `/var/log/nginx/{access,error}.log` (per `nginx/nginx.conf`'s
   `log_format`/`error_log` directives); surfaced via `docker compose logs nginx`.
