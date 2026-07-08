@@ -1,0 +1,32 @@
+# Example: internal-only HTTP server block for a reverse proxy / tunnel that
+# already terminates TLS upstream (e.g. Cloudflare Tunnel) and should not be
+# redirected to HTTPS again by nginx.
+#
+# This is a REFERENCE template, not live config. The real, complete
+# production config is nginx/nginx.conf, which nginx/Dockerfile actually
+# builds; this file shows only the delta needed for the tunnel-without-
+# redirect path described in docs/CLOUDFLARE_TUNNEL_DEPLOYMENT.md option 2.
+# Copy the relevant `location` blocks from nginx/nginx.conf's `listen 443 ssl`
+# server into a new `listen 8080;` server (no `ssl`/`ssl_certificate*`
+# directives, no 301 redirect) if you take that route instead of pointing
+# the tunnel at the existing HTTPS server with noTLSVerify.
+
+server {
+    listen 8080;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Same upstream, health, and security-header behavior as the HTTPS
+    # server in nginx.conf -- duplicate those `location` blocks here
+    # (api/, api/auth/login, health, healthz, ws/, static asset caching,
+    # SPA fallback) rather than re-deriving them, so the two entry points
+    # never drift apart.
+
+    location /healthz {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "ok";
+    }
+}

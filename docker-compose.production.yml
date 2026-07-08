@@ -51,6 +51,7 @@ services:
       DB_NAME: ${DB_NAME}
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      PIN_SALT: ${PIN_SALT}
       MONGO_URL: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongo:27017/${DB_NAME}?authSource=admin
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       SQL_SERVER_HOST: ${SQL_SERVER_HOST:?SQL_SERVER_HOST is required}
