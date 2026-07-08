@@ -113,6 +113,14 @@ INSECURE_JWT_REFRESH_SECRET_VALUES = {
     "CHANGE_ME_TO_A_LONG_RANDOM_REFRESH_SECRET",
 }
 
+INSECURE_PIN_SALT_VALUES = {
+    "default-salt",
+    "example",
+    "your-pin-salt-here",
+    "change-me-in-production",
+    "CHANGE_ME_TO_A_LONG_RANDOM_PIN_SALT",
+}
+
 INSECURE_SECRET_MARKERS = (
     "CHANGE_ME",
     "GENERATE_",
@@ -292,6 +300,9 @@ class Settings(PydanticBaseSettings):
         default=None,
         description=("JWT refresh token secret - must be set via JWT_REFRESH_SECRET env var"),
     )
+    PIN_SALT: Optional[str] = Field(
+        default=None, description="Salt for PIN lookup hashing (recommended to use env var)"
+    )
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(15, ge=1)
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(30, ge=1)
@@ -346,6 +357,30 @@ class Settings(PydanticBaseSettings):
         if _is_insecure_secret(v, INSECURE_JWT_REFRESH_SECRET_VALUES):
             raise ValueError(
                 "SECURITY ERROR: JWT_REFRESH_SECRET contains a known insecure default value. "
+                "Generate a secure secret using: python scripts/generate_secrets.py"
+            )
+        return v
+
+    @field_validator("PIN_SALT", mode="before")
+    @classmethod
+    def validate_pin_salt(cls, v: Optional[str]) -> str:
+        # Check environment variable first
+        env_value = _secret_env_first("PIN_SALT")
+        if env_value:
+            v = env_value
+        elif v is None:
+            raise ValueError(
+                "PIN_SALT is required and must be set via PIN_SALT environment variable"
+            )
+
+        if not v:
+            raise ValueError("PIN_SALT cannot be empty")
+        if len(v) < 32:
+            raise ValueError("PIN_SALT must be at least 32 characters long")
+        # Check for known insecure defaults
+        if _is_insecure_secret(v, INSECURE_PIN_SALT_VALUES):
+            raise ValueError(
+                "SECURITY ERROR: PIN_SALT contains a known insecure default value. "
                 "Generate a secure secret using: python scripts/generate_secrets.py"
             )
         return v
@@ -600,6 +635,13 @@ except Exception as e:
             if _is_insecure_secret(jwt_refresh_secret, INSECURE_JWT_REFRESH_SECRET_VALUES):
                 raise ValueError("JWT_REFRESH_SECRET contains a known insecure default value")
             self.JWT_REFRESH_SECRET = jwt_refresh_secret
+
+            pin_salt = _secret_env_first("PIN_SALT")
+            if not pin_salt:
+                raise ValueError("PIN_SALT environment variable is required")
+            if _is_insecure_secret(pin_salt, INSECURE_PIN_SALT_VALUES):
+                raise ValueError("PIN_SALT contains a known insecure default value")
+            self.PIN_SALT = pin_salt
             self.JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
             self.LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
             self.LOG_FORMAT = os.getenv(
