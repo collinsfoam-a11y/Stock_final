@@ -60,9 +60,16 @@ export const Badge: React.FC<BadgeProps> = ({
   const colors = variantColors[variant];
   const sizes = sizeStyles[size];
 
+  const accessibilityProps = {
+    accessible: true,
+    accessibilityRole: "text" as const,
+    accessibilityLabel: `Badge: ${label}`,
+  };
+
   if (dot) {
     return (
       <View
+        {...accessibilityProps}
         style={[
           styles.dot,
           {
@@ -78,6 +85,7 @@ export const Badge: React.FC<BadgeProps> = ({
 
   return (
     <View
+      {...accessibilityProps}
       style={[
         styles.badge,
         {
