@@ -39,8 +39,7 @@ cp .env.production.example .env.prod
 
 # 3. Deploy
 docker compose -f docker-compose.production.yml \
-  --env-file .env.prod \
-  -f docker-compose.production.yml up -d --remove-orphans
+  --env-file .env.prod up -d --remove-orphans
 
 # 4. Verify
 curl -fsS http://<host>/health
@@ -130,7 +129,7 @@ NGINX_IMAGE=ghcr.io/.../stock_final-nginx:<previous-sha> \
 
 **100_PERCENT_COMPLETE_EXCEPT_OPERATOR_INPUT**
 
-The application is fully deployed, tested, and hardened for production. The only unmet requirement is the external ERPNext operator package (templates and metadata), which is explicitly out of engineering scope per business rule #18. Manual CSV/XLSX import into ERPNext cannot proceed until the operator delivers:
+The application is fully tested and hardened for a production deployment (no host has actually been provisioned by this engineering effort -- that is an operator/ops action using the commands in this document). The only unmet requirement is the external ERPNext operator package (templates and metadata), which is explicitly out of engineering scope per business rule #18. Manual CSV/XLSX import into ERPNext cannot proceed until the operator delivers:
 - Stock Entry template
 - Stock Reconciliation template
 - Serial No/Batch templates (if classic path is used)
@@ -170,10 +169,22 @@ services:
   nginx:
     logging: ...
 
+$ pytest backend/tests -q
+1383 passed, 13 skipped, 10 deselected
+
+$ pytest backend/domains/count_lines/tests -q
+26 passed
+
 $ python -m ruff check backend/
 All checks passed!
 
-$ pnpm test (frontend)
+$ npm run typecheck (frontend)
+(exit 0, no output)
+
+$ npm run lint (frontend)
+16 problems (0 errors, 16 warnings) -- exit 0
+
+$ npm test (frontend, via node ./scripts/run-jest.cjs)
 Test Suites: 86 passed, 86 total
 Tests:       327 passed, 327 total
 
@@ -181,4 +192,15 @@ $ python scripts/check_erpnext_template_inputs.py
 ERPNext template input check: NOT READY
 can_advance_to_manual_import_dry_run: false
 EXIT: 1 (expected)
+
+$ SMOKE_BASE_URL=http://127.0.0.1:<port> ./scripts/deploy_smoke_check.sh
+OK: backend /health (HTTP 200)
+OK: backend /api/health (HTTP 200)
+OK: frontend (HTTP 200)
+OK (expected): ERPNext template gate reports NOT READY
+Deploy smoke check passed.
+EXIT: 0
 ```
+
+Re-verified fresh on 2026-07-08 as part of the operator-package check pass --
+all results identical to the original run above.
