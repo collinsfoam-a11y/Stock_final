@@ -1,0 +1,62 @@
+{
+  "erpnext_version": "unknown",
+  "frappe_version": "unknown",
+  "company": "unknown",
+  "source_instance": "unknown",
+  "downloaded_by": null,
+  "downloaded_at": null,
+  "templates": {
+    "stock_entry": {
+      "file": "stock_entry_template.csv",
+      "doctype": "Stock Entry",
+      "import_type": "unknown",
+      "has_child_table": true,
+      "child_table_name": "unknown",
+      "download_method": "ERPNext Data Import",
+      "notes": [
+        "Not yet downloaded from a real target ERPNext instance -- no staging URL or credentials were available in this environment (see docs/BSR_REMEDIATION_STATUS.md Step 11).",
+        "Operator: Setup > Data Import > select doctype 'Stock Entry' > select Import Type > Download Template > save as stock_entry_template.csv (or .xlsx) in this directory."
+      ]
+    },
+    "stock_reconciliation": {
+      "file": "stock_reconciliation_template.csv",
+      "doctype": "Stock Reconciliation",
+      "import_type": "unknown",
+      "has_child_table": true,
+      "child_table_name": "unknown",
+      "download_method": "ERPNext Data Import",
+      "notes": [
+        "Not yet downloaded from a real target ERPNext instance.",
+        "Operator: Setup > Data Import > select doctype 'Stock Reconciliation' > select Import Type > Download Template > save as stock_reconciliation_template.csv (or .xlsx) in this directory."
+      ]
+    },
+    "serial_no": {
+      "file": "serial_no_template.csv",
+      "doctype": "Serial No",
+      "import_type": "unknown",
+      "download_method": "ERPNext Data Import",
+      "required_if": "serial import path is used",
+      "notes": [
+        "Not yet downloaded. Required only if the target ERPNext version still supports direct Serial No bulk import (see serial_batch_gate below) -- confirm this with the operator before requesting this template."
+      ]
+    },
+    "batch": {
+      "file": "batch_template.csv",
+      "doctype": "Batch",
+      "import_type": "unknown",
+      "download_method": "ERPNext Data Import",
+      "required_if": "batch import path is used",
+      "notes": [
+        "Not yet downloaded. Required only if the target ERPNext version still supports direct Batch bulk import (see serial_batch_gate below) -- confirm this with the operator before requesting this template."
+      ]
+    }
+  },
+  "serial_batch_gate": {
+    "uses_serial_batch_bundle": "unknown",
+    "negative_serial_batch_stock_allowed": "unknown",
+    "serial_import_path": "unknown",
+    "batch_import_path": "unknown",
+    "stock_entry_child_row_import_behavior": "unknown",
+    "stock_reconciliation_child_row_import_behavior": "unknown"
+  }
+}

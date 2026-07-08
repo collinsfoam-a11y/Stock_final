@@ -1,0 +1,25 @@
+{
+  "_comment": "Human/machine-readable guardrail summarizing the ERPNext Template Waiting State Gate (see docs/BSR_REMEDIATION_STATUS.md Step 14 and docs/erpnext_templates/README.md). This file is NOT the source of truth for validation -- it is a static snapshot of the gate's current declared state, meant to be read (not computed from) by humans or tooling that just needs the gate summary without running the real check. The actual, authoritative, always-current check is scripts/check_erpnext_template_inputs.py, which reads the real template_manifest.json live every time it runs. Update this file's current_status/last_verified_status fields only when the real manifest and the script's output actually change -- do not edit can_advance_to_manual_import_dry_run here without also confirming it against a fresh script run.",
+  "gate_name": "ERPNext Template Waiting State Gate",
+  "current_status": "READY_FOR_ERP_TEMPLATE_COMPARISON",
+  "can_advance_to_manual_import_dry_run": false,
+  "blocking_inputs": [
+    "erpnext_version",
+    "company",
+    "stock_entry_template",
+    "stock_reconciliation_template",
+    "serial_batch_gate.uses_serial_batch_bundle",
+    "serial_batch_gate.negative_serial_batch_stock_allowed",
+    "serial_batch_gate.serial_import_path",
+    "serial_batch_gate.batch_import_path",
+    "serial_batch_gate.stock_entry_child_row_import_behavior",
+    "serial_batch_gate.stock_reconciliation_child_row_import_behavior"
+  ],
+  "warning_inputs": [
+    "frappe_version",
+    "serial_no_template_if_used",
+    "batch_template_if_used"
+  ],
+  "advancement_rule": "Do not claim READY_FOR_MANUAL_IMPORT_DRY_RUN until all blocking inputs are present and template comparison passes or mismatches are formally accepted.",
+  "last_verified_status": "READY_FOR_ERP_TEMPLATE_COMPARISON"
+}

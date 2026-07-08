@@ -1,0 +1,59 @@
+{
+  "_comment": "EXAMPLE ONLY -- this is not real data. It shows the expected shape of a fully-completed template_manifest.json once real templates/version info have been received from the ERPNext operator (see docs/ERP_NEXT_TEMPLATE_REQUEST.md). Do not copy these example values into the real docs/erpnext_templates/template_manifest.json -- that file must only ever contain values actually confirmed by the ERPNext operator, or the literal string \"unknown\" where a value is genuinely not yet known.",
+  "erpnext_version": "15.x.x",
+  "frappe_version": "15.x.x",
+  "company": "Example Company",
+  "source_instance": "staging",
+  "downloaded_by": "erpnext_operator_name",
+  "downloaded_at": "2026-07-08T00:00:00Z",
+  "templates": {
+    "stock_entry": {
+      "file": "stock_entry_template.xlsx",
+      "sha256": "optional -- sha256 of the exact file bytes as received, if recorded",
+      "doctype": "Stock Entry",
+      "import_type": "Insert New Records",
+      "has_child_table": true,
+      "child_table_name": "items",
+      "download_method": "ERPNext Data Import",
+      "notes": [
+        "Downloaded without editing headers"
+      ]
+    },
+    "stock_reconciliation": {
+      "file": "stock_reconciliation_template.xlsx",
+      "sha256": "optional -- sha256 of the exact file bytes as received, if recorded",
+      "doctype": "Stock Reconciliation",
+      "import_type": "Insert New Records",
+      "has_child_table": true,
+      "child_table_name": "items",
+      "download_method": "ERPNext Data Import",
+      "notes": []
+    },
+    "serial_no": {
+      "file": "serial_no_template.xlsx",
+      "sha256": "optional -- sha256 of the exact file bytes as received, if recorded",
+      "doctype": "Serial No",
+      "import_type": "Insert New Records",
+      "download_method": "ERPNext Data Import",
+      "required_if": "serial import path is used",
+      "notes": []
+    },
+    "batch": {
+      "file": "batch_template.xlsx",
+      "sha256": "optional -- sha256 of the exact file bytes as received, if recorded",
+      "doctype": "Batch",
+      "import_type": "Insert New Records",
+      "download_method": "ERPNext Data Import",
+      "required_if": "batch import path is used",
+      "notes": []
+    }
+  },
+  "serial_batch_gate": {
+    "uses_serial_batch_bundle": "true",
+    "negative_serial_batch_stock_allowed": "false",
+    "serial_import_path": "serial_batch_bundle|serial_no_doctype|grid_paste|manual_only|unknown",
+    "batch_import_path": "serial_batch_bundle|batch_doctype|grid_paste|manual_only|unknown",
+    "stock_entry_child_row_import_behavior": "data_import_supported|grid_paste_required|unknown",
+    "stock_reconciliation_child_row_import_behavior": "data_import_supported|grid_paste_required|unknown"
+  }
+}
