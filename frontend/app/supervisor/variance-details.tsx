@@ -22,6 +22,8 @@ import RecountAssignmentModal, {
   type AssignableStaffUser,
 } from "@/components/supervisor/RecountAssignmentModal";
 import { theme } from "@/styles/unifiedSystem";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 import { useToast } from "@/components/feedback/ToastProvider";
 import { safeBackNavigation } from "@/utils/navigation";
 
@@ -29,6 +31,7 @@ export default function VarianceDetailsScreen() {
   const { itemCode } = useLocalSearchParams();
   const router = useRouter();
   const { show } = useToast();
+  const uiTokens = useUiTokens();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [loading, setLoading] = useState(true);
   const [itemDetails, setItemDetails] = useState<any>(null);
@@ -184,7 +187,7 @@ export default function VarianceDetailsScreen() {
     return (
       <ScreenContainer>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+          <ActivityIndicator size="large" color={uiTokens.colors.accent} />
         </View>
       </ScreenContainer>
     );
@@ -196,8 +199,8 @@ export default function VarianceDetailsScreen() {
         <View style={styles.centered}>
           <ModernCard variant="outlined" elevation="none" intensity={15} padding={theme.spacing.xl}>
             <View style={{ alignItems: "center", gap: theme.spacing.md }}>
-              <Ionicons name="alert-circle-outline" size={48} color={theme.colors.text.tertiary} />
-              <Text style={{ color: theme.colors.text.secondary }}>
+              <Ionicons name="alert-circle-outline" size={48} color={uiTokens.colors.textMuted} />
+              <Text style={{ color: uiTokens.colors.textSecondary }}>
                 {offlineMode
                   ? "Variance details are unavailable in offline mode"
                   : "Item not found"}
@@ -205,7 +208,7 @@ export default function VarianceDetailsScreen() {
               <AnimatedPressable
                 onPress={() => safeBackNavigation(router, { fallbackHref: "/supervisor/variances" })}
               >
-                <Text style={{ color: theme.colors.primary[500] }}>Go Back</Text>
+                <Text style={{ color: uiTokens.colors.accent }}>Go Back</Text>
               </AnimatedPressable>
             </View>
           </ModernCard>
@@ -223,13 +226,18 @@ export default function VarianceDetailsScreen() {
           <View style={styles.headerLeft}>
             <AnimatedPressable
               onPress={() => safeBackNavigation(router, { fallbackHref: "/supervisor/variances" })}
-              style={styles.backButton}
+              style={[
+                styles.backButton,
+                { backgroundColor: uiTokens.colors.surface, borderColor: uiTokens.colors.border },
+              ]}
               accessibilityRole="button"
               accessibilityLabel="Go back"
             >
-              <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+              <Ionicons name="arrow-back" size={24} color={uiTokens.colors.textPrimary} />
             </AnimatedPressable>
-            <Text style={styles.headerTitle}>Variance Details</Text>
+            <Text style={[styles.headerTitle, { color: uiTokens.colors.textPrimary }]}>
+              Variance Details
+            </Text>
           </View>
         </Animated.View>
 
@@ -244,11 +252,15 @@ export default function VarianceDetailsScreen() {
             >
               <View style={styles.itemHeader}>
                 <View style={styles.itemIcon}>
-                  <Ionicons name="cube-outline" size={32} color={theme.colors.primary[500]} />
+                  <Ionicons name="cube-outline" size={32} color={uiTokens.colors.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.itemName}>{itemDetails.item_name}</Text>
-                  <Text style={styles.itemCode}>{itemDetails.item_code}</Text>
+                  <Text style={[styles.itemName, { color: uiTokens.colors.textPrimary }]}>
+                    {itemDetails.item_name}
+                  </Text>
+                  <Text style={[styles.itemCode, { color: uiTokens.colors.textSecondary }]}>
+                    {itemDetails.item_code}
+                  </Text>
                 </View>
               </View>
             </ModernCard>
@@ -289,22 +301,28 @@ export default function VarianceDetailsScreen() {
             >
               <View style={styles.detailRow}>
                 <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Verified By</Text>
+                  <Text style={[styles.detailLabel, { color: uiTokens.colors.textMuted }]}>
+                    Verified By
+                  </Text>
                   <View style={styles.detailValueRow}>
                     <Ionicons
                       name="person-circle-outline"
                       size={18}
-                      color={theme.colors.text.secondary}
+                      color={uiTokens.colors.textSecondary}
                     />
-                    <Text style={styles.detailValue}>{itemDetails.verified_by || "Unknown"}</Text>
+                    <Text style={[styles.detailValue, { color: uiTokens.colors.textPrimary }]}>
+                      {itemDetails.verified_by || "Unknown"}
+                    </Text>
                   </View>
                 </View>
 
                 <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Time</Text>
+                  <Text style={[styles.detailLabel, { color: uiTokens.colors.textMuted }]}>
+                    Time
+                  </Text>
                   <View style={styles.detailValueRow}>
-                    <Ionicons name="time-outline" size={18} color={theme.colors.text.secondary} />
-                    <Text style={styles.detailValue}>
+                    <Ionicons name="time-outline" size={18} color={uiTokens.colors.textSecondary} />
+                    <Text style={[styles.detailValue, { color: uiTokens.colors.textPrimary }]}>
                       {itemDetails.verified_at
                         ? new Date(itemDetails.verified_at).toLocaleString()
                         : "N/A"}
@@ -313,24 +331,26 @@ export default function VarianceDetailsScreen() {
                 </View>
               </View>
 
-              {(itemDetails.floor || itemDetails.rack) && (
+              {itemDetails.floor || itemDetails.rack ? (
                 <View style={[styles.detailRow, { marginTop: theme.spacing.md }]}>
                   <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>Location</Text>
+                    <Text style={[styles.detailLabel, { color: uiTokens.colors.textMuted }]}>
+                      Location
+                    </Text>
                     <View style={styles.detailValueRow}>
                       <Ionicons
                         name="location-outline"
                         size={18}
-                        color={theme.colors.text.secondary}
+                        color={uiTokens.colors.textSecondary}
                       />
-                      <Text style={styles.detailValue}>
+                      <Text style={[styles.detailValue, { color: uiTokens.colors.textPrimary }]}>
                         {itemDetails.floor}
                         {itemDetails.rack ? ` / ${itemDetails.rack}` : ""}
                       </Text>
                     </View>
                   </View>
                 </View>
-              )}
+              ) : null}
             </ModernCard>
           </Animated.View>
         </ScrollView>
@@ -347,18 +367,28 @@ export default function VarianceDetailsScreen() {
               <AnimatedPressable
                 onPress={() => void handleOpenRecount()}
                 disabled={processing}
-                style={[styles.actionButton, styles.secondaryButton]}
+                style={[
+                  styles.actionButton,
+                  styles.secondaryButton,
+                  { backgroundColor: uiTokens.colors.surface, borderColor: uiTokens.colors.border },
+                ]}
               >
-                <Text style={styles.secondaryButtonText}>Request Recount</Text>
+                <Text style={[styles.secondaryButtonText, { color: uiTokens.colors.textPrimary }]}>
+                  Request Recount
+                </Text>
               </AnimatedPressable>
 
               <AnimatedPressable
                 onPress={handleApprove}
                 disabled={processing}
-                style={[styles.actionButton, styles.primaryButton]}
+                style={[
+                  styles.actionButton,
+                  styles.primaryButton,
+                  { backgroundColor: uiTokens.colors.error },
+                ]}
               >
                 {processing ? (
-                  <ActivityIndicator color={theme.colors.text.inverse} />
+                  <ActivityIndicator color={uiSemanticColors.text.inverse} />
                 ) : (
                   <Text style={styles.primaryButtonText}>Approve Variance</Text>
                 )}
@@ -405,14 +435,11 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: theme.spacing.xs,
-    backgroundColor: theme.colors.background.secondary,
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: theme.colors.border.light,
   },
   headerTitle: {
     fontSize: 24,
-    color: theme.colors.text.primary,
     fontWeight: "700",
   },
   content: {
@@ -440,12 +467,10 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 20,
     fontWeight: "600",
-    color: theme.colors.text.primary,
     marginBottom: 4,
   },
   itemCode: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
   },
   statsRow: {
     flexDirection: "row",
@@ -462,7 +487,6 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 12,
-    color: theme.colors.text.tertiary,
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 6,
@@ -474,7 +498,6 @@ const styles = StyleSheet.create({
   },
   detailValue: {
     fontSize: 16,
-    color: theme.colors.text.primary,
     fontWeight: "500",
   },
   footer: {
@@ -502,20 +525,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   secondaryButton: {
-    backgroundColor: theme.colors.background.secondary,
     borderWidth: 1,
-    borderColor: theme.colors.border.light,
   },
   secondaryButtonText: {
-    color: theme.colors.text.primary,
     fontWeight: "600",
     fontSize: 16,
   },
-  primaryButton: {
-    backgroundColor: theme.colors.error.main,
-  },
+  primaryButton: {},
   primaryButtonText: {
-    color: theme.colors.text.inverse,
+    color: uiSemanticColors.text.inverse,
     fontWeight: "600",
     fontSize: 16,
   },

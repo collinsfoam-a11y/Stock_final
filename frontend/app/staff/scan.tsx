@@ -16,7 +16,7 @@ import {
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useCameraPermissions } from "@/services/device/expoCamera";
-import * as Haptics from "expo-haptics";
+import { haptics } from "@/services/haptics";
 import {
   useAnimatedStyle,
   useSharedValue,
@@ -197,7 +197,7 @@ const ScanScreen = React.memo(function ScanScreen() {
   const onRefresh = useCallback(async () => {
     safeSetState(setRefreshing, true);
     if (scannerVibration) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void haptics.light();
     }
     await Promise.all([loadRecentItems(), loadSessionStats()]);
     safeSetState(setRefreshing, false);
@@ -334,7 +334,7 @@ const ScanScreen = React.memo(function ScanScreen() {
 
     if (!confident) {
       if (scannerVibration) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        void haptics.light();
       }
       return;
     }
@@ -342,7 +342,7 @@ const ScanScreen = React.memo(function ScanScreen() {
     safeSetState(setScanned, true);
     scanBufferRef.current = [];
     if (scannerVibration) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void haptics.success();
     }
     void playScanSound("capture", scannerSound);
     safeSetState(setIsScanning, false);
@@ -413,7 +413,7 @@ const ScanScreen = React.memo(function ScanScreen() {
               );
 
               if (duplicateInLocation) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                void haptics.warning();
                 void playScanSound("warning", scannerSound);
                 safeSetState(setLoading, false);
                 safeSetState(setScanned, false);
@@ -555,7 +555,7 @@ const ScanScreen = React.memo(function ScanScreen() {
         }
       }
       await safeAsync(() => updateSessionStatus(sessionId, "reconcile"));
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void haptics.success();
       router.replace("/staff/home");
     } catch (error: any) {
       Alert.alert(
@@ -683,7 +683,7 @@ const ScanScreen = React.memo(function ScanScreen() {
           onSubmitSearch={() => {
             if (!searchQuery.trim()) return;
             if (scannerVibration) {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              void haptics.light();
             }
             handleLookup(searchQuery.trim());
           }}

@@ -69,6 +69,7 @@ export default function DashboardWeb() {
   const [servicesStatus, setServicesStatus] = useState<any>(null);
   const [healthScore, setHealthScore] = useState<number | null>(null);
   const [issues, setIssues] = useState<any[]>([]);
+  const [criticalIssuesCount, setCriticalIssuesCount] = useState(0);
   const [metrics, setMetrics] = useState<any>(null);
   const [reports, setReports] = useState<any[]>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
@@ -114,6 +115,7 @@ export default function DashboardWeb() {
         setSystemStats(null);
         setHealthScore(null);
         setIssues([]);
+        setCriticalIssuesCount(0);
         setMetrics(null);
         setReports([]);
         setSessionsAnalytics(null);
@@ -161,6 +163,7 @@ export default function DashboardWeb() {
         }
         if (issuesRes.status === "fulfilled") {
           setIssues(issuesRes.value?.data?.issues || []);
+          setCriticalIssuesCount(issuesRes.value?.data?.critical ?? 0);
         }
         if (healthScoreRes.status === "fulfilled") {
           setHealthScore(healthScoreRes.value?.data?.score);
@@ -493,6 +496,7 @@ export default function DashboardWeb() {
           {activeTab === "overview" && (
             <DashboardOverviewPanel
               adminTools={adminTools}
+              criticalIssuesCount={criticalIssuesCount}
               healthScore={healthScore}
               issues={issues}
               servicesStatus={servicesStatus}

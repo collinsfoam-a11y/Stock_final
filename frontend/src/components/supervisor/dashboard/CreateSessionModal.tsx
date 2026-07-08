@@ -17,6 +17,7 @@ import {
   ZoneOption,
 } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 import { theme } from "@/styles/unifiedSystem";
+import { useUiTokens } from "@/hooks/useUiTokens";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface CreateSessionModalProps {
@@ -50,6 +51,8 @@ export function CreateSessionModal({
   warehouses,
   zones,
 }: CreateSessionModalProps) {
+  const uiTokens = useUiTokens();
+
   return (
     <Modal
       visible={visible}
@@ -61,16 +64,18 @@ export function CreateSessionModal({
       <View style={styles.modalOverlay}>
         <Pressable style={styles.modalBackdrop} onPress={onClose} />
         <View style={styles.modalSheet}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: uiTokens.colors.surfaceElevated }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create New Session</Text>
+              <Text style={[styles.modalTitle, { color: uiTokens.colors.textPrimary }]}>
+                Create New Session
+              </Text>
               <TouchableOpacity
                 onPress={onClose}
                 style={styles.modalCloseButton}
                 accessibilityRole="button"
                 accessibilityLabel="Close"
               >
-                <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+                <Ionicons name="close" size={24} color={uiTokens.colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
@@ -81,58 +86,84 @@ export function CreateSessionModal({
               nestedScrollEnabled
             >
               <View style={styles.stepContainer}>
-                <Text style={styles.stepLabel}>1. Select Location Type</Text>
+                <Text style={[styles.stepLabel, { color: uiTokens.colors.textPrimary }]}>
+                  1. Select Location Type
+                </Text>
                 <View style={styles.optionsGrid}>
-                  {zones.map((zone) => (
-                    <TouchableOpacity
-                      key={zone.id}
-                      style={[
-                        styles.optionButton,
-                        locationType === zone.zone_name && styles.optionButtonSelected,
-                      ]}
-                      onPress={() => onChangeLocationType(zone.zone_name)}
-                    >
-                      <Text
+                  {zones.map((zone) => {
+                    const isSelected = locationType === zone.zone_name;
+                    return (
+                      <TouchableOpacity
+                        key={zone.id}
                         style={[
-                          styles.optionText,
-                          locationType === zone.zone_name && styles.optionTextSelected,
+                          styles.optionButton,
+                          {
+                            borderColor: isSelected ? uiTokens.colors.accent : uiTokens.colors.border,
+                            backgroundColor: isSelected
+                              ? `${uiTokens.colors.accent}15`
+                              : uiTokens.colors.surface,
+                          },
                         ]}
+                        onPress={() => onChangeLocationType(zone.zone_name)}
                       >
-                        {zone.zone_name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                        <Text
+                          style={[
+                            styles.optionText,
+                            { color: isSelected ? uiTokens.colors.accent : uiTokens.colors.textPrimary },
+                            isSelected && styles.optionTextSelected,
+                          ]}
+                        >
+                          {zone.zone_name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
 
               {locationType && (
                 <View style={styles.stepContainer}>
-                  <Text style={styles.stepLabel}>2. Select Floor/Area</Text>
+                  <Text style={[styles.stepLabel, { color: uiTokens.colors.textPrimary }]}>
+                    2. Select Floor/Area
+                  </Text>
                   {isLoadingWarehouses ? (
-                    <ActivityIndicator color={theme.colors.primary[500]} />
+                    <ActivityIndicator color={uiTokens.colors.accent} />
                   ) : (
                     <View style={styles.optionsGrid}>
-                      {warehouses.map((warehouse) => (
-                        <TouchableOpacity
-                          key={warehouse.id}
-                          style={[
-                            styles.optionButton,
-                            selectedFloor === warehouse.warehouse_name &&
-                              styles.optionButtonSelected,
-                          ]}
-                          onPress={() => onChangeSelectedFloor(warehouse.warehouse_name)}
-                        >
-                          <Text
+                      {warehouses.map((warehouse) => {
+                        const isSelected = selectedFloor === warehouse.warehouse_name;
+                        return (
+                          <TouchableOpacity
+                            key={warehouse.id}
                             style={[
-                              styles.optionText,
-                              selectedFloor === warehouse.warehouse_name &&
-                                styles.optionTextSelected,
+                              styles.optionButton,
+                              {
+                                borderColor: isSelected
+                                  ? uiTokens.colors.accent
+                                  : uiTokens.colors.border,
+                                backgroundColor: isSelected
+                                  ? `${uiTokens.colors.accent}15`
+                                  : uiTokens.colors.surface,
+                              },
                             ]}
+                            onPress={() => onChangeSelectedFloor(warehouse.warehouse_name)}
                           >
-                            {warehouse.warehouse_name}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
+                            <Text
+                              style={[
+                                styles.optionText,
+                                {
+                                  color: isSelected
+                                    ? uiTokens.colors.accent
+                                    : uiTokens.colors.textPrimary,
+                                },
+                                isSelected && styles.optionTextSelected,
+                              ]}
+                            >
+                              {warehouse.warehouse_name}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
                   )}
                 </View>
@@ -140,7 +171,9 @@ export function CreateSessionModal({
 
               {selectedFloor && (
                 <View style={styles.stepContainer}>
-                  <Text style={styles.stepLabel}>3. Rack / Shelf Identifier</Text>
+                  <Text style={[styles.stepLabel, { color: uiTokens.colors.textPrimary }]}>
+                    3. Rack / Shelf Identifier
+                  </Text>
                   <AppInput
                     value={rackName}
                     onChangeText={onChangeRackName}
@@ -154,6 +187,7 @@ export function CreateSessionModal({
               <TouchableOpacity
                 style={[
                   styles.createButton,
+                  { backgroundColor: uiTokens.colors.accent },
                   (!locationType || !selectedFloor || !rackName.trim() || isCreatingSession) &&
                     styles.createButtonDisabled,
                 ]}
@@ -189,7 +223,6 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: theme.colors.background.paper,
     borderTopLeftRadius: theme.borderRadius.xl,
     borderTopRightRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
@@ -204,7 +237,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: theme.colors.text.primary,
   },
   modalCloseButton: {
     padding: theme.spacing.xs,
@@ -215,7 +247,6 @@ const styles = StyleSheet.create({
   stepLabel: {
     fontSize: 16,
     fontWeight: "600",
-    color: theme.colors.text.primary,
     marginBottom: theme.spacing.sm,
   },
   optionsGrid: {
@@ -228,23 +259,14 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: theme.colors.border.medium,
-    backgroundColor: theme.colors.background.elevated,
-  },
-  optionButtonSelected: {
-    borderColor: theme.colors.primary[500],
-    backgroundColor: theme.colors.primary[500] + "15",
   },
   optionText: {
-    color: theme.colors.text.primary,
     fontWeight: "500",
   },
   optionTextSelected: {
-    color: theme.colors.primary[500],
     fontWeight: "700",
   },
   createButton: {
-    backgroundColor: theme.colors.primary[500],
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
     alignItems: "center",

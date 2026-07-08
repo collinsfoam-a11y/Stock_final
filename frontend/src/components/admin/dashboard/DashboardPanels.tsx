@@ -48,6 +48,7 @@ interface DashboardOverviewPanelProps {
     subtitle: string;
     title: string;
   }[];
+  criticalIssuesCount: number;
   healthScore: number | null;
   issues: any[];
   servicesStatus: any;
@@ -60,6 +61,7 @@ interface DashboardOverviewPanelProps {
 
 export function DashboardOverviewPanel({
   adminTools,
+  criticalIssuesCount,
   healthScore,
   issues,
   servicesStatus,
@@ -131,13 +133,13 @@ export function DashboardOverviewPanel({
               styles.quickStatValue,
               {
                 color:
-                  issues.length > 0
-                    ? uiTokens.colors.warning
+                  criticalIssuesCount > 0
+                    ? uiTokens.colors.error
                     : uiTokens.colors.textPrimary,
               },
             ]}
           >
-            {issues.length}
+            {criticalIssuesCount}
           </Text>
           <Text style={styles.quickStatLabel}>Critical Issues</Text>
         </ModernCard>

@@ -97,6 +97,9 @@ function WelcomeScreen() {
           <Pressable
             onPress={() => router.push("/login")}
             style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Sign In"
+            accessible
           >
             <Ionicons name="log-in-outline" size={20} color={semanticColors.text.inverse} />
             <Text style={styles.primaryButtonText}>Sign In</Text>
@@ -109,6 +112,9 @@ function WelcomeScreen() {
                 styles.secondaryButton,
                 pressed && styles.secondaryButtonPressed,
               ]}
+              accessibilityRole="button"
+              accessibilityLabel="Create Account"
+              accessible
             >
               <Text style={styles.secondaryButtonText}>Create Account</Text>
             </Pressable>

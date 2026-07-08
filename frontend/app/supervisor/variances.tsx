@@ -28,12 +28,14 @@ import { ItemFilters, FilterValues } from "@/domains/inventory/components/ItemFi
 import { ScreenContainer, ModernCard, AnimatedPressable } from "@/components/ui";
 import { useSettingsStore } from "@/store/settingsStore";
 import { theme } from "@/styles/modernDesignSystem";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import { toastService } from "@/services/toastService";
 import { saveArrayBufferExport } from "@/utils/fileExport";
 import { safeBackNavigation } from "@/utils/navigation";
 
 export default function VariancesScreen() {
   const router = useRouter();
+  const uiTokens = useUiTokens();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [variances, setVariances] = useState<VarianceItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -220,7 +222,7 @@ export default function VariancesScreen() {
   const renderVarianceItem = ({ item }: { item: VarianceItem }) => {
     // Determine status color based on variance
     const isPositive = item.variance > 0;
-    const statusColor = isPositive ? theme.colors.success[500] : theme.colors.error[500];
+    const statusColor = isPositive ? uiTokens.colors.success : uiTokens.colors.error;
 
     const varianceSign = isPositive ? "+" : "";
 
@@ -255,7 +257,7 @@ export default function VariancesScreen() {
           elevation="none"
           padding={theme.spacing.md}
           style={{
-            borderColor: isSelected ? theme.colors.primary[500] : `${statusColor}40`,
+            borderColor: isSelected ? uiTokens.colors.accent : `${statusColor}40`,
             borderWidth: isSelected ? 2 : 1,
             backgroundColor: isSelected ? "rgba(79, 70, 229, 0.1)" : undefined,
           }}
@@ -272,9 +274,9 @@ export default function VariancesScreen() {
                     borderRadius: 12,
                     borderWidth: 2,
                     borderColor: isSelected
-                      ? theme.colors.primary[500]
-                      : theme.colors.text.tertiary,
-                    backgroundColor: isSelected ? theme.colors.primary[500] : "transparent",
+                      ? uiTokens.colors.accent
+                      : uiTokens.colors.textMuted,
+                    backgroundColor: isSelected ? uiTokens.colors.accent : "transparent",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -283,8 +285,12 @@ export default function VariancesScreen() {
                 </View>
               )}
               <View style={styles.varianceHeaderLeft}>
-                <Text style={styles.itemName}>{item.item_name}</Text>
-                <Text style={styles.itemCode}>{item.item_code}</Text>
+                <Text style={[styles.itemName, { color: uiTokens.colors.textPrimary }]}>
+                  {item.item_name}
+                </Text>
+                <Text style={[styles.itemCode, { color: uiTokens.colors.textMuted }]}>
+                  {item.item_code}
+                </Text>
               </View>
             </View>
             <View
@@ -300,44 +306,48 @@ export default function VariancesScreen() {
             </View>
           </View>
 
-          <View style={styles.varianceDetails}>
-            <View style={styles.qtyRow}>
-              <View style={styles.qtyItem}>
-                <Text style={styles.qtyLabel}>System Qty</Text>
-                <Text style={styles.qtyValue}>{(item.system_qty ?? 0).toFixed(2)}</Text>
-              </View>
-              <View style={styles.divider} />
-              <View style={styles.qtyItem}>
-                <Text style={styles.qtyLabel}>Verified Qty</Text>
-                <Text style={[styles.qtyValue, { color: theme.colors.text.primary }]}>
-                  {(item.verified_qty ?? 0).toFixed(2)}
-                </Text>
-              </View>
-            </View>
-
-            {(item.floor || item.rack) && (
-              <View style={styles.locationRow}>
-                <Ionicons name="location-outline" size={14} color={theme.colors.text.tertiary} />
-                <Text style={styles.locationText}>
-                  {[item.floor, item.rack].filter(Boolean).join(" / ")}
-                </Text>
-              </View>
-            )}
-
-            {item.category && (
-              <Text style={styles.categoryText}>
-                {item.category}
-                {item.subcategory && ` • ${item.subcategory}`}
+          <View style={[styles.qtyRow, { backgroundColor: uiTokens.colors.surface }]}>
+            <View style={styles.qtyItem}>
+              <Text style={[styles.qtyLabel, { color: uiTokens.colors.textMuted }]}>
+                System Qty
               </Text>
-            )}
-
-            <View style={styles.verificationInfo}>
-              <Ionicons name="person-outline" size={12} color={theme.colors.text.tertiary} />
-              <Text style={styles.verificationInfoText}>
-                Verified by {item.verified_by}
-                {item.verified_at && ` • ${new Date(item.verified_at).toLocaleDateString()}`}
+              <Text style={[styles.qtyValue, { color: uiTokens.colors.textSecondary }]}>
+                {(item.system_qty ?? 0).toFixed(2)}
               </Text>
             </View>
+            <View style={[styles.divider, { backgroundColor: uiTokens.colors.border }]} />
+            <View style={styles.qtyItem}>
+              <Text style={[styles.qtyLabel, { color: uiTokens.colors.textMuted }]}>
+                Verified Qty
+              </Text>
+              <Text style={[styles.qtyValue, { color: uiTokens.colors.textPrimary }]}>
+                {(item.verified_qty ?? 0).toFixed(2)}
+              </Text>
+            </View>
+          </View>
+
+          {item.floor || item.rack ? (
+            <View style={styles.locationRow}>
+              <Ionicons name="location-outline" size={14} color={uiTokens.colors.textMuted} />
+              <Text style={[styles.locationText, { color: uiTokens.colors.textSecondary }]}>
+                {[item.floor, item.rack].filter(Boolean).join(" / ")}
+              </Text>
+            </View>
+          ) : null}
+
+          {item.category ? (
+            <Text style={[styles.categoryText, { color: uiTokens.colors.textMuted }]}>
+              {item.category}
+              {item.subcategory ? ` • ${item.subcategory}` : ""}
+            </Text>
+          ) : null}
+
+          <View style={[styles.verificationInfo, { borderTopColor: uiTokens.colors.border }]}>
+            <Ionicons name="person-outline" size={12} color={uiTokens.colors.textMuted} />
+            <Text style={[styles.verificationInfoText, { color: uiTokens.colors.textMuted }]}>
+              Verified by {item.verified_by}
+              {item.verified_at ? ` • ${new Date(item.verified_at).toLocaleDateString()}` : ""}
+            </Text>
           </View>
         </ModernCard>
       </AnimatedPressable>
@@ -354,27 +364,33 @@ export default function VariancesScreen() {
             {isSelectionMode ? (
               <AnimatedPressable
                 onPress={() => setSelectedIds(new Set())}
-                style={styles.backButton}
+                style={[
+                  styles.backButton,
+                  { backgroundColor: uiTokens.colors.surface, borderColor: uiTokens.colors.border },
+                ]}
                 accessibilityRole="button"
                 accessibilityLabel="Clear selection"
               >
-                <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+                <Ionicons name="close" size={24} color={uiTokens.colors.textPrimary} />
               </AnimatedPressable>
             ) : (
               <AnimatedPressable
                 onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
-                style={styles.backButton}
+                style={[
+                  styles.backButton,
+                  { backgroundColor: uiTokens.colors.surface, borderColor: uiTokens.colors.border },
+                ]}
                 accessibilityRole="button"
                 accessibilityLabel="Go back"
               >
-                <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+                <Ionicons name="arrow-back" size={24} color={uiTokens.colors.textPrimary} />
               </AnimatedPressable>
             )}
             <View>
-              <Text style={styles.pageTitle}>
+              <Text style={[styles.pageTitle, { color: uiTokens.colors.textPrimary }]}>
                 {isSelectionMode ? `${selectedIds.size} Selected` : "Variances"}
               </Text>
-              <Text style={styles.pageSubtitle}>
+              <Text style={[styles.pageSubtitle, { color: uiTokens.colors.textSecondary }]}>
                 {isSelectionMode
                   ? "Select items to approve/reject"
                   : `${pagination.total} discrepancies found`}
@@ -400,7 +416,7 @@ export default function VariancesScreen() {
                         : "checkmark-circle-outline"
                     }
                     size={20}
-                    color={theme.colors.text.primary}
+                    color={uiTokens.colors.textPrimary}
                   />
                 </ModernCard>
               </AnimatedPressable>
@@ -413,7 +429,9 @@ export default function VariancesScreen() {
                 disabled={variances.length === 0}
               >
                 <ModernCard variant="outlined" elevation="none" padding={8}>
-                  <Text style={styles.exportFormatLabel}>CSV</Text>
+                  <Text style={[styles.exportFormatLabel, { color: uiTokens.colors.textPrimary }]}>
+                    CSV
+                  </Text>
                 </ModernCard>
               </AnimatedPressable>
               <AnimatedPressable
@@ -422,7 +440,9 @@ export default function VariancesScreen() {
                 disabled={variances.length === 0}
               >
                 <ModernCard variant="outlined" elevation="none" padding={8}>
-                  <Text style={styles.exportFormatLabel}>XLSX</Text>
+                  <Text style={[styles.exportFormatLabel, { color: uiTokens.colors.textPrimary }]}>
+                    XLSX
+                  </Text>
                 </ModernCard>
               </AnimatedPressable>
             </View>
@@ -452,8 +472,10 @@ export default function VariancesScreen() {
             padding={theme.spacing.sm}
             style={{ marginBottom: theme.spacing.md }}
           >
-            <Text style={styles.offlineNoticeTitle}>Offline mode enabled</Text>
-            <Text style={styles.offlineNoticeBody}>
+            <Text style={[styles.offlineNoticeTitle, { color: uiTokens.colors.textPrimary }]}>
+              Offline mode enabled
+            </Text>
+            <Text style={[styles.offlineNoticeBody, { color: uiTokens.colors.textSecondary }]}>
               Variance review, bulk approve/reject, and exports require a live connection because
               discrepancy data is not cached locally.
             </Text>
@@ -467,8 +489,10 @@ export default function VariancesScreen() {
             padding={theme.spacing.sm}
             style={{ marginBottom: theme.spacing.md }}
           >
-            <Text style={styles.exportHintTitle}>ERPNext import format</Text>
-            <Text style={styles.exportHintBody}>
+            <Text style={[styles.exportHintTitle, { color: uiTokens.colors.textPrimary }]}>
+              ERPNext import format
+            </Text>
+            <Text style={[styles.exportHintBody, { color: uiTokens.colors.textSecondary }]}>
               Blank ID inserts new rows. Keep ID to update existing ERPNext records.
             </Text>
           </ModernCard>
@@ -479,12 +503,12 @@ export default function VariancesScreen() {
             <Ionicons
               name={offlineMode ? "cloud-offline-outline" : "checkmark-done-circle-outline"}
               size={64}
-              color={offlineMode ? theme.colors.text.tertiary : theme.colors.success.main}
+              color={offlineMode ? uiTokens.colors.textMuted : uiTokens.colors.success}
             />
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, { color: uiTokens.colors.textSecondary }]}>
               {offlineMode ? "Variance list unavailable offline" : "No variances found"}
             </Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={[styles.emptySubtext, { color: uiTokens.colors.textMuted }]}>
               {offlineMode
                 ? "Reconnect to review discrepancies and approve or reject them."
                 : "All items match system quantities"}
@@ -503,8 +527,8 @@ export default function VariancesScreen() {
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={handleRefresh}
-                  tintColor={theme.colors.primary[500]}
-                  colors={[theme.colors.primary[500]]}
+                  tintColor={uiTokens.colors.accent}
+                  colors={[uiTokens.colors.accent]}
                 />
               }
               onEndReached={handleLoadMore}
@@ -512,7 +536,7 @@ export default function VariancesScreen() {
               ListFooterComponent={
                 loading && variances.length > 0 ? (
                   <View style={{ paddingVertical: 20 }}>
-                    <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+                    <ActivityIndicator size="small" color={uiTokens.colors.accent} />
                   </View>
                 ) : (
                   <View style={{ height: 20 }} />
@@ -533,7 +557,7 @@ export default function VariancesScreen() {
             style={{ flexDirection: "row", gap: 12, width: "100%" }}
           >
             <AnimatedPressable
-              style={[styles.bulkButton, { backgroundColor: theme.colors.error[500] }]}
+              style={[styles.bulkButton, { backgroundColor: uiTokens.colors.error }]}
               onPress={() => handleBulkAction("reject")}
             >
               <Ionicons name="close-circle" size={20} color="white" />
@@ -541,7 +565,7 @@ export default function VariancesScreen() {
             </AnimatedPressable>
 
             <AnimatedPressable
-              style={[styles.bulkButton, { backgroundColor: theme.colors.success[500] }]}
+              style={[styles.bulkButton, { backgroundColor: uiTokens.colors.success }]}
               onPress={() => handleBulkAction("approve")}
             >
               <Ionicons name="checkmark-circle" size={20} color="white" />
@@ -579,19 +603,15 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: theme.spacing.xs,
-    backgroundColor: theme.colors.background.secondary,
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: theme.colors.border.light,
   },
   pageTitle: {
     fontSize: 32,
-    color: theme.colors.text.primary,
     fontWeight: "700",
   },
   pageSubtitle: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
   },
   exportButton: {
     minWidth: 44,
@@ -610,7 +630,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   exportFormatLabel: {
-    color: theme.colors.text.primary,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -629,12 +648,10 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 16,
     fontWeight: "600",
-    color: theme.colors.text.primary,
     marginBottom: 4,
   },
   itemCode: {
     fontSize: 14,
-    color: theme.colors.text.tertiary,
   },
   varianceBadge: {
     borderRadius: theme.borderRadius.full,
@@ -648,15 +665,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
   },
-  varianceDetails: {
-    //
-  },
   qtyRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing.md,
     marginBottom: theme.spacing.sm,
-    backgroundColor: theme.colors.background.secondary,
     padding: theme.spacing.sm,
     borderRadius: theme.borderRadius.sm,
   },
@@ -666,11 +679,9 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: "80%",
-    backgroundColor: theme.colors.border.light,
   },
   qtyLabel: {
     fontSize: 12,
-    color: theme.colors.text.tertiary,
     marginBottom: 2,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -678,7 +689,6 @@ const styles = StyleSheet.create({
   qtyValue: {
     fontSize: 20,
     fontWeight: "600",
-    color: theme.colors.text.secondary, // Subtle for System, Primary/Highlight for Verified
   },
   locationRow: {
     flexDirection: "row",
@@ -688,11 +698,9 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 12,
-    color: theme.colors.text.secondary,
   },
   categoryText: {
     fontSize: 12,
-    color: theme.colors.text.tertiary,
     fontStyle: "italic",
     marginBottom: theme.spacing.xs,
     marginTop: 2,
@@ -704,26 +712,21 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
     paddingTop: theme.spacing.xs,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border.light,
   },
   verificationInfoText: {
     fontSize: 12,
-    color: theme.colors.text.tertiary,
   },
   loadingText: {
     marginTop: theme.spacing.md,
     fontSize: 16,
-    color: theme.colors.text.secondary,
   },
   emptyText: {
     fontSize: 20,
     fontWeight: "500",
-    color: theme.colors.text.secondary,
     marginTop: theme.spacing.md,
   },
   emptySubtext: {
     fontSize: 16,
-    color: theme.colors.text.tertiary,
     marginTop: theme.spacing.xs,
   },
   bulkActionBar: {
@@ -749,24 +752,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   offlineNoticeTitle: {
-    color: theme.colors.text.primary,
     fontSize: 14,
     fontWeight: "700",
     marginBottom: 4,
   },
   offlineNoticeBody: {
-    color: theme.colors.text.secondary,
     fontSize: 12,
     lineHeight: 18,
   },
   exportHintTitle: {
-    color: theme.colors.text.primary,
     fontSize: 13,
     fontWeight: "700",
     marginBottom: 4,
   },
   exportHintBody: {
-    color: theme.colors.text.secondary,
     fontSize: 12,
     lineHeight: 18,
   },
