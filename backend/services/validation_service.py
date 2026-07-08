@@ -326,6 +326,16 @@ class ValidationService:
             or input_uom
         )
         uom_known = bool(input_uom or base_uom)
+        item_master_uom = bool(
+            _normalize_uom(item.get("uom_code")) or _normalize_uom(item.get("uom_name"))
+        )
+        if item_master_uom:
+            uom_source = "item_master"
+        elif uom_known:
+            uom_source = "request_fallback"
+        else:
+            uom_source = "unknown"
+        uom_resolved_at = datetime.now(timezone.utc)
         conversion_factor = _as_decimal(
             doc.get("conversion_factor") or item.get("uom_conversion_factor") or 1
         )
@@ -382,6 +392,8 @@ class ValidationService:
             "allow_fraction": allow_fraction,
             "serial_numbers": serial_numbers,
             "is_serial_item": is_serial_item,
+            "uom_source": uom_source,
+            "uom_resolved_at": uom_resolved_at,
         }
 
     async def enforce_count_line_business_rules(
@@ -425,6 +437,8 @@ class ValidationService:
                 "allow_fraction": normalized_qty["allow_fraction"],
                 "serial_numbers": serial_numbers or doc.get("serial_numbers"),
                 "is_serial_item": normalized_qty["is_serial_item"],
+                "uom_source": normalized_qty["uom_source"],
+                "uom_resolved_at": normalized_qty["uom_resolved_at"],
             }
         )
         return {"item": item_master, "normalized": normalized_qty, "document": doc}

@@ -357,6 +357,34 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("category", 1), ("floor", 1)], {"name": "idx_variance_category_floor"}),
         ([("warehouse", 1), ("verified_at", -1)], {"name": "idx_variance_warehouse_time"}),
     ],
+    # ERPNext Export Settings Collections (BSR export-readiness mappings)
+    "erpnext_warehouse_mappings": [
+        ([("mapping_id", 1)], {"unique": True, "name": "idx_wh_mapping_id"}),
+        # At most one ACTIVE mapping per (warehouse, company); historical
+        # inactive rows are exempt via the partial filter.
+        (
+            [("stock_verify_warehouse_id", 1), ("company", 1)],
+            {
+                "unique": True,
+                "partialFilterExpression": {"is_active": True},
+                "name": "idx_wh_mapping_active_unique",
+            },
+        ),
+    ],
+    "erpnext_uom_mappings": [
+        ([("mapping_id", 1)], {"unique": True, "name": "idx_uom_mapping_id"}),
+        (
+            [("stock_verify_uom", 1)],
+            {
+                "unique": True,
+                "partialFilterExpression": {"is_active": True},
+                "name": "idx_uom_mapping_active_unique",
+            },
+        ),
+    ],
+    "erpnext_item_export_flags": [
+        ([("item_code", 1)], {"unique": True, "name": "idx_item_export_flags_item_code"}),
+    ],
 }
 
 

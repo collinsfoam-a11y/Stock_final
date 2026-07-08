@@ -48,6 +48,15 @@ def _as_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
+def _snapshot_document_id(snapshot: dict[str, Any]) -> Optional[str]:
+    """Stable identifier for a session_snapshots document: prefers the
+    explicit `id` field SessionSnapshot writes on every new snapshot, falls
+    back to the Mongo _id for older/legacy or test-seeded snapshots that
+    predate that field."""
+    identifier = snapshot.get("id") or snapshot.get("_id")
+    return str(identifier) if identifier else None
+
+
 def _is_superseded_status(value: Any) -> bool:
     if not isinstance(value, str):
         return False
@@ -773,15 +782,29 @@ class CountLineWriteService:
                 uom_changed = any(
                     document.get(key) != before[key] for key in _UOM_IDENTITY_FIELDS
                 )
-                if uom_changed and document.get("id"):
-                    changed = {
-                        key: document.get(key)
-                        for key in _NORMALIZED_COUNT_LINE_FIELDS
-                        if document.get(key) != before[key]
-                    }
+                sync_fields: dict[str, Any] = {}
+                if uom_changed:
+                    sync_fields.update(
+                        {
+                            key: document.get(key)
+                            for key in _NORMALIZED_COUNT_LINE_FIELDS
+                            if document.get(key) != before[key]
+                        }
+                    )
+                # uom_source/uom_resolved_at are freshly (re)resolved by
+                # validate_count_line on every insert, unlike the identity
+                # fields above which only change when a real UOM conversion
+                # is involved -- gating them behind uom_changed would drop
+                # them from the persisted document on the common no-UOM-
+                # context submission, recreating the exact persisted-vs-
+                # returned mismatch already fixed for the identity fields.
+                # They therefore always sync back.
+                sync_fields["uom_source"] = document.get("uom_source")
+                sync_fields["uom_resolved_at"] = document.get("uom_resolved_at")
+                if document.get("id"):
                     await self._execute_authorized_write(
                         lambda: self.db.count_lines.update_one(
-                            {"id": document["id"]}, {"$set": changed}, **kwargs
+                            {"id": document["id"]}, {"$set": sync_fields}, **kwargs
                         )
                     )
             return
@@ -1106,7 +1129,18 @@ class CountLineWriteService:
         username: str,
         erp_item: Optional[dict[str, Any]] = None,
         db_session: Optional[Any] = None,
-    ) -> tuple[float, str]:
+    ) -> tuple[float, str, Optional[str]]:
+        """Returns (erp_qty, baseline_hash, baseline_snapshot_id).
+
+        baseline_snapshot_id is the frozen session_snapshots document's own
+        stable id (falling back to its Mongo _id for older/legacy snapshot
+        documents that predate that field), so a count line's baseline can
+        be traced back to the exact frozen snapshot it was computed from.
+        It is None for the legacy stock_snapshots fallback path below,
+        which has no session_snapshots document to reference -- this is
+        correct, not a bug: there's genuinely no frozen snapshot behind
+        that path, so nothing should be fabricated.
+        """
         kwargs = {"session": db_session} if db_session is not None else {}
         normalized_item_code = str(item_code or "").strip()
         if db_session is None and session_id in self._session_snapshot_cache:
@@ -1122,6 +1156,7 @@ class CountLineWriteService:
 
         if isinstance(session_snapshot, dict):
             snapshot_hash = str(session_snapshot.get("snapshot_hash") or "").strip()
+            snapshot_id = _snapshot_document_id(session_snapshot)
             item_index = self._session_snapshot_item_index.get(session_id)
             if item_index is None:
                 item_index = {}
@@ -1132,9 +1167,9 @@ class CountLineWriteService:
                     item_index[indexed_item_code] = _as_float(item.get("stock_qty"))
                 self._session_snapshot_item_index[session_id] = item_index
             if normalized_item_code in item_index:
-                return item_index[normalized_item_code], snapshot_hash or "SESSION_SNAPSHOT"
+                return item_index[normalized_item_code], snapshot_hash or "SESSION_SNAPSHOT", snapshot_id
             # Item absent in frozen baseline: treat baseline as zero, never live ERP qty.
-            return 0.0, snapshot_hash or "SESSION_SNAPSHOT_MISS"
+            return 0.0, snapshot_hash or "SESSION_SNAPSHOT_MISS", snapshot_id
 
         # Legacy fallback: read-only lookup from pre-existing stock_snapshots.
         try:
@@ -1147,8 +1182,10 @@ class CountLineWriteService:
         except Exception:
             legacy_snapshot = None
         if isinstance(legacy_snapshot, dict):
-            return float(legacy_snapshot.get("erp_qty") or 0.0), str(
-                legacy_snapshot.get("baseline_hash") or "STOCK_SNAPSHOT"
+            return (
+                float(legacy_snapshot.get("erp_qty") or 0.0),
+                str(legacy_snapshot.get("baseline_hash") or "STOCK_SNAPSHOT"),
+                None,
             )
 
         raise HTTPException(
@@ -1446,7 +1483,7 @@ class CountLineWriteService:
             erp_item = erp_item or {}
 
         if session_id:
-            baseline_qty, baseline_hash = await self.resolve_baseline(
+            baseline_qty, baseline_hash, baseline_snapshot_id = await self.resolve_baseline(
                 session_id=session_id,
                 item_code=item_code,
                 username=str(context.get("username") or "system"),
@@ -1456,9 +1493,12 @@ class CountLineWriteService:
             expected_qty = baseline_qty
             document["erp_qty"] = baseline_qty
             document["baseline_hash"] = baseline_hash
+            document["baseline_snapshot_id"] = baseline_snapshot_id
+            document["erp_refreshed_at"] = (erp_item or {}).get("last_synced")
         elif expected_qty == 0.0:
             expected_qty = float((erp_item or {}).get("stock_qty") or 0.0)
             document.setdefault("erp_qty", expected_qty)
+            document.setdefault("erp_refreshed_at", (erp_item or {}).get("last_synced"))
 
         governance = await self.evaluate_policy(
             item_code=item_code,
@@ -1507,7 +1547,7 @@ class CountLineWriteService:
         source: dict[str, Any],
         target: dict[str, Any],
     ) -> None:
-        for field in ("erp_qty", "baseline_hash"):
+        for field in ("erp_qty", "baseline_hash", "baseline_snapshot_id", "erp_refreshed_at"):
             if field in source and field not in target:
                 target[field] = source[field]
 

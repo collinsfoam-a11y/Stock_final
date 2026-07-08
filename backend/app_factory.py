@@ -78,6 +78,11 @@ from backend.api.sync_conflicts_api import sync_conflicts_router  # noqa: E402
 from backend.api.sync_management_api import sync_management_router  # noqa: E402
 from backend.api.sync_status_api import sync_router  # noqa: E402
 from backend.api.recount_api import router as recount_router  # noqa: E402
+from backend.api.erpnext_exports_api import router as erpnext_exports_router  # noqa: E402
+from backend.api.erpnext_export_settings_api import (  # noqa: E402
+    router as erpnext_export_settings_router,
+)
+from backend.api.hsn_directory_api import router as hsn_directory_router  # noqa: E402
 from backend.api.user_management_api import user_management_router  # noqa: E402
 from backend.api.user_settings_api import router as user_settings_router  # noqa: E402
 from backend.api.variance_api import router as variance_router  # noqa: E402
@@ -952,6 +957,9 @@ register_routers(
         pin_auth_router=pin_auth_router,
         reconciliation_router=reconciliation_router,
         recount_router=recount_router,
+        erpnext_exports_router=erpnext_exports_router,
+        erpnext_export_settings_router=erpnext_export_settings_router,
+        hsn_directory_router=hsn_directory_router,
         enterprise_available=ENTERPRISE_AVAILABLE,
     ),
     logger,

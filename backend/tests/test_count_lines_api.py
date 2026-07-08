@@ -863,7 +863,11 @@ class TestCreateCountLine:
             )
 
         assert mock_db.count_lines.insert_one.await_count == 1
-        assert mock_db.count_lines.update_one.await_count == 1
+        # 2 update_one calls: superseding the rejected line, plus the
+        # mandatory uom_source/uom_resolved_at metadata sync-back that
+        # always fires on insert (see count_line_write_service.py's
+        # _run_post_write_validation).
+        assert mock_db.count_lines.update_one.await_count == 2
         assert result["id"] != "line-existing"
         assert result["recount_iteration"] == 3
 

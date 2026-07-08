@@ -941,7 +941,7 @@ async def _populate_offline_count_line_stats(db: Any, line_data: dict[str, Any])
     counted_mrp = float(mrp_c)
 
     write_service = CountLineWriteService(db)
-    baseline_qty, baseline_hash = await write_service.resolve_baseline(
+    baseline_qty, baseline_hash, _baseline_snapshot_id = await write_service.resolve_baseline(
         session_id=str(line_data.get("session_id") or ""),
         item_code=str(line_data.get("item_code") or ""),
         username=str(line_data.get("synced_by") or line_data.get("counted_by") or "sync"),

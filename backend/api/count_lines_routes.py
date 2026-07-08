@@ -838,7 +838,7 @@ async def _resolve_snapshot_baseline(
     line_data: CountLineCreate,
     erp_item: dict[str, Any],
     username: str,
-) -> tuple[float, str]:
+) -> tuple[float, str, Optional[str]]:
     write_service = _get_count_line_write_service(_get_db_client())
     return await write_service.resolve_baseline(
         session_id=line_data.session_id,
@@ -1015,6 +1015,7 @@ def _build_count_line_document(
     recount_update_target: Optional[dict[str, Any]],
     *,
     session: Optional[dict[str, Any]] = None,
+    baseline_snapshot_id: Optional[str] = None,
 ) -> tuple[dict[str, Any], datetime]:
     count_line_id = str(uuid.uuid4())
     previous_version_id = (
@@ -1053,6 +1054,10 @@ def _build_count_line_document(
         "item_name": erp_item.get("item_name", "Unknown"),
         "erp_qty": erp_qty,
         "baseline_hash": baseline_hash,
+        "baseline_snapshot_id": baseline_snapshot_id,
+        "erp_refreshed_at": erp_item.get("last_synced"),
+        "uom_source": None,
+        "uom_resolved_at": None,
         "counted_qty": line_data.counted_qty,
         # BSR Part D: batch_id and UOM context were accepted on the request
         # schema but silently dropped before persistence, losing traceability
@@ -1498,6 +1503,7 @@ async def _persist_count_line_or_recover_duplicate(
     is_misplaced: bool,
     financial_impact: float,
     write_service: CountLineWriteService,
+    baseline_snapshot_id: Optional[str] = None,
 ) -> tuple[dict[str, Any], Optional[datetime], bool]:
     """Persist a new count line, recovering gracefully from concurrent
     duplicate races (BSR rule #17: true idempotent retry vs genuine
@@ -1529,6 +1535,7 @@ async def _persist_count_line_or_recover_duplicate(
             is_misplaced,
             recount_update_target,
             session=session,
+            baseline_snapshot_id=baseline_snapshot_id,
         )
         await _persist_count_line_document(
             db,
@@ -1618,7 +1625,7 @@ async def _prepare_and_persist_count_line(
         return existing_idempotent, None, True
 
     erp_item = await _get_erp_item_for_count_line(db, line_data)
-    erp_qty, baseline_hash = await write_service.resolve_baseline(
+    erp_qty, baseline_hash, baseline_snapshot_id = await write_service.resolve_baseline(
         session_id=line_data.session_id,
         item_code=line_data.item_code,
         username=current_user["username"],
@@ -1655,6 +1662,7 @@ async def _prepare_and_persist_count_line(
         is_misplaced=is_misplaced,
         financial_impact=financial_impact,
         write_service=write_service,
+        baseline_snapshot_id=baseline_snapshot_id,
     )
 
 

@@ -63,6 +63,9 @@ class RouterRegistry:
     pin_auth_router: Optional[APIRouter] = None
     reconciliation_router: Optional[APIRouter] = None
     recount_router: Optional[APIRouter] = None
+    erpnext_exports_router: Optional[APIRouter] = None
+    erpnext_export_settings_router: Optional[APIRouter] = None
+    hsn_directory_router: Optional[APIRouter] = None
     enterprise_available: bool = False
 
 
@@ -202,6 +205,27 @@ def _register_optional_router_set(app: FastAPI, registry: RouterRegistry, logger
         logger,
         success_log="Recount API router registered",
         failure_log="Recount router registration failed",
+    )
+    _include_optional_router(
+        app,
+        registry.erpnext_exports_router,
+        logger,
+        success_log="ERPNext export preview API router registered",
+        failure_log="ERPNext export preview router registration failed",
+    )
+    _include_optional_router(
+        app,
+        registry.erpnext_export_settings_router,
+        logger,
+        success_log="ERPNext export settings API router registered",
+        failure_log="ERPNext export settings router registration failed",
+    )
+    _include_optional_router(
+        app,
+        registry.hsn_directory_router,
+        logger,
+        success_log="HSN directory/suggestion API router registered",
+        failure_log="HSN directory/suggestion router registration failed",
     )
 
 
