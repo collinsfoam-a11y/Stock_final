@@ -33,7 +33,12 @@ export const OptionSelectModal: React.FC<OptionSelectModalProps> = ({
             data={options}
             keyExtractor={(item) => item}
             renderItem={({ item }) => (
-              <Pressable onPress={() => onSelect(item)} style={styles.option}>
+              <Pressable
+                onPress={() => onSelect(item)}
+                style={styles.option}
+                accessibilityRole="button"
+                accessibilityLabel={item}
+              >
                 <Text style={styles.optionText}>{item}</Text>
               </Pressable>
             )}

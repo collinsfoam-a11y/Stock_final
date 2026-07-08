@@ -26,6 +26,7 @@ import { ItemFilters, FilterValues } from "@/domains/inventory/components/ItemFi
 import { useSettingsStore } from "@/store/settingsStore";
 import { ScreenContainer, ModernCard, StatsCard, AnimatedPressable } from "@/components/ui";
 import { theme } from "@/styles/modernDesignSystem";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import { saveArrayBufferExport } from "@/utils/fileExport";
 import { safeBackNavigation } from "@/utils/navigation";
 
@@ -54,6 +55,7 @@ const filterCachedItems = (items: any[], filters: FilterValues) => {
 
 export default function ItemsScreen() {
   const router = useRouter();
+  const uiTokens = useUiTokens();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -201,56 +203,62 @@ export default function ItemsScreen() {
         <ModernCard intensity={15} padding={theme.spacing.md}>
           <View style={styles.itemHeader}>
             <View style={styles.itemHeaderLeft}>
-              <Text style={styles.itemName}>{item.item_name}</Text>
-              <Text style={styles.itemCode}>{item.item_code}</Text>
+              <Text style={[styles.itemName, { color: uiTokens.colors.textPrimary }]}>
+                {item.item_name}
+              </Text>
+              <Text style={[styles.itemCode, { color: uiTokens.colors.textMuted }]}>
+                {item.item_code}
+              </Text>
             </View>
             {item.verified && (
               <View style={styles.verifiedBadge}>
-                <Ionicons name="checkmark-circle" size={14} color={theme.colors.success.main} />
+                <Ionicons name="checkmark-circle" size={14} color={uiTokens.colors.success} />
               </View>
             )}
           </View>
 
-          <View style={styles.itemDetails}>
+          <View style={[styles.itemDetails, { backgroundColor: uiTokens.colors.surface }]}>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Stock</Text>
-              <Text style={styles.detailValue}>
+              <Text style={[styles.detailLabel, { color: uiTokens.colors.textMuted }]}>Stock</Text>
+              <Text style={[styles.detailValue, { color: uiTokens.colors.textPrimary }]}>
                 {item.stock_qty?.toFixed(2) || "0.00"} {item.uom_name || ""}
               </Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>MRP</Text>
-              <Text style={styles.detailValue}>₹{item.mrp?.toFixed(2) || "0.00"}</Text>
+              <Text style={[styles.detailLabel, { color: uiTokens.colors.textMuted }]}>MRP</Text>
+              <Text style={[styles.detailValue, { color: uiTokens.colors.textPrimary }]}>
+                ₹{item.mrp?.toFixed(2) || "0.00"}
+              </Text>
             </View>
           </View>
 
-          {(item.floor || item.rack) && (
+          {item.floor || item.rack ? (
             <View style={styles.locationRow}>
-              <Ionicons name="location-outline" size={14} color={theme.colors.text.tertiary} />
-              <Text style={styles.locationText}>
+              <Ionicons name="location-outline" size={14} color={uiTokens.colors.textMuted} />
+              <Text style={[styles.locationText, { color: uiTokens.colors.textSecondary }]}>
                 {[item.floor, item.rack].filter(Boolean).join(" / ")}
               </Text>
             </View>
-          )}
+          ) : null}
 
-          {item.category && (
+          {item.category ? (
             <View style={{ marginTop: 4 }}>
-              <Text style={styles.categoryText}>
+              <Text style={[styles.categoryText, { color: uiTokens.colors.textMuted }]}>
                 {item.category}
-                {item.subcategory && ` • ${item.subcategory}`}
+                {item.subcategory ? ` • ${item.subcategory}` : ""}
               </Text>
             </View>
-          )}
+          ) : null}
 
-          {item.verified && item.verified_by && (
-            <View style={styles.verificationInfo}>
-              <Ionicons name="person-outline" size={12} color={theme.colors.text.tertiary} />
-              <Text style={styles.verificationInfoText}>
+          {item.verified && item.verified_by ? (
+            <View style={[styles.verificationInfo, { borderTopColor: uiTokens.colors.border }]}>
+              <Ionicons name="person-outline" size={12} color={uiTokens.colors.textMuted} />
+              <Text style={[styles.verificationInfoText, { color: uiTokens.colors.textMuted }]}>
                 Verified by {item.verified_by}
-                {item.verified_at && ` • ${new Date(item.verified_at).toLocaleDateString()}`}
+                {item.verified_at ? ` • ${new Date(item.verified_at).toLocaleDateString()}` : ""}
               </Text>
             </View>
-          )}
+          ) : null}
         </ModernCard>
       </AnimatedPressable>
     );
@@ -265,15 +273,20 @@ export default function ItemsScreen() {
           <View style={styles.headerLeft}>
             <AnimatedPressable
               onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
-              style={styles.backButton}
+              style={[
+                styles.backButton,
+                { backgroundColor: uiTokens.colors.surface, borderColor: uiTokens.colors.border },
+              ]}
               accessibilityRole="button"
               accessibilityLabel="Go back"
             >
-              <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+              <Ionicons name="arrow-back" size={24} color={uiTokens.colors.textPrimary} />
             </AnimatedPressable>
             <View>
-              <Text style={styles.pageTitle}>Items</Text>
-              <Text style={styles.pageSubtitle}>{pagination.total} items listed</Text>
+              <Text style={[styles.pageTitle, { color: uiTokens.colors.textPrimary }]}>Items</Text>
+              <Text style={[styles.pageSubtitle, { color: uiTokens.colors.textSecondary }]}>
+                {pagination.total} items listed
+              </Text>
             </View>
           </View>
 
@@ -284,7 +297,9 @@ export default function ItemsScreen() {
               disabled={items.length === 0}
             >
               <ModernCard intensity={20} padding={8}>
-                <Text style={styles.exportFormatLabel}>CSV</Text>
+                <Text style={[styles.exportFormatLabel, { color: uiTokens.colors.textPrimary }]}>
+                  CSV
+                </Text>
               </ModernCard>
             </AnimatedPressable>
             <AnimatedPressable
@@ -293,7 +308,9 @@ export default function ItemsScreen() {
               disabled={items.length === 0}
             >
               <ModernCard intensity={20} padding={8}>
-                <Text style={styles.exportFormatLabel}>XLSX</Text>
+                <Text style={[styles.exportFormatLabel, { color: uiTokens.colors.textPrimary }]}>
+                  XLSX
+                </Text>
               </ModernCard>
             </AnimatedPressable>
           </View>
@@ -330,8 +347,10 @@ export default function ItemsScreen() {
             padding={theme.spacing.sm}
             style={{ marginBottom: theme.spacing.md }}
           >
-            <Text style={styles.offlineNoticeTitle}>Offline mode enabled</Text>
-            <Text style={styles.offlineNoticeBody}>
+            <Text style={[styles.offlineNoticeTitle, { color: uiTokens.colors.textPrimary }]}>
+              Offline mode enabled
+            </Text>
+            <Text style={[styles.offlineNoticeBody, { color: uiTokens.colors.textSecondary }]}>
               This screen is showing cached items only. Stock, MRP, and location fields may be
               incomplete until you reconnect.
             </Text>
@@ -344,8 +363,10 @@ export default function ItemsScreen() {
             padding={theme.spacing.sm}
             style={{ marginBottom: theme.spacing.md }}
           >
-            <Text style={styles.exportHintTitle}>ERPNext import format</Text>
-            <Text style={styles.exportHintBody}>
+            <Text style={[styles.exportHintTitle, { color: uiTokens.colors.textPrimary }]}>
+              ERPNext import format
+            </Text>
+            <Text style={[styles.exportHintBody, { color: uiTokens.colors.textSecondary }]}>
               Blank ID inserts new rows. Keep ID to update existing ERPNext records.
             </Text>
           </ModernCard>
@@ -364,9 +385,13 @@ export default function ItemsScreen() {
 
         {items.length === 0 && !loading ? (
           <View style={styles.centered}>
-            <Ionicons name="cube-outline" size={64} color={theme.colors.text.tertiary} />
-            <Text style={styles.emptyText}>No items found</Text>
-            <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
+            <Ionicons name="cube-outline" size={64} color={uiTokens.colors.textMuted} />
+            <Text style={[styles.emptyText, { color: uiTokens.colors.textSecondary }]}>
+              No items found
+            </Text>
+            <Text style={[styles.emptySubtext, { color: uiTokens.colors.textMuted }]}>
+              Try adjusting your filters
+            </Text>
           </View>
         ) : (
           <View style={{ flex: 1 }}>
@@ -381,8 +406,8 @@ export default function ItemsScreen() {
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={handleRefresh}
-                  tintColor={theme.colors.primary[500]}
-                  colors={[theme.colors.primary[500]]}
+                  tintColor={uiTokens.colors.accent}
+                  colors={[uiTokens.colors.accent]}
                 />
               }
               onEndReached={handleLoadMore}
@@ -390,7 +415,7 @@ export default function ItemsScreen() {
               ListFooterComponent={
                 loading && items.length > 0 ? (
                   <View style={{ paddingVertical: 20 }}>
-                    <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+                    <ActivityIndicator size="small" color={uiTokens.colors.accent} />
                   </View>
                 ) : (
                   <View style={{ height: 20 }} />
@@ -429,19 +454,15 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: theme.spacing.xs,
-    backgroundColor: theme.colors.background.secondary,
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: theme.colors.border.light,
   },
   pageTitle: {
     fontSize: 32,
-    color: theme.colors.text.primary,
     fontWeight: "700",
   },
   pageSubtitle: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
   },
   exportActions: {
     flexDirection: "row",
@@ -454,7 +475,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   exportFormatLabel: {
-    color: theme.colors.text.primary,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -478,12 +498,10 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 16,
     fontWeight: "600",
-    color: theme.colors.text.primary,
     marginBottom: 4,
   },
   itemCode: {
     fontSize: 14,
-    color: theme.colors.text.tertiary,
   },
   verifiedBadge: {
     backgroundColor: "rgba(16, 185, 129, 0.15)", // Emerald color with opacity
@@ -494,7 +512,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
-    backgroundColor: theme.colors.background.secondary,
     padding: theme.spacing.xs,
     borderRadius: theme.borderRadius.sm,
   },
@@ -503,7 +520,6 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 12,
-    color: theme.colors.text.tertiary,
     marginBottom: 2,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -511,7 +527,6 @@ const styles = StyleSheet.create({
   detailValue: {
     fontSize: 14,
     fontWeight: "600",
-    color: theme.colors.text.primary,
   },
   locationRow: {
     flexDirection: "row",
@@ -521,11 +536,9 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 12,
-    color: theme.colors.text.secondary,
   },
   categoryText: {
     fontSize: 12,
-    color: theme.colors.text.tertiary,
     fontStyle: "italic",
   },
   verificationInfo: {
@@ -534,43 +547,35 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
     marginTop: theme.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border.light,
     paddingTop: theme.spacing.xs,
   },
   verificationInfoText: {
     fontSize: 12,
-    color: theme.colors.text.tertiary,
   },
   emptyText: {
     fontSize: 20,
     fontWeight: "500",
-    color: theme.colors.text.secondary,
     marginTop: theme.spacing.md,
   },
   emptySubtext: {
     fontSize: 16,
-    color: theme.colors.text.tertiary,
     marginTop: theme.spacing.xs,
   },
   offlineNoticeTitle: {
-    color: theme.colors.text.primary,
     fontSize: 14,
     fontWeight: "700",
     marginBottom: 4,
   },
   offlineNoticeBody: {
-    color: theme.colors.text.secondary,
     fontSize: 12,
     lineHeight: 18,
   },
   exportHintTitle: {
-    color: theme.colors.text.primary,
     fontSize: 13,
     fontWeight: "700",
     marginBottom: 4,
   },
   exportHintBody: {
-    color: theme.colors.text.secondary,
     fontSize: 12,
     lineHeight: 18,
   },

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert } from "react-native";
-import * as Haptics from "expo-haptics";
+import { haptics } from "@/services/haptics";
 import { useRouter } from "expo-router";
 import {
   checkItemCounted,
@@ -117,7 +117,7 @@ export const useItemSubmission = ({
       const lineId = resolveCountLineId(existingLine);
       if (!lineId) throw new Error("Missing count line id for add-quantity");
       await addQuantityToCountLine(lineId, finalQty, form.isBatchMode ? form.batches : undefined);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void haptics.success();
       Alert.alert("Success", "Quantity added successfully", [
         { text: "OK", onPress: returnToScan },
       ]);
@@ -163,7 +163,7 @@ export const useItemSubmission = ({
     try {
       const payload = buildCountLinePayload(form, item, sessionId as string, finalQty);
       await createCountLine(payload);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void haptics.success();
       Alert.alert("Success", "Item counted successfully", [
         { text: "OK", onPress: returnToScan },
       ]);

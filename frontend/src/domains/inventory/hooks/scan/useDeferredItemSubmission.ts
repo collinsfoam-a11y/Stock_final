@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
-import * as Haptics from "expo-haptics";
+import { haptics } from "@/services/haptics";
 
 import { createCountLine } from "@/services/api/api";
 import { toastService } from "@/services/toastService";
@@ -382,7 +382,7 @@ export const useDeferredItemSubmission = ({
         toastService.show("Item verified successfully", { type: "success" });
         return;
       }
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await haptics.success();
       await handleSubmissionResult(result, onSuccess);
     } catch (error: any) {
       if (options?.silent) {

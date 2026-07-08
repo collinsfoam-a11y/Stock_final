@@ -215,7 +215,7 @@ export default function HistoryScreen() {
           <Text style={[styles.itemCode, { color: uiTokens.colors.textSecondary }]}>
             Code: {item.item_code || "N/A"}
           </Text>
-          {item.batch_id && (
+          {item.batch_id ? (
             <View
               style={[
                 styles.batchBadge,
@@ -229,7 +229,7 @@ export default function HistoryScreen() {
                 Batch: {item.batch_id}
               </Text>
             </View>
-          )}
+          ) : null}
         </View>
 
         <View style={styles.qtyRow}>
@@ -266,7 +266,7 @@ export default function HistoryScreen() {
           </View>
         </View>
 
-        {item.variance_reason && (
+        {item.variance_reason ? (
           <View
             style={[
               styles.reasonBox,
@@ -283,7 +283,7 @@ export default function HistoryScreen() {
               {item.variance_reason}
             </Text>
           </View>
-        )}
+        ) : null}
 
         {item.remark && (
           <Text style={[styles.remark, { color: uiTokens.colors.textSecondary }]}>

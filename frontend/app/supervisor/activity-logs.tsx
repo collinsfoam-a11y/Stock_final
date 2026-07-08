@@ -172,7 +172,7 @@ export default function ActivityLogsScreen() {
 
         <Text style={styles.timestamp}>{formatTimestamp(log.timestamp)}</Text>
 
-        {log.entity_type && (
+        {log.entity_type ? (
           <ModernCard
             variant="outlined"
             elevation="none"
@@ -186,9 +186,9 @@ export default function ActivityLogsScreen() {
               {log.entity_type}: {log.entity_id || "N/A"}
             </Text>
           </ModernCard>
-        )}
+        ) : null}
 
-        {log.error_message && (
+        {log.error_message ? (
           <ModernCard
             variant="outlined"
             elevation="none"
@@ -207,7 +207,7 @@ export default function ActivityLogsScreen() {
               {log.error_message}
             </Text>
           </ModernCard>
-        )}
+        ) : null}
 
         {Object.keys(log.details || {}).length > 0 && !log.error_message && (
           <ModernCard

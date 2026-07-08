@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
-import * as Haptics from "expo-haptics";
+import { haptics } from "@/services/haptics";
 
 import { Item } from "@/types/scan";
 
@@ -127,13 +127,13 @@ export const useQuantityCountManager = ({
 
     if (currentValue > step) {
       setQuantity(formatQuantity(currentValue - step));
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void haptics.light();
       return;
     }
 
     if (currentValue > 0) {
       setQuantity("0");
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void haptics.light();
     }
   }, [formatQuantity, isSplitMode, quantity, setQuantity, uomInfo.step]);
 
@@ -142,7 +142,7 @@ export const useQuantityCountManager = ({
 
     const currentValue = parseFloat(quantity) || 0;
     setQuantity(formatQuantity(currentValue + uomInfo.step));
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void haptics.light();
   }, [formatQuantity, isSplitMode, quantity, setQuantity, uomInfo.step]);
 
   const handleToggleSplitMode = useCallback(() => {
@@ -151,7 +151,7 @@ export const useQuantityCountManager = ({
     if (nextSplitMode && splitCounts.length === 0) {
       setSplitCounts([quantity !== "0" ? quantity : ""]);
     }
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    void haptics.medium();
   }, [isSplitMode, quantity, splitCounts.length]);
 
   const handleSplitCountChange = useCallback(
@@ -184,12 +184,12 @@ export const useQuantityCountManager = ({
 
   const handleRemoveSplitCount = useCallback((index: number) => {
     setSplitCounts((previous) => previous.filter((_, current) => current !== index));
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    void haptics.medium();
   }, []);
 
   const handleAddSplitCount = useCallback(() => {
     setSplitCounts((previous) => [...previous, ""]);
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void haptics.light();
   }, []);
 
   const resetQuantityState = useCallback(() => {

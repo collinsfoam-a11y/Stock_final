@@ -104,12 +104,7 @@ export function MobileNavDrawer({ role, testID }: MobileNavDrawerProps) {
         animationType="fade"
         onRequestClose={() => setOpen(false)}
       >
-        <Pressable
-          style={styles.backdrop}
-          onPress={() => setOpen(false)}
-          accessibilityLabel="Close navigation menu"
-          accessibilityRole="button"
-        >
+        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <Pressable style={[styles.panel, { paddingTop: insets.top + uiTokens.spacing.lg }]}>
             <View style={styles.panelHeader}>
               <Text style={styles.panelTitle}>

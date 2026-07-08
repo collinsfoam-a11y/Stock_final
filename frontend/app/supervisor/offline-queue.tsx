@@ -146,7 +146,7 @@ export default function OfflineQueueScreen() {
           </Text>
         )}
 
-        {item.data && (
+        {item.data ? (
           <ModernCard
             variant="outlined"
             elevation="none"
@@ -157,7 +157,7 @@ export default function OfflineQueueScreen() {
               {JSON.stringify(item.data)}
             </Text>
           </ModernCard>
-        )}
+        ) : null}
       </ModernCard>
     </AnimatedPressable>
   );

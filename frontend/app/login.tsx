@@ -20,7 +20,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
-import * as Haptics from "expo-haptics";
+import { haptics } from "@/services/haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { useAuthStore } from "@/store/authStore";
@@ -163,7 +163,7 @@ export default function LoginScreen() {
 
       setPin(newPin);
       if (newPin.length > pin.length) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        void haptics.light();
       }
 
       // Auto-login when 4 digits entered
@@ -176,7 +176,7 @@ export default function LoginScreen() {
           setPin("");
           return;
         }
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        void haptics.success();
 
         // Small delay to ensure UI updates before freezing for network request
         setTimeout(async () => {
@@ -199,7 +199,7 @@ export default function LoginScreen() {
 
   const handleBiometricAuth = useCallback(async () => {
     if (isLoading) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    void haptics.medium();
 
     if (!biometricAuthEnabled) {
       Alert.alert(
@@ -278,7 +278,7 @@ export default function LoginScreen() {
     setPassword("");
     const newErrors: { pin?: string; username?: string; password?: string } = {};
     setErrors(newErrors);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void haptics.light();
   }, [loginMode, lastLoggedUser]);
 
   return (
