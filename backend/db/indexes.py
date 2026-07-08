@@ -385,6 +385,17 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
     "erpnext_item_export_flags": [
         ([("item_code", 1)], {"unique": True, "name": "idx_item_export_flags_item_code"}),
     ],
+    # ERPNext Export Previews (approve/download/validate/corrections/photo-manifest
+    # all look up a preview by export_id -- every preview document gets a fresh
+    # UUID export_id, so this is a point-lookup key, not a shared foreign key).
+    "erpnext_export_previews": [
+        ([("export_id", 1)], {"unique": True, "name": "idx_export_id"}),
+        # Regeneration/supersession lookup: latest version for (session, mode, company).
+        (
+            [("session_id", 1), ("mode", 1), ("company", 1), ("export_version", -1)],
+            {"name": "idx_export_version_scope"},
+        ),
+    ],
 }
 
 
