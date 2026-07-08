@@ -2,6 +2,11 @@
 # Stock Verification System — .gitignore
 # =============================================================================
 
+# Unrelated third-party tooling checkout (not part of Stock Verify; was
+# tracked as a broken gitlink with no .gitmodules entry -- untracked, kept
+# on disk locally, now ignored so it doesn't reappear as untracked clutter)
+/awesome-codex-skills/
+
 # Environment files (secrets)
 .env
 .env.prod
