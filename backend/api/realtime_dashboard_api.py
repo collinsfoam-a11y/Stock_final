@@ -279,102 +279,87 @@ async def get_dashboard_stats(
         return await projection_reads.get_dashboard_stats()
 
     with trace_span("calculate_dashboard_stats"):
-        # Run aggregations in parallel
-        stats_pipeline = [
-            {
-                "$facet": {
-                    "total": [{"$count": "count"}],
-                    "verified": [
-                        {"$match": {"verified": True}},
-                        {"$count": "count"},
-                    ],
-                    "pending": [
-                        {"$match": {"verified": False}},
-                        {"$count": "count"},
-                    ],
-                    "variance_stats": [
-                        {
-                            "$group": {
-                                "_id": None,
-                                "total_variance": {"$sum": "$variance"},
-                                "positive": {
-                                    "$sum": {
-                                        "$cond": [
-                                            {"$gt": ["$variance", 0]},
-                                            "$variance",
-                                            0,
-                                        ]
-                                    }
-                                },
-                                "negative": {
-                                    "$sum": {
-                                        "$cond": [
-                                            {"$lt": ["$variance", 0]},
-                                            "$variance",
-                                            0,
-                                        ]
-                                    }
-                                },
-                                "avg_variance": {"$avg": "$variance"},
-                            }
-                        }
-                    ],
-                    "today_activity": [
-                        {
-                            "$match": {
-                                "counted_at": {
-                                    "$gte": datetime.now(timezone.utc)
-                                    .replace(tzinfo=None)
-                                    .replace(hour=0, minute=0, second=0)
+        # Run multiple distinct, index-supported queries concurrently
+        today_start = (
+            datetime.now(timezone.utc).replace(tzinfo=None).replace(hour=0, minute=0, second=0)
+        )
+
+        (
+            total_items,
+            verified_items,
+            pending_items,
+            today_activity,
+            variance_stats_list,
+            by_warehouse,
+            by_status,
+        ) = await asyncio.gather(
+            db.count_lines.count_documents({}),
+            db.count_lines.count_documents({"verified": True}),
+            db.count_lines.count_documents({"verified": False}),
+            db.count_lines.count_documents({"counted_at": {"$gte": today_start}}),
+            db.count_lines.aggregate(
+                [
+                    {
+                        "$group": {
+                            "_id": None,
+                            "total_variance": {"$sum": "$variance"},
+                            "positive": {
+                                "$sum": {
+                                    "$cond": [
+                                        {"$gt": ["$variance", 0]},
+                                        "$variance",
+                                        0,
+                                    ]
                                 }
-                            }
-                        },
-                        {"$count": "count"},
-                    ],
-                    "by_warehouse": [
-                        {"$group": {"_id": "$warehouse", "count": {"$sum": 1}}},
-                        {"$sort": {"count": -1}},
-                        {"$limit": 10},
-                    ],
-                    "by_status": [
-                        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
-                    ],
-                }
-            }
-        ]
+                            },
+                            "negative": {
+                                "$sum": {
+                                    "$cond": [
+                                        {"$lt": ["$variance", 0]},
+                                        "$variance",
+                                        0,
+                                    ]
+                                }
+                            },
+                            "avg_variance": {"$avg": "$variance"},
+                        }
+                    }
+                ]
+            ).to_list(1),
+            db.count_lines.aggregate(
+                [
+                    {"$group": {"_id": "$warehouse", "count": {"$sum": 1}}},
+                    {"$sort": {"count": -1}},
+                    {"$limit": 10},
+                ]
+            ).to_list(None),
+            db.count_lines.aggregate(
+                [
+                    {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+                ]
+            ).to_list(None),
+        )
 
-        result = await db.count_lines.aggregate(stats_pipeline).to_list(1)
-
-    stats = result[0] if result else {}
-
-    def get_count(key: str) -> int:
-        data = stats.get(key, [])
-        return data[0]["count"] if data else 0
-
-    variance_stats = stats.get("variance_stats", [{}])[0] if stats.get("variance_stats") else {}
+    variance_stats = variance_stats_list[0] if variance_stats_list else {}
 
     return {
         "success": True,
         "stats": {
-            "total_items": get_count("total"),
-            "verified_items": get_count("verified"),
-            "pending_items": get_count("pending"),
-            "today_activity": get_count("today_activity"),
+            "total_items": total_items,
+            "verified_items": verified_items,
+            "pending_items": pending_items,
+            "today_activity": today_activity,
             "total_variance": variance_stats.get("total_variance", 0),
             "positive_variance": variance_stats.get("positive", 0),
             "negative_variance": variance_stats.get("negative", 0),
             "avg_variance": variance_stats.get("avg_variance", 0),
-            "verification_rate": (
-                (get_count("verified") / get_count("total") * 100) if get_count("total") > 0 else 0
-            ),
+            "verification_rate": ((verified_items / total_items * 100) if total_items > 0 else 0),
         },
         "by_warehouse": [
-            {"warehouse": item["_id"] or "Unknown", "count": item["count"]}
-            for item in stats.get("by_warehouse", [])
+            {"warehouse": item["_id"] or "Unknown", "count": item["count"]} for item in by_warehouse
         ],
         "by_status": [
-            {"status": item["_id"] or "Unknown", "count": item["count"]}
-            for item in stats.get("by_status", [])
+            {"status": item["_id"] or "Unknown", "count": item["count"]} for item in by_status
         ],
         "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
     }
