@@ -72,6 +72,9 @@ export const Badge: React.FC<BadgeProps> = ({
           },
           style,
         ]}
+        accessible={true}
+        accessibilityRole="text"
+        accessibilityLabel="Notification dot"
       />
     );
   }
@@ -88,6 +91,9 @@ export const Badge: React.FC<BadgeProps> = ({
         },
         style,
       ]}
+      accessible={true}
+      accessibilityRole="text"
+      accessibilityLabel={`Badge: ${label}`}
     >
       <Text
         style={[
