@@ -7,7 +7,6 @@ describe("Badge Accessibility", () => {
     const { getByLabelText } = render(<Badge label="New" />);
     const badge = getByLabelText("New");
 
-    expect(badge.props.accessibilityRole).toBe("text");
     expect(badge.props.accessible).toBe(true);
   });
 

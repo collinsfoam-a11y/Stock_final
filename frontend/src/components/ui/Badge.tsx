@@ -91,7 +91,6 @@ export const Badge: React.FC<BadgeProps> = ({
         style,
       ]}
       accessible={true}
-      accessibilityRole="text"
       accessibilityLabel={accessibilityLabel || String(label)}
     >
       <Text
