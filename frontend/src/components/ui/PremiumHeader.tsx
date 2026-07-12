@@ -23,6 +23,8 @@ import Animated, {
 import { useThemeContext } from "../../context/ThemeContext";
 import { AppTheme } from "../../theme/themes";
 import { BrandLogo } from "../branding/BrandLogo";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 
 interface PremiumHeaderProps {
   title?: string;
@@ -37,6 +39,7 @@ interface PremiumHeaderProps {
     icon: keyof typeof Ionicons.glyphMap;
     onPress: () => void;
     color?: string;
+    label?: string;
   };
   style?: ViewStyle;
 }
@@ -100,10 +103,15 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
       return (
         <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: "rgba(99, 102, 241, 0.15)" }]}
-          onPress={rightAction.onPress}
+          {...getAccessibleButtonProps({ label: rightAction.label ?? "Header action" })}
+          onPress={() => {
+            void haptics.light();
+            rightAction?.onPress();
+          }}
           activeOpacity={0.7}
         >
           <Ionicons
+            {...getDecorativeIconProps()}
             name={rightAction.icon}
             size={22}
             color={rightAction.color || theme.colors.primary[400]}
@@ -116,18 +124,40 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
       return (
         <TouchableOpacity
           style={[styles.actionButton, styles.logoutButton]}
-          onPress={onLogout}
+          {...getAccessibleButtonProps({ label: "Log out" })}
+          onPress={() => {
+            void haptics.light();
+            onLogout?.();
+          }}
           activeOpacity={0.7}
         >
-          <Ionicons name="log-out-outline" size={22} color={theme.colors.error.main} />
+          <Ionicons
+            {...getDecorativeIconProps()}
+            name="log-out-outline"
+            size={22}
+            color={theme.colors.error.main}
+          />
         </TouchableOpacity>
       );
     }
 
     if (onMenuPress) {
       return (
-        <TouchableOpacity style={styles.actionButton} onPress={onMenuPress} activeOpacity={0.7}>
-          <Ionicons name="menu-outline" size={24} color={theme.colors.text.primary} />
+        <TouchableOpacity
+          style={styles.actionButton}
+          {...getAccessibleButtonProps({ label: "Open menu" })}
+          onPress={() => {
+            void haptics.light();
+            onMenuPress?.();
+          }}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            {...getDecorativeIconProps()}
+            name="menu-outline"
+            size={24}
+            color={theme.colors.text.primary}
+          />
         </TouchableOpacity>
       );
     }

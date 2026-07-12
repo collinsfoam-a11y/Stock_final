@@ -24,3 +24,7 @@
 ## 2025-05-22 - Enhancing Empty States with Accessible Grouping and Animations
 **Learning:** Empty states benefit from entrance animations (like `FadeIn`) to feel less "stark." For accessibility, grouping the icon, title, and message into a single accessible unit with a descriptive `accessibilityLabel` provides a better experience for screen reader users. However, interactive elements (like action buttons) MUST remain outside this grouping to prevent them from becoming unreachable.
 **Action:** Wrap non-interactive empty state content in a single `accessible={true}` container, but keep action buttons as separate siblings to maintain accessibility tree depth.
+
+## 2026-05-23 - Standardizing Dynamic Header Action Accessibility
+**Learning:** Hardcoding accessibility labels (like "Custom action") on dynamic components (e.g., `rightAction` in headers) creates an accessibility anti-pattern. Screen readers require meaningful context about what the button actually does.
+**Action:** Always extract and use dynamic labels from props (e.g., `rightAction.label ?? "Header action"`) rather than defaulting to static placeholder text when wrapping dynamic actions with `getAccessibleButtonProps`.
