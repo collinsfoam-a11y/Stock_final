@@ -65,7 +65,7 @@ export const Badge: React.FC<BadgeProps> = ({
   const commonAccessibilityProps = {
     accessible: true,
     accessibilityRole: "text" as const,
-    accessibilityLabel: accessibilityLabel || String(label),
+    accessibilityLabel: accessibilityLabel || (label !== undefined ? String(label) : "Indicator"),
   };
 
   if (dot) {
