@@ -12,3 +12,7 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+
+## 2026-06-04 - Feedback Components Accessibility Standard
+**Learning:** Feedback components like Badges and Progress indicators are often overlooked in accessibility. Standardizing their roles (`text` for badges, `progressbar` for progress) and ensuring value clamping (0-100) for progress components provides a much better experience for screen reader users.
+**Action:** When updating feedback components, ensure `accessible={true}` is set on the container to group content, use appropriate semantic roles, and provide dynamic `accessibilityLabel` and `accessibilityValue` where applicable.

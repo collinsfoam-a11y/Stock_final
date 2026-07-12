@@ -29,6 +29,7 @@ interface BadgeProps {
   dot?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  accessibilityLabel?: string;
 }
 
 const variantColors: Record<BadgeVariant, { bg: string; text: string }> = {
@@ -56,13 +57,21 @@ export const Badge: React.FC<BadgeProps> = ({
   dot = false,
   style,
   textStyle,
+  accessibilityLabel,
 }) => {
   const colors = variantColors[variant];
   const sizes = sizeStyles[size];
 
+  const commonAccessibilityProps = {
+    accessible: true,
+    accessibilityRole: "text" as const,
+    accessibilityLabel: accessibilityLabel || String(label),
+  };
+
   if (dot) {
     return (
       <View
+        {...commonAccessibilityProps}
         style={[
           styles.dot,
           {
@@ -78,6 +87,7 @@ export const Badge: React.FC<BadgeProps> = ({
 
   return (
     <View
+      {...commonAccessibilityProps}
       style={[
         styles.badge,
         {
