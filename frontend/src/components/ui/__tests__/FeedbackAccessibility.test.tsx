@@ -45,7 +45,7 @@ describe("Feedback Components Accessibility", () => {
       const { UNSAFE_getByType } = render(
         <StatusBadge label="Active" icon="radio-button-on" />
       );
-      const icon = UNSAFE_getByType(Ionicons);
+      const icon = UNSAFE_getByType(Ionicons as any);
       expect(icon.props.accessibilityElementsHidden).toBe(true);
       expect(icon.props.importantForAccessibility).toBe("no");
     });
