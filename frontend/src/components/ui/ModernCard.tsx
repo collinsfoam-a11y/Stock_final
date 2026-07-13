@@ -38,6 +38,7 @@ import {
 import { useThemeContextSafe } from "../../context/ThemeContext";
 
 import { shadows as unifiedShadows } from "@/theme/legacyCompat";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 const AnimatedView = Animated.createAnimatedComponent(View);
 
@@ -225,7 +226,7 @@ export const ModernCard: React.FC<ModernCardProps> = ({
           <View style={dynamicStyles.header}>
             {icon && (
               <View style={dynamicStyles.iconContainer}>
-                <Ionicons name={icon} size={24} color={accentColor} />
+                <Ionicons {...getDecorativeIconProps()} name={icon} size={24} color={accentColor} />
               </View>
             )}
             <View style={styles.headerText}>
