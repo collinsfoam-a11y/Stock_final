@@ -1,12 +1,17 @@
 import React from "react";
 import { render } from "@testing-library/react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Badge } from "../Badge";
 import { StatusBadge } from "../StatusBadge";
 import { ProgressBar } from "../ProgressBar";
 import { ProgressRing } from "../ProgressRing";
 
 // Mock Ionicons to simplify icon verification
-jest.mock("@expo/vector-icons/Ionicons", () => "Ionicons");
+jest.mock("@expo/vector-icons/Ionicons", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return jest.fn().mockImplementation((props) => React.createElement(View, props));
+});
 
 describe("Feedback Components Accessibility", () => {
   describe("Badge", () => {
@@ -40,7 +45,7 @@ describe("Feedback Components Accessibility", () => {
       const { UNSAFE_getByType } = render(
         <StatusBadge label="Active" icon="radio-button-on" />
       );
-      const icon = UNSAFE_getByType("Ionicons");
+      const icon = UNSAFE_getByType(Ionicons);
       expect(icon.props.accessibilityElementsHidden).toBe(true);
       expect(icon.props.importantForAccessibility).toBe("no");
     });
