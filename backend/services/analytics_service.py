@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -15,10 +16,6 @@ class AnalyticsService:
         """Get verification statistics for the last N days"""
         start_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
-        # Total items vs verified items
-        total_items = await self.db.erp_items.count_documents({})
-        verified_items = await self.db.erp_items.count_documents({"verified": True})
-
         # Verification trend (daily)
         pipeline: list[dict[str, Any]] = [
             {"$match": {"timestamp": {"$gte": start_date}}},
@@ -30,7 +27,6 @@ class AnalyticsService:
             },
             {"$sort": {"_id": 1}},
         ]
-        trend = await self.db.verification_logs.aggregate(pipeline).to_list(length=days)
 
         # Top verifiers
         user_pipeline: list[dict[str, Any]] = [
@@ -39,7 +35,6 @@ class AnalyticsService:
             {"$sort": {"count": -1}},
             {"$limit": 5},
         ]
-        top_users = await self.db.verification_logs.aggregate(user_pipeline).to_list(length=5)
 
         # Variance summary
         variance_pipeline: list[dict[str, Any]] = [
@@ -53,14 +48,6 @@ class AnalyticsService:
                 }
             },
         ]
-        variance_stats = await self.db.verification_logs.aggregate(variance_pipeline).to_list(
-            length=1
-        )
-        variance_data = (
-            variance_stats[0]
-            if variance_stats
-            else {"total_variance": 0, "abs_variance": 0, "count": 0}
-        )
 
         # T078: Enhanced Discrepancy & Accuracy Metrics
 
@@ -69,17 +56,39 @@ class AnalyticsService:
             {"$match": {"timestamp": {"$gte": start_date}, "variance": {"$gt": 0}}},
             {"$count": "count"},
         ]
-        surplus_res = await self.db.verification_logs.aggregate(surplus_pipeline).to_list(length=1)
-        surplus_count = surplus_res[0]["count"] if surplus_res else 0
 
         # Shortage (variance < 0)
         shortage_pipeline: list[dict[str, Any]] = [
             {"$match": {"timestamp": {"$gte": start_date}, "variance": {"$lt": 0}}},
             {"$count": "count"},
         ]
-        shortage_res = await self.db.verification_logs.aggregate(shortage_pipeline).to_list(
-            length=1
+
+        # Execute independent queries concurrently
+        (
+            total_items,
+            verified_items,
+            trend,
+            top_users,
+            variance_stats,
+            surplus_res,
+            shortage_res,
+        ) = await asyncio.gather(
+            self.db.erp_items.count_documents({}),
+            self.db.erp_items.count_documents({"verified": True}),
+            self.db.verification_logs.aggregate(pipeline).to_list(length=days),
+            self.db.verification_logs.aggregate(user_pipeline).to_list(length=5),
+            self.db.verification_logs.aggregate(variance_pipeline).to_list(length=1),
+            self.db.verification_logs.aggregate(surplus_pipeline).to_list(length=1),
+            self.db.verification_logs.aggregate(shortage_pipeline).to_list(length=1),
         )
+
+        variance_data = (
+            variance_stats[0]
+            if variance_stats
+            else {"total_variance": 0, "abs_variance": 0, "count": 0}
+        )
+
+        surplus_count = surplus_res[0]["count"] if surplus_res else 0
         shortage_count = shortage_res[0]["count"] if shortage_res else 0
 
         # Accuracy Rate (Percentage of verifications with 0 variance)
