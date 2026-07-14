@@ -12,3 +12,7 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+
+## 2026-06-03 - Enhancing Touch Targets for Small Components
+**Learning:** Small interactive components like the 'sm' variant of the `Switch` (36x20px) fail to meet the recommended 44x44px minimum touch target, leading to poor usability on mobile devices.
+**Action:** Utilize the `OPERATIONAL_HIT_SLOP.standard` (or similar) from `@/utils/accessibility` on the outer touchable wrapper to expand the interactive area without changing the component's visual footprint.
