@@ -6,6 +6,7 @@ import ModernCard from "@/components/ui/ModernCard";
 import ModernInput from "@/components/ui/ModernInput";
 import { getStockQty } from "@/utils/itemBatchUtils";
 import { borderRadius, colors, spacing, typography } from "@/theme/legacyCompat";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
@@ -237,8 +238,13 @@ export function ScanLookupPanel({
             onPress={searchQuery.trim() ? onSubmitSearch : onOpenScanner}
             disabled={loading}
             activeOpacity={0.7}
+            {...getAccessibleButtonProps({
+              label: searchQuery.trim() ? "Search item" : "Scan barcode",
+              disabled: loading,
+            })}
           >
             <Ionicons
+              {...getDecorativeIconProps()}
               name={searchQuery.trim() ? "arrow-forward" : "scan"}
               size={24}
               color={colors.white}
