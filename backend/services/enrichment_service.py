@@ -249,7 +249,10 @@ class EnrichmentService:
         return {"is_valid": len(errors) == 0, "errors": errors}
 
     async def calculate_completeness(
-        self, item_code: str, additional_fields: dict[str, Optional[Any]] = None
+        self,
+        item_code: str,
+        additional_fields: dict[str, Optional[Any]] = None,
+        item_data: dict[str, Any] = None,
     ) -> dict[str, Any]:
         """
         Calculate data completeness for an item
@@ -257,17 +260,23 @@ class EnrichmentService:
         Args:
             item_code: Item code to check
             additional_fields: Additional fields to consider (for preview)
+            item_data: Already fetched item data to avoid a database query
 
         Returns:
             Dictionary with completeness information
         """
-        # Get current item
-        item = await self.db.erp_items.find_one({"item_code": item_code})
+        # Get current item if not provided
+        item = item_data
+        if item is None:
+            item = await self.db.erp_items.find_one({"item_code": item_code})
+
         if not item:
             return {
                 "is_complete": False,
                 "percentage": 0,
                 "missing_fields": self.required_fields,
+                "filled_fields": 0,
+                "total_fields": len(self.required_fields),
             }
 
         # Merge with additional fields if provided
@@ -398,7 +407,7 @@ class EnrichmentService:
         # Add missing fields info for incomplete items
         if not complete:
             for item in items:
-                completeness = await self.calculate_completeness(item["item_code"], item)
+                completeness = await self.calculate_completeness(item["item_code"], item_data=item)
                 item["missing_fields"] = completeness["missing_fields"]
                 item["completion_percentage"] = completeness["percentage"]
 
@@ -549,7 +558,7 @@ class EnrichmentService:
         # Add missing fields info
         result = []
         for item in items:
-            completeness = await self.calculate_completeness(item["item_code"], item)
+            completeness = await self.calculate_completeness(item["item_code"], item_data=item)
             priority = "low"
             if completeness["percentage"] < 25:
                 priority = "high"
