@@ -23,6 +23,7 @@ interface LoadingSpinnerProps {
   type?: SpinnerType; // Kept for compatibility but ignored
   color?: string;
   style?: ViewStyle;
+  accessibilityLabel?: string;
 }
 
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
@@ -31,11 +32,18 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   type: _type = "ThreeBounce",
   color = colorPalette.primary[500],
   style,
+  accessibilityLabel = "Loading",
 }) => {
   if (!isVisible) return null;
 
   return (
-    <View style={[styles.container, style]}>
+    <View
+      style={[styles.container, style]}
+      accessible={true}
+      accessibilityRole="progressbar"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityLiveRegion="polite"
+    >
       <ActivityIndicator size={size > 20 ? "large" : "small"} color={color} />
     </View>
   );

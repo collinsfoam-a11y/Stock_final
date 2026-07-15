@@ -12,3 +12,7 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+
+## 2026-06-05 - Loading Spinner Accessibility
+**Learning:** Visual loading indicators are often overlooked in accessibility. Adding `accessibilityRole="progressbar"` and `accessibilityLiveRegion="polite"` ensures screen readers announce the loading state without interrupting the user's flow.
+**Action:** Always wrap loading indicators in a `View` with appropriate progressbar roles and live regions.
