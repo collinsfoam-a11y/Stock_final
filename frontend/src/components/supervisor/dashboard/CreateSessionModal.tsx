@@ -12,6 +12,7 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { AppInput } from "@/components/ui/AppInput";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 import {
   WarehouseOption,
   ZoneOption,
@@ -64,8 +65,17 @@ export function CreateSessionModal({
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create New Session</Text>
-              <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-                <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.modalCloseButton}
+                {...getAccessibleButtonProps({ label: "Close create session modal" })}
+              >
+                <Ionicons
+                  name="close"
+                  size={24}
+                  color={theme.colors.text.primary}
+                  {...getDecorativeIconProps()}
+                />
               </TouchableOpacity>
             </View>
 
