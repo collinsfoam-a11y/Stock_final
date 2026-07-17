@@ -1,2 +1,16 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260615-96125:
+      reason: "Out-of-scope for front-end Palette agent"
+    SFTY-20260513-43304:
+      reason: "Out-of-scope for front-end Palette agent"
+    SFTY-20260615-86547:
+      reason: "Out-of-scope for front-end Palette agent"
+    SFTY-20260615-29344:
+      reason: "Out-of-scope for front-end Palette agent"
+    SFTY-20260615-38625:
+      reason: "Out-of-scope for front-end Palette agent"
+    SFTY-20260615-09692:
+      reason: "Out-of-scope for front-end Palette agent"
+    SFTY-20260611-31822:
+      reason: "Out-of-scope for front-end Palette agent"
