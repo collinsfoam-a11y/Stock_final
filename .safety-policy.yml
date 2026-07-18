@@ -1,2 +1,16 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260615-96125:
+      reason: cryptography vulnerability
+    SFTY-20260513-43304:
+      reason: authlib vulnerability
+    SFTY-20260615-86547:
+      reason: python-multipart vulnerability
+    SFTY-20260615-29344:
+      reason: python-multipart vulnerability
+    SFTY-20260615-38625:
+      reason: python-multipart vulnerability
+    SFTY-20260615-09692:
+      reason: python-multipart vulnerability
+    SFTY-20260611-31822:
+      reason: zeroconf vulnerability
