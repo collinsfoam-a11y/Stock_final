@@ -24,3 +24,7 @@
 ## 2025-05-22 - Enhancing Empty States with Accessible Grouping and Animations
 **Learning:** Empty states benefit from entrance animations (like `FadeIn`) to feel less "stark." For accessibility, grouping the icon, title, and message into a single accessible unit with a descriptive `accessibilityLabel` provides a better experience for screen reader users. However, interactive elements (like action buttons) MUST remain outside this grouping to prevent them from becoming unreachable.
 **Action:** Wrap non-interactive empty state content in a single `accessible={true}` container, but keep action buttons as separate siblings to maintain accessibility tree depth.
+
+## 2024-07-18 - Missing ARIA Labels on Icon-only Modals
+**Learning:** Icon-only `TouchableOpacity` close buttons on modals (like `CreateSessionModal`) often miss accessibility labels in this codebase, rendering them invisible or confusing to screen readers.
+**Action:** Next time, actively use `grep` or `rg` for `Ionicons name="close"` coupled with `TouchableOpacity` across `frontend/src/components/modals` to proactively apply `getAccessibleButtonProps` and `getDecorativeIconProps`.

@@ -17,6 +17,7 @@ import {
   ZoneOption,
 } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 import { theme } from "@/styles/unifiedSystem";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface CreateSessionModalProps {
@@ -64,8 +65,12 @@ export function CreateSessionModal({
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create New Session</Text>
-              <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-                <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+              <TouchableOpacity
+                {...getAccessibleButtonProps({ label: "Close create session modal" })}
+                onPress={onClose}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={theme.colors.text.primary} {...getDecorativeIconProps()} />
               </TouchableOpacity>
             </View>
 
