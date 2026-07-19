@@ -25,7 +25,9 @@ from typing import Any, Optional
 
 from openpyxl import load_workbook
 
-DEFAULT_TEMPLATE_DIR = Path("docs/erpnext_templates")
+# Anchored to the repo root so the default resolves regardless of the
+# process working directory (pytest may run from backend/ or the repo root).
+DEFAULT_TEMPLATE_DIR = Path(__file__).resolve().parents[2] / "docs" / "erpnext_templates"
 
 # Maps Stock Verify's internal file_type to the manifest's "templates" key.
 # photo_manifest has no entry: it is not an ERPNext import target doctype
