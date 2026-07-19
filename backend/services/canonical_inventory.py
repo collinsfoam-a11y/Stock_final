@@ -268,20 +268,44 @@ async def get_session_count_lines(
     return lines
 
 
-async def recompute_session_totals(
-    db: Any,
-    session_id: str,
-    *,
-    lifecycle_service: Any,
-) -> dict[str, Any]:
+def _normalize_activity_timestamp(candidate_activity: Any) -> Optional[datetime]:
+    """Coerce a count-line activity field (str/int/float/datetime) to a naive UTC datetime."""
+    if candidate_activity is None:
+        return None
+    if isinstance(candidate_activity, (int, float)):
+        try:
+            return datetime.fromtimestamp(candidate_activity, tz=timezone.utc).replace(
+                tzinfo=None
+            )
+        except (ValueError, OSError):
+            return None
+    if isinstance(candidate_activity, str):
+        try:
+            return datetime.fromisoformat(candidate_activity.replace("Z", "+00:00")).replace(
+                tzinfo=None
+            )
+        except (ValueError, TypeError):
+            return None
+    if isinstance(candidate_activity, datetime):
+        if candidate_activity.tzinfo is not None:
+            return candidate_activity.astimezone(timezone.utc).replace(tzinfo=None)
+        return candidate_activity
+    return None
+
+
+def _compute_session_totals_from_lines(lines: list[dict[str, Any]]) -> dict[str, Any]:
+    """Pure aggregation used by both the single-session and batched recompute paths.
+
+    Kept as a standalone function (rather than inlined per-session) so the two
+    callers can never drift in what "session totals" means.
+    """
     total_items = 0
     total_variance = 0.0
     verified_items = 0
     damage_items = 0
     last_activity: Optional[datetime] = None
 
-    cursor = db.count_lines.find({"session_id": session_id})
-    async for line in cursor:
+    for line in lines:
         if is_superseded_count_line(line):
             continue
         total_items += 1
@@ -292,33 +316,10 @@ async def recompute_session_totals(
             verified_items += 1
 
         # M5 fix: Handle non-datetime values (strings, floats) from sync paths
-        candidate_activity = (
+        candidate_activity = _normalize_activity_timestamp(
             line.get("updated_at") or line.get("approved_at") or line.get("counted_at")
         )
         if candidate_activity is not None:
-            if isinstance(candidate_activity, (int, float)):
-                try:
-                    candidate_activity = datetime.fromtimestamp(
-                        candidate_activity, tz=timezone.utc
-                    ).replace(tzinfo=None)
-                except (ValueError, OSError):
-                    candidate_activity = None
-            elif isinstance(candidate_activity, str):
-                try:
-                    candidate_activity = datetime.fromisoformat(
-                        candidate_activity.replace("Z", "+00:00")
-                    ).replace(tzinfo=None)
-                except (ValueError, TypeError):
-                    candidate_activity = None
-            elif isinstance(candidate_activity, datetime):
-                if candidate_activity.tzinfo is not None:
-                    candidate_activity = candidate_activity.astimezone(timezone.utc).replace(
-                        tzinfo=None
-                    )
-            else:
-                candidate_activity = None
-
-        if isinstance(candidate_activity, datetime):
             if last_activity is None or candidate_activity > last_activity:
                 last_activity = candidate_activity
 
@@ -332,5 +333,50 @@ async def recompute_session_totals(
     if last_activity is not None:
         session_update["last_activity"] = last_activity
 
+    return session_update
+
+
+async def recompute_session_totals(
+    db: Any,
+    session_id: str,
+    *,
+    lifecycle_service: Any,
+) -> dict[str, Any]:
+    lines = [line async for line in db.count_lines.find({"session_id": session_id})]
+    session_update = _compute_session_totals_from_lines(lines)
     await lifecycle_service.update_session_totals(session_id, session_update)
     return session_update
+
+
+async def recompute_session_totals_batch(
+    db: Any,
+    session_ids: list[str],
+    *,
+    lifecycle_service: Any,
+) -> dict[str, dict[str, Any]]:
+    """Same result as calling `recompute_session_totals` once per session_id, but
+    issues a single `count_lines` query instead of one per session.
+
+    Per-session writes (OCC version check, audit log, projection sync) still
+    happen individually via `lifecycle_service.update_session_totals` -- only
+    the read is batched, since those writes are governed, non-batchable state
+    transitions.
+    """
+    unique_ids = list(dict.fromkeys(session_ids))
+    if not unique_ids:
+        return {}
+
+    lines_by_session: dict[str, list[dict[str, Any]]] = {session_id: [] for session_id in unique_ids}
+    cursor = db.count_lines.find({"session_id": {"$in": unique_ids}})
+    async for line in cursor:
+        bucket = lines_by_session.get(str(line.get("session_id") or ""))
+        if bucket is not None:
+            bucket.append(line)
+
+    results: dict[str, dict[str, Any]] = {}
+    for session_id in unique_ids:
+        session_update = _compute_session_totals_from_lines(lines_by_session[session_id])
+        await lifecycle_service.update_session_totals(session_id, session_update)
+        results[session_id] = session_update
+
+    return results

@@ -1,6 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { CameraView } from "@/services/device/expoCamera";
+import { Camera, useCameraDevice, useCodeScanner } from "@/services/device/visionCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -29,6 +29,26 @@ export function ScanCameraOverlay({
   scanned,
   timeoutSeconds = 30,
 }: ScanCameraOverlayProps) {
+  const device = useCameraDevice('back');
+  const [isTorchOn, setIsTorchOn] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+
+  // Initialize zoom to neutral zoom if available
+  useEffect(() => {
+    if (device?.neutralZoom) {
+      setZoomLevel(device.neutralZoom);
+    }
+  }, [device?.neutralZoom]);
+
+  const codeScanner = useCodeScanner({
+    codeTypes: ["ean-13", "ean-8", "upc-a", "upc-e", "code-128", "code-39", "qr"],
+    onCodeScanned: (codes: any) => {
+      if (!scanned && codes.length > 0) {
+        onBarcodeScanned({ data: codes[0].value || "" });
+      }
+    },
+  });
+
   useEffect(() => {
     if (timeoutSeconds <= 0) {
       return;
@@ -60,14 +80,38 @@ export function ScanCameraOverlay({
     );
   }
 
+  const toggleTorch = () => setIsTorchOn((prev) => !prev);
+  
+  const handleZoomIn = () => {
+    if (device?.maxZoom) {
+      setZoomLevel((prev) => Math.min(prev + 1, device.maxZoom));
+    }
+  };
+  
+  const handleZoomOut = () => {
+    if (device?.minZoom) {
+      setZoomLevel((prev) => Math.max(prev - 1, device.minZoom));
+    }
+  };
+
+  if (!device) {
+    return (
+      <View style={styles.permissionContainer}>
+        <Text style={styles.permissionText}>Camera device not found</Text>
+        <ModernButton onPress={onClose} title="Cancel" variant="outline" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.cameraContainer}>
-      <CameraView
+      <Camera
         style={StyleSheet.absoluteFill}
-        onBarcodeScanned={scanned ? undefined : onBarcodeScanned}
-        barcodeScannerSettings={{
-          barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39", "qr"],
-        }}
+        device={device}
+        isActive={!scanned}
+        codeScanner={codeScanner}
+        torch={device.hasTorch && isTorchOn ? "on" : "off"}
+        zoom={zoomLevel}
       >
         <SafeAreaView style={styles.cameraOverlay}>
           <View style={styles.cameraHeader}>
@@ -80,6 +124,15 @@ export function ScanCameraOverlay({
               <Ionicons name="close" size={28} color={colors.white} />
             </TouchableOpacity>
             <Text style={styles.cameraTitle}>Scan Barcode</Text>
+            <View style={{ flex: 1 }} />
+            {device.hasTorch && (
+              <TouchableOpacity
+                onPress={toggleTorch}
+                style={[styles.closeCameraButton, { backgroundColor: isTorchOn ? colors.primary[500] : "rgba(0,0,0,0.5)" }]}
+              >
+                <Ionicons name={isTorchOn ? "flashlight" : "flashlight-outline"} size={24} color={colors.white} />
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.scanFrameContainer}>
@@ -103,9 +156,19 @@ export function ScanCameraOverlay({
             <Text style={styles.scanTimeoutText}>
               Scanner closes after {timeoutSeconds}s of inactivity
             </Text>
+            
+            <View style={styles.zoomControls}>
+              <TouchableOpacity style={styles.zoomButton} onPress={handleZoomOut}>
+                <Ionicons name="remove-circle-outline" size={32} color={colors.white} />
+              </TouchableOpacity>
+              <Text style={styles.zoomText}>{zoomLevel.toFixed(1)}x</Text>
+              <TouchableOpacity style={styles.zoomButton} onPress={handleZoomIn}>
+                <Ionicons name="add-circle-outline" size={32} color={colors.white} />
+              </TouchableOpacity>
+            </View>
           </View>
         </SafeAreaView>
-      </CameraView>
+      </Camera>
     </View>
   );
 }
@@ -219,4 +282,22 @@ const styles = StyleSheet.create({
     color: colors.gray[700],
     lineHeight: 28,
   },
+  zoomControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: spacing.xl,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+  },
+  zoomButton: {
+    padding: spacing.xs,
+  },
+  zoomText: {
+    color: colors.white,
+    fontSize: typography.fontSize.lg,
+    fontWeight: "600",
+    marginHorizontal: spacing.md,
+  }
 });

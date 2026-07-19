@@ -219,6 +219,14 @@ const RULES = {
     guidance:
       "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
   },
+  STATIC_THEME_COLOR_USAGE: {
+    id: "UI018",
+    category: "token-adoption",
+    severity: "P1",
+    title: "Static theme color used with a non-reactive theme import",
+    guidance:
+      "The `theme` object imported from @/styles/unifiedSystem or @/styles/modernDesignSystem is a static, non-reactive palette. Using its color subtrees (theme.colors, theme.commonStyles) renders light-mode colors in dark mode (invisible text). Use useUiTokens()/useThemeContext() for colors; keep the static theme only for theme-independent spacing/borderRadius.",
+  },
 };
 
 function parseArgs(argv) {
@@ -468,6 +476,20 @@ function scanText(repoPath, text, options = {}) {
   const changedLines = options.changedLines;
 
   const wholeFile = text;
+  // UI018: a file that imports the static (non-reactive) theme object from
+  // @/styles/unifiedSystem or @/styles/modernDesignSystem. Its color subtrees
+  // are light-mode-only; using them breaks dark mode. Spacing/borderRadius are safe.
+  // Match only when the `theme` binding itself is imported from the static
+  // styles module (named `{ theme }` or default `import theme from`). A file
+  // importing e.g. `{ modernColors }` from styles while holding a hook-based
+  // `theme` variable (useTheme/useThemeContext) must NOT be flagged.
+  const hasStaticThemeStylesImport =
+    /import\s*\{[^}]*\btheme\b[^}]*\}\s*from\s*["'][^"']*styles\/(?:unifiedSystem|modernDesignSystem)["']/.test(
+      wholeFile
+    ) ||
+    /import\s+theme\s+from\s*["'][^"']*styles\/(?:unifiedSystem|modernDesignSystem)["']/.test(
+      wholeFile
+    );
   const denseCandidate = DENSE_SCREEN_PATTERN.test(repoPath);
   const hasVirtualizedList = /\b(?:FlatList|FlashList|VirtualizedList|VirtualList)\b/.test(
     wholeFile
@@ -503,6 +525,10 @@ function scanText(repoPath, text, options = {}) {
       )
     ) {
       addFinding(findings, "DIRECT_LEGACY_THEME_IMPORT", repoPath, lineNumber, line);
+    }
+
+    if (hasStaticThemeStylesImport && /\btheme\.(?:colors|commonStyles)\b/.test(line)) {
+      addFinding(findings, "STATIC_THEME_COLOR_USAGE", repoPath, lineNumber, line);
     }
 
     if (

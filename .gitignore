@@ -56,6 +56,20 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
+# Ad-hoc local debug scripts (root-level one-offs, not part of the app)
+/dump_users.py
+/fix_sup.py
+/test_auth.py
+/test_env.py
+/test_mrp_update.py
+/test_refresh.py
+/test_repr.py
+/test_settings.py
+/test_sql.py
+
+# pnpm is the canonical frontend package manager (see frontend/Dockerfile)
+frontend/package-lock.json
+
 # Logs
 *.log
 *.log.*

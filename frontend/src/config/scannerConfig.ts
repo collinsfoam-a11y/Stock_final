@@ -3,21 +3,21 @@
  * Optimized for common retail/warehouse 1D barcodes
  */
 
-import type { BarcodeScanningResult } from "@/services/device/expoCamera";
+import type { BarcodeScanningResult } from "@/services/device/visionCamera";
 
 /**
  * Supported 1D barcode types for stock verification
  * Focus on the most common formats used in retail/warehouse
  */
 export const SUPPORTED_1D_BARCODES = [
-  "ean13", // EAN-13 (Most common retail)
-  "ean8", // EAN-8 (Smaller products)
-  "upc_a", // UPC-A (Common in North America)
-  "upc_e", // UPC-E (Compressed UPC)
-  "code128", // Code 128 (Logistics, shipping)
-  "code39", // Code 39 (Industrial, automotive)
-  "code93", // Code 93 (Similar to Code 39)
-  "itf14", // ITF-14 (Shipping cartons)
+  "ean-13", // EAN-13 (Most common retail)
+  "ean-8", // EAN-8 (Smaller products)
+  "upc-a", // UPC-A (Common in North America)
+  "upc-e", // UPC-E (Compressed UPC)
+  "code-128", // Code 128 (Logistics, shipping)
+  "code-39", // Code 39 (Industrial, automotive)
+  "code-93", // Code 93 (Similar to Code 39)
+  "itf", // ITF-14 (Shipping cartons)
   "codabar", // Codabar (Libraries, FedEx)
 ] as const;
 

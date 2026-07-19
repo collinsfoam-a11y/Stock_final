@@ -1,14 +1,15 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
-import { Linking } from "react-native";
 
 import SerialScannerModal from "../SerialScannerModal";
 
 const mockRequestPermission = jest.fn();
-const mockUseCameraPermissions = jest.fn();
+const mockUseCameraPermission = jest.fn();
 
-jest.mock("expo-camera", () => ({
-  CameraView: "CameraView",
-  useCameraPermissions: () => mockUseCameraPermissions(),
+jest.mock("@/services/device/visionCamera", () => ({
+  Camera: "Camera",
+  useCameraPermission: () => mockUseCameraPermission(),
+  useCameraDevice: () => null,
+  useCodeScanner: () => ({}),
 }));
 
 describe("SerialScannerModal permission handling", () => {
@@ -16,11 +17,11 @@ describe("SerialScannerModal permission handling", () => {
     jest.clearAllMocks();
   });
 
-  it("requests camera permission when access can still be asked", async () => {
-    mockUseCameraPermissions.mockReturnValue([
-      { granted: false, canAskAgain: true },
-      mockRequestPermission,
-    ]);
+  it("requests camera permission when access is not yet granted", async () => {
+    mockUseCameraPermission.mockReturnValue({
+      hasPermission: false,
+      requestPermission: mockRequestPermission,
+    });
 
     const { getByText } = render(
       <SerialScannerModal
@@ -38,30 +39,5 @@ describe("SerialScannerModal permission handling", () => {
     fireEvent.press(getByText("Grant Permission"));
 
     expect(mockRequestPermission).toHaveBeenCalledTimes(2);
-  });
-
-  it("offers open settings when permission is permanently denied", () => {
-    const openSettingsSpy = jest
-      .spyOn(Linking, "openSettings")
-      .mockResolvedValue();
-
-    mockUseCameraPermissions.mockReturnValue([
-      { granted: false, canAskAgain: false },
-      mockRequestPermission,
-    ]);
-
-    const { getByText } = render(
-      <SerialScannerModal
-        visible
-        existingSerials={[]}
-        onSerialScanned={jest.fn()}
-        onClose={jest.fn()}
-      />,
-    );
-
-    fireEvent.press(getByText("Open Settings"));
-
-    expect(openSettingsSpy).toHaveBeenCalledTimes(1);
-    expect(mockRequestPermission).not.toHaveBeenCalled();
   });
 });

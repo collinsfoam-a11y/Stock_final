@@ -68,7 +68,6 @@ export function ColumnSettingsModal({
                   }}
                   thumbColor={column.visible ? uiTokens.colors.accent : uiTokens.colors.surface}
                   accessibilityLabel={`Show ${column.label} column`}
-                  accessibilityState={{ checked: column.visible }}
                 />
               </View>
             ))}

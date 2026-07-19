@@ -1,33 +1,33 @@
-import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import { AppState, Linking } from "react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
+import { AppState } from "react-native";
 
 import { PhotoCaptureModal } from "../PhotoCaptureModal";
 
 const mockRequestPermission = jest.fn();
-const mockUseCameraPermissions = jest.fn();
-const mockGetPermission = jest.fn();
+const mockUseCameraPermission = jest.fn();
 const mockAppStateAddEventListener = jest.fn();
 
-jest.mock("expo-camera", () => ({
-  CameraView: "CameraView",
-  useCameraPermissions: () => mockUseCameraPermissions(),
+jest.mock("@/services/device/visionCamera", () => ({
+  Camera: "Camera",
+  useCameraPermission: () => mockUseCameraPermission(),
+  useCameraDevice: () => null,
 }));
 
 describe("PhotoCaptureModal permission handling", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockRequestPermission.mockResolvedValue(true);
     mockAppStateAddEventListener.mockReturnValue({ remove: jest.fn() });
     jest
       .spyOn(AppState, "addEventListener")
       .mockImplementation(mockAppStateAddEventListener);
   });
 
-  it("auto-requests permission and allows a manual retry when camera access can still be asked", async () => {
-    mockUseCameraPermissions.mockReturnValue([
-      { granted: false, canAskAgain: true },
-      mockRequestPermission,
-      mockGetPermission,
-    ]);
+  it("auto-requests permission and allows a manual retry when camera access is not granted", async () => {
+    mockUseCameraPermission.mockReturnValue({
+      hasPermission: false,
+      requestPermission: mockRequestPermission,
+    });
 
     const { getByText } = render(
       <PhotoCaptureModal
@@ -46,51 +46,13 @@ describe("PhotoCaptureModal permission handling", () => {
     expect(mockRequestPermission).toHaveBeenCalledTimes(2);
   });
 
-  it("offers open settings when permission is permanently denied", async () => {
-    const openSettingsSpy = jest
-      .spyOn(Linking, "openSettings")
-      .mockResolvedValue();
-
-    mockUseCameraPermissions.mockReturnValue([
-      { granted: false, canAskAgain: false },
-      mockRequestPermission,
-      mockGetPermission,
-    ]);
-
-    const { getByText } = render(
-      <PhotoCaptureModal
-        visible
-        onClose={jest.fn()}
-        onCapture={jest.fn()}
-      />,
-    );
-
-    await act(async () => {
-      fireEvent.press(getByText("Open Settings"));
+  it("shows the capture UI once permission is granted", () => {
+    mockUseCameraPermission.mockReturnValue({
+      hasPermission: true,
+      requestPermission: mockRequestPermission,
     });
 
-    expect(openSettingsSpy).toHaveBeenCalledTimes(1);
-    expect(mockRequestPermission).not.toHaveBeenCalled();
-  });
-
-  it("refreshes permission state when the app becomes active again", async () => {
-    let onAppStateChange: ((status: string) => void) | null = null;
-    mockAppStateAddEventListener.mockImplementation((_event, listener) => {
-      onAppStateChange = listener as (status: string) => void;
-      return { remove: jest.fn() };
-    });
-    mockGetPermission.mockResolvedValue({
-      granted: true,
-      canAskAgain: false,
-    });
-
-    mockUseCameraPermissions.mockReturnValue([
-      { granted: false, canAskAgain: false },
-      mockRequestPermission,
-      mockGetPermission,
-    ]);
-
-    const { getByText, getByTestId, queryByText } = render(
+    const { getByTestId, queryByText } = render(
       <PhotoCaptureModal
         visible
         onClose={jest.fn()}
@@ -99,15 +61,8 @@ describe("PhotoCaptureModal permission handling", () => {
       />,
     );
 
-    fireEvent.press(getByText("Open Settings"));
-
-    await act(async () => {
-      onAppStateChange?.("active");
-    });
-
-    await waitFor(() => {
-      expect(queryByText("Open Settings")).toBeNull();
-      expect(getByTestId("photo-capture-capture")).toBeTruthy();
-    });
+    expect(queryByText("Grant Permission")).toBeNull();
+    expect(getByTestId("photo-capture-capture")).toBeTruthy();
+    expect(mockRequestPermission).not.toHaveBeenCalled();
   });
 });

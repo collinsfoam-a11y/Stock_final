@@ -43,16 +43,16 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <>
       {children}
       <View
-        pointerEvents="box-none"
         style={[
           styles.container,
           {
             paddingTop: Math.max(insets.top + tokens.spacing.sm, tokens.spacing.lg),
             paddingHorizontal: tokens.spacing.md,
+            pointerEvents: "box-none",
           },
         ]}
       >
-        <View pointerEvents="box-none" style={[styles.toastStack, { gap: tokens.spacing.sm }]}>
+        <View style={[styles.toastStack, { gap: tokens.spacing.sm, pointerEvents: "box-none" }]}>
           {toasts.slice(-3).map((toast) => {
             const toastColor = getToastColor(toast.type, tokens);
 

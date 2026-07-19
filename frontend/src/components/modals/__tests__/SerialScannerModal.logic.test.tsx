@@ -1,8 +1,13 @@
 import { describeInvalidCandidateMessage } from "../SerialScannerModal";
 
-jest.mock("expo-camera", () => ({
-  CameraView: "CameraView",
-  useCameraPermissions: () => [{ granted: true, canAskAgain: true }, jest.fn()],
+jest.mock("@/services/device/visionCamera", () => ({
+  Camera: "Camera",
+  useCameraPermission: () => ({
+    hasPermission: true,
+    requestPermission: jest.fn(),
+  }),
+  useCameraDevice: () => null,
+  useCodeScanner: () => ({}),
 }));
 
 describe("SerialScannerModal invalid candidate messaging", () => {

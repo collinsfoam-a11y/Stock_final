@@ -1343,7 +1343,7 @@ class TestApprovalWorkflow:
                 "backend.api.count_lines_routes.record_count_line_variance", AsyncMock()
             ),
             patch(
-                "backend.api.count_lines_routes._recompute_session_totals", AsyncMock()
+                "backend.api.count_lines_routes._recompute_session_totals_batch", AsyncMock()
             ),
             patch(
                 "backend.api.count_lines_routes._broadcast_dashboard_refresh", AsyncMock()
@@ -1397,7 +1397,7 @@ class TestApprovalWorkflow:
                 AsyncMock(),
             ),
             patch(
-                "backend.api.count_lines_routes._recompute_session_totals", AsyncMock()
+                "backend.api.count_lines_routes._recompute_session_totals_batch", AsyncMock()
             ),
             patch(
                 "backend.api.count_lines_routes._broadcast_dashboard_refresh", AsyncMock()

@@ -5,9 +5,9 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { FlashList } from "@shopify/flash-list";
 import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
 
 import { Screen } from "@/components/layout/Screen";
+import { haptics } from "@/services/haptics";
 import ModernCard from "@/components/ui/ModernCard";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 import RecountAssignmentModal, {
@@ -169,7 +169,7 @@ export default function SessionDetail() {
     } catch {
       show("Failed to load session data", "error");
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        void haptics.error();
       }
     } finally {
       setLoading(false);
@@ -210,7 +210,7 @@ export default function SessionDetail() {
 
     try {
       if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        void haptics.medium();
       }
       await approveCountLine(lineId);
       await loadData();
@@ -218,7 +218,7 @@ export default function SessionDetail() {
     } catch {
       show("Failed to approve", "error");
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        void haptics.error();
       }
     }
   };
@@ -231,14 +231,14 @@ export default function SessionDetail() {
 
     try {
       if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        void haptics.medium();
       }
       await loadAssignableStaff();
       setPendingRejectLine(line);
       setRecountModalVisible(true);
     } catch {
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        void haptics.error();
       }
     }
   };
@@ -256,7 +256,7 @@ export default function SessionDetail() {
 
     try {
       if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        void haptics.medium();
       }
       setVerifying(pendingRejectLine.id);
       await rejectCountLine(pendingRejectLine.id, {
@@ -270,7 +270,7 @@ export default function SessionDetail() {
     } catch {
       show("Failed to reject", "error");
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        void haptics.error();
       }
     } finally {
       setVerifying(null);
@@ -285,7 +285,7 @@ export default function SessionDetail() {
 
     try {
       if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        void haptics.heavy();
       }
       setVerifying(lineId);
       await verifyStock(lineId);
@@ -294,7 +294,7 @@ export default function SessionDetail() {
     } catch {
       show("Failed to verify stock", "error");
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        void haptics.error();
       }
     } finally {
       setVerifying(null);
@@ -309,7 +309,7 @@ export default function SessionDetail() {
 
     try {
       if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        void haptics.medium();
       }
       setVerifying(lineId);
       await unverifyStock(lineId);
@@ -318,7 +318,7 @@ export default function SessionDetail() {
     } catch {
       show("Failed to remove verification", "error");
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        void haptics.error();
       }
     } finally {
       setVerifying(null);
@@ -333,7 +333,7 @@ export default function SessionDetail() {
 
     try {
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        void haptics.success();
       }
       await updateSessionStatus(targetSessionId, newStatus);
       await loadData();
@@ -341,7 +341,7 @@ export default function SessionDetail() {
     } catch {
       show("Failed to update status", "error");
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        void haptics.error();
       }
     }
   };
@@ -354,7 +354,7 @@ export default function SessionDetail() {
 
     try {
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        void haptics.success();
       }
       await finalizeSession(targetSessionId);
       await loadData();
@@ -366,7 +366,7 @@ export default function SessionDetail() {
         "Failed to finalize session";
       show(String(detail), "error");
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        void haptics.error();
       }
     }
   };
@@ -374,7 +374,7 @@ export default function SessionDetail() {
   const switchTab = (tab: "toVerify" | "verified") => {
     if (activeTab === tab) return;
     if (Platform.OS !== "web") {
-      Haptics.selectionAsync();
+      void haptics.selection();
     }
     setActiveTab(tab);
   };

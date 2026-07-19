@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useCameraPermissions } from "@/services/device/expoCamera";
+import { useCameraPermission } from "@/services/device/visionCamera";
 import { haptics } from "@/services/haptics";
 import {
   useAnimatedStyle,
@@ -24,7 +24,9 @@ import {
   withTiming,
   withSequence,
   Easing,
+  withSpring,
 } from "react-native-reanimated";
+import { useHardwareScanner } from "@/hooks/useHardwareScanner";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDebounce } from "use-debounce";
 
@@ -88,7 +90,8 @@ const ScanScreen = React.memo(function ScanScreen() {
   const [isScreenFocused, setIsScreenFocused] = useState<boolean>(false);
 
   const { currentFloor, currentRack } = useScanSessionStore();
-  const [permission, requestPermission] = useCameraPermissions();
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const permission = { granted: hasPermission, canAskAgain: true };
   const { safeSetState, safeAsync } = useSafeAsync();
   const {
     metrics: performanceMetrics,
@@ -299,6 +302,12 @@ const ScanScreen = React.memo(function ScanScreen() {
       safeSetState(setSearchResults, []);
     }
   }, [debouncedSearchQuery, performSearch, safeSetState]);
+
+  useHardwareScanner({
+    onScan: (code) => handleBarcodeScan({ data: code }),
+    // Only active when not explicitly looking at a modal 
+    isActive: !showCloseSessionModal,
+  });
 
   const handleBarcodeScan = async ({ data }: { data: string }) => {
     if (scanned) return;

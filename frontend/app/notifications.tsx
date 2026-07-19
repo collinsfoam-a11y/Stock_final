@@ -2,7 +2,7 @@
  * Notifications Screen - Display user notifications
  * Part of FR-M-23: Recount notifications
  */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -114,139 +114,148 @@ export default function NotificationsScreen() {
     fetchNotifications(showUnreadOnly);
   }, [fetchNotifications, showUnreadOnly]);
 
-  const getNotificationIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case "recount_assigned":
-        return { name: "refresh-circle", color: uiTokens.colors.warning };
-      case "count_approved":
-        return { name: "checkmark-circle", color: uiTokens.colors.success };
-      case "count_rejected":
-        return { name: "close-circle", color: uiTokens.colors.error };
-      case "session_reminder":
-        return { name: "time", color: uiTokens.colors.info };
-      default:
-        return { name: "notifications", color: uiTokens.colors.textSecondary };
-    }
-  };
+  const getNotificationIcon = useCallback(
+    (type: string) => {
+      switch (type.toLowerCase()) {
+        case "recount_assigned":
+          return { name: "refresh-circle", color: uiTokens.colors.warning };
+        case "count_approved":
+          return { name: "checkmark-circle", color: uiTokens.colors.success };
+        case "count_rejected":
+          return { name: "close-circle", color: uiTokens.colors.error };
+        case "session_reminder":
+          return { name: "time", color: uiTokens.colors.info };
+        default:
+          return { name: "notifications", color: uiTokens.colors.textSecondary };
+      }
+    },
+    [uiTokens]
+  );
 
-  const handleNotificationPress = async (notification: Notification) => {
-    if (!notification.read) {
-      await markAsRead(notification._id);
-    }
+  const handleNotificationPress = useCallback(
+    async (notification: Notification) => {
+      if (!notification.read) {
+        await markAsRead(notification._id);
+      }
 
-    const metadata = notification.metadata || {};
-    const actionCountLineId =
-      metadata.count_line_id || notification.action_url?.match(/\/count-lines\/([^/]+)/)?.[1];
+      const metadata = notification.metadata || {};
+      const actionCountLineId =
+        metadata.count_line_id || notification.action_url?.match(/\/count-lines\/([^/]+)/)?.[1];
 
-    if (!actionCountLineId) {
-      return;
-    }
-
-    try {
-      const countLine =
-        metadata.session_id && metadata.barcode
-          ? {
-              session_id: metadata.session_id,
-              barcode: metadata.barcode,
-            }
-          : await getCountLineById(actionCountLineId);
-
-      const sessionId = countLine?.session_id;
-      const barcode = countLine?.barcode;
-
-      if (!sessionId || !barcode) {
+      if (!actionCountLineId) {
         return;
       }
 
-      router.push({
-        pathname: "/staff/item-detail",
-        params: { sessionId, barcode },
-      } as any);
-    } catch (error) {
-      log.warn("Failed to open notification target", {
-        error: getReadableError(error),
-      });
-      toastService.showError("Could not open this notification.");
-    }
-  };
+      try {
+        const countLine =
+          metadata.session_id && metadata.barcode
+            ? {
+                session_id: metadata.session_id,
+                barcode: metadata.barcode,
+              }
+            : await getCountLineById(actionCountLineId);
 
-  const renderNotificationItem = ({ item }: { item: Notification }) => {
-    const iconInfo = getNotificationIcon(item.type);
+        const sessionId = countLine?.session_id;
+        const barcode = countLine?.barcode;
 
-    return (
-      <TouchableOpacity
-        accessibilityLabel={item.read ? item.title : `${item.title}, unread`}
-        accessibilityRole="button"
-        activeOpacity={0.75}
-        onPress={() => handleNotificationPress(item)}
-      >
-        <ModernCard
-          accessible={false}
-          style={[
-            styles.notificationCard,
-            !item.read && styles.unreadCard,
-            {
-              backgroundColor: item.read
-                ? uiTokens.colors.surfaceElevated
-                : colorWithAlpha(uiTokens.colors.accent, uiTokens.mode === "dark" ? 0.18 : 0.1),
-              borderColor: item.read ? uiTokens.colors.border : uiTokens.colors.accent,
-              ...(!item.read ? { borderLeftColor: uiTokens.colors.accent } : null),
-            },
-          ]}
+        if (!sessionId || !barcode) {
+          return;
+        }
+
+        router.push({
+          pathname: "/staff/item-detail",
+          params: { sessionId, barcode },
+        } as any);
+      } catch (error) {
+        log.warn("Failed to open notification target", {
+          error: getReadableError(error),
+        });
+        toastService.showError("Could not open this notification.");
+      }
+    },
+    [markAsRead, router]
+  );
+
+  const renderNotificationItem = useCallback(
+    ({ item }: { item: Notification }) => {
+      const iconInfo = getNotificationIcon(item.type);
+
+      return (
+        <TouchableOpacity
+          accessibilityLabel={item.read ? item.title : `${item.title}, unread`}
+          accessibilityRole="button"
+          activeOpacity={0.75}
+          onPress={() => handleNotificationPress(item)}
         >
-          <View style={styles.notificationContent}>
-            <View
-              style={[
-                styles.iconContainer,
-                {
-                  backgroundColor: colorWithAlpha(
-                    iconInfo.color,
-                    uiTokens.mode === "dark" ? 0.22 : 0.12
-                  ),
-                },
-              ]}
-            >
-              <Ionicons name={iconInfo.name as any} size={24} color={iconInfo.color} />
-            </View>
-
-            <View style={styles.textContainer}>
-              <Text style={[styles.notificationTitle, { color: uiTokens.colors.textPrimary }]}>
-                {item.title}
-              </Text>
-              <Text
-                style={[styles.notificationMessage, { color: uiTokens.colors.textSecondary }]}
-                numberOfLines={2}
+          <ModernCard
+            accessible={false}
+            style={[
+              styles.notificationCard,
+              !item.read && styles.unreadCard,
+              {
+                backgroundColor: item.read
+                  ? uiTokens.colors.surfaceElevated
+                  : colorWithAlpha(uiTokens.colors.accent, uiTokens.mode === "dark" ? 0.18 : 0.1),
+                borderColor: item.read ? uiTokens.colors.border : uiTokens.colors.accent,
+                ...(!item.read ? { borderLeftColor: uiTokens.colors.accent } : null),
+              },
+            ]}
+          >
+            <View style={styles.notificationContent}>
+              <View
+                style={[
+                  styles.iconContainer,
+                  {
+                    backgroundColor: colorWithAlpha(
+                      iconInfo.color,
+                      uiTokens.mode === "dark" ? 0.22 : 0.12
+                    ),
+                  },
+                ]}
               >
-                {item.message}
-              </Text>
-              <View style={styles.metaRow}>
-                <Text style={[styles.timeText, { color: uiTokens.colors.textMuted }]}>
-                  {formatTimeAgo(item.created_at)}
+                <Ionicons name={iconInfo.name as any} size={24} color={iconInfo.color} />
+              </View>
+
+              <View style={styles.textContainer}>
+                <Text style={[styles.notificationTitle, { color: uiTokens.colors.textPrimary }]}>
+                  {item.title}
                 </Text>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    {
-                      backgroundColor: colorWithAlpha(iconInfo.color, 0.12),
-                      borderColor: colorWithAlpha(iconInfo.color, 0.28),
-                    },
-                  ]}
+                <Text
+                  style={[styles.notificationMessage, { color: uiTokens.colors.textSecondary }]}
+                  numberOfLines={2}
                 >
-                  <Text style={[styles.statusBadgeText, { color: iconInfo.color }]}>
-                    {item.read ? "Read" : "Unread"}
+                  {item.message}
+                </Text>
+                <View style={styles.metaRow}>
+                  <Text style={[styles.timeText, { color: uiTokens.colors.textMuted }]}>
+                    {formatTimeAgo(item.created_at)}
                   </Text>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      {
+                        backgroundColor: colorWithAlpha(iconInfo.color, 0.12),
+                        borderColor: colorWithAlpha(iconInfo.color, 0.28),
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.statusBadgeText, { color: iconInfo.color }]}>
+                      {item.read ? "Read" : "Unread"}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
 
-            {!item.read ? (
-              <View style={[styles.unreadDot, { backgroundColor: uiTokens.colors.accent }]} />
-            ) : null}
-          </View>
-        </ModernCard>
-      </TouchableOpacity>
-    );
-  };
+              {!item.read ? (
+                <View style={[styles.unreadDot, { backgroundColor: uiTokens.colors.accent }]} />
+              ) : null}
+            </View>
+          </ModernCard>
+        </TouchableOpacity>
+      );
+    },
+    [getNotificationIcon, handleNotificationPress, uiTokens]
+  );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>

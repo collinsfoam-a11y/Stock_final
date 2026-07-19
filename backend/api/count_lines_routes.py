@@ -31,6 +31,7 @@ from backend.services.canonical_inventory import (
     normalize_count_line_status,
     normalize_location_value,
     recompute_session_totals,
+    recompute_session_totals_batch,
 )
 from backend.services.concurrency import ConcurrencyError, coerce_version
 from backend.services.count_line_write_service import (
@@ -98,6 +99,7 @@ class CountLineUpdateRequest(BaseModel):
     """Minimal update payload for a count line (used by bulk update tooling)."""
 
     counted_qty: Optional[float] = None
+    mrp_counted: Optional[float] = None
     batches: Optional[list[dict[str, Any]]] = None
 
 
@@ -134,6 +136,21 @@ async def _recompute_session_totals(db: Any, session_id: str) -> dict[str, Any]:
     return await recompute_session_totals(
         db,
         session_id,
+        lifecycle_service=lifecycle_service,
+    )
+
+
+async def _recompute_session_totals_batch(
+    db: Any, session_ids: list[str]
+) -> dict[str, dict[str, Any]]:
+    """Batched form of `_recompute_session_totals` for bulk operations spanning
+    multiple sessions -- issues one `count_lines` query instead of one per
+    session_id. Per-session writes (OCC check, audit log, projection sync)
+    are unchanged; only the read is batched."""
+    lifecycle_service = SessionLifecycleService(db)
+    return await recompute_session_totals_batch(
+        db,
+        session_ids,
         lifecycle_service=lifecycle_service,
     )
 
@@ -331,18 +348,40 @@ def _build_legacy_count_line_draft_filter(
     }
 
 
+async def _lookup_erp_item(
+    db: Any,
+    *,
+    barcode: Optional[str],
+    item_code: Optional[str],
+    require_item_code_truthy: bool,
+) -> Optional[dict[str, Any]]:
+    """Shared barcode-then-item_code ERP item lookup used by every count-line
+    path that needs to resolve an erp_items document. `require_item_code_truthy`
+    preserves each call site's pre-existing behavior: some skip the item_code
+    query entirely when item_code is falsy, others (historically) queried
+    unconditionally. Keep it explicit rather than silently picking one."""
+    erp_item = None
+    if barcode:
+        result = db.erp_items.find_one({"barcode": barcode})
+        erp_item = await result if inspect.isawaitable(result) else result
+
+    if not erp_item and (item_code if require_item_code_truthy else True):
+        result = db.erp_items.find_one({"item_code": item_code})
+        erp_item = await result if inspect.isawaitable(result) else result
+
+    return erp_item
+
+
 async def _resolve_item_name_for_draft(db: Any, line_data: CountLineCreate) -> Optional[str]:
     if line_data.item_name:
         return line_data.item_name
 
-    erp_item = None
-    if line_data.barcode:
-        result = db.erp_items.find_one({"barcode": line_data.barcode})
-        erp_item = await result if inspect.isawaitable(result) else result
-
-    if not erp_item and line_data.item_code:
-        result = db.erp_items.find_one({"item_code": line_data.item_code})
-        erp_item = await result if inspect.isawaitable(result) else result
+    erp_item = await _lookup_erp_item(
+        db,
+        barcode=line_data.barcode,
+        item_code=line_data.item_code,
+        require_item_code_truthy=True,
+    )
 
     item_name = erp_item.get("item_name") if erp_item else None
     return item_name or None
@@ -788,16 +827,12 @@ async def _evaluate_duplicate_context(
 async def _find_erp_item_for_count_line(
     db: Any, line_data: CountLineCreate
 ) -> Optional[dict[str, Any]]:
-    erp_item = None
-    if line_data.barcode:
-        result_item = db.erp_items.find_one({"barcode": line_data.barcode})
-        erp_item = await result_item if inspect.isawaitable(result_item) else result_item
-
-    if not erp_item:
-        result_item = db.erp_items.find_one({"item_code": line_data.item_code})
-        erp_item = await result_item if inspect.isawaitable(result_item) else result_item
-
-    return erp_item
+    return await _lookup_erp_item(
+        db,
+        barcode=line_data.barcode,
+        item_code=line_data.item_code,
+        require_item_code_truthy=False,
+    )
 
 
 async def _get_erp_item_for_count_line(db: Any, line_data: CountLineCreate) -> dict[str, Any]:
@@ -811,18 +846,16 @@ async def _get_erp_item_for_existing_count_line(
     db: Any, count_line: dict[str, Any]
 ) -> dict[str, Any]:
     barcode = count_line.get("barcode")
-    if barcode:
-        result_item = db.erp_items.find_one({"barcode": barcode})
-        erp_item = await result_item if inspect.isawaitable(result_item) else result_item
-        if erp_item:
-            return erp_item
-
     item_code = count_line.get("item_code")
-    if item_code:
-        result_item = db.erp_items.find_one({"item_code": item_code})
-        erp_item = await result_item if inspect.isawaitable(result_item) else result_item
-        if erp_item:
-            return erp_item
+
+    erp_item = await _lookup_erp_item(
+        db,
+        barcode=barcode,
+        item_code=item_code,
+        require_item_code_truthy=True,
+    )
+    if erp_item:
+        return erp_item
 
     return {
         "item_code": item_code,
@@ -2648,7 +2681,7 @@ async def update_count_line(
         operation_name="update_count_line",
     )
 
-    if payload.counted_qty is None and payload.batches is None:
+    if payload.counted_qty is None and payload.batches is None and payload.mrp_counted is None:
         raise HTTPException(status_code=400, detail="No updatable fields provided")
 
     # Staff can only mutate their own count lines; supervisors/admin can mutate any.
@@ -2657,19 +2690,19 @@ async def update_count_line(
     ) != current_user.get("username"):
         raise HTTPException(status_code=403, detail="Not authorized to modify this count line")
 
+    update_data = {
+        "updated_at": _current_timestamp(),
+        "updated_by": current_user.get("username"),
+    }
+    
+    erp_item = None
     if payload.counted_qty is not None:
         new_counted_qty = float(payload.counted_qty)
         erp_item = await _get_erp_item_for_existing_count_line(db, count_line)
-        update_data = {
-            "counted_qty": new_counted_qty,
-            "updated_at": _current_timestamp(),
-            "updated_by": current_user.get("username"),
-        }
-    else:
-        update_data = {
-            "updated_at": _current_timestamp(),
-            "updated_by": current_user.get("username"),
-        }
+        update_data["counted_qty"] = new_counted_qty
+        
+    if payload.mrp_counted is not None:
+        update_data["mrp_counted"] = float(payload.mrp_counted)
 
     if payload.batches is not None:
         update_data["batches"] = payload.batches
@@ -2887,8 +2920,7 @@ async def bulk_approve_count_lines(
                 approved_at=bulk_approved_at,
             )
 
-        for session_id in session_ids:
-            await _recompute_session_totals(db, session_id)
+        await _recompute_session_totals_batch(db, list(session_ids))
         if session_ids:
             await _broadcast_dashboard_refresh(
                 "count_lines_bulk_approved",
@@ -3149,8 +3181,7 @@ async def bulk_reject_count_lines(
             },
         )
 
-        for session_id in session_ids:
-            await _recompute_session_totals(db, session_id)
+        await _recompute_session_totals_batch(db, list(session_ids))
         if session_ids:
             await _broadcast_dashboard_refresh(
                 "count_lines_bulk_rejected",

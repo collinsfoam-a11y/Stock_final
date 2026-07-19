@@ -145,7 +145,6 @@ class DatabaseHealthService:
                     pass
 
                 is_placeholder = isinstance(sql_password, str) and sql_password.strip().lower() in {
-                    "",
                     "your-sql-password",
                     "change-me",
                     "password",

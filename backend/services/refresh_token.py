@@ -291,8 +291,10 @@ class RefreshTokenService:
             "token_type": "bearer",
             "expires_in": expires_in_seconds,
             "user": {
+                "id": str(user_profile.get("_id", "")) if user_profile else "",
                 "username": str(username) if username else "",
                 "full_name": (str(user_profile.get("full_name", "")) if user_profile else ""),
                 "role": str(role) if role else "",
+                "permissions": user_profile.get("permissions", []) if user_profile else [],
             },
         }

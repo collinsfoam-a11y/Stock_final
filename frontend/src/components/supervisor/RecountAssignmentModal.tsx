@@ -5,6 +5,7 @@ import { SearchableSelectModal } from "../modals/SearchableSelectModal";
 import { Modal } from "../ui/Modal";
 import ModernInput from "../ui/ModernInput";
 import { theme } from "../../styles/unifiedSystem";
+import { useUiTokens } from "@/hooks/useUiTokens";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 export interface AssignableStaffUser {
@@ -40,6 +41,7 @@ export default function RecountAssignmentModal({
   onClose,
   onSubmit,
 }: RecountAssignmentModalProps) {
+  const uiTokens = useUiTokens();
   const [notes, setNotes] = useState("");
   const [selectedAssignee, setSelectedAssignee] = useState<string | undefined>();
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -79,17 +81,31 @@ export default function RecountAssignmentModal({
     <>
       <Modal visible={visible} onClose={onClose} title={title} size="medium" animationType="fade">
         <View style={styles.content}>
-          <Text style={styles.description}>{description}</Text>
+          <Text style={[styles.description, { color: uiTokens.colors.textSecondary }]}>
+            {description}
+          </Text>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Assign To</Text>
+            <Text style={[styles.fieldLabel, { color: uiTokens.colors.textMuted }]}>Assign To</Text>
             <TouchableOpacity
-              style={styles.selector}
+              style={[
+                styles.selector,
+                { borderColor: uiTokens.colors.border, backgroundColor: uiTokens.colors.surface },
+              ]}
               onPress={() => setPickerVisible(true)}
               activeOpacity={0.8}
               disabled={loading || staffOptions.length === 0}
             >
-              <Text style={[styles.selectorText, !selectedAssignee && styles.selectorPlaceholder]}>
+              <Text
+                style={[
+                  styles.selectorText,
+                  {
+                    color: selectedAssignee
+                      ? uiTokens.colors.textPrimary
+                      : uiTokens.colors.textMuted,
+                  },
+                ]}
+              >
                 {staffOptions.length === 0 ? "No active staff available" : selectedLabel}
               </Text>
             </TouchableOpacity>
@@ -109,18 +125,23 @@ export default function RecountAssignmentModal({
 
           <View style={styles.actions}>
             <TouchableOpacity
-              style={[styles.button, styles.cancelButton]}
+              style={[
+                styles.button,
+                styles.cancelButton,
+                { borderColor: uiTokens.colors.border, backgroundColor: uiTokens.colors.surface },
+              ]}
               onPress={onClose}
               disabled={loading}
               activeOpacity={0.8}
             >
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Text style={[styles.cancelText, { color: uiTokens.colors.textPrimary }]}>Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[
                 styles.button,
                 styles.confirmButton,
+                { backgroundColor: uiTokens.colors.warning },
                 (!selectedAssignee || loading) && styles.disabledButton,
               ]}
               onPress={() => void handleSubmit()}
@@ -160,7 +181,6 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
   },
   description: {
-    color: theme.colors.text.secondary,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -168,7 +188,6 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   fieldLabel: {
-    color: theme.colors.text.tertiary,
     fontSize: 12,
     fontWeight: "600",
     letterSpacing: 0.8,
@@ -179,17 +198,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.04)",
     paddingHorizontal: theme.spacing.md,
   },
   selectorText: {
-    color: theme.colors.text.primary,
     fontSize: 15,
     fontWeight: "500",
-  },
-  selectorPlaceholder: {
-    color: theme.colors.text.tertiary,
   },
   notesInput: {
     marginBottom: theme.spacing.xs,
@@ -207,17 +220,12 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.03)",
   },
   cancelText: {
-    color: theme.colors.text.primary,
     fontSize: 15,
     fontWeight: "600",
   },
-  confirmButton: {
-    backgroundColor: theme.colors.warning.main,
-  },
+  confirmButton: {},
   disabledButton: {
     opacity: 0.55,
   },

@@ -17,7 +17,7 @@ import {
   AppState,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CameraView, type CameraViewRef, useCameraPermissions } from "@/services/device/expoCamera";
+import { Camera, useCameraDevice, useCameraPermission } from "@/services/device/visionCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   modernColors,
@@ -42,30 +42,24 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   title = "Capture Photo",
   testID,
 }) => {
-  const [permission, requestPermission, getPermission] = useCameraPermissions();
-  const [permissionState, setPermissionState] = useState(permission);
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const permissionState = { granted: hasPermission, canAskAgain: true };
+  const getPermission = async () => permissionState;
+  const device = useCameraDevice('back');
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
-  const cameraRef = useRef<CameraViewRef>(null);
+  const cameraRef = useRef<any>(null);
   const hasAutoRequestedPermissionRef = useRef(false);
 
-  useEffect(() => {
-    setPermissionState(permission);
-  }, [permission]);
+  // Permission state handled internally by hook
 
   const refreshPermissionState = useCallback(async () => {
-    try {
-      const latestPermission = await getPermission();
-      setPermissionState(latestPermission);
-    } catch {
-      // Ignore refresh failures and keep the last known state.
-    }
-  }, [getPermission]);
+    // Vision camera hook is reactive, no manual refresh needed
+  }, []);
 
   const requestCameraPermission = useCallback(async () => {
-    const latestPermission = await requestPermission();
-    setPermissionState(latestPermission);
-    return latestPermission;
+    const granted = await requestPermission();
+    return { granted, canAskAgain: true };
   }, [requestPermission]);
 
   // Handle photo capture
@@ -74,13 +68,13 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
     try {
       setIsCapturing(true);
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
-        base64: false,
+      const photo = await cameraRef.current.takePhoto({
+        qualityPrioritization: 'speed',
+        flash: 'off'
       });
 
       if (photo) {
-        setCapturedPhoto(photo.uri);
+        setCapturedPhoto(photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`);
       }
     } catch (error) {
       Alert.alert("Error", "Failed to capture photo. Please try again.");
@@ -236,13 +230,22 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
           {capturedPhoto ? (
             <Image source={{ uri: capturedPhoto }} style={styles.preview} resizeMode="cover" />
           ) : (
-            <CameraView ref={cameraRef} style={styles.camera} facing="back">
+            <>
+              {device && (
+                <Camera
+                  ref={cameraRef}
+                  style={styles.camera}
+                  device={device}
+                  isActive={visible && !capturedPhoto}
+                  photo={true}
+                />
+              )}
               {isCapturing && (
                 <View style={styles.capturingOverlay}>
                   <ActivityIndicator size="large" color={uiSemanticColors.text.inverse} />
                 </View>
               )}
-            </CameraView>
+            </>
           )}
         </View>
 

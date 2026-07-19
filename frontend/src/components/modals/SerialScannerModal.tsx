@@ -18,7 +18,7 @@ import {
   Alert,
   Linking,
 } from "react-native";
-import { CameraView, useCameraPermissions } from "@/services/device/expoCamera";
+import { Camera, useCameraDevice, useCodeScanner, useCameraPermission } from "@/services/device/visionCamera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
@@ -101,7 +101,28 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
     () => new Set(existingSerials.map(normalizeSerialValue).filter(Boolean)),
     [existingSerials]
   );
-  const [permission, requestPermission] = useCameraPermissions();
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const permission = { granted: hasPermission, canAskAgain: true };
+  const device = useCameraDevice('back');
+  const [isTorchOn, setIsTorchOn] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+
+  useEffect(() => {
+    if (device?.neutralZoom) setZoomLevel(device.neutralZoom);
+  }, [device?.neutralZoom]);
+
+  const toggleTorch = () => setIsTorchOn((prev) => !prev);
+  const handleZoomIn = () => device?.maxZoom && setZoomLevel((prev) => Math.min(prev + 1, device.maxZoom));
+  const handleZoomOut = () => device?.minZoom && setZoomLevel((prev) => Math.max(prev - 1, device.minZoom));
+
+  const codeScanner = useCodeScanner({
+    codeTypes: ["code-128", "code-39", "code-93", "qr", "data-matrix"],
+    onCodeScanned: (codes: any) => {
+      if (!scanPaused && !showManualInput && codes.length > 0) {
+        handleBarcodeScanned({ data: codes[0].value || "" });
+      }
+    },
+  });
 
   const [scanFeedback, setScanFeedback] = useState<{
     type: "success" | "error" | "warning";
@@ -482,19 +503,16 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
-        <CameraView
-          style={StyleSheet.absoluteFillObject}
-          facing="back"
-          active={visible && !showManualInput}
-          barcodeScannerSettings={{
-            // Serial labels are alphanumeric (Code128/39/93, QR, DataMatrix).
-            // Product EAN/UPC symbologies are intentionally excluded: the serial
-            // validator always rejects them, and decoding them every frame just
-            // wastes CPU and lowers the scan frame rate (PERF).
-            barcodeTypes: ["code128", "code39", "code93", "qr", "datamatrix"],
-          }}
-          onBarcodeScanned={scanPaused || showManualInput ? undefined : handleBarcodeScanned}
-        />
+        {device && (
+          <Camera
+            style={StyleSheet.absoluteFillObject}
+            device={device}
+            isActive={visible && !showManualInput}
+            codeScanner={codeScanner}
+            torch={device.hasTorch && isTorchOn ? "on" : "off"}
+            zoom={zoomLevel}
+          />
+        )}
 
         {/* Overlay */}
         <View style={styles.overlay}>
@@ -518,8 +536,18 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
                 </Text>
               )}
             </View>
-            <View style={styles.countBadge}>
-              <Text style={styles.countText}>{existingSerials.length}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              {device?.hasTorch && (
+                <TouchableOpacity
+                  onPress={toggleTorch}
+                  style={[styles.closeButton, { backgroundColor: isTorchOn ? colors.primary[500] : "rgba(0,0,0,0.5)" }]}
+                >
+                  <Ionicons name={isTorchOn ? "flashlight" : "flashlight-outline"} size={24} color={colors.white} />
+                </TouchableOpacity>
+              )}
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>{existingSerials.length}</Text>
+              </View>
             </View>
           </View>
 
@@ -530,6 +558,16 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
               <View style={[styles.corner, styles.topRight]} />
               <View style={[styles.corner, styles.bottomLeft]} />
               <View style={[styles.corner, styles.bottomRight]} />
+            </View>
+            
+            <View style={styles.zoomControls}>
+              <TouchableOpacity style={styles.zoomButton} onPress={handleZoomOut}>
+                <Ionicons name="remove-circle-outline" size={32} color={colors.white} />
+              </TouchableOpacity>
+              <Text style={styles.zoomText}>{zoomLevel.toFixed(1)}x</Text>
+              <TouchableOpacity style={styles.zoomButton} onPress={handleZoomIn}>
+                <Ionicons name="add-circle-outline" size={32} color={colors.white} />
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -1063,6 +1101,24 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     textAlignVertical: "top",
   },
+  zoomControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: spacing.xl,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+  },
+  zoomButton: {
+    padding: spacing.xs,
+  },
+  zoomText: {
+    color: colors.white,
+    fontSize: fontSize.lg,
+    fontWeight: "600",
+    marginHorizontal: spacing.md,
+  }
 });
 
 export default SerialScannerModal;
