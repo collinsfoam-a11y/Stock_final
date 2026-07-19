@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-10T01:17:34.402Z",
+  "updatedAt": "2026-07-19T10:26:27.240Z",
   "ceilings": {
     "dependencyCount": 51,
     "devDependencyCount": 34,
@@ -19,7 +19,6 @@
     "expo-background-task",
     "expo-blur",
     "expo-brightness",
-    "expo-camera",
     "expo-clipboard",
     "expo-constants",
     "expo-crypto",
@@ -52,6 +51,7 @@
     "react-native-safe-area-context",
     "react-native-screens",
     "react-native-svg",
+    "react-native-vision-camera",
     "react-native-web",
     "react-native-worklets",
     "use-debounce",

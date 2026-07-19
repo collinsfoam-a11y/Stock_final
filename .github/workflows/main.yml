@@ -69,6 +69,11 @@ jobs:
           pip install -r backend/requirements.dev.txt
 
       - name: Duplicate route registration guard
+        env:
+          JWT_SECRET: ci-import-guard-jwt-secret-32-chars
+          JWT_REFRESH_SECRET: ci-import-guard-refresh-secret-32
+          PIN_SALT: ci-import-guard-pin-salt-32-chars-x
+          ENVIRONMENT: test
         run: |
           python scripts/check_duplicate_routes.py
 
@@ -76,6 +81,7 @@ jobs:
         env:
           JWT_SECRET: ci-import-guard-jwt-secret-32-chars
           JWT_REFRESH_SECRET: ci-import-guard-refresh-secret-32
+          PIN_SALT: ci-import-guard-pin-salt-32-chars-x
           ENVIRONMENT: test
         run: |
           python -c "import backend.server"
