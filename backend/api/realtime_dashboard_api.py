@@ -576,66 +576,17 @@ async def _ws_process_message(
 # ==========================================
 
 
-@realtime_dashboard_router.websocket("/ws/{token}")
-async def websocket_endpoint(websocket: WebSocket, token: str):
-    """WebSocket endpoint for bidirectional real-time communication (legacy path)."""
-    jwt_token, _accept_subprotocol = _extract_jwt_from_websocket(websocket, token)
-
-    if not jwt_token:
-        await websocket.accept()
-        await websocket.close(code=1008)
-        return
-
-    try:
-        if not settings.JWT_SECRET:
-            raise ValueError("JWT_SECRET not set")
-        payload = decode(jwt_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-        user_id = payload.get("sub")
-        role = str(payload.get("role") or "").lower()
-        if not user_id:
-            raise ValueError("No user_id in token")
-        if role not in {"admin", "supervisor"}:
-            raise ValueError("Insufficient role")
-    except Exception as e:
-        logger.warning("Dashboard WebSocket auth failed: %s", sanitize_for_logging(str(e)))
-        await websocket.accept()
-        await websocket.close(code=1008)
-        return
-
-    await manager.connect(websocket, user_id)
-
-    try:
-        db = get_db()
-        service = AdvancedReportService(db)
-        config = DashboardConfig()
-        manager.set_config(user_id, config)
-
-        # Send initial data
-        result = await _ws_get_report(service, config)
-        await manager.send_personal_message({"type": "initial_data", "payload": result}, user_id)
-
-        # Listen for client messages
-        while True:
-            try:
-                data = await asyncio.wait_for(
-                    websocket.receive_json(), timeout=config.refresh_interval_seconds
-                )
-                config = await _ws_process_message(data, user_id, service, config, db)
-            except asyncio.TimeoutError:
-                await _ws_handle_auto_refresh(user_id, service, config)
-
-    except WebSocketDisconnect:
-        manager.disconnect(user_id)
-    except Exception as e:
-        logger.error("WebSocket error for {user_id}: %s", sanitize_for_logging(str(e)))
-        manager.disconnect(user_id)
-
-
 @realtime_dashboard_router.websocket("/ws")
-async def websocket_endpoint_no_path_token(
+async def websocket_endpoint(
     websocket: WebSocket, token: Optional[str] = Query(None)
 ):
-    """WebSocket endpoint for bidirectional real-time communication."""
+    """WebSocket endpoint for bidirectional real-time communication.
+
+    The JWT is taken from the ``Sec-WebSocket-Protocol`` header (preferred) or a
+    ``token`` query parameter and is never accepted in the URL path, so it
+    cannot leak into server access logs, proxies, or browser history.
+    Connections are restricted to ``admin`` and ``supervisor`` roles.
+    """
     jwt_token, _accept_subprotocol = _extract_jwt_from_websocket(websocket, token)
 
     if not jwt_token:
