@@ -589,6 +589,14 @@ async def websocket_endpoint(
     """
     jwt_token, _accept_subprotocol = _extract_jwt_from_websocket(websocket, token)
 
+    if token and jwt_token == token:
+        # Query strings leak into access logs the same way path segments do;
+        # nudge clients toward the Sec-WebSocket-Protocol header form.
+        logger.warning(
+            "Dashboard WebSocket authenticated via deprecated ?token= query "
+            "parameter; migrate the client to the Sec-WebSocket-Protocol header."
+        )
+
     if not jwt_token:
         await websocket.accept()
         await websocket.close(code=1008)

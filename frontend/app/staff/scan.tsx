@@ -90,8 +90,19 @@ const ScanScreen = React.memo(function ScanScreen() {
   const [isScreenFocused, setIsScreenFocused] = useState<boolean>(false);
 
   const { currentFloor, currentRack } = useScanSessionStore();
-  const { hasPermission, requestPermission } = useCameraPermission();
-  const permission = { granted: hasPermission, canAskAgain: true };
+  const { hasPermission, requestPermission: requestVisionPermission } = useCameraPermission();
+  // A failed vision-camera permission request resolves false without a prompt
+  // when permanently denied -> stop asking and route to "Open Settings" UI.
+  const [cameraDeniedAfterRequest, setCameraDeniedAfterRequest] = useState(false);
+  const permission = { granted: hasPermission, canAskAgain: !cameraDeniedAfterRequest };
+  const requestPermission = useCallback(async () => {
+    const granted = await requestVisionPermission();
+    if (!granted) setCameraDeniedAfterRequest(true);
+    return granted;
+  }, [requestVisionPermission]);
+  useEffect(() => {
+    if (hasPermission) setCameraDeniedAfterRequest(false);
+  }, [hasPermission]);
   const { safeSetState, safeAsync } = useSafeAsync();
   const {
     metrics: performanceMetrics,
@@ -305,8 +316,9 @@ const ScanScreen = React.memo(function ScanScreen() {
 
   useHardwareScanner({
     onScan: (code) => handleBarcodeScan({ data: code }),
-    // Only active when not explicitly looking at a modal 
-    isActive: !showCloseSessionModal,
+    // Only listen while this screen is focused and no modal is on top, so a
+    // scan can't be handled twice by stacked screens/modals.
+    isActive: isScreenFocused && !showCloseSessionModal,
   });
 
   const handleBarcodeScan = async ({ data }: { data: string }) => {

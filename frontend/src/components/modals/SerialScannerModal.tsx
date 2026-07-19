@@ -101,8 +101,19 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
     () => new Set(existingSerials.map(normalizeSerialValue).filter(Boolean)),
     [existingSerials]
   );
-  const { hasPermission, requestPermission } = useCameraPermission();
-  const permission = { granted: hasPermission, canAskAgain: true };
+  const { hasPermission, requestPermission: requestVisionPermission } = useCameraPermission();
+  // A failed vision-camera permission request resolves false without a prompt
+  // when permanently denied -> stop asking and show "Open Settings" instead.
+  const [deniedAfterRequest, setDeniedAfterRequest] = useState(false);
+  const permission = { granted: hasPermission, canAskAgain: !deniedAfterRequest };
+  const requestPermission = useCallback(async () => {
+    const granted = await requestVisionPermission();
+    if (!granted) setDeniedAfterRequest(true);
+    return granted;
+  }, [requestVisionPermission]);
+  useEffect(() => {
+    if (hasPermission) setDeniedAfterRequest(false);
+  }, [hasPermission]);
   const device = useCameraDevice('back');
   const [isTorchOn, setIsTorchOn] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);

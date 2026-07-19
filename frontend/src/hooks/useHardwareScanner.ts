@@ -12,8 +12,12 @@ interface UseHardwareScannerProps {
 }
 
 /**
- * Hook to listen for hardware barcode scanners (HID keyboards).
+ * Hook to listen for hardware barcode scanners (HID keyboards) on web.
  * It detects rapid keystrokes followed by an Enter key.
+ *
+ * The listener is registered once per activation; `onScan` is read through a
+ * ref so an inline callback at the call site doesn't re-register the listener
+ * on every render.
  */
 export function useHardwareScanner({
   onScan,
@@ -23,6 +27,8 @@ export function useHardwareScanner({
 }: UseHardwareScannerProps) {
   const bufferRef = useRef("");
   const lastKeyTimeRef = useRef(0);
+  const onScanRef = useRef(onScan);
+  onScanRef.current = onScan;
 
   useEffect(() => {
     if (!isActive || Platform.OS !== "web") {
@@ -51,7 +57,7 @@ export function useHardwareScanner({
 
       if (e.key === "Enter") {
         if (bufferRef.current.length >= minLength) {
-          onScan(bufferRef.current);
+          onScanRef.current(bufferRef.current);
           e.preventDefault();
         }
         bufferRef.current = "";
@@ -68,9 +74,9 @@ export function useHardwareScanner({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isActive, keyDelayThreshold, minLength, onScan]);
+  }, [isActive, keyDelayThreshold, minLength]);
 
-  // For native, implementing a global key listener requires native modules
-  // (like react-native-keyevent). For now, we rely on the camera scanner or
-  // manual entry fields for native, while web gets the HID listener.
+  // For native, scanning goes through the built-in camera (vision-camera).
+  // A global HID key listener on native would require a native module
+  // (e.g. react-native-keyevent); web is the only platform that needs this.
 }

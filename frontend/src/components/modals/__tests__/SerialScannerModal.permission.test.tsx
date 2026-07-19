@@ -15,6 +15,10 @@ jest.mock("@/services/device/visionCamera", () => ({
 describe("SerialScannerModal permission handling", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Resolve true so the modal's auto-request doesn't flip its
+    // denied-after-request state, which would swap the Grant Permission
+    // button for Open Settings.
+    mockRequestPermission.mockResolvedValue(true);
   });
 
   it("requests camera permission when access is not yet granted", async () => {

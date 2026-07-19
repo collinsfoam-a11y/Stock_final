@@ -1,6 +1,17 @@
 import NetInfo from "@react-native-community/netinfo";
+import { Platform } from "react-native";
 import { flags } from "../constants/flags";
 import { useNetworkStore } from "../store/networkStore";
+
+if (Platform.OS === "web") {
+  // NetInfo's web default probes `HEAD /` on the current origin to test
+  // internet reachability. Dev/static servers often never answer HEAD, so the
+  // probe times out and aborts (net::ERR_ABORTED noise, and e2e guards that
+  // assert zero failed requests trip on it). This app never trusts web
+  // reachability anyway -- `toReachableValue` treats it as unknown and real
+  // connectivity comes from backend health probes -- so skip the ping.
+  NetInfo.configure({ reachabilityShouldRun: () => false });
+}
 
 function toReachableValue(
   isConnected: boolean,

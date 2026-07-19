@@ -43,28 +43,42 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   testID,
 }) => {
   const { hasPermission, requestPermission } = useCameraPermission();
-  const permissionState = { granted: hasPermission, canAskAgain: true };
-  const getPermission = async () => permissionState;
+  // vision-camera's requestPermission resolves false immediately (no prompt)
+  // once the user has permanently denied, so a failed request means further
+  // requests are pointless -> route the UI to "Open Settings".
+  const [deniedAfterRequest, setDeniedAfterRequest] = useState(false);
+  const permissionState = {
+    granted: hasPermission,
+    canAskAgain: !deniedAfterRequest,
+  };
   const device = useCameraDevice('back');
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const cameraRef = useRef<any>(null);
   const hasAutoRequestedPermissionRef = useRef(false);
 
-  // Permission state handled internally by hook
+  useEffect(() => {
+    if (hasPermission) {
+      setDeniedAfterRequest(false);
+    }
+  }, [hasPermission]);
 
   const refreshPermissionState = useCallback(async () => {
-    // Vision camera hook is reactive, no manual refresh needed
+    // useCameraPermission re-reads status itself; nothing to refresh manually.
   }, []);
 
   const requestCameraPermission = useCallback(async () => {
     const granted = await requestPermission();
-    return { granted, canAskAgain: true };
+    if (!granted) {
+      setDeniedAfterRequest(true);
+    }
+    return { granted, canAskAgain: granted };
   }, [requestPermission]);
 
   // Handle photo capture
   const handleCapture = async () => {
-    if (!cameraRef.current) return;
+    // The web Camera stub has no takePhoto; only capture on a real device.
+    if (!cameraRef.current || typeof cameraRef.current.takePhoto !== "function") return;
 
     try {
       setIsCapturing(true);

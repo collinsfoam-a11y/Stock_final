@@ -144,6 +144,10 @@ class DatabaseHealthService:
                 except Exception:
                     pass
 
+                # An empty password is intentionally NOT treated as a placeholder:
+                # integrated/trusted auth setups have no password, and for
+                # password auth an empty value fails the real connection attempt
+                # below, which reports unhealthy with the actual driver error.
                 is_placeholder = isinstance(sql_password, str) and sql_password.strip().lower() in {
                     "your-sql-password",
                     "change-me",

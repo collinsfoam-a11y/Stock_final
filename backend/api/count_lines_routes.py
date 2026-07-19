@@ -2694,15 +2694,21 @@ async def update_count_line(
         "updated_at": _current_timestamp(),
         "updated_by": current_user.get("username"),
     }
-    
+
     erp_item = None
     if payload.counted_qty is not None:
-        new_counted_qty = float(payload.counted_qty)
         erp_item = await _get_erp_item_for_existing_count_line(db, count_line)
-        update_data["counted_qty"] = new_counted_qty
-        
+        update_data["counted_qty"] = float(payload.counted_qty)
+
     if payload.mrp_counted is not None:
         update_data["mrp_counted"] = float(payload.mrp_counted)
+        if payload.counted_qty is None:
+            # The write service only recomputes derived fields (financial_impact,
+            # variance governance, risk flags) when counted_qty is present in the
+            # $set. An MRP correction changes financial_impact, so re-submit the
+            # existing counted_qty to run the same governed recompute path.
+            erp_item = await _get_erp_item_for_existing_count_line(db, count_line)
+            update_data["counted_qty"] = float(count_line.get("counted_qty") or 0.0)
 
     if payload.batches is not None:
         update_data["batches"] = payload.batches
@@ -2715,7 +2721,7 @@ async def update_count_line(
         },
         context={
             "session": session,
-            "erp_item": erp_item if payload.counted_qty is not None else None,
+            "erp_item": erp_item,
             "username": current_user.get("username"),
             "variance_reason": count_line.get("variance_reason"),
             "correction_reason": count_line.get("correction_reason"),
