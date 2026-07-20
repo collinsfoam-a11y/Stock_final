@@ -77,7 +77,13 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   const displayLabel = label || `${Math.round(progress)}%`;
 
   return (
-    <View style={[styles.container, style]}>
+    <View
+      style={[styles.container, style]}
+      accessible={true}
+      accessibilityRole="progressbar"
+      accessibilityLabel={label || "Progress bar"}
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(progress) }}
+    >
       {showLabel && (
         <Text
           style={[
