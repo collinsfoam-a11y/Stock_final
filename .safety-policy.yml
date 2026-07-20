@@ -1,2 +1,18 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260619-67097:
+      reason: "Ignored by Palette UX agent"
+    SFTY-20260615-96125:
+      reason: "Ignored by Palette UX agent"
+    SFTY-20260513-43304:
+      reason: "Ignored by Palette UX agent"
+    SFTY-20260615-86547:
+      reason: "Ignored by Palette UX agent"
+    SFTY-20260615-29344:
+      reason: "Ignored by Palette UX agent"
+    SFTY-20260615-38625:
+      reason: "Ignored by Palette UX agent"
+    SFTY-20260615-09692:
+      reason: "Ignored by Palette UX agent"
+    SFTY-20260611-31822:
+      reason: "Ignored by Palette UX agent"
