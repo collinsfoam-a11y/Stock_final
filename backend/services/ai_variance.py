@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any, Optional
 
@@ -212,11 +213,13 @@ class AIVarianceService:
                 {item.get("category") for item in counted_items if item.get("category")}
             )
 
-            # 3. Bulk calculate historical item risks
-            item_risk_map = await self._calculate_item_risks(db, item_codes)
-
-            # 4. Bulk calculate category risks
-            cat_risk_map = await self._calculate_category_risks(db, categories)
+            # 3 & 4. Bulk calculate item and category risks concurrently
+            # Optimization: Parallelizing independent DB aggregations using asyncio.gather
+            # reduces the overall wait time compared to sequential execution.
+            item_risk_map, cat_risk_map = await asyncio.gather(
+                self._calculate_item_risks(db, item_codes),
+                self._calculate_category_risks(db, categories),
+            )
 
             # 5. Process items with pre-calculated risks
             high_risk_items = self._process_items_for_risks(
