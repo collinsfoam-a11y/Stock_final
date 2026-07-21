@@ -73,13 +73,23 @@ def decode(
 
         now = datetime.now(UTC).timestamp()
 
-        exp_ts = _ensure_timestamp(claims.get("exp"))
-        if exp_ts is not None and now > exp_ts + CLOCK_SKEW_LEEWAY_SECONDS:
-            raise ExpiredTokenError("token is expired")
+        # A time claim that is present but not parseable as a timestamp is
+        # malformed and must be rejected. Treating it as "absent" would let a
+        # crafted token silently bypass the exp/nbf checks. An absent claim
+        # (key not in payload) is still allowed and simply skips its check.
+        if "exp" in claims:
+            exp_ts = _ensure_timestamp(claims.get("exp"))
+            if exp_ts is None:
+                raise InvalidTokenError("Malformed 'exp' claim")
+            if now > exp_ts + CLOCK_SKEW_LEEWAY_SECONDS:
+                raise ExpiredTokenError("token is expired")
 
-        nbf_ts = _ensure_timestamp(claims.get("nbf"))
-        if nbf_ts is not None and now < nbf_ts - CLOCK_SKEW_LEEWAY_SECONDS:
-            raise InvalidTokenError("Token not yet valid (nbf)")
+        if "nbf" in claims:
+            nbf_ts = _ensure_timestamp(claims.get("nbf"))
+            if nbf_ts is None:
+                raise InvalidTokenError("Malformed 'nbf' claim")
+            if now < nbf_ts - CLOCK_SKEW_LEEWAY_SECONDS:
+                raise InvalidTokenError("Token not yet valid (nbf)")
 
         if issuer is not None and claims.get("iss") != issuer:
             raise InvalidTokenError("Invalid issuer")
