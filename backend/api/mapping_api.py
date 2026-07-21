@@ -42,6 +42,40 @@ class ConnectionParams(BaseModel):
     schema_name: str = "dbo"
 
 
+class TablesRequest(BaseModel):
+    """Body for /tables — credentials must travel in the body, never the URL."""
+
+    host: str
+    port: int = 1433
+    database: str
+    user: Optional[str] = None
+    password: Optional[str] = None
+    schema_name: str = "dbo"
+
+
+class ColumnsRequest(BaseModel):
+    """Body for /columns — credentials must travel in the body, never the URL."""
+
+    host: str
+    port: int = 1433
+    database: str
+    table_name: str
+    user: Optional[str] = None
+    password: Optional[str] = None
+    schema_name: str = "dbo"
+
+
+class PreviewRequest(BaseModel):
+    """Body for /preview — credentials must travel in the body, never the URL."""
+
+    host: str
+    port: int = 1433
+    database: str
+    user: Optional[str] = None
+    password: Optional[str] = None
+    config: MappingConfig
+
+
 class ColumnMapping(BaseModel):
     app_field: str
     erp_column: str
@@ -164,18 +198,15 @@ def _encrypt_erp_password(password: str) -> str:
     return fernet.encrypt(password.encode("utf-8")).decode("utf-8")
 
 
-@router.get("/tables")
+@router.post("/tables")
 async def get_tables(
-    host: str,
-    database: str,
-    port: int = 1433,
-    user: Optional[str] = None,
-    password: Optional[str] = None,
-    schema: str = "dbo",
+    request: TablesRequest,
     current_user: dict = Depends(_require_mapping_admin),
 ):
-    _enforce_configured_sql_target(host, database, port)
-    conn_str = get_connection_string(host, port, database, user, password)
+    _enforce_configured_sql_target(request.host, request.database, request.port)
+    conn_str = get_connection_string(
+        request.host, request.port, request.database, request.user, request.password
+    )
     try:
         conn = get_connection(conn_str)
         cursor = conn.cursor()
@@ -186,7 +217,7 @@ async def get_tables(
         WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = ?
         ORDER BY TABLE_NAME
         """
-        cursor.execute(query, (schema,))
+        cursor.execute(query, (request.schema_name,))
         tables = [row[0] for row in cursor.fetchall()]
 
         conn.close()
@@ -198,19 +229,15 @@ async def get_tables(
         raise HTTPException(status_code=500, detail="Failed to fetch tables from SQL Server") from e
 
 
-@router.get("/columns")
+@router.post("/columns")
 async def get_columns(
-    host: str,
-    database: str,
-    table_name: str,
-    port: int = 1433,
-    user: Optional[str] = None,
-    password: Optional[str] = None,
-    schema: str = "dbo",
+    request: ColumnsRequest,
     current_user: dict = Depends(_require_mapping_admin),
 ):
-    _enforce_configured_sql_target(host, database, port)
-    conn_str = get_connection_string(host, port, database, user, password)
+    _enforce_configured_sql_target(request.host, request.database, request.port)
+    conn_str = get_connection_string(
+        request.host, request.port, request.database, request.user, request.password
+    )
     try:
         conn = get_connection(conn_str)
         cursor = conn.cursor()
@@ -221,7 +248,7 @@ async def get_columns(
         WHERE TABLE_NAME = ? AND TABLE_SCHEMA = ?
         ORDER BY ORDINAL_POSITION
         """
-        cursor.execute(query, (table_name, schema))
+        cursor.execute(query, (request.table_name, request.schema_name))
 
         columns = []
         for row in cursor.fetchall():
@@ -245,16 +272,14 @@ async def get_columns(
 
 @router.post("/preview")
 async def preview_mapping(
-    host: str,
-    database: str,
-    config: MappingConfig,
-    port: int = 1433,
-    user: Optional[str] = None,
-    password: Optional[str] = None,
+    request: PreviewRequest,
     current_user: dict = Depends(_require_mapping_admin),
 ):
-    _enforce_configured_sql_target(host, database, port)
-    conn_str = get_connection_string(host, port, database, user, password)
+    _enforce_configured_sql_target(request.host, request.database, request.port)
+    conn_str = get_connection_string(
+        request.host, request.port, request.database, request.user, request.password
+    )
+    config = request.config
     try:
         conn = get_connection(conn_str)
         cursor = conn.cursor()

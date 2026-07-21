@@ -58,13 +58,31 @@ function isMutatingMethod(method?: string): method is QueueMethod {
 
 export async function enqueueMutation(config: AxiosRequestConfig): Promise<QueuedMutation> {
   const queue = await loadQueue();
+  // Strip the Authorization header before persisting. The offline queue can
+  // outlive the token it was captured under; on flush the request interceptor
+  // re-injects the live token when the header is absent. If we snapshot the
+  // stale header, the queue replays it verbatim and 401-loops after token
+  // rotation (audit H7). Also drop other credential-bearing headers.
+  const sourceHeaders = (config.headers as Record<string, unknown> | undefined) ?? {};
+  const headers: Record<string, string> = {};
+  for (const [key, value] of Object.entries(sourceHeaders)) {
+    const lower = key.toLowerCase();
+    if (lower === "authorization" || lower === "cookie" || lower === "set-cookie") {
+      continue;
+    }
+    if (typeof value === "string") {
+      headers[key] = value;
+    } else if (value !== undefined && value !== null) {
+      headers[key] = String(value);
+    }
+  }
   const item: QueuedMutation = {
     id: generateId(),
     method: (config.method || "post").toLowerCase() as QueueMethod,
     url: config.url || "/",
     data: config.data,
     params: config.params,
-    headers: config.headers as Record<string, string> | undefined,
+    headers,
     createdAt: Date.now(),
     retries: 0,
   };

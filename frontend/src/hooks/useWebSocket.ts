@@ -45,10 +45,8 @@ export const useWebSocket = (sessionId?: string, enabled: boolean = true) => {
 
     // Convert http:// to ws:// or https:// to wss://
     const wsUrl = API_BASE_URL.replace(/^http/, "ws") + "/ws/updates";
+    // session_id is not sensitive — safe to keep in the query string.
     const query = new URLSearchParams();
-    if (token) {
-      query.set("token", token);
-    }
     if (sessionId) {
       query.set("session_id", sessionId);
     }
@@ -59,8 +57,14 @@ export const useWebSocket = (sessionId?: string, enabled: boolean = true) => {
       sessionId: sessionId ?? null,
     });
 
-    // Use query param auth instead of subprotocols (server doesn't support subprotocol handshake)
-    const socket = new WebSocket(urlWithParams);
+    // Auth via Sec-WebSocket-Protocol subprotocol. The browser/RN runtime joins
+    // the array entries with ", " into the Sec-WebSocket-Protocol header, which
+    // the server parses as ["jwt", "<token>"] (see backend
+    // websocket_api.py:_extract_jwt_from_websocket + _parse_subprotocols).
+    // This keeps the bearer token out of the URL, where it would otherwise be
+    // logged by proxies/nginx/browser history.
+    const protocols = token ? ["jwt", token] : undefined;
+    const socket = new WebSocket(urlWithParams, protocols);
 
     socket.onopen = () => {
       log.info("Websocket connected", { sessionId: sessionId ?? null });

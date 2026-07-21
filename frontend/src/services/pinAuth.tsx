@@ -15,6 +15,7 @@ import {
   Platform,
 } from "react-native";
 import * as SecureStore from "expo-secure-store";
+import * as Crypto from "expo-crypto";
 import { errorReporter } from "@/services/errorRecovery";
 import { colors, semanticColors, spacing, radius } from "@/theme/legacyCompat";
 
@@ -83,8 +84,8 @@ export class PINAuthService {
         throw new Error("PIN must be exactly 4 digits");
       }
 
-      // Hash PIN for storage (simple hash for demo, use bcrypt in production)
-      const hashedPin = this.hashPIN(pin);
+      // Hash PIN for storage using salted iterated SHA-256 (audit C3).
+      const hashedPin = await this.hashPIN(pin);
 
       // Store encrypted
       await SecureStore.setItemAsync("user_pin", hashedPin);
@@ -122,14 +123,21 @@ export class PINAuthService {
         throw new Error("PIN not set");
       }
 
-      // Compare
-      const hashedInput = this.hashPIN(pin);
-      if (hashedInput === storedPin) {
-        // Reset attempts on success
-        this.attemptCount = 0;
-        await SecureStore.setItemAsync("pin_attempts", "0");
-        return true;
+      // Compare: support both the new salted PBKDF2-style format and reject
+      // legacy Base64 entries (force re-set, since Base64 was reversible).
+      if (storedPin.startsWith("pbkdf2$")) {
+        const parts = storedPin.split("$");
+        const saltB64 = parts[2];
+        const hashedInput = await this.hashPIN(pin, saltB64);
+        if (PINAuthService.safeEqual(hashedInput, storedPin)) {
+          // Reset attempts on success
+          this.attemptCount = 0;
+          await SecureStore.setItemAsync("pin_attempts", "0");
+          return true;
+        }
       }
+      // Legacy non-pbkdf2 stored value: treat as mismatch so the user is
+      // prompted to re-set their PIN under the new scheme.
 
       // Handle failed attempt
       this.attemptCount++;
@@ -213,12 +221,44 @@ export class PINAuthService {
   }
 
   /**
-   * Simple PIN hashing (use bcrypt in production)
+   * Derive a verifiable PIN hash using a salted, iterated SHA-256 (PBKDF2-style).
+   *
+   * Storage format: `pbkdf2$<iterations>$<saltB64>$<hashB64>` so verification
+   * can re-derive with the same parameters. This replaces the previous Base64
+   * encoding (which was trivially reversible — see audit C3). A 4-digit PIN
+   * keyspace is small, so the iteration count is deliberately high to raise the
+   * offline-attack cost for anyone with SecureStore access.
    */
-  private hashPIN(pin: string): string {
-    // In production, use bcrypt or similar
-    // This is a simple implementation for demonstration
-    return Buffer.from(pin).toString("base64");
+  private static PBKDF2_ITERATIONS = 50000;
+
+  private async hashPIN(pin: string, existingSaltB64?: string): Promise<string> {
+    const iterations = PINAuthService.PBKDF2_ITERATIONS;
+    const salt = existingSaltB64
+      ? Uint8Array.from(atob(existingSaltB64), (c) => c.charCodeAt(0))
+      : Crypto.getRandomValues(new Uint8Array(16));
+    const saltB64 = existingSaltB64 ?? btoa(String.fromCharCode(...salt));
+
+    let current = pin + String.fromCharCode(...salt);
+    for (let i = 0; i < iterations; i++) {
+      current = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        current
+      );
+    }
+    return `pbkdf2$${iterations}$${saltB64}$${current}`;
+  }
+
+  /**
+   * Constant-time-ish string compare to avoid trivial timing side-channels on
+   * the 4-digit keyspace. (Best effort — JS engines may still short-circuit.)
+   */
+  private static safeEqual(a: string, b: string): boolean {
+    if (a.length !== b.length) return false;
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) {
+      diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    }
+    return diff === 0;
   }
 }
 

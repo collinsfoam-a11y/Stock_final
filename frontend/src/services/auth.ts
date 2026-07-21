@@ -1,4 +1,4 @@
-import apiClient from "./httpClient";
+import apiClient, { refreshAccessTokenDeduped } from "./httpClient";
 import { useAuthStore } from "../store/authStore";
 import { secureStorage } from "./storage/secureStorage";
 import { Platform } from "react-native";
@@ -29,41 +29,19 @@ export const authService = {
 
   /**
    * Refresh the access token using the refresh token.
+   *
+   * Delegates to the httpClient refresh singleton so this path and the
+   * 401-interceptor share one in-flight refresh promise. Previously this
+   * method ran its own refresh with divergent storage/header writes, racing
+   * the interceptor and randomly invalidating tokens (audit C5).
    */
   async refreshToken(): Promise<string | null> {
-    try {
-      const refreshToken = await this.getRefreshToken();
-      if (!refreshToken && Platform.OS !== "web") {
-        log.warn("No refresh token available");
-        return null;
-      }
-
-      const response = await apiClient.post(
-        "/api/auth/refresh",
-        refreshToken ? { refresh_token: refreshToken } : {},
-      );
-
-      if (response.data.success && response.data.data) {
-        const { access_token, refresh_token } = response.data.data;
-
-        // Update storage
-        await secureStorage.setItem(TOKEN_STORAGE_KEY, access_token);
-        if (refresh_token) {
-          await secureStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refresh_token);
-        }
-
-        // Update axios defaults
-        apiClient.defaults.headers.common["Authorization"] =
-          `Bearer ${access_token}`;
-
-        return access_token;
-      }
-
-      return null;
-    } catch (error) {
-      log.error("Token refresh failed", { error: String(error) });
+    const refreshToken = await this.getRefreshToken();
+    if (!refreshToken && Platform.OS !== "web") {
+      log.warn("No refresh token available");
       return null;
     }
+    return refreshAccessTokenDeduped();
   },
 
   /**

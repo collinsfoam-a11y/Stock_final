@@ -38,7 +38,10 @@ class MockWebSocket {
   onclose: ((event: { code: number; reason: string }) => void) | null = null;
   onerror: ((event?: unknown) => void) | null = null;
 
-  constructor(public url: string) {
+  constructor(
+    public url: string,
+    public protocols?: string | string[],
+  ) {
     mockSockets.push(this);
   }
 
@@ -80,7 +83,7 @@ describe("useWebSocket", () => {
     jest.restoreAllMocks();
   });
 
-  it("connects using secure storage tokens", async () => {
+  it("connects using secure storage tokens without leaking the token in the URL", async () => {
     renderHook(() => useWebSocket("sess-123"));
 
     await waitFor(() => {
@@ -88,8 +91,12 @@ describe("useWebSocket", () => {
       expect(mockSockets).toHaveLength(1);
     });
 
-    expect(mockSockets[0]?.url).toContain("token=token-123");
+    // Security (audit C2): the bearer token must NOT appear in the URL (it
+    // would be captured by proxies/nginx logs/browser history). It is passed
+    // via the Sec-WebSocket-Protocol subprotocol instead.
+    expect(mockSockets[0]?.url).not.toContain("token");
     expect(mockSockets[0]?.url).toContain("session_id=sess-123");
+    expect(mockSockets[0]?.protocols).toEqual(["jwt", "token-123"]);
   });
 
   it("stops reconnecting and triggers unauthorized handling on auth close", async () => {

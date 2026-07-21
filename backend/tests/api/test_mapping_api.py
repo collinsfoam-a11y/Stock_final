@@ -4,7 +4,10 @@ import pytest
 
 from backend.api.mapping_api import (
     ColumnMapping,
+    ColumnsRequest,
     MappingConfig,
+    PreviewRequest,
+    TablesRequest,
     get_columns,
     get_current_mapping,
     get_tables,
@@ -47,10 +50,12 @@ async def test_get_tables(mock_pyodbc):
     current_user = {"username": "testuser", "role": "admin"}
 
     response = await get_tables(
-        host="localhost",
-        database="testdb",
-        user="user",
-        password="password",
+        request=TablesRequest(
+            host="localhost",
+            database="testdb",
+            user="user",
+            password="password",
+        ),
         current_user=current_user,
     )
 
@@ -72,7 +77,12 @@ async def test_get_columns(mock_pyodbc):
     current_user = {"username": "testuser", "role": "admin"}
 
     response = await get_columns(
-        host="localhost", database="testdb", table_name="Table1", current_user=current_user
+        request=ColumnsRequest(
+            host="localhost",
+            database="testdb",
+            table_name="Table1",
+        ),
+        current_user=current_user,
     )
 
     assert response["count"] == 2
@@ -113,7 +123,12 @@ async def test_preview_mapping(mock_pyodbc):
     )
 
     response = await preview_mapping(
-        host="localhost", database="testdb", config=config, current_user=current_user
+        request=PreviewRequest(
+            host="localhost",
+            database="testdb",
+            config=config,
+        ),
+        current_user=current_user,
     )
 
     assert response["success"] is True

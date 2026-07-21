@@ -171,6 +171,21 @@ const refreshAccessToken = async (): Promise<string | null> => {
   }
 };
 
+/**
+ * Public entry point for token refresh. Joins the same `refreshInFlight`
+ * singleton used by the 401-interceptor so concurrent callers (e.g.
+ * `authService.refreshToken`, self-test, and a retrying request) share one
+ * network round-trip and don't race each other's token writes.
+ */
+export const refreshAccessTokenDeduped = (): Promise<string | null> => {
+  if (!refreshInFlight) {
+    refreshInFlight = refreshAccessToken().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+};
+
 const ensureHeadersObject = (config: any): Record<string, any> => {
   if (!config.headers) {
     config.headers = {};

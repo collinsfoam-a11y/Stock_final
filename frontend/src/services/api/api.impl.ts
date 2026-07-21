@@ -203,16 +203,16 @@ export const getAvailableTables = async (
   schema: string = "dbo"
 ) => {
   try {
-    const params = new URLSearchParams({
+    // Credentials travel in the request body, never the URL query string.
+    // (URLs are logged by proxies/nginx/browser history — see audit C1.)
+    const response = await api.post("/api/mapping/tables", {
       host,
-      port: port.toString(),
+      port,
       database,
-      schema,
+      user,
+      password,
+      schema_name: schema,
     });
-    if (user) params.append("user", user);
-    if (password) params.append("password", password);
-
-    const response = await api.get(`/api/mapping/tables?${params.toString()}`);
     return response.data;
   } catch (error: unknown) {
     log.error("Get tables error:", error);
@@ -230,17 +230,16 @@ export const getTableColumns = async (
   schema: string = "dbo"
 ) => {
   try {
-    const params = new URLSearchParams({
+    // Credentials travel in the request body, never the URL query string.
+    const response = await api.post("/api/mapping/columns", {
       host,
-      port: port.toString(),
+      port,
       database,
       table_name: tableName,
-      schema,
+      user,
+      password,
+      schema_name: schema,
     });
-    if (user) params.append("user", user);
-    if (password) params.append("password", password);
-
-    const response = await api.get(`/api/mapping/columns?${params.toString()}`);
     return response.data;
   } catch (error: unknown) {
     log.error("Get columns error:", error);
@@ -267,15 +266,15 @@ export const testMapping = async (
   password?: string
 ) => {
   try {
-    const params = new URLSearchParams({
+    // Credentials travel in the request body, never the URL query string.
+    const response = await api.post("/api/mapping/preview", {
       host,
-      port: port.toString(),
+      port,
       database,
+      user,
+      password,
+      config,
     });
-    if (user) params.append("user", user);
-    if (password) params.append("password", password);
-
-    const response = await api.post(`/api/mapping/preview?${params.toString()}`, config);
     return response.data;
   } catch (error: unknown) {
     log.error("Test mapping error:", error);
