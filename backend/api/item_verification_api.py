@@ -17,6 +17,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
 from backend.auth.dependencies import get_current_user_async as get_current_user
+from backend.auth.dependencies import require_role
 from backend.services.variance_service import VarianceService
 from backend.utils.api_utils import sanitize_for_logging
 
@@ -483,10 +484,14 @@ async def _fetch_updated_item(
 async def update_item_master(
     barcode: str,
     request: ItemUpdateRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_role("admin", "supervisor")),
 ):
     """
     Update item master details (MRP, Price, Category, etc.)
+
+    Restricted to admin/supervisor — a staff user must not be able to rewrite
+    the ERP master record (MRP/price) and corrupt the variance baseline for
+    active count sessions (audit H1).
     """
     try:
         item = await _find_item_by_barcode_or_code(barcode)

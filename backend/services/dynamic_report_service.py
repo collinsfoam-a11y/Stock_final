@@ -235,7 +235,7 @@ class DynamicReportService:
         """Fetch items data with dynamic fields"""
         try:
             # Build MongoDB query
-            query = self._build_mongo_query(filters)
+            query = self._build_mongo_query(filters, report_type="items")
 
             # Build projection
             projection = {}
@@ -280,7 +280,7 @@ class DynamicReportService:
     ) -> list[dict[str, Any]]:
         """Fetch sessions data"""
         try:
-            query = self._build_mongo_query(filters)
+            query = self._build_mongo_query(filters, report_type="sessions")
 
             cursor = self.db.sessions.find(query)
 
@@ -317,7 +317,7 @@ class DynamicReportService:
         try:
             # Aggregate variance from sessions and items
             pipeline = [
-                {"$match": self._build_mongo_query(filters)},
+                {"$match": self._build_mongo_query(filters, report_type="variance")},
                 {
                     "$lookup": {
                         "from": "session_items",
@@ -372,7 +372,7 @@ class DynamicReportService:
     ) -> list[dict[str, Any]]:
         """Fetch audit log data"""
         try:
-            query = self._build_mongo_query(filters)
+            query = self._build_mongo_query(filters, report_type="audit")
 
             cursor = self.db.activity_logs.find(query)
 
@@ -399,19 +399,92 @@ class DynamicReportService:
         # Custom aggregation logic based on fields configuration
         return []
 
-    def _build_mongo_query(self, filters: dict[str, Any]) -> dict[str, Any]:
-        """Build MongoDB query from filter configuration"""
-        query = {}
+    # Allow-list of filterable fields per report type. Keys outside this set
+    # are rejected so an authenticated reporter cannot probe arbitrary document
+    # fields via NoSQL operators (audit C8).
+    _FILTER_FIELD_ALLOWLIST: dict[str, set[str]] = {
+        "items": {
+            "item_code", "item_name", "name", "barcode", "category",
+            "subcategory", "uom", "mrp", "stock_qty", "current_stock",
+            "warehouse", "location", "item_group", "is_serialized",
+            "created_at", "updated_at", "_source",
+        },
+        "sessions": {
+            "id", "_id", "session_id", "staff_user", "warehouse", "floor_no",
+            "rack_no", "status", "session_type", "created_at", "updated_at",
+            "started_at", "completed_at", "is_section_active",
+        },
+        "variance": {
+            "item_code", "item_name", "session_id", "counted_qty", "stock_qty",
+            "variance", "variance_reason", "counted_by", "created_at",
+        },
+        "audit": {
+            "username", "action", "status", "resource", "resource_id",
+            "timestamp", "ip_address",
+        },
+    }
+
+    # Operators a caller may use inside a complex condition. Anything else
+    # (e.g. $where, $expr, $func) is dropped.
+    _ALLOWED_OPERATORS = {
+        "$eq", "$ne", "$gt", "$gte", "$lt", "$lte",
+        "$in", "$nin", "$exists", "$regex",
+    }
+
+    def _build_mongo_query(
+        self,
+        filters: dict[str, Any],
+        report_type: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Build MongoDB query from filter configuration.
+
+        Validates field names against an allow-list (per ``report_type``) and
+        restricts which Mongo operators a caller may use. This prevents NoSQL
+        operator injection from ``runtime_filters`` (audit C8).
+        """
+        query: dict[str, Any] = {}
+
+        allowed_fields = (
+            self._FILTER_FIELD_ALLOWLIST.get(report_type, set())
+            if report_type
+            else set()
+        )
 
         for field, condition in filters.items():
+            # Reject field names that look like operators ($where, $expr, ...)
+            # or are not in the allow-list when one is configured for this type.
+            if field.startswith("$"):
+                logger.warning("Rejecting operator-style filter key: %s", field)
+                continue
+            if allowed_fields and field not in allowed_fields:
+                logger.warning(
+                    "Rejecting filter field '%s' not in allow-list for report '%s'",
+                    field,
+                    report_type,
+                )
+                continue
+
             if isinstance(condition, dict):
-                # Complex condition (e.g., {"$gte": 10, "$lte": 100})
-                query[field] = condition
+                # Complex condition — only keep allow-listed operators and
+                # drop any nested operator-style keys.
+                sanitized: dict[str, Any] = {}
+                for op_key, op_value in condition.items():
+                    if op_key.startswith("$") and op_key not in self._ALLOWED_OPERATORS:
+                        logger.warning("Rejecting disallowed operator: %s", op_key)
+                        continue
+                    sanitized[op_key] = op_value
+                query[field] = sanitized
             elif isinstance(condition, list):
-                # IN condition
+                # IN condition — only permit scalars, not nested operators.
+                if any(isinstance(entry, dict) for entry in condition):
+                    logger.warning(
+                        "Rejecting object entries in list filter for field '%s'",
+                        field,
+                    )
+                    continue
                 query[field] = {"$in": condition}
             else:
-                # Exact match
+                # Exact match (scalar).
                 query[field] = condition
 
         return query
