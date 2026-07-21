@@ -28,8 +28,24 @@ export function installWebAlertShim(): void {
       return;
     }
 
-    // Two or more buttons: treat the non-cancel button as "OK".
     const cancelButton = buttons.find((b) => b.style === "cancel") ?? buttons[0];
+
+    if (buttons.length > 2) {
+      const optionsList = buttons
+        .map((b, idx) => `${idx + 1}. ${b.text ?? "Option"}`)
+        .join("\n");
+      const choice = window.prompt(`${text}\n\nEnter a choice number:\n${optionsList}`);
+      if (choice !== null) {
+        const selectedIndex = parseInt(choice.trim(), 10) - 1;
+        if (!isNaN(selectedIndex) && buttons[selectedIndex]) {
+          buttons[selectedIndex].onPress?.();
+          return;
+        }
+      }
+      cancelButton?.onPress?.();
+      return;
+    }
+
     const confirmButton = buttons.find((b) => b !== cancelButton) ?? buttons[buttons.length - 1];
 
     if (window.confirm(text)) {

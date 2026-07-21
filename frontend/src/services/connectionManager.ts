@@ -348,6 +348,7 @@ class ConnectionManager {
 
     this.currentConnection = fallback;
     this.saveConnection(fallback);
+    useNetworkStore.getState().setIsInternetReachable(false);
     this.updateHealthMonitoring();
     this.notifyListeners(fallback);
 

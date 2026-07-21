@@ -42,12 +42,9 @@ export function HardwareScanInput({
   onScanRef.current = onScan;
 
   useEffect(() => {
-    if (!isActive) return;
-    const focusTimer = setInterval(() => {
+    if (isActive) {
       inputRef.current?.focus();
-    }, 700);
-    inputRef.current?.focus();
-    return () => clearInterval(focusTimer);
+    }
   }, [isActive]);
 
   const handleChangeText = useCallback(
@@ -94,6 +91,9 @@ export function HardwareScanInput({
       blurOnSubmit={false}
       onChangeText={handleChangeText}
       onSubmitEditing={flushScan}
+      onBlur={() => {
+        if (isActive) inputRef.current?.focus();
+      }}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     />

@@ -746,6 +746,21 @@ export const getSyncStatus = async () => {
 };
 
 /**
+ * Returns the count of pending offline uploads for a specific session ID.
+ */
+export const getSessionPendingUploadsCount = async (sessionId: string): Promise<number> => {
+  const queue = await getOfflineQueue();
+  return queue.filter((item) => {
+    const itemData = asObject(item.data);
+    const itemSessionId = firstString(
+      itemData.session_id,
+      itemData.sessionId,
+    );
+    return itemSessionId === sessionId;
+  }).length;
+};
+
+/**
  * Flushes queued offline records in batches when auth and connectivity allow it.
  */
 export const syncOfflineQueue = async (

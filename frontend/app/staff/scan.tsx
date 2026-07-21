@@ -46,7 +46,7 @@ import {
 import { RecentItemsService } from "@/services/enhancedFeatures";
 import { playScanSound } from "@/services/scanSoundService";
 import { toastService } from "@/services/toastService";
-import { forceSync, getSyncStatus } from "@/services/syncService";
+import { forceSync, getSyncStatus, getSessionPendingUploadsCount } from "@/services/syncService";
 import { localDb } from "@/db/localDb";
 import { validateBarcode } from "@/utils/validation";
 import { safeBackNavigation } from "@/utils/navigation";
@@ -560,17 +560,17 @@ const ScanScreen = React.memo(function ScanScreen() {
     if (!sessionId) return;
     safeSetState(setIsFinishing, true);
     try {
-      // Push locally queued counts before finalizing; completing a session
-      // while counts sit in the offline queue strands them in REVIEW with
+      // Push locally queued counts for this session before finalizing; completing
+      // a session while counts sit in the offline queue strands them in REVIEW with
       // missing data.
-      const syncStatus = await getSyncStatus();
-      if (syncStatus.needsSync) {
+      const sessionPendingCount = await getSessionPendingUploadsCount(sessionId);
+      if (sessionPendingCount > 0) {
         await forceSync();
-        const afterSync = await getSyncStatus();
-        if (afterSync.needsSync) {
+        const remainingPendingCount = await getSessionPendingUploadsCount(sessionId);
+        if (remainingPendingCount > 0) {
           Alert.alert(
             "Counts Not Yet Uploaded",
-            `${afterSync.queuedOperations} count(s) are still waiting to sync. ` +
+            `${remainingPendingCount} count(s) for this session are still waiting to sync. ` +
               "Finish Rack was cancelled so no data is lost — check connectivity and retry."
           );
           return;

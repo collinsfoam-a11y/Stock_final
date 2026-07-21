@@ -379,7 +379,11 @@ export const useDeferredItemSubmission = ({
       if (options?.silent) {
         // Unmount flush: the screen is gone, so skip haptics and navigation
         // callbacks — persisting the count is all that matters here.
-        toastService.show("Item verified successfully", { type: "success" });
+        if (result.is_misplaced) {
+          toastService.show("Item flagged as misplaced for review", { type: "warning" });
+        } else {
+          toastService.show("Item verified successfully", { type: "success" });
+        }
         return;
       }
       await haptics.success();

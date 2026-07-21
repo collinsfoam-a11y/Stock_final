@@ -211,8 +211,8 @@ export const modernColors = {
     muted: "#64748B", // Alias
     disabled: "#94A3B8", // Slate 400
     inverse: "#F8FAFC", // Slate 50
-    link: "#0284C7", // Sky 600
-    linkHover: "#0369A1", // Sky 700
+    link: "#0369A1", // Sky 700 (5.5:1 contrast against white background)
+    linkHover: "#075985", // Sky 800 (7.1:1 contrast ratio)
   },
 
   // Border Colors - Subtle & Clean
