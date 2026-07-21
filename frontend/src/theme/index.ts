@@ -30,6 +30,7 @@ export {
   coloredShadows,
   glass,
   blurIntensity,
+  scrim,
   unifiedTheme,
 } from "./unified";
 export type {

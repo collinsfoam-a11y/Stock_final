@@ -58,17 +58,19 @@ export const auroraColors = {
 
 export const modernColors = {
   // Primary Brand Colors - Premium Electric Blue
+  // Lavanya Mart brand blue (see modernBranding in theme/modernDesign.ts).
+  // Keep in sync with theme/unified/colors.ts and theme/modernDesign.ts.
   primary: {
-    50: "#EFF6FF",
-    100: "#DBEAFE",
-    200: "#BFDBFE",
-    300: "#93C5FD",
-    400: "#60A5FA",
-    500: "#3B82F6", // Main primary - Electric Blue
-    600: "#2563EB",
-    700: "#1D4ED8",
-    800: "#1E40AF",
-    900: "#1E3A8A",
+    50: "#EBF4FF",
+    100: "#D6E8FF",
+    200: "#AFD1FF",
+    300: "#82B5FF",
+    400: "#5C94FF",
+    500: "#0655A5", // Main primary - Lavanya Mart brand blue
+    600: "#054992",
+    700: "#043C7A",
+    800: "#032B59",
+    900: "#011732",
   },
 
   // Secondary - Emerald Green (Success/Verification)
@@ -245,7 +247,7 @@ export const modernColors = {
 
   // Gradient Definitions - More Professional
   gradients: {
-    primary: ["#0EA5E9", "#0284C7", "#0369A1"] as const, // Sky Blue spectrum
+    primary: ["#0655A5", "#054992", "#043C7A"] as const, // Lavanya Mart brand blue spectrum
     secondary: ["#10B981", "#059669", "#047857"] as const, // Emerald spectrum
     accent: ["#06B6D4", "#0891B2", "#0E7490"] as const, // Cyan spectrum
     dark: ["#0F172A", "#020617", "#000000"] as const, // Deep background
@@ -260,7 +262,7 @@ export const modernColors = {
     auroraDark: ["#0F172A", "#1E293B", "#334155"] as const,
 
     // Specific UI Gradients
-    button: ["#0EA5E9", "#0284C7"] as const,
+    button: ["#0655A5", "#054992"] as const,
     card: ["rgba(30, 41, 59, 0.7)", "rgba(15, 23, 42, 0.8)"] as const,
     input: ["rgba(15, 23, 42, 0.6)", "rgba(2, 6, 23, 0.7)"] as const,
 

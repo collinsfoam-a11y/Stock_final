@@ -239,6 +239,20 @@ export const gradients = {
   glass: ["rgba(255, 255, 255, 0.15)", "rgba(255, 255, 255, 0.08)"],
 } as const;
 
+// ==========================================
+// SCRIM PRESETS
+// ==========================================
+// Theme-independent dark overlays used on top of imagery/live camera feeds,
+// where a scrim must stay dark regardless of light/dark mode. For modal
+// backdrops over themed surfaces prefer semanticColors.background.overlay.
+export const scrim = {
+  subtle: "rgba(0, 0, 0, 0.2)",
+  light: "rgba(0, 0, 0, 0.4)",
+  medium: "rgba(0, 0, 0, 0.5)",
+  strong: "rgba(0, 0, 0, 0.6)",
+  intense: "rgba(0, 0, 0, 0.65)",
+} as const;
+
 // Type exports
 export type ColorPalette = typeof colors;
 export type SemanticColors = typeof semanticColors;

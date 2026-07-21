@@ -33,6 +33,7 @@ import {
   coloredShadows,
   glass,
   blurIntensity,
+  scrim,
   shadows as unifiedShadows,
 } from "./unified";
 
@@ -140,6 +141,6 @@ export const layout = {
   ...((unifiedLayout as unknown as GenericMap) || {}),
 };
 
-export { componentSizes, hitSlop, touchTargets, coloredShadows, glass, blurIntensity };
+export { componentSizes, hitSlop, touchTargets, coloredShadows, glass, blurIntensity, scrim };
 
 export { modernBranding };

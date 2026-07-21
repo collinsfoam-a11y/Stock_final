@@ -47,6 +47,7 @@ export {
   semanticColors,
   darkColors,
   gradients,
+  scrim,
   type ColorPalette,
   type SemanticColors,
   type ColorShade,

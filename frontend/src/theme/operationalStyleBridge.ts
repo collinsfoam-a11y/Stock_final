@@ -20,6 +20,8 @@ export const createOperationalStyleBridge = (tokens: ThemeTokens) => ({
       500: tokens.colors.error,
       600: tokens.colors.error,
     },
+    // Theme-aware modal backdrop (semanticColors.background.overlay)
+    overlay: tokens.colors.overlay,
     neutral: {
       300: tokens.colors.textMuted,
       400: tokens.colors.textMuted,

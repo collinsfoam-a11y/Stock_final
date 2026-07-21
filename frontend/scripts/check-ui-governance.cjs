@@ -219,6 +219,14 @@ const RULES = {
     guidance:
       "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
   },
+  MODERN_DESIGN_SYSTEM_IMPORT: {
+    id: "UI019",
+    category: "deprecated-usage",
+    severity: "P2",
+    title: "Import from legacy styles/modernDesignSystem palette",
+    guidance:
+      "styles/modernDesignSystem carries an off-brand static palette (Electric Blue #3B82F6) that diverges from the Lavanya Mart brand tokens and cannot react to dark mode. Migrate to useUiTokens()/@/theme semantic tokens. Do not add new imports.",
+  },
   STATIC_THEME_COLOR_USAGE: {
     id: "UI018",
     category: "token-adoption",
@@ -525,6 +533,15 @@ function scanText(repoPath, text, options = {}) {
       )
     ) {
       addFinding(findings, "DIRECT_LEGACY_THEME_IMPORT", repoPath, lineNumber, line);
+    }
+
+    if (
+      /from\s*["'][^"']*styles\/(?:unifiedSystem|modernDesignSystem)["']/.test(line) ||
+      /require\(\s*["'][^"']*styles\/(?:unifiedSystem|modernDesignSystem)["']/.test(line)
+    ) {
+      addFinding(findings, "MODERN_DESIGN_SYSTEM_IMPORT", repoPath, lineNumber, line, {
+        status: "deprecated",
+      });
     }
 
     if (hasStaticThemeStylesImport && /\btheme\.(?:colors|commonStyles)\b/.test(line)) {
