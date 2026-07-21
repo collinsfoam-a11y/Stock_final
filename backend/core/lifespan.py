@@ -1,6 +1,3 @@
-# ruff: noqa: E402
-# flake8: noqa: E402
-
 import asyncio
 import logging
 import os
@@ -116,7 +113,7 @@ try:
     init_tracing()
 except Exception:
     # Never break startup due to tracing
-    pass
+    logger.debug("Suppressed non-fatal exception", exc_info=True)
 
 T = TypeVar("T")
 E = TypeVar("E", bound=Exception)
@@ -337,9 +334,20 @@ error_log_service = ErrorLogService(db)
 
 # Create the main app with lifespan
 @asynccontextmanager
-async def lifespan(app: FastAPI):  # noqa: C901
+async def lifespan(app: FastAPI):
     # Startup
     logger.info("🚀 Starting StockVerify application...")
+
+    # Hold strong references to fire-and-forget startup tasks so the event
+    # loop cannot garbage-collect them mid-flight (RUF006). Cancelled on
+    # shutdown if still pending.
+    background_tasks: set[asyncio.Task] = set()
+
+    def _spawn_background(coro, name: str) -> asyncio.Task:
+        task = asyncio.create_task(coro, name=name)
+        background_tasks.add(task)
+        task.add_done_callback(background_tasks.discard)
+        return task
 
     # Initialize runtime globals
     set_client(client)
@@ -406,7 +414,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
         try:
             from backend.api.count_lines_api import router as count_lines_router
 
-            setattr(count_lines_router, "sql_connector", sql_connector)
+            count_lines_router.sql_connector = sql_connector
             logger.info("✓ SQL connector attached to count_lines_router")
         except Exception as e:
             logger.warning("Failed to attach SQL connector to count_lines_router: %s", str(e))
@@ -488,7 +496,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
             except Exception as e:
                 logger.warning("Connection pool initialization failed: %s", str(e))
 
-        asyncio.create_task(_init_connection_pool())
+        _spawn_background(_init_connection_pool(), "init-connection-pool")
 
     # CRITICAL: Verify MongoDB is available (required)
     try:
@@ -497,7 +505,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
     except Exception as e:
         # MongoDB connection failed - check if we're in development mode
         error_type = type(e).__name__
-        logger.error("❌ MongoDB is required but unavailable ({error_type}): %s", e)
+        logger.error("❌ MongoDB is required but unavailable (%s): %s", error_type, e)
 
         # In development, allow app to run without MongoDB
         if os.getenv("ENVIRONMENT", "development").lower() in ["development", "dev"]:
@@ -580,7 +588,7 @@ async def lifespan(app: FastAPI):  # noqa: C901
                 on_sync_complete=on_sync_complete,
             )
 
-            asyncio.create_task(auto_sync_manager.start())
+            _spawn_background(auto_sync_manager.start(), "auto-sync-manager-start")
             logger.info("✅ Auto-sync manager starting (background)")
         else:
             logger.info("Auto-sync manager disabled")
@@ -929,6 +937,13 @@ async def lifespan(app: FastAPI):  # noqa: C901
     logger.info("🛑 Shutting down application...")
     shutdown_start = time.time()
     shutdown_timeout = 30  # 30 seconds max for graceful shutdown
+
+    # Cancel any still-pending fire-and-forget startup tasks
+    for task in list(background_tasks):
+        if not task.done():
+            task.cancel()
+    if background_tasks:
+        await asyncio.gather(*background_tasks, return_exceptions=True)
 
     shutdown_tasks = []
 

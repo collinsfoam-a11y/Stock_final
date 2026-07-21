@@ -154,7 +154,7 @@ async def report_error(
 
     except Exception as e:
         logger.error("Error reporting failed: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail="Failed to report error")
+        raise HTTPException(status_code=500, detail="Failed to report error") from e
 
 
 @router.get("/errors")
@@ -191,7 +191,7 @@ async def get_errors(
 
     except Exception as e:
         logger.error("Failed to fetch errors: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail="Failed to fetch errors")
+        raise HTTPException(status_code=500, detail="Failed to fetch errors") from e
 
 
 @router.get("/errors/dashboard")
@@ -253,7 +253,7 @@ async def get_error_dashboard(
 
     except Exception as e:
         logger.error("Failed to get dashboard: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail="Failed to get dashboard")
+        raise HTTPException(status_code=500, detail="Failed to get dashboard") from e
 
 
 @router.get("/errors/{error_id}")
@@ -279,7 +279,7 @@ async def get_error_detail(
         raise
     except Exception as e:
         logger.error("Failed to get error detail: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail="Failed to get error detail")
+        raise HTTPException(status_code=500, detail="Failed to get error detail") from e
 
 
 @router.patch("/errors/{error_id}/status")
@@ -325,7 +325,7 @@ async def update_error_status(
         raise
     except Exception as e:
         logger.error("Failed to update error status: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail="Failed to update error status")
+        raise HTTPException(status_code=500, detail="Failed to update error status") from e
 
 
 @router.delete("/errors/{error_id}")
@@ -346,7 +346,7 @@ async def delete_error(
 
     except Exception as e:
         logger.error("Failed to delete error: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail="Failed to delete error")
+        raise HTTPException(status_code=500, detail="Failed to delete error") from e
 
 
 @router.get("/errors/stats/summary")
@@ -389,7 +389,7 @@ async def get_error_summary(
 
     except Exception as e:
         logger.error("Failed to get error summary: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail="Failed to get error summary")
+        raise HTTPException(status_code=500, detail="Failed to get error summary") from e
 
 
 async def notify_admin_critical_error(error: ErrorReport):

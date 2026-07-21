@@ -790,8 +790,8 @@ class AdvancedReportService:
         """Export data to XLSX format."""
         try:
             import openpyxl
-        except ImportError:
-            raise ImportError("openpyxl required for Excel export")
+        except ImportError as exc:
+            raise ImportError("openpyxl required for Excel export") from exc
 
         wb = openpyxl.Workbook()
         ws = wb.active

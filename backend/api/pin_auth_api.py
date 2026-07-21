@@ -2,6 +2,8 @@
 Auth API Endpoints (PIN Extensions)
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
@@ -16,6 +18,8 @@ from backend.auth.dependencies import get_current_user
 from backend.db.runtime import get_db
 from backend.services.pin_auth_service import PINAuthService
 from backend.utils.auth_utils import verify_password
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -110,7 +114,8 @@ async def login_with_pin(
     try:
         await reset_rate_limit(ip_address)
     except Exception:
-        pass
+        # Non-fatal: login already succeeded; stale rate-limit state expires on its own
+        logger.debug("Failed to reset rate limit after PIN login", exc_info=True)
 
     return {
         **tokens,

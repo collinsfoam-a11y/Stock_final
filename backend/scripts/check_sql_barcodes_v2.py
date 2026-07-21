@@ -1,14 +1,14 @@
 import logging
 import sys
-from pathlib import Path  # noqa: E402
+from pathlib import Path
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from backend.config import settings  # noqa: E402
-from backend.sql_server_connector import SQLServerConnector  # noqa: E402
+from backend.config import settings
+from backend.sql_server_connector import SQLServerConnector
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -45,7 +45,7 @@ def check_sql_barcodes():
         cursor = sql_connector.connection.cursor()
         cursor.execute(query)
         columns = [column[0] for column in cursor.description]
-        result = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        result = [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
 
         if result:
             row = result[0]

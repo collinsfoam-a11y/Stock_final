@@ -211,13 +211,13 @@ async def search_optimized(
         raise HTTPException(
             status_code=503,
             detail="Search service unavailable",
-        )
+        ) from e
     except Exception as e:
         logger.error("Search failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=500,
             detail="Search failed",
-        )
+        ) from e
 
 
 @router.post(
@@ -279,13 +279,13 @@ async def get_suggestions(
         raise HTTPException(
             status_code=503,
             detail="Search service unavailable",
-        )
+        ) from e
     except Exception as e:
         logger.error("Suggestions failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=500,
             detail="Failed to get suggestions",
-        )
+        ) from e
 
 
 @router.get(
@@ -322,10 +322,10 @@ async def get_search_filters(
         raise HTTPException(
             status_code=503,
             detail="Search filters unavailable",
-        )
+        ) from e
     except Exception as e:
         logger.error("Failed to load search filters: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=500,
             detail="Failed to load search filters",
-        )
+        ) from e

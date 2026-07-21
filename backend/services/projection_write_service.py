@@ -244,7 +244,7 @@ class ProjectionWriteService:
     async def _acquire_session_lock(self, *, session_id: str, owner: str) -> bool:
         if not hasattr(self.db, "locks") and hasattr(self.db, "__getitem__"):
             try:
-                setattr(self.db, "locks", self.db["locks"])
+                self.db.locks = self.db["locks"]
             except Exception:
                 return False
         lock_service = LockService(self.db)

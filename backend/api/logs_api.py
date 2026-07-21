@@ -187,8 +187,8 @@ async def resolve_error(
 ):
     try:
         oid = ObjectId(log_id)
-    except (InvalidId, TypeError):
-        raise HTTPException(status_code=400, detail="Invalid ID")
+    except (InvalidId, TypeError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid ID") from exc
 
     resolution_note = body.get("resolution_note", "Resolved manually")
 

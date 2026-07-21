@@ -358,8 +358,8 @@ class DynamicFieldsService:
             if "max" in validation_rules and val > validation_rules["max"]:
                 raise ValueError(f"Value must be <= {validation_rules['max']}")
             return val
-        except (ValueError, TypeError):
-            raise ValueError("Value must be a number")
+        except (ValueError, TypeError) as exc:
+            raise ValueError("Value must be a number") from exc
 
     def _validate_select(self, value: Any, field_type: str, options: list[str]) -> Any:
         if field_type == "select":
@@ -377,8 +377,8 @@ class DynamicFieldsService:
         if isinstance(value, str):
             try:
                 datetime.fromisoformat(value)
-            except ValueError:
-                raise ValueError("Invalid date format. Use ISO format (YYYY-MM-DD)")
+            except ValueError as exc:
+                raise ValueError("Invalid date format. Use ISO format (YYYY-MM-DD)") from exc
         return value
 
     def _validate_field_value(self, value: Any, field_def: dict[str, Any]) -> Any:

@@ -93,7 +93,9 @@ async def list_notes(
             "error": None,
         }
     except Exception as e:
-        raise create_safe_error_response(500, "Failed to fetch notes", "NOTES_LIST_ERROR", str(e))
+        raise create_safe_error_response(
+            500, "Failed to fetch notes", "NOTES_LIST_ERROR", str(e)
+        ) from e
 
 
 @router.post("/notes", response_model=dict[str, Any])
@@ -115,7 +117,9 @@ async def create_note(
         doc["_id"] = res.inserted_id
         return {"success": True, "data": _serialize_note(doc), "error": None}
     except Exception as e:
-        raise create_safe_error_response(500, "Failed to create note", "NOTES_CREATE_ERROR", str(e))
+        raise create_safe_error_response(
+            500, "Failed to create note", "NOTES_CREATE_ERROR", str(e)
+        ) from e
 
 
 @router.delete("/notes/{note_id}", response_model=dict[str, Any])
@@ -130,14 +134,14 @@ async def delete_note(
             raise HTTPException(status_code=401, detail="Unauthenticated")
         try:
             oid = ObjectId(note_id)
-        except Exception:
+        except Exception as exc:
             raise HTTPException(
                 status_code=400,
                 detail={
                     "success": False,
                     "error": {"message": "Invalid note id", "code": "INVALID_NOTE_ID"},
                 },
-            )
+            ) from exc
 
         delete_filter: dict[str, Any] = {"_id": oid}
         if current_user.get("role") != "admin":
@@ -160,4 +164,6 @@ async def delete_note(
     except HTTPException:
         raise
     except Exception as e:
-        raise create_safe_error_response(500, "Failed to delete note", "NOTES_DELETE_ERROR", str(e))
+        raise create_safe_error_response(
+            500, "Failed to delete note", "NOTES_DELETE_ERROR", str(e)
+        ) from e

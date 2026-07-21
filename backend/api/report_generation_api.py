@@ -526,7 +526,7 @@ async def generate_report(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate report",
-        )
+        ) from e
 
     # Build summary
     filters_applied = {k: v for k, v in filters.model_dump().items() if v is not None}
@@ -565,7 +565,7 @@ async def export_report_csv(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate report",
-        )
+        ) from e
 
     if not data:
         raise HTTPException(
@@ -603,11 +603,11 @@ async def export_report_xlsx(
     """
     try:
         import openpyxl
-    except ImportError:
+    except ImportError as exc:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
             detail="Excel export not available. Install openpyxl package.",
-        )
+        ) from exc
 
     if request.report_type not in REPORT_TYPES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report type")
@@ -623,7 +623,7 @@ async def export_report_xlsx(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate report",
-        )
+        ) from e
 
     if not data:
         raise HTTPException(
@@ -728,4 +728,4 @@ async def get_report_filter_options(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch filter options",
-        )
+        ) from e

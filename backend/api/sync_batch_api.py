@@ -512,7 +512,7 @@ async def sync_batch(
         # Record failure in circuit breaker
         await circuit_breaker.record_failure()
         logger.error("Batch sync failed: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=f"Batch sync failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Batch sync failed: {str(e)}") from e
 
     processing_time = (time.time() - start_time) * 1000
 

@@ -109,7 +109,7 @@ class WebSocketManager:
                     responsive += 1
                     alive.append(conn)
                 except Exception:
-                    pass
+                    logger.debug("Suppressed non-fatal exception", exc_info=True)
             self.active_connections[user_id] = alive
         return responsive
 

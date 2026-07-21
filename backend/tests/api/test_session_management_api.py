@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from pydantic import ValidationError
 
 from backend.api.session_management_api import _collect_snapshot_items
 from backend.api.schemas import SessionCreate
@@ -124,7 +125,7 @@ class TestSessionModels:
 
     def test_session_create_warehouse_required(self):
         """Test that warehouse is required"""
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             SessionCreate()
 
 

@@ -1,6 +1,6 @@
 import os
 import sys
-from pathlib import Path  # noqa: E402
+from pathlib import Path
 
 # Add project root to path
 # Since we are in backend/, the root is ..
@@ -10,8 +10,8 @@ sys.path.insert(0, str(project_root))
 # Also add current dir to path for backend imports
 sys.path.insert(0, os.getcwd())
 
-from config import settings  # noqa: E402
-from sql_server_connector import SQLServerConnector  # noqa: E402
+from config import settings
+from sql_server_connector import SQLServerConnector
 
 
 def explore():

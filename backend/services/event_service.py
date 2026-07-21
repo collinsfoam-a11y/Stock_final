@@ -243,7 +243,7 @@ class EventService:
         if operation == "insert_one":
             document = payload.get("document")
             if isinstance(document, dict) and getattr(resolved_result, "inserted_id", None):
-                document.setdefault("_id", getattr(resolved_result, "inserted_id"))
+                document.setdefault("_id", resolved_result.inserted_id)
             if isinstance(document, dict):
                 emitted = await self._emit_insert_events(
                     document=document,

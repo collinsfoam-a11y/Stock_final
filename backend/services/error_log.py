@@ -225,7 +225,7 @@ class ErrorLogService:
 
         # Create error object
         error = Exception(error_message)
-        setattr(error, "error_code", error_code)
+        error.error_code = error_code
 
         return await self.log_error(
             error=error,

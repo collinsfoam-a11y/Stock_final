@@ -721,7 +721,7 @@ class CountLineWriteService:
             document = payload.get("document")
             if isinstance(document, dict):
                 if hasattr(resolved_result, "inserted_id") and "_id" not in document:
-                    document["_id"] = getattr(resolved_result, "inserted_id")
+                    document["_id"] = resolved_result.inserted_id
                 await self.validation_service.validate_count_line(document)
             return
 

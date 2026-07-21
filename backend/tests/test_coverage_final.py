@@ -62,7 +62,7 @@ def test_result_fail_with_context():
     ctx = {"extra_info": "123"}
     res = Result.fail(err, context=ctx)
     assert res.is_err
-    assert getattr(res._error, "extra_info") == "123"
+    assert res._error.extra_info == "123"
 
 
 def test_result_from_callable_generic_exception():

@@ -118,8 +118,8 @@ def _get_db_client(db_override=None):
         return db_override
     try:
         return get_db()
-    except RuntimeError:
-        raise HTTPException(status_code=500, detail="Database is not initialized")
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail="Database is not initialized") from exc
 
 
 async def _recompute_session_totals(db: Any, session_id: str) -> dict[str, Any]:
@@ -1066,7 +1066,7 @@ async def save_count_line_draft(
             insert_result = db.count_line_drafts.insert_one(draft_payload)
             result = await insert_result if inspect.isawaitable(insert_result) else insert_result
             draft_id = str(result.inserted_id)
-        except DuplicateKeyError:
+        except DuplicateKeyError as exc:
             # Recover from concurrent insert/legacy key collision.
             conflicting_draft_result = db.count_line_drafts.find_one(draft_filter)
             conflicting_draft = (
@@ -1082,7 +1082,7 @@ async def save_count_line_draft(
                     else legacy_conflicting_result
                 )
             if not conflicting_draft:
-                raise HTTPException(status_code=409, detail="Draft conflict detected")
+                raise HTTPException(status_code=409, detail="Draft conflict detected") from exc
 
             update_result = db.count_line_drafts.update_one(
                 {"_id": conflicting_draft["_id"]},
@@ -1777,7 +1777,7 @@ async def check_item_counted(
                 endpoint="count-lines/check",
             )
         except ProjectionReadError as exc:
-            raise HTTPException(status_code=503, detail=str(exc))
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
         return {
             "already_counted": len(count_lines) > 0,
@@ -2165,7 +2165,7 @@ async def check_item_scan_status(
             endpoint="scan-status",
         )
     except ProjectionReadError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.post("/count-lines/bulk/approve")
@@ -2624,9 +2624,7 @@ async def merge_count_lines(
                         "governance_mode": "mutable_session",
                         "skip_session_totals_update": True,
                         # OCC: detect concurrent session mutation during merge.
-                        "expected_session_version": coerce_version(
-                            target_session.get("version")
-                        ),
+                        "expected_session_version": coerce_version(target_session.get("version")),
                     },
                 )
 

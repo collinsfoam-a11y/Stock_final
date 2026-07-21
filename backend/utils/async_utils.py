@@ -241,7 +241,7 @@ async def async_connection_pool(pool_size: int = 10):
                     # Close connection logic
                     pass
                 except Exception:
-                    pass
+                    logger.debug("Suppressed non-fatal exception", exc_info=True)
 
 
 class AsyncCache:

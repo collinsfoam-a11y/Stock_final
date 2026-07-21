@@ -7,6 +7,11 @@ from authlib.jose.errors import ExpiredTokenError, JoseError
 
 UTC = timezone.utc
 
+# Clock-skew tolerance for time-based claim validation (exp/nbf). Devices on
+# the LAN (tablets, Pi nodes) can drift by a few seconds; without leeway that
+# drift surfaces as spurious "token expired" logouts.
+CLOCK_SKEW_LEEWAY_SECONDS = 30.0
+
 
 class ExpiredSignatureError(Exception):
     pass
@@ -66,11 +71,15 @@ def decode(
         decoder = JsonWebToken(allowed_algs)
         claims = decoder.decode(token, key)
 
+        now = datetime.now(UTC).timestamp()
+
         exp_ts = _ensure_timestamp(claims.get("exp"))
-        if exp_ts is not None:
-            now = datetime.now(UTC).timestamp()
-            if now > exp_ts:
-                raise ExpiredTokenError("token is expired")
+        if exp_ts is not None and now > exp_ts + CLOCK_SKEW_LEEWAY_SECONDS:
+            raise ExpiredTokenError("token is expired")
+
+        nbf_ts = _ensure_timestamp(claims.get("nbf"))
+        if nbf_ts is not None and now < nbf_ts - CLOCK_SKEW_LEEWAY_SECONDS:
+            raise InvalidTokenError("Token not yet valid (nbf)")
 
         if issuer is not None and claims.get("iss") != issuer:
             raise InvalidTokenError("Invalid issuer")
@@ -79,11 +88,13 @@ def decode(
             raise InvalidTokenError("Invalid audience")
         return dict(claims)
     except ExpiredTokenError as exc:
-        raise ExpiredSignatureError(str(exc))
+        raise ExpiredSignatureError(str(exc)) from exc
+    except InvalidTokenError:
+        raise
     except JoseError as exc:
-        raise InvalidTokenError(str(exc))
+        raise InvalidTokenError(str(exc)) from exc
     except Exception as exc:
-        raise InvalidTokenError(str(exc))
+        raise InvalidTokenError(str(exc)) from exc
 
 
 class _JWTCompat:

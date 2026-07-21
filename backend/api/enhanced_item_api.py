@@ -354,7 +354,7 @@ async def get_item_by_barcode_enhanced(
                 "response_time_ms": response_time,
                 "error": str(e),
             },
-        )
+        ) from e
     finally:
         await _record_enhanced_lookup_metrics(request, status_code, start_time)
 
@@ -405,7 +405,7 @@ async def _fetch_with_fallback_strategy(barcode: str) -> tuple[Optional[dict], s
             if cached_item:
                 return cached_item, "cache"
         except Exception:
-            pass  # Continue to next strategy
+            logger.debug("Suppressed non-fatal exception", exc_info=True)
 
     # Strategy 2: MongoDB (primary app database)
     try:
@@ -739,7 +739,7 @@ async def advanced_item_search(
                 "response_time_ms": response_time,
                 "error": str(e),
             },
-        )
+        ) from e
 
 
 @enhanced_item_router.get("/locations")
@@ -773,7 +773,7 @@ async def get_unique_locations(current_user: dict = Depends(get_current_user)):
             "Failed to fetch locations: %s",
             sanitize_for_logging(str(e), 200),
         )
-        raise HTTPException(status_code=500, detail=f"Failed to fetch locations: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch locations: {str(e)}") from e
 
 
 @enhanced_item_router.get("/performance/stats")
@@ -817,7 +817,7 @@ async def get_item_api_performance(current_user: dict = Depends(get_current_user
             "Performance stats failed: %s",
             sanitize_for_logging(str(e), 200),
         )
-        raise HTTPException(status_code=500, detail=f"Performance analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Performance analysis failed: {str(e)}") from e
 
 
 @enhanced_item_router.post("/sync/realtime")
@@ -860,7 +860,7 @@ async def get_database_status(current_user: dict = Depends(get_current_user)):
             "Database status check failed: %s",
             sanitize_for_logging(str(e), 200),
         )
-        raise HTTPException(status_code=500, detail=f"Database status failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database status failed: {str(e)}") from e
 
 
 @enhanced_item_router.post("/database/optimize")
@@ -894,4 +894,4 @@ async def optimize_database_performance(current_user: dict = Depends(get_current
             "Database optimization failed: %s",
             sanitize_for_logging(str(e), 200),
         )
-        raise HTTPException(status_code=500, detail=f"Optimization failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Optimization failed: {str(e)}") from e

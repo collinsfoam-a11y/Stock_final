@@ -194,7 +194,7 @@ async def delete_snapshot(
             raise HTTPException(status_code=404, detail="Snapshot not found")
 
     except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
 
 
 @router.post("/snapshots/{snapshot_id}/refresh")

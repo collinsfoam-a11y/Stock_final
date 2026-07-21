@@ -4,6 +4,7 @@ Upgraded item endpoints with standardized responses
 """
 
 import io
+import logging
 import re
 import sys
 from pathlib import Path
@@ -26,6 +27,8 @@ project_root = Path(__file__).parent.parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -77,7 +80,7 @@ async def _resolve_item_document(db: Any, item_identifier: str) -> Optional[dict
         if ObjectId.is_valid(item_identifier):
             return await db.erp_items.find_one({"_id": ObjectId(item_identifier)})
     except Exception:
-        pass
+        logger.debug("Legacy ObjectId lookup fallback failed", exc_info=True)
 
     return None
 
@@ -118,7 +121,8 @@ def _extract_image_identifiers(file_bytes: bytes) -> list[str]:
             if decoded.data:
                 identifiers.append(decoded.data.decode("utf-8", errors="ignore"))
     except Exception:
-        pass
+        # pyzbar is optional; fall through to OCR extraction
+        logger.debug("Barcode decode unavailable or failed", exc_info=True)
 
     try:
         import pytesseract
@@ -126,7 +130,8 @@ def _extract_image_identifiers(file_bytes: bytes) -> list[str]:
         ocr_text = pytesseract.image_to_string(image)
         identifiers.extend(_extract_identifiers_from_text(ocr_text))
     except Exception:
-        pass
+        # pytesseract is optional; return whatever the barcode pass found
+        logger.debug("OCR extraction unavailable or failed", exc_info=True)
 
     return _dedupe_preserve_order(identifiers)
 
@@ -500,9 +505,7 @@ async def get_item_details(
                 )
                 if verification_result["success"]:
                     # Refresh item data after verification
-                    refreshed_item = await db.erp_items.find_one(
-                        {"item_code": canonical_item_code}
-                    )
+                    refreshed_item = await db.erp_items.find_one({"item_code": canonical_item_code})
                     if refreshed_item:
                         item = refreshed_item
                         item_doc = cast(dict[str, Any], item)

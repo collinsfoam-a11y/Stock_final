@@ -1,13 +1,13 @@
 import sys
-from pathlib import Path  # noqa: E402
+from pathlib import Path
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from backend.config import settings  # noqa: E402
-from backend.sql_server_connector import SQLServerConnector  # noqa: E402
+from backend.config import settings
+from backend.sql_server_connector import SQLServerConnector
 
 
 def check_duplicates():

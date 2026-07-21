@@ -251,7 +251,7 @@ def _wrap_collection_method(
             return await result
         return result
 
-    setattr(_guarded, "__governance_wrapped__", True)
+    _guarded.__governance_wrapped__ = True
     return _guarded
 
 
@@ -374,7 +374,7 @@ def _patch_collection_resolvers(db: Any) -> None:
                     return proxies[name]
                 return original_getitem(self, name)
 
-            setattr(db_class, "__getitem__", _guarded_getitem)
+            db_class.__getitem__ = _guarded_getitem
             setattr(db_class, _DB_GUARD_GETITEM_PATCHED_ATTR, True)
 
     if not getattr(db_class, _DB_GUARD_GETCOLLECTION_PATCHED_ATTR, False):
@@ -387,7 +387,7 @@ def _patch_collection_resolvers(db: Any) -> None:
                     return proxies[name]
                 return original_get_collection(self, name, *args, **kwargs)
 
-            setattr(db_class, "get_collection", _guarded_get_collection)
+            db_class.get_collection = _guarded_get_collection
             setattr(db_class, _DB_GUARD_GETCOLLECTION_PATCHED_ATTR, True)
 
 
