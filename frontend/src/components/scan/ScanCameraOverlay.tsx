@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Camera, useCameraDevice, useCodeScanner } from "@/services/device/visionCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -42,11 +42,20 @@ export function ScanCameraOverlay({
     }
   }, [device?.neutralZoom]);
 
+  // vision-camera's useCodeScanner does not refresh the JS callback on
+  // re-render, so `scanned`/`onBarcodeScanned` captured at hook-call time go
+  // stale and the "scan once then ignore" guard keeps firing. Read both
+  // through refs kept current each render.
+  const scannedRef = useRef(scanned);
+  scannedRef.current = scanned;
+  const onBarcodeScannedRef = useRef(onBarcodeScanned);
+  onBarcodeScannedRef.current = onBarcodeScanned;
+
   const codeScanner = useCodeScanner({
     codeTypes: ["ean-13", "ean-8", "upc-a", "upc-e", "code-128", "code-39", "qr"],
     onCodeScanned: (codes: any) => {
-      if (!scanned && codes.length > 0) {
-        onBarcodeScanned({ data: codes[0].value || "" });
+      if (!scannedRef.current && codes.length > 0) {
+        onBarcodeScannedRef.current({ data: codes[0].value || "" });
       }
     },
   });

@@ -127,13 +127,15 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
   const handleZoomIn = () => device?.maxZoom && setZoomLevel((prev) => Math.min(prev + 1, device.maxZoom));
   const handleZoomOut = () => device?.minZoom && setZoomLevel((prev) => Math.max(prev - 1, device.minZoom));
 
+  // vision-camera's useCodeScanner keeps the JS callback captured at hook-call
+  // time, so `scanPaused`/`showManualInput`/`handleBarcodeScanned` would go
+  // stale and scans would keep firing while paused or in manual input. Route
+  // through a ref that is refreshed each render (assigned below, after the
+  // guarded values are defined).
+  const scanHandlerRef = useRef<(codes: any) => void>(() => {});
   const codeScanner = useCodeScanner({
     codeTypes: ["code-128", "code-39", "code-93", "qr", "data-matrix"],
-    onCodeScanned: (codes: any) => {
-      if (!scanPaused && !showManualInput && codes.length > 0) {
-        handleBarcodeScanned({ data: codes[0].value || "" });
-      }
-    },
+    onCodeScanned: (codes: any) => scanHandlerRef.current(codes),
   });
 
   const [scanFeedback, setScanFeedback] = useState<{
@@ -399,6 +401,15 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
       upsertDetectedCode,
     ]
   );
+
+  // Keep the camera scan handler fresh: read the latest pause/manual-input
+  // flags and handler each render so a paused or manual-input state actually
+  // stops scans (fixes the stale-closure guard).
+  scanHandlerRef.current = (codes: any) => {
+    if (!scanPaused && !showManualInput && codes.length > 0) {
+      handleBarcodeScanned({ data: codes[0].value || "" });
+    }
+  };
 
   const getFeedbackStyle = () => {
     if (!scanFeedback) return styles.feedbackHidden;
