@@ -79,6 +79,10 @@ class CountLineApprovalRequest(BaseModel):
     """Optional metadata for approving a count line."""
 
     notes: Optional[str] = None
+    # Master data may have been re-synced after the line was counted, making
+    # the recorded variance stale. Approval is blocked (409) in that case
+    # unless the supervisor explicitly acknowledges the stale baseline.
+    acknowledge_stale_master_data: bool = False
 
 
 class CountLineRejectRequest(BaseModel):
@@ -865,6 +869,91 @@ async def _get_erp_item_for_existing_count_line(
         "sale_price": count_line.get("mrp_erp"),
         "sales_price": count_line.get("mrp_erp"),
     }
+
+
+def _as_naive_utc_datetime(value: Any) -> Optional[datetime]:
+    """Normalize stored timestamps (datetime or epoch float) for comparison."""
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=None) if value.tzinfo else value
+    if isinstance(value, (int, float)):
+        try:
+            return datetime.fromtimestamp(float(value), tz=timezone.utc).replace(tzinfo=None)
+        except (OverflowError, OSError, ValueError):
+            return None
+    return None
+
+
+async def _ensure_master_data_fresh_for_approval(
+    db: Any,
+    count_line: dict[str, Any],
+    *,
+    acknowledged: bool,
+    operation_name: str,
+) -> Optional[dict[str, Any]]:
+    """Server-side session-integrity enforcement (FR-M-34).
+
+    The variance stored on a count line was computed against the ERP snapshot
+    at count time. If the ERP sync updated that item afterwards, the variance
+    a supervisor is about to approve no longer reflects current master data.
+    Previously this was only detectable if the client voluntarily called
+    /sessions/{id}/integrity; now approval itself refuses stale baselines
+    unless explicitly acknowledged.
+
+    Returns staleness info (item_code, counted_at, item_updated_at) when the
+    baseline is stale but the supervisor acknowledged it -- callers record it
+    on the count line and in the audit log. Returns None when fresh. Raises
+    409 when stale and not acknowledged.
+    """
+    counted_at = _as_naive_utc_datetime(
+        count_line.get("counted_at") or count_line.get("created_at")
+    )
+    if counted_at is None:
+        return None
+
+    erp_item = await _lookup_erp_item(
+        db,
+        barcode=count_line.get("barcode"),
+        item_code=count_line.get("item_code"),
+        require_item_code_truthy=True,
+    )
+    if not erp_item:
+        return None
+
+    item_updated_at = _as_naive_utc_datetime(erp_item.get("updated_at"))
+    if item_updated_at is None or item_updated_at <= counted_at:
+        return None
+
+    staleness = {
+        "item_code": count_line.get("item_code"),
+        "counted_at": counted_at.isoformat(),
+        "item_updated_at": item_updated_at.isoformat(),
+        "erp_qty_at_approval": erp_item.get("stock_qty"),
+    }
+    if acknowledged:
+        return staleness
+
+    logger.warning(
+        "%s blocked: master data for item %s changed after count (counted_at=%s, "
+        "item_updated_at=%s)",
+        operation_name,
+        _safe_log_value(count_line.get("item_code")),
+        counted_at.isoformat(),
+        item_updated_at.isoformat(),
+    )
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "STALE_MASTER_DATA",
+            "message": (
+                "Master data for this item was updated after it was counted; the "
+                "recorded variance may be stale. Re-check the item or approve with "
+                "acknowledge_stale_master_data=true."
+            ),
+            "item_code": count_line.get("item_code"),
+            "counted_at": counted_at.isoformat(),
+            "item_updated_at": item_updated_at.isoformat(),
+        },
+    )
 
 
 async def _resolve_snapshot_baseline(
@@ -2085,6 +2174,12 @@ async def approve_count_line(
             current_user=current_user,
             operation_name="approve_count_line",
         )
+        stale_ack = await _ensure_master_data_fresh_for_approval(
+            db,
+            count_line,
+            acknowledged=bool(request and request.acknowledge_stale_master_data),
+            operation_name="approve_count_line",
+        )
 
         approved_at = _current_timestamp()
 
@@ -2105,6 +2200,11 @@ async def approve_count_line(
                         "approval_note": request.notes if request else None,
                         "rejection_reason": None,
                         "assigned_to": None,
+                        "stale_master_data_ack": (
+                            {**stale_ack, "acknowledged_by": current_user["username"]}
+                            if stale_ack
+                            else None
+                        ),
                     }
                 },
             },
@@ -2159,7 +2259,12 @@ async def approve_count_line(
                 item_code=count_line.get("item_code"),
                 decision="APPROVED",
                 reason=request.notes if request else None,
-                details={"action": "approve_count_line", "line_id": line_id},
+                details={
+                    "action": "approve_count_line",
+                    "line_id": line_id,
+                    "stale_master_data_acknowledged": bool(stale_ack),
+                    "stale_master_data": stale_ack,
+                },
             )
         except Exception as e:
             logger.error(
@@ -2877,6 +2982,7 @@ async def bulk_approve_count_lines(
 
         query = {"$or": [{"id": {"$in": ids}}, {"_id": {"$in": object_ids}}]}
         candidate_lines = await db.count_lines.find(query).to_list(length=max(len(ids), 1))
+        stale_acknowledgements: list[dict[str, Any]] = []
         for candidate in candidate_lines:
             await _ensure_count_line_mutable(db, candidate)
             await _enforce_count_line_logic_from_line(
@@ -2886,6 +2992,14 @@ async def bulk_approve_count_lines(
                 current_user=current_user,
                 operation_name="bulk_approve_count_lines",
             )
+            candidate_stale_ack = await _ensure_master_data_fresh_for_approval(
+                db,
+                candidate,
+                acknowledged=update_data.acknowledge_stale_master_data,
+                operation_name="bulk_approve_count_lines",
+            )
+            if candidate_stale_ack:
+                stale_acknowledgements.append(candidate_stale_ack)
 
         session_ids = {
             str(candidate.get("session_id"))
@@ -2948,7 +3062,12 @@ async def bulk_approve_count_lines(
                 session_id=",".join(session_ids) if session_ids else None,
                 decision="APPROVED",
                 reason=update_data.notes,
-                details={"action": "bulk_approve_count_lines", "line_ids": ids},
+                details={
+                    "action": "bulk_approve_count_lines",
+                    "line_ids": ids,
+                    "stale_master_data_acknowledged": bool(stale_acknowledgements),
+                    "stale_master_data": stale_acknowledgements or None,
+                },
             )
         except Exception as e:
             logger.error(

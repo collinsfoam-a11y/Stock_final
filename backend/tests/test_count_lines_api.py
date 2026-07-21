@@ -1311,6 +1311,133 @@ class TestApprovalWorkflow:
         assert audit_kwargs["reason"] == "Recount with fresh check"
 
     @pytest.mark.asyncio
+    async def test_approve_blocks_when_master_data_changed_after_count(self):
+        from datetime import datetime as dt
+
+        counted_at = dt(2026, 7, 1, 10, 0, 0)
+        mock_db = AsyncMock()
+        mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
+        mock_db.count_lines.find_one = AsyncMock(
+            return_value={
+                "_id": "mongo-id-1",
+                "id": "line123",
+                "session_id": "session123",
+                "item_code": "ITEM001",
+                "barcode": "123456",
+                "counted_by": "staff1",
+                "counted_at": counted_at,
+            }
+        )
+        # ERP item re-synced AFTER the count -> stale variance baseline.
+        mock_db.erp_items.find_one = AsyncMock(
+            return_value={"item_code": "ITEM001", "updated_at": dt(2026, 7, 1, 12, 0, 0)}
+        )
+
+        with patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db):
+            with pytest.raises(HTTPException) as exc_info:
+                await approve_count_line(
+                    line_id="line123",
+                    request=CountLineApprovalRequest(),
+                    current_user={"username": "supervisor", "role": "supervisor"},
+                )
+
+        assert exc_info.value.status_code == 409
+        assert exc_info.value.detail["code"] == "STALE_MASTER_DATA"
+        mock_db.count_lines.update_one.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_approve_allows_stale_master_data_when_acknowledged(self):
+        from datetime import datetime as dt
+
+        mock_db = AsyncMock()
+        mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
+        mock_db.count_lines.find_one = AsyncMock(
+            return_value={
+                "_id": "mongo-id-1",
+                "id": "line123",
+                "session_id": "session123",
+                "item_code": "ITEM001",
+                "barcode": "123456",
+                "counted_by": "staff1",
+                "counted_at": dt(2026, 7, 1, 10, 0, 0),
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
+            }
+        )
+        mock_db.erp_items.find_one = AsyncMock(
+            return_value={"item_code": "ITEM001", "updated_at": dt(2026, 7, 1, 12, 0, 0)}
+        )
+        mock_db.count_lines.update_one = AsyncMock(return_value=Mock(matched_count=1))
+        mock_db.count_lines.find = Mock(return_value=AsyncIter([]))
+
+        notification_service = AsyncMock()
+        audit_service = AsyncMock()
+        with (
+            patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db),
+            patch(
+                "backend.api.count_lines_routes.NotificationService",
+                return_value=notification_service,
+            ),
+            patch("backend.services.audit_service.AuditService", return_value=audit_service),
+        ):
+            result = await approve_count_line(
+                line_id="line123",
+                request=CountLineApprovalRequest(acknowledge_stale_master_data=True),
+                current_user={"username": "supervisor", "role": "supervisor"},
+            )
+
+        assert result["success"] is True
+        mock_db.count_lines.update_one.assert_called_once()
+        update_doc = mock_db.count_lines.update_one.call_args.args[1]["$set"]
+        assert update_doc["stale_master_data_ack"]["acknowledged_by"] == "supervisor"
+
+    @pytest.mark.asyncio
+    async def test_approve_allows_when_master_data_unchanged(self):
+        from datetime import datetime as dt
+
+        mock_db = AsyncMock()
+        mock_db.sessions.find_one = AsyncMock(return_value={"id": "session123", "status": "OPEN"})
+        mock_db.count_lines.find_one = AsyncMock(
+            return_value={
+                "_id": "mongo-id-1",
+                "id": "line123",
+                "session_id": "session123",
+                "item_code": "ITEM001",
+                "barcode": "123456",
+                "counted_by": "staff1",
+                "counted_at": dt(2026, 7, 1, 10, 0, 0),
+                "location_id": "LOC-1",
+                "floor_id": "F1",
+                "rack_id": "R1",
+            }
+        )
+        # ERP item last synced BEFORE the count -> baseline is fresh.
+        mock_db.erp_items.find_one = AsyncMock(
+            return_value={"item_code": "ITEM001", "updated_at": dt(2026, 7, 1, 8, 0, 0)}
+        )
+        mock_db.count_lines.update_one = AsyncMock(return_value=Mock(matched_count=1))
+        mock_db.count_lines.find = Mock(return_value=AsyncIter([]))
+
+        notification_service = AsyncMock()
+        audit_service = AsyncMock()
+        with (
+            patch("backend.api.count_lines_routes._get_db_client", return_value=mock_db),
+            patch(
+                "backend.api.count_lines_routes.NotificationService",
+                return_value=notification_service,
+            ),
+            patch("backend.services.audit_service.AuditService", return_value=audit_service),
+        ):
+            result = await approve_count_line(
+                line_id="line123",
+                request=CountLineApprovalRequest(),
+                current_user={"username": "supervisor", "role": "supervisor"},
+            )
+
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
     async def test_bulk_approve_count_lines_sets_verified_and_logs_audit(self):
         candidate_lines = [
             {"_id": "mongo-id-1", "id": "line123", "session_id": "session123"},

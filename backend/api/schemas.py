@@ -307,6 +307,9 @@ class CountLineCreate(BaseModel):
 class BulkCountLineUpdate(BaseModel):
     count_line_ids: list[str]
     notes: Optional[str] = None
+    # See CountLineApprovalRequest: required to approve lines whose ERP item
+    # was re-synced after counting (stale variance baseline).
+    acknowledge_stale_master_data: bool = False
 
 
 class Session(BaseModel):
