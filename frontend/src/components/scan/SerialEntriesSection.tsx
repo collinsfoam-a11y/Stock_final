@@ -91,6 +91,7 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
+          minHeight: 44,
           gap: uiTokens.spacing.sm,
           borderWidth: 1,
           borderColor: colorWithAlpha(uiTokens.colors.accent, 0.35),
@@ -135,7 +136,12 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
         </Text>
       </View>
 
-      <TouchableOpacity style={styles.scanButton} onPress={onOpenScanner}>
+      <TouchableOpacity
+        style={styles.scanButton}
+        onPress={onOpenScanner}
+        accessibilityRole="button"
+        accessibilityLabel="Scan serial numbers"
+      >
         <Ionicons name="scan" size={22} color={uiTokens.colors.surfaceElevated} />
         <Text style={styles.scanButtonText}>Scan Serial Numbers</Text>
       </TouchableOpacity>
@@ -165,7 +171,12 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
         removeClippedSubviews={Platform.OS === "android"}
       />
 
-      <TouchableOpacity style={styles.addButton} onPress={onAddSerial}>
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={onAddSerial}
+        accessibilityRole="button"
+        accessibilityLabel="Add serial manually"
+      >
         <Ionicons name="add-circle-outline" size={20} color={uiTokens.colors.accentStrong} />
         <Text style={styles.addButtonText}>Add Serial Manually</Text>
       </TouchableOpacity>

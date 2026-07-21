@@ -36,6 +36,7 @@ import {
 } from "./serialScannerState";
 import {
   colors,
+  scrim,
   spacing,
   fontSize,
   fontWeight,
@@ -477,6 +478,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
                 <Text style={styles.manualTitle}>Manual / Bulk Input</Text>
                 <TouchableOpacity
                   onPress={() => setShowManualInput(false)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   accessibilityRole="button"
                   accessibilityLabel="Close"
                 >
@@ -551,7 +553,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
               {device?.hasTorch && (
                 <TouchableOpacity
                   onPress={toggleTorch}
-                  style={[styles.closeButton, { backgroundColor: isTorchOn ? colors.primary[500] : "rgba(0,0,0,0.5)" }]}
+                  style={[styles.closeButton, { backgroundColor: isTorchOn ? colors.primary[500] : scrim.medium }]}
                 >
                   <Ionicons name={isTorchOn ? "flashlight" : "flashlight-outline"} size={24} color={colors.white} />
                 </TouchableOpacity>
@@ -810,7 +812,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: scrim.light,
   },
   topBar: {
     flexDirection: "row",
@@ -822,7 +824,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: scrim.medium,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -958,7 +960,7 @@ const styles = StyleSheet.create({
   infoCard: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: scrim.strong,
     padding: spacing.md,
     borderRadius: borderRadius.md,
     marginBottom: spacing.md,
@@ -971,7 +973,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   detectedList: {
-    backgroundColor: "rgba(0,0,0,0.65)",
+    backgroundColor: scrim.intense,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
@@ -1049,7 +1051,7 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   serialsList: {
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: scrim.strong,
     padding: spacing.md,
     borderRadius: borderRadius.md,
     marginBottom: spacing.md,
@@ -1116,7 +1118,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginTop: spacing.xl,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: scrim.strong,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,

@@ -56,6 +56,7 @@ import ModernHeader from "@/components/ui/ModernHeader";
 import ModernButton from "@/components/ui/ModernButton";
 import { SyncStatusPill } from "@/components/ui/SyncStatusPill";
 import { FinishRackModal } from "@/components/scan/FinishRackModal";
+import { HardwareScanInput } from "@/components/scan/HardwareScanInput";
 import { ScanCameraOverlay } from "@/components/scan/ScanCameraOverlay";
 import { ScanLookupPanel, type ScanLookupNotice } from "@/components/scan/ScanLookupPanel";
 import { ScanStatsCard } from "@/components/scan/ScanStatsCard";
@@ -65,7 +66,7 @@ import { styles } from "@/styles/screens/Scan.styles";
 import { useAuthStore } from "@/store/authStore";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { getTokenShadowStyle } from "@/theme/themeTokens";
+import { colorWithAlpha, getTokenShadowStyle } from "@/theme/themeTokens";
 import { flags } from "@/constants/flags";
 const SCAN_BUFFER_TIMEOUT = 2000; // 2 seconds
 const SCAN_BUFFER_MAX_SIZE = 10;
@@ -634,6 +635,14 @@ const ScanScreen = React.memo(function ScanScreen() {
       style={[styles.container, { backgroundColor: uiTokens.colors.background }]}
       edges={["top"]}
     >
+      {flags.enableNativeHardwareScanner && (
+        // Dedicated/Bluetooth wedge scanners on native: zero-tap capture.
+        // Scanner priority: wedge -> camera -> manual (ADR-002).
+        <HardwareScanInput
+          onScan={(code) => handleBarcodeScan({ data: code })}
+          isActive={isScreenFocused && !showCloseSessionModal && !isScanning}
+        />
+      )}
       <ModernHeader
         title="Scan Rack"
         subtitle={scanLocationLabel || user?.full_name || "Staff session"}
@@ -755,8 +764,10 @@ const ScanScreen = React.memo(function ScanScreen() {
             styles.loadingOverlay,
             styles.pointerEventsNone,
             {
-              backgroundColor:
-                uiTokens.mode === "dark" ? "rgba(17,24,39,0.75)" : "rgba(255,255,255,0.88)",
+              backgroundColor: colorWithAlpha(
+                uiTokens.colors.background,
+                uiTokens.mode === "dark" ? 0.75 : 0.88
+              ),
             },
           ]}
         >

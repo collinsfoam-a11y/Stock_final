@@ -19,6 +19,10 @@ export type FeatureFlags = {
   uiVisualSystemV2: boolean;
   uiSettingsV2: boolean;
   uiScanV2: boolean;
+  // v2.2 Priority 3: hidden-input HID capture on native so dedicated warehouse
+  // scanners (Zebra DataWedge / Honeywell in keyboard-wedge mode, Bluetooth
+  // HID) scan with zero taps. Off by default until device-validated.
+  enableNativeHardwareScanner: boolean;
 };
 
 export type FeatureFlagName = keyof FeatureFlags;
@@ -39,6 +43,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   uiVisualSystemV2: true,
   uiSettingsV2: true,
   uiScanV2: true,
+  enableNativeHardwareScanner: false,
 };
 
 const UI_EPIC_FLAGS: FeatureFlagName[] = [

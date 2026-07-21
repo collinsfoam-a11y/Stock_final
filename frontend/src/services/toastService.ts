@@ -1,3 +1,5 @@
+import { AccessibilityInfo } from "react-native";
+
 export interface ToastOptions {
   duration?: "short" | "long";
   position?: "top" | "bottom" | "center";
@@ -46,6 +48,10 @@ export class ToastService {
 
     const id = `toast_${++this.toastId}`;
     const duration = opts.duration === "long" ? 5000 : 3000;
+
+    if (message && typeof AccessibilityInfo?.announceForAccessibility === "function") {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
 
     this.emit("show", {
       id,

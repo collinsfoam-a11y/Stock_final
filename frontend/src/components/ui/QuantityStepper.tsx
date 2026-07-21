@@ -41,6 +41,7 @@ export function QuantityStepper({ value, onChange, min = 0, max, disabled, testI
       <TouchableOpacity
         onPress={() => handleChange(-1)}
         disabled={disabled || value <= min}
+        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         style={[styles.button, buttonStyle, (disabled || value <= min) && styles.buttonDisabled]}
         accessibilityLabel="decrement"
         accessibilityRole="button"
@@ -64,6 +65,7 @@ export function QuantityStepper({ value, onChange, min = 0, max, disabled, testI
       <TouchableOpacity
         onPress={() => handleChange(1)}
         disabled={disabled || (typeof max === "number" && value >= max)}
+        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         style={[
           styles.button,
           buttonStyle,

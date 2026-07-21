@@ -6,7 +6,8 @@ import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import ModernButton from "@/components/ui/ModernButton";
-import { borderRadius, colors, spacing, typography } from "@/theme/legacyCompat";
+import { borderRadius, colors, scrim, spacing, typography } from "@/theme/legacyCompat";
+import { useUiTokens } from "@/hooks/useUiTokens";
 
 interface ScanCameraOverlayProps {
   animatedCorners: any;
@@ -29,6 +30,7 @@ export function ScanCameraOverlay({
   scanned,
   timeoutSeconds = 30,
 }: ScanCameraOverlayProps) {
+  const tokens = useUiTokens();
   const device = useCameraDevice('back');
   const [isTorchOn, setIsTorchOn] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -67,8 +69,10 @@ export function ScanCameraOverlay({
 
   if (!permission.granted) {
     return (
-      <View style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>We need your permission to show the camera</Text>
+      <View style={[styles.permissionContainer, { backgroundColor: tokens.colors.background }]}>
+        <Text style={[styles.permissionText, { color: tokens.colors.textSecondary }]}>
+          We need your permission to show the camera
+        </Text>
         <ModernButton onPress={requestPermission} title="Grant Permission" />
         <ModernButton
           onPress={onClose}
@@ -96,8 +100,10 @@ export function ScanCameraOverlay({
 
   if (!device) {
     return (
-      <View style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>Camera device not found</Text>
+      <View style={[styles.permissionContainer, { backgroundColor: tokens.colors.background }]}>
+        <Text style={[styles.permissionText, { color: tokens.colors.textSecondary }]}>
+          Camera device not found
+        </Text>
         <ModernButton onPress={onClose} title="Cancel" variant="outline" />
       </View>
     );
@@ -118,6 +124,7 @@ export function ScanCameraOverlay({
             <TouchableOpacity
               onPress={onClose}
               style={styles.closeCameraButton}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               accessibilityRole="button"
               accessibilityLabel="Close camera"
             >
@@ -128,7 +135,11 @@ export function ScanCameraOverlay({
             {device.hasTorch && (
               <TouchableOpacity
                 onPress={toggleTorch}
-                style={[styles.closeCameraButton, { backgroundColor: isTorchOn ? colors.primary[500] : "rgba(0,0,0,0.5)" }]}
+                style={[styles.closeCameraButton, { backgroundColor: isTorchOn ? colors.primary[500] : scrim.medium }]}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={isTorchOn ? "Turn torch off" : "Turn torch on"}
+                accessibilityState={{ selected: isTorchOn }}
               >
                 <Ionicons name={isTorchOn ? "flashlight" : "flashlight-outline"} size={24} color={colors.white} />
               </TouchableOpacity>
@@ -158,11 +169,23 @@ export function ScanCameraOverlay({
             </Text>
             
             <View style={styles.zoomControls}>
-              <TouchableOpacity style={styles.zoomButton} onPress={handleZoomOut}>
+              <TouchableOpacity
+                style={styles.zoomButton}
+                onPress={handleZoomOut}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Zoom out"
+              >
                 <Ionicons name="remove-circle-outline" size={32} color={colors.white} />
               </TouchableOpacity>
               <Text style={styles.zoomText}>{zoomLevel.toFixed(1)}x</Text>
-              <TouchableOpacity style={styles.zoomButton} onPress={handleZoomIn}>
+              <TouchableOpacity
+                style={styles.zoomButton}
+                onPress={handleZoomIn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Zoom in"
+              >
                 <Ionicons name="add-circle-outline" size={32} color={colors.white} />
               </TouchableOpacity>
             </View>
@@ -189,7 +212,7 @@ const styles = StyleSheet.create({
   },
   closeCameraButton: {
     padding: spacing.sm,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: scrim.medium,
     borderRadius: borderRadius.full,
   },
   cameraTitle: {
@@ -256,7 +279,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     fontSize: typography.fontSize.base,
     fontWeight: "500",
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: scrim.strong,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
@@ -286,7 +309,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginTop: spacing.xl,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: scrim.strong,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,

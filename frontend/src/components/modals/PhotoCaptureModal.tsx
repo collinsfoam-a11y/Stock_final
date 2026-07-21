@@ -26,7 +26,8 @@ import {
   modernBorderRadius,
 } from "../../styles/unifiedSystem";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { scrim, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { useUiTokens } from "../../hooks/useUiTokens";
 interface PhotoCaptureModalProps {
   visible: boolean;
   onClose: () => void;
@@ -42,6 +43,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   title = "Capture Photo",
   testID,
 }) => {
+  const tokens = useUiTokens();
   const { hasPermission, requestPermission } = useCameraPermission();
   // vision-camera's requestPermission resolves false immediately (no prompt)
   // once the user has permanently denied, so a failed request means further
@@ -174,39 +176,46 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         onRequestClose={handleClose}
         testID={testID}
       >
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: tokens.colors.background }]}>
           <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
+            <Text style={[styles.title, { color: tokens.colors.textPrimary }]}>{title}</Text>
             <TouchableOpacity
               style={styles.closeButton}
               onPress={handleClose}
               accessibilityRole="button"
               accessibilityLabel="Close"
             >
-              <Ionicons name="close" size={24} color={modernColors.text.primary} />
+              <Ionicons name="close" size={24} color={tokens.colors.textPrimary} />
             </TouchableOpacity>
           </View>
           <View style={styles.permissionContainer}>
-            <Ionicons name="camera-outline" size={64} color={modernColors.text.tertiary} />
-            <Text style={styles.permissionText}>
+            <Ionicons name="camera-outline" size={64} color={tokens.colors.textMuted} />
+            <Text style={[styles.permissionText, { color: tokens.colors.textSecondary }]}>
               Camera permission is required to capture photos
             </Text>
             {canAskPermission ? (
               <TouchableOpacity
-                style={styles.permissionButton}
+                style={[styles.permissionButton, { backgroundColor: tokens.colors.accent }]}
                 onPress={() => {
                   void requestCameraPermission();
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Grant camera permission"
               >
                 <Text style={styles.permissionButtonText}>Grant Permission</Text>
               </TouchableOpacity>
             ) : (
               <>
-                <Text style={styles.permissionHelpText}>
+                <Text style={[styles.permissionHelpText, { color: tokens.colors.textSecondary }]}>
                   Camera permission was denied. Open app settings and enable camera access to
                   continue.
                 </Text>
-                <TouchableOpacity style={styles.permissionButton} onPress={handleOpenSettings}>
+                <TouchableOpacity
+                  style={[styles.permissionButton, { backgroundColor: tokens.colors.accent }]}
+                  onPress={handleOpenSettings}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open system settings"
+                >
                   <Text style={styles.permissionButtonText}>Open Settings</Text>
                 </TouchableOpacity>
               </>
@@ -225,17 +234,17 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       onRequestClose={handleClose}
       testID={testID}
     >
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tokens.colors.background }]}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={[styles.title, { color: tokens.colors.textPrimary }]}>{title}</Text>
           <TouchableOpacity
             style={styles.closeButton}
             onPress={handleClose}
             accessibilityRole="button"
             accessibilityLabel="Close"
           >
-            <Ionicons name="close" size={24} color={modernColors.text.primary} />
+            <Ionicons name="close" size={24} color={tokens.colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -270,6 +279,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               <TouchableOpacity
                 style={[styles.controlButton, styles.retakeButton]}
                 onPress={handleRetake}
+                accessibilityRole="button"
+                accessibilityLabel="Retake photo"
               >
                 <Ionicons name="refresh" size={24} color={uiSemanticColors.text.inverse} />
                 <Text style={styles.controlButtonText}>Retake</Text>
@@ -277,6 +288,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               <TouchableOpacity
                 style={[styles.controlButton, styles.confirmButton]}
                 onPress={handleConfirm}
+                accessibilityRole="button"
+                accessibilityLabel="Use photo"
               >
                 <Ionicons name="checkmark" size={24} color={uiSemanticColors.text.inverse} />
                 <Text style={styles.controlButtonText}>Use Photo</Text>
@@ -288,6 +301,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               onPress={handleCapture}
               disabled={isCapturing}
               testID={`${testID}-capture`}
+              accessibilityRole="button"
+              accessibilityLabel="Take photo"
+              accessibilityState={{ disabled: isCapturing, busy: isCapturing }}
             >
               <View style={styles.captureButtonInner} />
             </TouchableOpacity>
@@ -316,6 +332,10 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: modernSpacing.xs,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   permissionContainer: {
     flex: 1,
@@ -360,7 +380,7 @@ const styles = StyleSheet.create({
   },
   capturingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: scrim.medium,
     alignItems: "center",
     justifyContent: "center",
   },

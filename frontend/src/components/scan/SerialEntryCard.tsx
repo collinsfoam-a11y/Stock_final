@@ -77,6 +77,7 @@ export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
         <TouchableOpacity
           style={styles.removeButton}
           onPress={onRemove}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
           accessibilityLabel={`Remove unit ${index + 1}`}
         >

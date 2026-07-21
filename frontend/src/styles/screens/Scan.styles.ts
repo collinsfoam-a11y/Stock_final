@@ -2,6 +2,7 @@ import { Platform, StyleSheet } from "react-native";
 
 import { colors, spacing, typography, borderRadius } from "@/theme/legacyCompat";
 import { zIndex } from "@/theme/designTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
 /**
  * Styles for the staff scan screen. Extracted from the component so the screen
@@ -49,7 +50,7 @@ export const styles = StyleSheet.create({
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.9)",
+    backgroundColor: colorWithAlpha(colors.white, 0.9),
     justifyContent: "center",
     alignItems: "center",
     zIndex: zIndex.overlay,
@@ -61,7 +62,8 @@ export const styles = StyleSheet.create({
     position: "absolute",
     top: 60,
     right: 20,
-    backgroundColor: "rgba(0,0,0,0.7)",
+    // Dev-only performance HUD over the camera; constant dark scrim
+    backgroundColor: colorWithAlpha(colors.black, 0.7),
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: borderRadius.md,
@@ -74,10 +76,10 @@ export const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
   },
   performanceGood: {
-    backgroundColor: "rgba(34,197,94,0.8)",
+    backgroundColor: colorWithAlpha(colors.success[500], 0.8),
   },
   performancePoor: {
-    backgroundColor: "rgba(239,68,68,0.8)",
+    backgroundColor: colorWithAlpha(colors.error[500], 0.8),
   },
   missingSessionContainer: {
     flex: 1,

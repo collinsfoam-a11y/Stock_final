@@ -141,7 +141,13 @@ const SearchResultItem = React.memo(function SearchResultItem({
   const iconWash = uiTokens.mode === "dark" ? "rgba(88, 166, 255, 0.14)" : colors.primary[50];
 
   return (
-    <TouchableOpacity style={styles.resultItem} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={styles.resultItem}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Select item ${item.item_name || ""}, code ${item.item_code || ""}`}
+    >
       <View style={[styles.resultIcon, { backgroundColor: iconWash }]}>
         <Ionicons name="cube-outline" size={20} color={uiTokens.colors.accent} />
       </View>

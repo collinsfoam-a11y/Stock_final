@@ -246,13 +246,22 @@ export default function ItemDetailScreen() {
     resetQuantityState();
     resetEvidenceState();
     resetMetadataState();
+    // Serial-controlled items must expose serial capture without the staff
+    // first flipping the "Is Serialized Item" switch — otherwise the manual
+    // "Add Serial" input never renders. resetSerialState() sets this false, so
+    // re-enable from the item's tracking metadata in the same pass.
+    if (item?.is_serialized) {
+      setIsSerializedItem(true);
+    }
   }, [
     item?.barcode,
     item?.item_code,
+    item?.is_serialized,
     resetEvidenceState,
     resetMetadataState,
     resetQuantityState,
     resetSerialState,
+    setIsSerializedItem,
   ]);
 
   const { submitting, submitCountdown, handleSubmitPress, cancelSubmit } =

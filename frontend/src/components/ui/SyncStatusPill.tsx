@@ -21,6 +21,7 @@ import {
 import { modernAnimations, modernBorderRadius } from "../../styles/modernDesignSystem";
 
 import { colors } from "@/theme/legacyCompat";
+import { colorWithAlpha } from "@/theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 export const SyncStatusPill = () => {
@@ -80,23 +81,23 @@ export const SyncStatusPill = () => {
   const infoColor = isDark ? uiTokens.colors.accent : colors.primary[700];
 
   let pillColor = successColor;
-  let pillBg = isDark ? "rgba(63, 185, 80, 0.18)" : colors.success[50];
+  let pillBg = isDark ? colorWithAlpha(uiTokens.colors.success, 0.18) : colors.success[50];
   let iconName: keyof typeof Ionicons.glyphMap = "cloud-done";
   let label = "Synced";
 
   if (isOffline) {
     pillColor = warningColor;
-    pillBg = isDark ? "rgba(210, 153, 34, 0.18)" : colors.warning[50];
+    pillBg = isDark ? colorWithAlpha(uiTokens.colors.warning, 0.18) : colors.warning[50];
     iconName = "cloud-offline";
     label = hasPending ? `Offline (${status.queuedOperations})` : "Offline";
   } else if (isSyncing) {
     pillColor = infoColor;
-    pillBg = isDark ? "rgba(88, 166, 255, 0.18)" : colors.primary[50];
+    pillBg = isDark ? colorWithAlpha(uiTokens.colors.accent, 0.18) : colors.primary[50];
     iconName = "sync";
     label = "Syncing...";
   } else if (hasPending) {
     pillColor = warningColor;
-    pillBg = isDark ? "rgba(210, 153, 34, 0.18)" : colors.warning[50];
+    pillBg = isDark ? colorWithAlpha(uiTokens.colors.warning, 0.18) : colors.warning[50];
     iconName = "cloud-upload";
     label = `${status.queuedOperations} Pending`;
   }
