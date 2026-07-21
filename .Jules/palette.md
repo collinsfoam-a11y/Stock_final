@@ -12,3 +12,7 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+
+## 2026-06-11 - Accessible Status and Count Badges
+**Learning:** Custom status and count Badge components in React Native need explicit `accessible={true}` containers with customizable `accessibilityLabel` and `accessibilityRole` attributes to ensure screen readers read them as unified accessible blocks instead of skipping them.
+**Action:** Always wrap status/count labels (including dot-only badges) in a container with `accessible={true}`, default the role to "text", and provide default descriptive fallback labels (such as "Status dot") if no label text is visible.
