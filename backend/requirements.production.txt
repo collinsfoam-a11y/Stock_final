@@ -8,7 +8,7 @@ uvicorn[standard]==0.41.0
 gunicorn==25.1.0
 python-dotenv==1.2.2
 pydantic==2.12.5  # v2 stable
-pydantic-settings==2.13.1
+pydantic-settings==2.14.2
 
 # Database Drivers
 motor==3.7.1  # MongoDB async driver

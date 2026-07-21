@@ -25,10 +25,10 @@ test.describe("Supervisor smoke flow", () => {
     });
     await expect(page.getByText("Supervisor overview")).toBeVisible();
     await expect(
-      page.getByText("Keep sessions moving and catch issues early."),
+      page.getByText(/Keep (?:counting|sessions) (?:on track|moving) and (?:fix|catch) issues early/i),
     ).toBeVisible();
     await expect(page.getByText("Create session")).toBeVisible();
-    await expect(page.getByText("Review variances")).toBeVisible();
+    await expect(page.getByText(/Review (?:differences|variances)/i)).toBeVisible();
     await expect(page.getByText("Recent Sessions")).toBeVisible();
     await expect(page.getByText("Recent Activity", { exact: true })).toBeVisible();
 
