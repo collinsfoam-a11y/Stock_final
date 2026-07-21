@@ -5,7 +5,6 @@
 
 import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { FlashList } from "@shopify/flash-list";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
@@ -194,17 +193,13 @@ export const DataTable: React.FC<DataTableProps> = ({
           style={styles.horizontalScroll}
         >
           <View style={styles.tableContent}>
-            <FlashList
-              data={paginatedData}
-              renderItem={({ item, index }) => renderRow(item, index)}
-              keyExtractor={(item, index) => {
-                // Create a stable key from item data
-                const keyParts = columns.map((col) => String(item[col.key] || "")).join("-");
-                return `row-${index}-${keyParts.substring(0, 30)}`;
-              }}
-              extraData={sortColumn}
-              scrollEnabled={false} // Disable FlashList scrolling since we're in a ScrollView
-            />
+            {/* ⚡ Bolt Optimization: Replaced FlashList with simple array map.
+                FlashList with scrollEnabled={false} adds virtualization overhead without the benefits. */}
+            {paginatedData.map((item, index) => {
+              const keyParts = columns.map((col) => String(item[col.key] || "")).join("-");
+              const itemKey = `row-${index}-${keyParts.substring(0, 30)}`;
+              return <React.Fragment key={itemKey}>{renderRow(item, index)}</React.Fragment>;
+            })}
           </View>
         </ScrollView>
       </View>
