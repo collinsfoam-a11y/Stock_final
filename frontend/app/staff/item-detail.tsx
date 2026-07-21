@@ -80,11 +80,11 @@ function SectionHeading({
   icon: React.ComponentProps<typeof Ionicons>["name"];
   label: string;
   uiTokens: ReturnType<typeof import("@/hooks/useUiTokens").useUiTokens>;
-  decorativeIconProps: Record<string, unknown>;
+  decorativeIconProps: ReturnType<typeof getDecorativeIconProps>;
 }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8, marginBottom: 4, paddingHorizontal: 2 }}>
-      <Ionicons {...(decorativeIconProps as any)} name={icon} size={14} color={uiTokens.colors.textMuted} />
+      <Ionicons {...decorativeIconProps} name={icon} size={14} color={uiTokens.colors.textMuted} />
       <Text style={{ fontSize: 11, fontWeight: "700", color: uiTokens.colors.textMuted, textTransform: "uppercase", letterSpacing: 0.8 }}>
         {label}
       </Text>
@@ -212,6 +212,7 @@ export default function ItemDetailScreen() {
   const {
     handleAddSerial,
     handleRemoveSerial,
+    handleSerialBlur,
     handleSerialChange,
     handleSerialScanned,
     isSerializedItem,
@@ -578,6 +579,7 @@ export default function ItemDetailScreen() {
                 onOpenScanner={() => setShowSerialScanner(true)}
                 onRemoveSerial={handleRemoveSerial}
                 onSerialChange={(index, text) => handleSerialChange(index, "serial_number", text)}
+                onSerialBlur={handleSerialBlur}
                 onSerializedChange={setIsSerializedItem}
               />
 

@@ -42,7 +42,9 @@ import {
   checkItemScanStatus,
   getSessionStats,
   SessionStatsResponse,
+  type ItemScanStatus,
 } from "@/services/api/api";
+import type { Item } from "@/types/scan";
 import { RecentItemsService } from "@/services/enhancedFeatures";
 import { playScanSound } from "@/services/scanSoundService";
 import { toastService } from "@/services/toastService";
@@ -126,8 +128,8 @@ const ScanScreen = React.memo(function ScanScreen() {
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [debouncedSearchQuery] = useDebounce(searchQuery, debounceDelay);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [recentItems, setRecentItems] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<Item[]>([]);
+  const [recentItems, setRecentItems] = useState<Item[]>([]);
   const [lookupNotice, setLookupNotice] = useState<ScanLookupNotice | null>(null);
   const [lastLookupBarcode, setLastLookupBarcode] = useState<string>("");
   const [sessionStats, setSessionStats] = useState<SessionStatsResponse>({
@@ -186,7 +188,12 @@ const ScanScreen = React.memo(function ScanScreen() {
         if (offlineMode) {
           const localResults = await safeAsync(() => localDb.searchItems(query));
           if (localResults) {
-            safeSetState(setSearchResults, dedupeItemsKeepingHighestStock(localResults));
+            // Local DB returns Partial<Item> (cache rows); treat cache hits as
+            // resolved items for display and downstream selection.
+            safeSetState(
+              setSearchResults,
+              dedupeItemsKeepingHighestStock(localResults as Item[])
+            );
           }
           return;
         }
@@ -400,11 +407,15 @@ const ScanScreen = React.memo(function ScanScreen() {
 
     safeSetState(setLoading, true);
     try {
-      let item: any;
+      let item: Item | undefined;
 
       // OPTIMISTIC STRATEGY: Try Local DB first for instant response
       try {
-        item = await safeAsync(() => localDb.getItemByBarcode(validation.value!));
+        // Local DB returns Partial<Item> (cache), but downstream treats a hit as
+        // a resolved item — coerce to Item to match that contract.
+        item = (await safeAsync(() => localDb.getItemByBarcode(validation.value!))) as
+          | Item
+          | undefined;
       } catch {
         // Ignore local db error, fall through to API
       }
@@ -431,7 +442,7 @@ const ScanScreen = React.memo(function ScanScreen() {
             if (scanStatus?.scanned) {
               const locations = scanStatus.locations || [];
               const duplicateInLocation = locations.find(
-                (loc: any) => loc.floor_no === currentFloor && loc.rack_no === currentRack
+                (loc) => loc.floor_no === currentFloor && loc.rack_no === currentRack
               );
 
               if (duplicateInLocation) {
@@ -478,9 +489,10 @@ const ScanScreen = React.memo(function ScanScreen() {
           type: "warning",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       void playScanSound("error", scannerSound);
-      const reason = error?.message || "The lookup request did not finish.";
+      const reason =
+        error instanceof Error ? error.message : "The lookup request did not finish.";
       safeSetState(setLookupNotice, {
         actionLabel: "Retry lookup",
         message: `${reason} Your scan was not submitted. Retry lookup or rescan the item.`,
@@ -501,15 +513,15 @@ const ScanScreen = React.memo(function ScanScreen() {
     } as any);
   };
 
-  const getLookupItemIdentifier = (item: any): string | null => {
-    const candidates = [
-      item?.barcode,
-      item?.manual_barcode,
-      item?.unit2_barcode,
-      item?.unit_m_barcode,
-      item?.item_code,
-      item?.id,
-      item?._id,
+  const getLookupItemIdentifier = (item: Partial<Item> | null | undefined): string | null => {
+    if (!item) return null;
+    const candidates: unknown[] = [
+      item.barcode,
+      item.manual_barcode,
+      item.unit2_barcode,
+      item.unit_m_barcode,
+      item.item_code,
+      item.id,
     ];
 
     for (const candidate of candidates) {
@@ -520,7 +532,7 @@ const ScanScreen = React.memo(function ScanScreen() {
     return null;
   };
 
-  const handleSelectLookupItem = async (item: any) => {
+  const handleSelectLookupItem = async (item: Partial<Item>) => {
     // Atomic guard: the ref is set synchronously before any await, so a rapid
     // second tap is rejected even before the `loading` state update lands.
     if (loading || selectInFlightRef.current) return;
@@ -542,8 +554,12 @@ const ScanScreen = React.memo(function ScanScreen() {
     safeSetState(setSearchQuery, "");
 
     try {
-      if (item?.item_code) {
-        await safeAsync(() => RecentItemsService.addRecent(item.item_code, item));
+      if (item.item_code) {
+        // The lookup result is treated as a resolved item downstream; the panel
+        // emits a partial view, so coerce to Item for the recent-items store.
+        await safeAsync(() =>
+          RecentItemsService.addRecent(item.item_code!, item as Item)
+        );
         await loadRecentItems();
       }
       // Navigate while the guard is still held so the tap area never re-enables
@@ -579,10 +595,14 @@ const ScanScreen = React.memo(function ScanScreen() {
       await safeAsync(() => updateSessionStatus(sessionId, "reconcile"));
       void haptics.success();
       router.replace("/staff/home");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const reason =
+        error instanceof Error
+          ? error.message
+          : "This session could not be submitted for supervisor review.";
       Alert.alert(
         "Finish Rack Failed",
-        `${error.message || "This session could not be submitted for supervisor review."}\n\nYour counts remain in this rack session. Check connectivity and retry.`
+        `${reason}\n\nYour counts remain in this rack session. Check connectivity and retry.`
       );
     } finally {
       safeSetState(setIsFinishing, false);
@@ -708,7 +728,10 @@ const ScanScreen = React.memo(function ScanScreen() {
             safeSetState(setIsScanning, true);
           }}
           onPressItem={(item) => {
-            void handleSelectLookupItem(item);
+            // Panel emits its structural ScanLookupItem; the underlying data is
+            // the Item[] we passed in, so coerce back to Partial<Item> for the
+            // handler.
+            void handleSelectLookupItem(item as Partial<Item>);
           }}
           onSubmitSearch={() => {
             if (!searchQuery.trim()) return;
