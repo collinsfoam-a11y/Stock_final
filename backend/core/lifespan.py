@@ -930,12 +930,17 @@ async def lifespan(app: FastAPI):  # noqa: C901
         try:
             if redis_service is not None and redis_service.is_connected:
                 from backend.services.erp_event_sync import ErpSyncEventConsumer
-                from backend.services.websocket_service import manager as ws_manager
+
+                # Broadcast to the SAME manager the /ws/updates endpoint uses
+                # (core.websocket_manager), not services.websocket_service —
+                # the latter has no connected clients, so ERP-sync notifications
+                # would silently reach no one.
+                from backend.core.websocket_manager import manager as ws_manager
 
                 erp_event_consumer = ErpSyncEventConsumer(
                     redis_service.client,
                     db,
-                    broadcast=ws_manager.broadcast,
+                    broadcast=ws_manager.broadcast_all,
                 )
                 await erp_event_consumer.start()
                 logger.info("OK: ERP event sync consumer started")
