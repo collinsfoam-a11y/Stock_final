@@ -5,7 +5,7 @@
 
 import axios from "axios";
 import api from "../httpClient";
-import { retryWithBackoff } from "../../utils/retry";
+import { retryWithBackoff, safeRetry } from "../../utils/retry";
 import { ApiResponse, PaginatedResponse } from "../../types/api";
 
 /**
@@ -142,7 +142,13 @@ class EnhancedApiClient {
   }
 
   /**
-   * POST request with retry logic
+   * POST request with retry logic.
+   *
+   * POST/PUT/PATCH/DELETE are non-idempotent: a 5xx after the server already
+   * applied the write must NOT be retried, or the mutation doubles (duplicate
+   * count lines, double stock adjustments — audit C7). Only retry on transient
+   * network errors and the explicit "safe to retry" statuses (408 timeout,
+   * 429 rate-limited, 503 unavailable).
    */
   async post<T>(
     endpoint: string,
@@ -154,7 +160,7 @@ class EnhancedApiClient {
         async () => {
           return await api.post(`${this.baseURL}${endpoint}`, data);
         },
-        { retries },
+        { retries, shouldRetry: safeRetry },
       );
 
       return this.handleResponse<T>(response.data);
@@ -164,7 +170,7 @@ class EnhancedApiClient {
   }
 
   /**
-   * PUT request with retry logic
+   * PUT request with retry logic (see POST — non-idempotent).
    */
   async put<T>(
     endpoint: string,
@@ -176,7 +182,7 @@ class EnhancedApiClient {
         async () => {
           return await api.put(`${this.baseURL}${endpoint}`, data);
         },
-        { retries },
+        { retries, shouldRetry: safeRetry },
       );
 
       return this.handleResponse<T>(response.data);
@@ -186,7 +192,7 @@ class EnhancedApiClient {
   }
 
   /**
-   * PATCH request with retry logic
+   * PATCH request with retry logic (see POST — non-idempotent).
    */
   async patch<T>(
     endpoint: string,
@@ -198,7 +204,7 @@ class EnhancedApiClient {
         async () => {
           return await api.patch(`${this.baseURL}${endpoint}`, data);
         },
-        { retries },
+        { retries, shouldRetry: safeRetry },
       );
 
       return this.handleResponse<T>(response.data);
@@ -208,7 +214,7 @@ class EnhancedApiClient {
   }
 
   /**
-   * DELETE request with retry logic
+   * DELETE request with retry logic (see POST — non-idempotent).
    */
   async delete<T>(
     endpoint: string,
@@ -219,7 +225,7 @@ class EnhancedApiClient {
         async () => {
           return await api.delete(`${this.baseURL}${endpoint}`);
         },
-        { retries },
+        { retries, shouldRetry: safeRetry },
       );
 
       return this.handleResponse<T>(response.data);

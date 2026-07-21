@@ -188,12 +188,22 @@ class ErpSyncEventConsumer:
         item_code = fields.get("item_code", "")
         payload = json.loads(fields.get("payload") or "{}")
 
+        version = _parse_version(fields.get("source_version"))
+        # Version guard: a re-delivered or DLQ-requeued event for an OLDER
+        # source_version must not clobber a newer item already stored. The
+        # Redis dedupe set only lasts PROCESSED_TTL_SECONDS, so this is the
+        # durable protection against last-write-wins corruption.
+        if version is not None and await self._is_stale(item_code, version):
+            await self._bump_metric("skipped_stale")
+            return
+
         if change_type == "delete":
             # Soft-delete: exports and audit history must keep referencing the
             # item, so mark rather than remove (database compatibility).
             await self._db.erp_items.update_one(
                 {"item_code": item_code},
-                {"$set": {"is_deleted": True, "updated_at": _utc_now()}},
+                {"$set": {"is_deleted": True, "updated_at": _utc_now(),
+                          "sync_source_version": version}},
             )
             return
 
@@ -202,9 +212,20 @@ class ErpSyncEventConsumer:
         doc["updated_at"] = _utc_now()
         doc["is_deleted"] = False
         doc["sync_source"] = "event"
+        doc["sync_source_version"] = version
         await self._db.erp_items.update_one(
             {"item_code": item_code}, {"$set": doc}, upsert=True
         )
+
+    async def _is_stale(self, item_code: str, version: float) -> bool:
+        """True when a newer source_version is already stored for this item."""
+        existing = await self._db.erp_items.find_one(
+            {"item_code": item_code}, {"sync_source_version": 1}
+        )
+        if not existing:
+            return False
+        stored = existing.get("sync_source_version")
+        return isinstance(stored, (int, float)) and stored > version
 
     async def _handle_failure(self, message_id: Any, fields: dict[str, str], *, error: str) -> None:
         retries = int(fields.get("retries") or 0)
@@ -319,6 +340,21 @@ async def requeue_dead_letters(redis_client: Any, *, limit: int = 100) -> int:
         await redis_client.xdel(DLQ_STREAM_KEY, message_id)
         moved += 1
     return moved
+
+
+def _parse_version(value: Any) -> Optional[float]:
+    """Parse a source_version into a comparable number, or None if not numeric.
+
+    SQL Server change-tracking versions and epoch timestamps are numeric and
+    monotonic; non-numeric versions skip the ordering guard (dedupe still
+    applies) rather than risk a wrong comparison.
+    """
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _d(value: Any) -> str:

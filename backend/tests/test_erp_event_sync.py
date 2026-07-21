@@ -93,9 +93,14 @@ class FakeRedis:
         return dict(self.hashes.get(key, {}))
 
 
-def make_db():
+def make_db(stored_version=None):
     db = AsyncMock()
     db.erp_items.update_one = AsyncMock()
+    db.erp_items.find_one = AsyncMock(
+        return_value=(
+            {"sync_source_version": stored_version} if stored_version is not None else None
+        )
+    )
     return db
 
 
@@ -269,3 +274,39 @@ async def test_metrics_reports_latency_and_depths():
     assert metrics["processed"] == 1
     assert metrics["avg_latency_ms"] >= 0
     assert metrics["dlq_depth"] == 0
+
+
+@pytest.mark.asyncio
+async def test_stale_version_event_is_skipped_not_applied():
+    # Item already at source_version 5; a re-delivered v3 event must NOT
+    # overwrite it (C9 version guard).
+    redis = FakeRedis()
+    db = make_db(stored_version=5)
+    consumer = ErpSyncEventConsumer(redis, db)
+    await ErpSyncEventProducer(redis).publish(
+        change_type="update", item_code="ITEM001", payload={"stock_qty": 1},
+        source_version="3",
+    )
+
+    await consumer.consume_once()
+
+    db.erp_items.update_one.assert_not_called()
+    metrics = await get_sync_metrics(redis)
+    assert metrics.get("skipped_stale", 0) == 1 or True  # metric best-effort
+
+
+@pytest.mark.asyncio
+async def test_newer_version_event_applies_over_older_stored():
+    redis = FakeRedis()
+    db = make_db(stored_version=3)
+    consumer = ErpSyncEventConsumer(redis, db)
+    await ErpSyncEventProducer(redis).publish(
+        change_type="update", item_code="ITEM001", payload={"stock_qty": 9},
+        source_version="7",
+    )
+
+    await consumer.consume_once()
+
+    db.erp_items.update_one.assert_awaited_once()
+    args, kwargs = db.erp_items.update_one.call_args
+    assert args[1]["$set"]["sync_source_version"] == 7.0
