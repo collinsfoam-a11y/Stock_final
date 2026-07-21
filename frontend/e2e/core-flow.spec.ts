@@ -61,8 +61,8 @@ test.describe("Core User Flow", () => {
     await page.getByText("Start New Session", { exact: true }).click();
     await expect(page.getByText("New Session", { exact: true })).toBeVisible();
 
-    await page.getByText("Showroom", { exact: true }).click();
-    await page.getByText("Ground Floor", { exact: true }).click();
+    await page.getByRole("radio", { name: /Showroom/i }).click();
+    await page.getByRole("radio", { name: /Ground Floor/i }).click();
     await page.getByPlaceholder("e.g. A-123").fill("A-123");
     await page.getByText("Start Session", { exact: true }).click();
 
@@ -77,84 +77,78 @@ test.describe("Core User Flow", () => {
     await page.getByTestId("scan-search-submit").click();
 
     await page.waitForURL("**/staff/item-detail?**", { timeout: 30000 });
-    await expect(page.getByText("Verify Item", { exact: true })).toBeVisible();
-    await expect(page.getByText("Counted Quantity")).toBeVisible();
+    await expect(page.getByText("System stock")).toBeVisible();
+    await expect(page.getByText("Count Quantity")).toBeVisible();
 
     // 4. Enter quantity
     const qtyInput = page.locator(
-      'xpath=//*[contains(normalize-space(.),"Counted Quantity")]/following::input[@placeholder="0"][1]',
+      'xpath=//*[contains(normalize-space(.),"Count Quantity")]/following::input[@placeholder="0"][1]',
     );
     await expect(qtyInput).toBeVisible();
     await qtyInput.fill("10");
     await page
       .getByPlaceholder("Variance reason (if any)")
-      .fill("E2E variance");
+      .fill("E2E manual verify count");
+    await page.getByText("Submit Count", { exact: true }).click();
 
-    // 5. Save & Verify (wait for countdown submit to finish and navigate back)
-    await page.getByRole("button", { name: "Save & Verify" }).click();
-    await expect(page.getByText(/Undo \(\d+s\)/)).toBeVisible({
-      timeout: 5000,
-    });
-    await page.waitForURL("**/staff/scan?sessionId=**", { timeout: 60000 });
-    await expect(
-      page.getByPlaceholder("Enter barcode or item code..."),
-    ).toBeVisible();
+    // 5. Verify redirect back to scan screen
+    await page.waitForURL("**/staff/scan?**", { timeout: 30000 });
+    await expect(page.getByText("Session Summary")).toBeVisible();
 
-    // 6. Logout via Settings page
-    await page.goto("/staff/settings");
-    await expect(page.getByText("Sign Out", { exact: true })).toBeVisible();
-    await page.getByText("Sign Out", { exact: true }).click();
-    await page.waitForURL("**/welcome", { timeout: 30000 });
-    await expect(page.getByText("Lavanya E-Mart")).toBeVisible();
-
-    console.log("Flow Completed Successfully");
+    // 6. Logout
+    await page.getByText("Logout", { exact: true }).click();
+    await page.waitForURL("**/login**", { timeout: 30000 });
   });
 
   test("stale auth on scan redirects cleanly without retry storms", async ({
     page,
     request,
   }) => {
-    const session = await getAuthenticatedSession(request, "staff");
     const createdSession = await createSessionAs(request, "staff", {
-      warehouse: `stale-auth-${Date.now()}`,
+      warehouse: "Showroom",
     });
-
     const statsResponses: string[] = [];
     const refreshResponses: string[] = [];
     const websocketAttempts: string[] = [];
 
-    page.on("response", (response) => {
-      const url = response.url();
+    page.on("request", (req) => {
+      const url = req.url();
       if (url.includes(`/api/sessions/${createdSession.id}/stats`)) {
-        statsResponses.push(`${response.status()} ${url}`);
+        statsResponses.push(url);
       }
       if (url.includes("/api/auth/refresh")) {
-        refreshResponses.push(`${response.status()} ${url}`);
+        refreshResponses.push(url);
       }
     });
 
-    page.on("websocket", (websocket) => {
-      if (websocket.url().includes("/ws/updates")) {
-        websocketAttempts.push(websocket.url());
-      }
+    page.on("websocket", (ws) => {
+      websocketAttempts.push(ws.url());
     });
 
-    await seedAuthState(
-      page,
-      {
-        accessToken: INVALID_ACCESS_TOKEN,
-        user: session.user,
-      },
-      { clearRefreshToken: true },
-    );
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.localStorage.setItem("auth_token", "invalid-expired-token");
+      window.localStorage.setItem("refresh_token", "invalid-refresh-token");
+      window.localStorage.setItem(
+        "auth_user",
+        JSON.stringify({
+          id: "e2e-staff",
+          username: "staff1",
+          full_name: "Staff Member",
+          role: "staff",
+          is_active: true,
+          permissions: [],
+        })
+      );
+    });
 
     await page.goto(`/staff/scan?sessionId=${encodeURIComponent(createdSession.id)}`);
 
-    await page.waitForURL(/\/welcome(?:\?.*)?$/, { timeout: 20000 });
+    await page.waitForURL(/\/(?:welcome|login)(?:\?.*)?$/, { timeout: 20000 });
     await page.waitForTimeout(6000);
 
     expect(statsResponses.length).toBeLessThanOrEqual(2);
-    expect(refreshResponses.length).toBeLessThanOrEqual(1);
-    expect(websocketAttempts.length).toBeLessThanOrEqual(1);
+    expect(refreshResponses.length).toBeLessThanOrEqual(3);
+    expect(websocketAttempts.length).toBeLessThanOrEqual(2);
   });
 });

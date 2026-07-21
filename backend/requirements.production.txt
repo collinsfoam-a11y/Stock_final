@@ -33,7 +33,7 @@ sentry-sdk[fastapi]==2.54.0
 
 # Performance
 aiocache==0.12.3
-ujson==5.12.1
+ujson>=5.10.0
 orjson==3.11.7
 
 # Utilities
@@ -46,7 +46,7 @@ email-validator==2.3.0
 rapidfuzz==3.14.3
 Pillow==12.2.0
 tenacity==9.1.4
-zeroconf==0.149.7
+zeroconf==0.149.12
 
 # For production stability
 setuptools==82.0.1

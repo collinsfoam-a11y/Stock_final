@@ -7,3 +7,5 @@ security:
       reason: "ujson UTF-8 byte sequence handling exception"
     SFTY-20260619-43815:
       reason: "pydantic-settings symlink secrets path traversal exception"
+    SFTY-20260611-31822:
+      reason: "zeroconf DoS memory consumption exception"
