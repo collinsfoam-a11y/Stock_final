@@ -628,11 +628,14 @@ class DynamicReportService:
         fields: list[dict[str, Any]],
     ) -> tuple:
         """Generate PDF file."""
-        from reportlab.lib import colors
-        from reportlab.lib.pagesizes import letter
-        from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.lib.units import inch
-        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+        try:
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import letter
+            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.lib.units import inch
+            from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+        except ImportError as err:
+            raise RuntimeError("PDF generation requires the 'reportlab' package to be installed.") from err
 
         def stringify(value: Any) -> str:
             if value is None:
