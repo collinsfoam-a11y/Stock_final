@@ -254,7 +254,7 @@ export default function SyncConflictsScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="light" />
+      <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
       <View style={styles.container}>
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
@@ -586,6 +586,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
     paddingVertical: 8,
     borderRadius: operationalTheme.borderRadius.full,
   },
+  // White regardless of theme: sits on semantic success/error batch-button fills.
   batchButtonText: {
     color: "white",
     fontWeight: "bold",
@@ -620,7 +621,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
   },
   conflictTypeContainer: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(234, 179, 8, 0.1)",
+    backgroundColor: operationalTheme.statusBackground.warning,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: operationalTheme.borderRadius.full,
@@ -688,7 +689,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    backgroundColor: "rgba(0,0,0,0.8)",
+    backgroundColor: operationalTheme.colors.overlay,
   },
   modalContent: {
     width: "100%",
@@ -710,7 +711,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
     color: operationalTheme.colors.text.primary,
   },
   modalTypeBadge: {
-    backgroundColor: "rgba(234, 179, 8, 0.1)",
+    backgroundColor: operationalTheme.statusBackground.warning,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: operationalTheme.borderRadius.full,

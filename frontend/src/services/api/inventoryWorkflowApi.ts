@@ -1156,8 +1156,16 @@ export const getVarianceReasons = async () => {
 /**
  * Approves a count line through the supervisor review endpoint.
  */
-export const approveCountLine = async (lineId: string) => {
-  return approveCountLineCommand(lineId, undefined);
+export const approveCountLine = async (
+  lineId: string,
+  options?: { acknowledgeStaleMasterData?: boolean },
+) => {
+  return approveCountLineCommand(
+    lineId,
+    options?.acknowledgeStaleMasterData
+      ? { acknowledge_stale_master_data: true }
+      : undefined,
+  );
 };
 
 /**

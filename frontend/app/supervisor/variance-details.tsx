@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -21,9 +21,9 @@ import { useSettingsStore } from "@/store/settingsStore";
 import RecountAssignmentModal, {
   type AssignableStaffUser,
 } from "@/components/supervisor/RecountAssignmentModal";
-import { theme } from "@/styles/unifiedSystem";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import { colors as staticColors } from "@/theme/legacyCompat";
 import { useToast } from "@/components/feedback/ToastProvider";
 import { safeBackNavigation } from "@/utils/navigation";
 
@@ -32,6 +32,7 @@ export default function VarianceDetailsScreen() {
   const router = useRouter();
   const { show } = useToast();
   const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [loading, setLoading] = useState(true);
   const [itemDetails, setItemDetails] = useState<any>(null);
@@ -197,8 +198,8 @@ export default function VarianceDetailsScreen() {
     return (
       <ScreenContainer>
         <View style={styles.centered}>
-          <ModernCard variant="outlined" elevation="none" intensity={15} padding={theme.spacing.xl}>
-            <View style={{ alignItems: "center", gap: theme.spacing.md }}>
+          <ModernCard variant="outlined" elevation="none" intensity={15} padding={uiTokens.spacing.xl}>
+            <View style={{ alignItems: "center", gap: uiTokens.spacing.md }}>
               <Ionicons name="alert-circle-outline" size={48} color={uiTokens.colors.textMuted} />
               <Text style={{ color: uiTokens.colors.textSecondary }}>
                 {offlineMode
@@ -219,7 +220,7 @@ export default function VarianceDetailsScreen() {
 
   return (
     <ScreenContainer>
-      <StatusBar style="light" />
+      <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
       <View style={styles.container}>
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
@@ -247,7 +248,7 @@ export default function VarianceDetailsScreen() {
             <ModernCard
               variant="outlined"
               elevation="none"
-              padding={theme.spacing.lg}
+              padding={uiTokens.spacing.lg}
               style={styles.card}
             >
               <View style={styles.itemHeader}>
@@ -296,7 +297,7 @@ export default function VarianceDetailsScreen() {
             <ModernCard
               variant="outlined"
               elevation="none"
-              padding={theme.spacing.lg}
+              padding={uiTokens.spacing.lg}
               style={styles.card}
             >
               <View style={styles.detailRow}>
@@ -332,7 +333,7 @@ export default function VarianceDetailsScreen() {
               </View>
 
               {itemDetails.floor || itemDetails.rack ? (
-                <View style={[styles.detailRow, { marginTop: theme.spacing.md }]}>
+                <View style={[styles.detailRow, { marginTop: uiTokens.spacing.md }]}>
                   <View style={styles.detailItem}>
                     <Text style={[styles.detailLabel, { color: uiTokens.colors.textMuted }]}>
                       Location
@@ -360,7 +361,7 @@ export default function VarianceDetailsScreen() {
           <ModernCard
             variant="outlined"
             elevation="none"
-            padding={theme.spacing.md}
+            padding={uiTokens.spacing.md}
             style={styles.footerInner}
           >
             <View style={styles.actionsContainer}>
@@ -388,7 +389,7 @@ export default function VarianceDetailsScreen() {
                 ]}
               >
                 {processing ? (
-                  <ActivityIndicator color={uiSemanticColors.text.inverse} />
+                  <ActivityIndicator color={staticColors.white} />
                 ) : (
                   <Text style={styles.primaryButtonText}>Approve Variance</Text>
                 )}
@@ -411,7 +412,8 @@ export default function VarianceDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ spacing, radius, colors }: ThemeTokens) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 60,
@@ -425,17 +427,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.md,
+    gap: spacing.md,
   },
   backButton: {
-    padding: theme.spacing.xs,
-    borderRadius: theme.borderRadius.full,
+    padding: spacing.xs,
+    borderRadius: radius.full,
     borderWidth: 1,
   },
   headerTitle: {
@@ -443,26 +445,27 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   content: {
-    padding: theme.spacing.md,
+    padding: spacing.md,
     paddingBottom: 100, // Space for footer
   },
   card: {
-    marginBottom: theme.spacing.md,
+    marginBottom: spacing.md,
   },
   itemHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.md,
+    gap: spacing.md,
   },
   itemIcon: {
     width: 56,
     height: 56,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: "rgba(14, 165, 233, 0.2)",
+    borderRadius: radius.md,
+    // 20%/40%-alpha accent tint for the item avatar surface
+    backgroundColor: colorWithAlpha(colors.accent, 0.2),
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(14, 165, 233, 0.4)",
+    borderColor: colorWithAlpha(colors.accent, 0.4),
   },
   itemName: {
     fontSize: 20,
@@ -474,13 +477,13 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: "row",
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   detailRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: theme.spacing.md,
+    gap: spacing.md,
   },
   detailItem: {
     flex: 1,
@@ -505,22 +508,22 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: theme.spacing.md,
+    padding: spacing.md,
   },
   footerInner: {
-    borderTopLeftRadius: theme.borderRadius.xl,
-    borderTopRightRadius: theme.borderRadius.xl,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
   },
   actionsContainer: {
     flexDirection: "row",
-    gap: theme.spacing.md,
+    gap: spacing.md,
   },
   actionButton: {
     flex: 1,
     height: 50,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -532,8 +535,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   primaryButton: {},
+  // White regardless of theme: sits on the semantic error-colored button.
   primaryButtonText: {
-    color: uiSemanticColors.text.inverse,
+    color: staticColors.white,
     fontWeight: "600",
     fontSize: 16,
   },

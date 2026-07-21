@@ -21,6 +21,7 @@ import {
   createOperationalStyleBridge,
   type OperationalStyleBridge,
 } from "@/theme/operationalStyleBridge";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
 interface ActivityLog {
   id: string;
@@ -131,8 +132,11 @@ export default function ActivityLogsScreen() {
               style={[
                 styles.iconContainer,
                 {
+                  // 10%-alpha status tint behind the action icon
                   backgroundColor:
-                    log.status === "error" ? "rgba(239, 68, 68, 0.1)" : "rgba(59, 130, 246, 0.1)",
+                    log.status === "error"
+                      ? colorWithAlpha(operationalTheme.colors.error[500], 0.1)
+                      : colorWithAlpha(operationalTheme.colors.primary[500], 0.1),
                 },
               ]}
             >
@@ -199,7 +203,7 @@ export default function ActivityLogsScreen() {
               alignItems: "center",
               gap: 8,
               borderColor: operationalTheme.colors.error[500],
-              backgroundColor: "rgba(239, 68, 68, 0.1)",
+              backgroundColor: colorWithAlpha(operationalTheme.colors.error[500], 0.1),
             }}
           >
             <Ionicons name="alert-circle" size={16} color={operationalTheme.colors.error[500]} />
@@ -227,7 +231,7 @@ export default function ActivityLogsScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="light" />
+      <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
       <View style={styles.container}>
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>

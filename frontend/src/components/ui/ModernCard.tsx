@@ -28,13 +28,14 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { modernColors, modernSpacing, modernAnimations } from "../../styles/modernDesignSystem";
+import { modernSpacing, modernAnimations } from "../../styles/modernDesignSystem";
 import {
   semanticColors,
   radius as unifiedRadius,
   spacing as unifiedSpacing,
   textStyles,
 } from "@/theme/legacyCompat";
+import { colorWithAlpha } from "@/theme/themeTokens";
 import { useThemeContextSafe } from "../../context/ThemeContext";
 
 import { shadows as unifiedShadows } from "@/theme/legacyCompat";
@@ -273,7 +274,7 @@ export const ModernCard: React.FC<ModernCardProps> = ({
 
     if (variant === "gradient") {
       const colors =
-        gradientColors || (theme ? theme.gradients.surface : modernColors.gradients.surface);
+        gradientColors || (theme ? theme.gradients.surface : [cardBackground, cardBackground]);
       return (
         <Component {...props}>
           <LinearGradient
@@ -296,9 +297,10 @@ export const ModernCard: React.FC<ModernCardProps> = ({
               style={[
                 styles.blur,
                 {
-                  backgroundColor: themeContext?.isDark
-                    ? "rgba(15, 23, 42, 0.35)"
-                    : "rgba(255, 255, 255, 0.1)",
+                  backgroundColor: colorWithAlpha(
+                    cardBackground,
+                    themeContext?.isDark ? 0.35 : 0.1
+                  ),
                 },
               ]}
             >

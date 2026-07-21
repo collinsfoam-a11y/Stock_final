@@ -3,7 +3,7 @@
  * View and filter all items with category, subcategory, floor, rack, UOM filters
  * Refactored to use Aurora Design System
  */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -25,8 +25,8 @@ import { ItemVerificationAPI } from "@/domains/inventory/services/itemVerificati
 import { ItemFilters, FilterValues } from "@/domains/inventory/components/ItemFilters";
 import { useSettingsStore } from "@/store/settingsStore";
 import { ScreenContainer, ModernCard, StatsCard, AnimatedPressable } from "@/components/ui";
-import { theme } from "@/styles/modernDesignSystem";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 import { saveArrayBufferExport } from "@/utils/fileExport";
 import { safeBackNavigation } from "@/utils/navigation";
 
@@ -56,6 +56,7 @@ const filterCachedItems = (items: any[], filters: FilterValues) => {
 export default function ItemsScreen() {
   const router = useRouter();
   const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -198,9 +199,9 @@ export default function ItemsScreen() {
           // Could navigate to item detail
           if (Platform.OS !== "web") Haptics.selectionAsync();
         }}
-        style={{ marginBottom: theme.spacing.sm }}
+        style={{ marginBottom: uiTokens.spacing.sm }}
       >
-        <ModernCard intensity={15} padding={theme.spacing.md}>
+        <ModernCard intensity={15} padding={uiTokens.spacing.md}>
           <View style={styles.itemHeader}>
             <View style={styles.itemHeaderLeft}>
               <Text style={[styles.itemName, { color: uiTokens.colors.textPrimary }]}>
@@ -266,7 +267,7 @@ export default function ItemsScreen() {
 
   return (
     <ScreenContainer>
-      <StatusBar style="light" />
+      <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
       <View style={styles.container}>
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
@@ -344,8 +345,8 @@ export default function ItemsScreen() {
         {offlineMode && (
           <ModernCard
             intensity={10}
-            padding={theme.spacing.sm}
-            style={{ marginBottom: theme.spacing.md }}
+            padding={uiTokens.spacing.sm}
+            style={{ marginBottom: uiTokens.spacing.md }}
           >
             <Text style={[styles.offlineNoticeTitle, { color: uiTokens.colors.textPrimary }]}>
               Offline mode enabled
@@ -360,8 +361,8 @@ export default function ItemsScreen() {
         {!offlineMode && (
           <ModernCard
             intensity={8}
-            padding={theme.spacing.sm}
-            style={{ marginBottom: theme.spacing.md }}
+            padding={uiTokens.spacing.sm}
+            style={{ marginBottom: uiTokens.spacing.md }}
           >
             <Text style={[styles.exportHintTitle, { color: uiTokens.colors.textPrimary }]}>
               ERPNext import format
@@ -376,8 +377,8 @@ export default function ItemsScreen() {
         <Animated.View entering={FadeInDown.delay(300).springify()}>
           <ModernCard
             intensity={10}
-            padding={theme.spacing.sm}
-            style={{ marginBottom: theme.spacing.md }}
+            padding={uiTokens.spacing.sm}
+            style={{ marginBottom: uiTokens.spacing.md }}
           >
             <ItemFilters onFilterChange={setFilters} showVerifiedFilter={true} showSearch={true} />
           </ModernCard>
@@ -429,11 +430,12 @@ export default function ItemsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ spacing, radius, colors }: ThemeTokens) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 60,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: spacing.md,
   },
   centered: {
     flex: 1,
@@ -445,16 +447,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.md,
+    marginBottom: spacing.md,
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.md,
+    gap: spacing.md,
   },
   backButton: {
-    padding: theme.spacing.xs,
-    borderRadius: theme.borderRadius.full,
+    padding: spacing.xs,
+    borderRadius: radius.full,
     borderWidth: 1,
   },
   pageTitle: {
@@ -466,7 +468,7 @@ const styles = StyleSheet.create({
   },
   exportActions: {
     flexDirection: "row",
-    gap: theme.spacing.xs,
+    gap: spacing.xs,
   },
   exportFormatButton: {
     minWidth: 52,
@@ -480,17 +482,17 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: "row",
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   listContent: {
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: spacing.xl,
   },
   itemHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: theme.spacing.sm,
+    marginBottom: spacing.sm,
   },
   itemHeaderLeft: {
     flex: 1,
@@ -504,16 +506,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   verifiedBadge: {
-    backgroundColor: "rgba(16, 185, 129, 0.15)", // Emerald color with opacity
-    borderRadius: theme.borderRadius.full,
+    // 15%-alpha success tint for the verified badge surface
+    backgroundColor: colorWithAlpha(colors.success, 0.15),
+    borderRadius: radius.full,
     padding: 4,
   },
   itemDetails: {
     flexDirection: "row",
-    gap: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
-    padding: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
+    gap: spacing.lg,
+    marginBottom: spacing.sm,
+    padding: spacing.xs,
+    borderRadius: radius.sm,
   },
   detailRow: {
     //
@@ -531,7 +534,7 @@ const styles = StyleSheet.create({
   locationRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.xs,
+    gap: spacing.xs,
     marginBottom: 4, // Added margin bottom for spacing
   },
   locationText: {
@@ -544,10 +547,10 @@ const styles = StyleSheet.create({
   verificationInfo: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.xs,
-    marginTop: theme.spacing.sm,
+    gap: spacing.xs,
+    marginTop: spacing.sm,
     borderTopWidth: 1,
-    paddingTop: theme.spacing.xs,
+    paddingTop: spacing.xs,
   },
   verificationInfoText: {
     fontSize: 12,
@@ -555,11 +558,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 20,
     fontWeight: "500",
-    marginTop: theme.spacing.md,
+    marginTop: spacing.md,
   },
   emptySubtext: {
     fontSize: 16,
-    marginTop: theme.spacing.xs,
+    marginTop: spacing.xs,
   },
   offlineNoticeTitle: {
     fontSize: 14,

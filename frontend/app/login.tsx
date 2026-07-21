@@ -39,6 +39,8 @@ import {
   textStyles,
   shadows,
 } from "@/theme/legacyCompat";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 
 // Safe Animated View for Web
 const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
@@ -119,6 +121,8 @@ const getLoginErrorAlert = (
 };
 
 export default function LoginScreen() {
+  const uiTokens = useUiTokens();
+  const styles = React.useMemo(() => createStyles(uiTokens), [uiTokens]);
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { version } = useAppVersion();
@@ -283,7 +287,7 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <StatusBar style="dark" backgroundColor={unifiedColors.white} />
+      <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
 
       <ModernHeader showLogo title="Lavanya Mart" subtitle="Stock Verification System" />
 
@@ -306,7 +310,7 @@ export default function LoginScreen() {
               {lastLoggedUser && loginMode === "pin" ? (
                 <View style={styles.userBadge}>
                   <View style={styles.userBadgeAvatar}>
-                    <Ionicons name="person" size={24} color={unifiedColors.primary[500]} />
+                    <Ionicons name="person" size={24} color={uiTokens.colors.accent} />
                   </View>
                   <Text style={styles.userBadgeName}>
                     {lastLoggedUser.full_name || lastLoggedUser.username}
@@ -345,7 +349,7 @@ export default function LoginScreen() {
                     <Ionicons
                       name="keypad"
                       size={20}
-                      color={loginMode === "pin" ? unifiedColors.white : unifiedColors.neutral[600]}
+                      color={loginMode === "pin" ? unifiedColors.white : uiTokens.colors.textSecondary}
                     />
                     <Text
                       style={[
@@ -374,7 +378,7 @@ export default function LoginScreen() {
                       color={
                         loginMode === "credentials"
                           ? unifiedColors.white
-                          : unifiedColors.neutral[600]
+                          : uiTokens.colors.textSecondary
                       }
                     />
                     <Text
@@ -441,7 +445,7 @@ export default function LoginScreen() {
                           <Ionicons
                             name="finger-print"
                             size={44}
-                            color={unifiedColors.primary[500]}
+                            color={uiTokens.colors.accent}
                           />
                           <Text style={styles.biometricText}>Unlock with Biometrics</Text>
                         </TouchableOpacity>
@@ -529,10 +533,10 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: unifiedColors.neutral[50],
+    backgroundColor: tokens.colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -555,13 +559,13 @@ const styles = StyleSheet.create({
   },
   welcomeTitle: {
     ...textStyles.h3,
-    color: unifiedColors.neutral[900],
+    color: tokens.colors.textPrimary,
     textAlign: "center",
     marginBottom: unifiedSpacing.xs,
   },
   welcomeSubtitle: {
     ...textStyles.body,
-    color: unifiedColors.neutral[600],
+    color: tokens.colors.textSecondary,
     textAlign: "center",
     lineHeight: 24,
   },
@@ -569,12 +573,12 @@ const styles = StyleSheet.create({
     marginBottom: unifiedSpacing.xl,
   },
   loginCard: {
-    backgroundColor: unifiedColors.white,
+    backgroundColor: tokens.colors.surface,
   },
   modeToggle: {
     flexDirection: "row",
     marginBottom: unifiedSpacing.lg,
-    backgroundColor: unifiedColors.neutral[100],
+    backgroundColor: colorWithAlpha(tokens.colors.textMuted, 0.12),
     borderRadius: unifiedRadius.md,
     padding: unifiedSpacing.xs,
   },
@@ -589,7 +593,7 @@ const styles = StyleSheet.create({
     gap: unifiedSpacing.xs,
   },
   modeButtonActive: {
-    backgroundColor: semanticColors.interactive.default,
+    backgroundColor: tokens.colors.accent,
     ...shadows.sm,
   },
   modeButtonInactive: {
@@ -603,11 +607,11 @@ const styles = StyleSheet.create({
     color: unifiedColors.white,
   },
   modeButtonTextInactive: {
-    color: unifiedColors.neutral[600],
+    color: tokens.colors.textSecondary,
   },
   formTitle: {
     ...textStyles.h5,
-    color: unifiedColors.neutral[900],
+    color: tokens.colors.textPrimary,
     textAlign: "center",
     marginBottom: unifiedSpacing.lg,
   },
@@ -625,15 +629,15 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   pinDotEmpty: {
-    borderColor: unifiedColors.neutral[300],
+    borderColor: tokens.colors.border,
     backgroundColor: unifiedColors.transparent,
   },
   pinDotFilled: {
-    borderColor: unifiedColors.primary[500],
-    backgroundColor: unifiedColors.primary[500],
+    borderColor: tokens.colors.accent,
+    backgroundColor: tokens.colors.accent,
   },
   pinDotActive: {
-    borderColor: unifiedColors.primary[400],
+    borderColor: tokens.colors.accent,
     borderWidth: 2,
     transform: [{ scale: 1.1 }],
   },
@@ -641,11 +645,11 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: unifiedColors.primary[500],
+    backgroundColor: tokens.colors.accent,
   },
   formSubtitle: {
     ...textStyles.caption,
-    color: unifiedColors.neutral[500],
+    color: tokens.colors.textMuted,
     textAlign: "center",
     marginTop: -unifiedSpacing.sm,
     marginBottom: unifiedSpacing.lg,
@@ -667,7 +671,7 @@ const styles = StyleSheet.create({
   },
   biometricText: {
     ...textStyles.caption,
-    color: unifiedColors.primary[600],
+    color: tokens.colors.accent,
     fontWeight: "500",
     marginTop: unifiedSpacing.sm,
   },
@@ -680,22 +684,22 @@ const styles = StyleSheet.create({
   actionDivider: {
     width: 1,
     height: 14,
-    backgroundColor: unifiedColors.neutral[300],
+    backgroundColor: tokens.colors.border,
   },
   switchAccountLink: {
     ...textStyles.caption,
-    color: unifiedColors.primary[500],
+    color: tokens.colors.accent,
     fontWeight: "500",
   },
   userBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: unifiedColors.white,
+    backgroundColor: tokens.colors.surface,
     paddingHorizontal: unifiedSpacing.md,
     paddingVertical: unifiedSpacing.sm,
     borderRadius: unifiedRadius.full,
     borderWidth: 1,
-    borderColor: unifiedColors.neutral[200],
+    borderColor: tokens.colors.border,
     marginBottom: unifiedSpacing.md,
     ...shadows.sm,
   },
@@ -703,7 +707,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: unifiedColors.primary[50],
+    backgroundColor: colorWithAlpha(tokens.colors.accent, 0.12),
     justifyContent: "center",
     alignItems: "center",
     marginRight: unifiedSpacing.sm,
@@ -711,7 +715,7 @@ const styles = StyleSheet.create({
   userBadgeName: {
     ...textStyles.caption,
     fontWeight: "600",
-    color: unifiedColors.neutral[800],
+    color: tokens.colors.textPrimary,
   },
   logoContainer: {
     width: "100%",
@@ -722,7 +726,7 @@ const styles = StyleSheet.create({
   },
   forgotLink: {
     ...textStyles.caption,
-    color: unifiedColors.neutral[500],
+    color: tokens.colors.textMuted,
     textDecorationLine: "underline",
   },
   forgotPasswordContainer: {
@@ -734,7 +738,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     ...textStyles.caption,
-    color: semanticColors.status.error,
+    color: tokens.colors.error,
     textAlign: "center",
     marginTop: unifiedSpacing.sm,
   },
@@ -745,10 +749,10 @@ const styles = StyleSheet.create({
   versionText: {
     ...textStyles.caption,
     fontWeight: "500",
-    color: unifiedColors.neutral[500],
+    color: tokens.colors.textMuted,
   },
   footerText: {
     ...textStyles.captionSmall,
-    color: unifiedColors.neutral[400],
+    color: tokens.colors.textMuted,
   },
 });

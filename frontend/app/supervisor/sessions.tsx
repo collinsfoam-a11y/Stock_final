@@ -4,7 +4,7 @@
  * Refactored to use Aurora Design System
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -16,8 +16,8 @@ import * as Haptics from "expo-haptics";
 import { getSessions } from "@/services/api/api";
 import { ModernCard, AnimatedPressable, ScreenContainer } from "@/components/ui";
 import { useSettingsStore } from "@/store/settingsStore";
-import { theme } from "@/styles/unifiedSystem";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import type { ThemeTokens } from "@/theme/themeTokens";
 import { useToast } from "@/components/feedback/ToastProvider";
 import { safeBackNavigation } from "@/utils/navigation";
 
@@ -25,6 +25,7 @@ export default function SessionsList() {
   const router = useRouter();
   const { show } = useToast();
   const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,9 +104,9 @@ export default function SessionsList() {
       <Animated.View entering={FadeInDown.delay(index * 50).springify()}>
         <AnimatedPressable
           onPress={() => router.push(`/supervisor/session/${item.id}` as any)}
-          style={{ marginBottom: theme.spacing.md }}
+          style={{ marginBottom: uiTokens.spacing.md }}
         >
-          <ModernCard variant="outlined" elevation="none" padding={theme.spacing.md} intensity={20}>
+          <ModernCard variant="outlined" elevation="none" padding={uiTokens.spacing.md} intensity={20}>
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderLeft}>
                 <View style={styles.titleRow}>
@@ -197,7 +198,7 @@ export default function SessionsList() {
         variant="outlined"
         elevation="none"
         style={styles.emptyCard}
-        padding={theme.spacing.xl}
+        padding={uiTokens.spacing.xl}
         intensity={15}
       >
         <Ionicons
@@ -224,7 +225,7 @@ export default function SessionsList() {
 
   return (
     <ScreenContainer>
-      <StatusBar style="light" />
+      <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
       <View style={styles.container}>
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
@@ -264,7 +265,7 @@ export default function SessionsList() {
             <ModernCard
               variant="outlined"
               elevation="none"
-              padding={theme.spacing.md}
+              padding={uiTokens.spacing.md}
               intensity={15}
             >
               <View style={styles.noticeRow}>
@@ -318,7 +319,8 @@ export default function SessionsList() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ spacing, radius }: ThemeTokens) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 60,
@@ -327,17 +329,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
   },
   noticeWrap: {
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
   },
   noticeRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: theme.spacing.sm,
+    gap: spacing.sm,
   },
   noticeCopy: {
     flex: 1,
@@ -354,11 +356,11 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.md,
+    gap: spacing.md,
   },
   backButton: {
-    padding: theme.spacing.xs,
-    borderRadius: theme.borderRadius.full,
+    padding: spacing.xs,
+    borderRadius: radius.full,
     borderWidth: 1,
   },
   pageTitle: {
@@ -368,8 +370,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   refreshButton: {
-    padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.full,
+    padding: spacing.sm,
+    borderRadius: radius.full,
   },
   centerContainer: {
     flex: 1,
@@ -378,7 +380,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     flex: 1,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: spacing.md,
   },
   listContent: {
     paddingBottom: 40,
@@ -387,7 +389,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: theme.spacing.md,
+    marginBottom: spacing.md,
   },
   cardHeaderLeft: {
     flex: 1,
@@ -422,7 +424,7 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: radius.full,
     borderWidth: 1,
   },
   statusText: {
@@ -431,8 +433,8 @@ const styles = StyleSheet.create({
   cardBody: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.lg,
-    paddingTop: theme.spacing.sm,
+    gap: spacing.lg,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
   },
   statItem: {
@@ -448,20 +450,20 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   emptyContainer: {
-    padding: theme.spacing.xl,
+    padding: spacing.xl,
     alignItems: "center",
   },
   emptyCard: {
     alignItems: "center",
     justifyContent: "center",
     width: "100%",
-    gap: theme.spacing.md,
+    gap: spacing.md,
   },
   emptyText: {
     fontSize: 24,
   },
   footerLoader: {
-    paddingVertical: theme.spacing.md,
+    paddingVertical: spacing.md,
     alignItems: "center",
   },
 });

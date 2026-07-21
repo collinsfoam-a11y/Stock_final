@@ -1,17 +1,24 @@
 /**
  * Simple Pie Chart - View-based implementation (no SVG required)
  * Fully functional pie chart using React Native Views with conic gradients simulation
+ *
+ * Text/surface colors resolve at runtime from useUiTokens (dark-mode aware).
+ * Explicit per-segment colors from consumers always win; segments without a
+ * color get a deterministic semantic-token sequence (not lightness-only, so
+ * it stays distinguishable in dark mode). modernTypography/Spacing/Radius are
+ * retained for metrics only.
  */
 
 import React from "react";
 import { View, Text, StyleSheet, Platform } from "react-native";
 
 import {
-  modernColors,
   modernTypography,
   modernSpacing,
   modernBorderRadius,
 } from "../../styles/unifiedSystem";
+import { useUiTokens } from "../../hooks/useUiTokens";
+import type { ThemeTokens } from "../../theme/themeTokens";
 
 const CHART_SIZE = 200;
 const RADIUS = 80;
@@ -19,7 +26,7 @@ const RADIUS = 80;
 interface PieData {
   label: string;
   value: number;
-  color: string;
+  color?: string;
 }
 
 interface SimplePieChartProps {
@@ -28,11 +35,27 @@ interface SimplePieChartProps {
   showLegend?: boolean;
 }
 
+// Deterministic theme-aware fallback sequence for segments without an
+// explicit color. Distinct semantic hues (not lightness steps) so adjacent
+// segments remain distinguishable in both light and dark mode.
+const buildSeriesSequence = (uiTokens: ThemeTokens): string[] => [
+  uiTokens.colors.accent,
+  uiTokens.colors.success,
+  uiTokens.colors.warning,
+  uiTokens.colors.error,
+  uiTokens.colors.info,
+  uiTokens.colors.accentStrong,
+];
+
 export const SimplePieChart: React.FC<SimplePieChartProps> = ({
   data,
   title,
   showLegend = true,
 }) => {
+  const uiTokens = useUiTokens();
+  const styles = React.useMemo(() => createStyles(uiTokens), [uiTokens]);
+  const seriesSequence = React.useMemo(() => buildSeriesSequence(uiTokens), [uiTokens]);
+
   if (!data || data.length === 0) {
     return (
       <View style={styles.container}>
@@ -47,7 +70,7 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
   const total = data.reduce((sum, item) => sum + item.value, 0);
   let currentAngle = -90;
 
-  const segments = data.map((item, _index) => {
+  const segments = data.map((item, index) => {
     const percentage = item.value / total;
     const angle = percentage * 360;
     const startAngle = currentAngle;
@@ -56,6 +79,8 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
 
     return {
       ...item,
+      // Explicit consumer color wins; deterministic semantic fallback otherwise.
+      color: item.color || seriesSequence[index % seriesSequence.length],
       percentage: percentage * 100,
       startAngle,
       endAngle,
@@ -160,101 +185,102 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    marginVertical: modernSpacing.md,
-  },
-  title: {
-    ...modernTypography.h5,
-    color: modernColors.text.primary,
-    marginBottom: modernSpacing.sm,
-  },
-  chartWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    flexWrap: "wrap",
-    gap: modernSpacing.lg,
-  },
-  pieContainer: {
-    width: CHART_SIZE,
-    height: CHART_SIZE,
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-  },
-  pieChart: {
-    width: RADIUS * 2,
-    height: RADIUS * 2,
-    borderRadius: RADIUS,
-  },
-  pieChartContainer: {
-    width: RADIUS * 2,
-    height: RADIUS * 2,
-    borderRadius: RADIUS,
-    overflow: "hidden",
-    position: "relative",
-  },
-  pieSegment: {
-    position: "absolute",
-    borderRadius: RADIUS,
-    overflow: "hidden",
-  },
-  segmentMask: {
-    width: "50%",
-    height: "100%",
-    backgroundColor: "transparent",
-  },
-  centerLabel: {
-    position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  centerValue: {
-    ...modernTypography.h3,
-    color: modernColors.text.primary,
-    fontWeight: "700",
-  },
-  centerText: {
-    ...modernTypography.body.small,
-    color: modernColors.text.secondary,
-  },
-  legend: {
-    gap: modernSpacing.sm,
-    minWidth: 200,
-  },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: modernSpacing.sm,
-  },
-  legendColor: {
-    width: 16,
-    height: 16,
-    borderRadius: modernBorderRadius.xs,
-  },
-  legendContent: {
-    flex: 1,
-  },
-  legendLabel: {
-    ...modernTypography.body.small,
-    color: modernColors.text.primary,
-    fontWeight: "500",
-  },
-  legendValue: {
-    ...modernTypography.body.small,
-    color: modernColors.text.secondary,
-    fontSize: 11,
-  },
-  emptyState: {
-    height: CHART_SIZE,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: modernColors.background.elevated,
-    borderRadius: 8,
-  },
-  emptyText: {
-    ...modernTypography.body.medium,
-    color: modernColors.text.secondary,
-  },
-});
+const createStyles = (uiTokens: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      marginVertical: modernSpacing.md,
+    },
+    title: {
+      ...modernTypography.h5,
+      color: uiTokens.colors.textPrimary,
+      marginBottom: modernSpacing.sm,
+    },
+    chartWrapper: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      flexWrap: "wrap",
+      gap: modernSpacing.lg,
+    },
+    pieContainer: {
+      width: CHART_SIZE,
+      height: CHART_SIZE,
+      justifyContent: "center",
+      alignItems: "center",
+      position: "relative",
+    },
+    pieChart: {
+      width: RADIUS * 2,
+      height: RADIUS * 2,
+      borderRadius: RADIUS,
+    },
+    pieChartContainer: {
+      width: RADIUS * 2,
+      height: RADIUS * 2,
+      borderRadius: RADIUS,
+      overflow: "hidden",
+      position: "relative",
+    },
+    pieSegment: {
+      position: "absolute",
+      borderRadius: RADIUS,
+      overflow: "hidden",
+    },
+    segmentMask: {
+      width: "50%",
+      height: "100%",
+      backgroundColor: "transparent",
+    },
+    centerLabel: {
+      position: "absolute",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    centerValue: {
+      ...modernTypography.h3,
+      color: uiTokens.colors.textPrimary,
+      fontWeight: "700",
+    },
+    centerText: {
+      ...modernTypography.body.small,
+      color: uiTokens.colors.textSecondary,
+    },
+    legend: {
+      gap: modernSpacing.sm,
+      minWidth: 200,
+    },
+    legendItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: modernSpacing.sm,
+    },
+    legendColor: {
+      width: 16,
+      height: 16,
+      borderRadius: modernBorderRadius.xs,
+    },
+    legendContent: {
+      flex: 1,
+    },
+    legendLabel: {
+      ...modernTypography.body.small,
+      color: uiTokens.colors.textPrimary,
+      fontWeight: "500",
+    },
+    legendValue: {
+      ...modernTypography.body.small,
+      color: uiTokens.colors.textSecondary,
+      fontSize: 11,
+    },
+    emptyState: {
+      height: CHART_SIZE,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: uiTokens.colors.surface,
+      borderRadius: 8,
+    },
+    emptyText: {
+      ...modernTypography.body.medium,
+      color: uiTokens.colors.textSecondary,
+    },
+  });

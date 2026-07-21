@@ -25,6 +25,7 @@ import {
   createOperationalStyleBridge,
   type OperationalStyleBridge,
 } from "@/theme/operationalStyleBridge";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
 export default function OfflineQueueScreen() {
   const router = useRouter();
@@ -99,12 +100,13 @@ export default function OfflineQueueScreen() {
             style={[
               styles.methodBadge,
               {
+                // 20%-alpha status tint behind the method label
                 backgroundColor:
                   item.status === "blocked_conflict"
-                    ? "rgba(245, 158, 11, 0.2)"
+                    ? colorWithAlpha(operationalTheme.colors.warning[500], 0.2)
                     : item.status === "failed_manual_review"
-                      ? "rgba(239, 68, 68, 0.2)"
-                      : "rgba(59, 130, 246, 0.2)",
+                      ? colorWithAlpha(operationalTheme.colors.error[500], 0.2)
+                      : colorWithAlpha(operationalTheme.colors.primary[400], 0.2),
               },
             ]}
           >
@@ -207,7 +209,7 @@ export default function OfflineQueueScreen() {
   if (!flags.enableOfflineQueue) {
     return (
       <View style={styles.screen}>
-        <StatusBar style="light" />
+        <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
         <View style={styles.center}>
           <ModernCard variant="outlined" elevation="none" padding={operationalTheme.spacing.xl}>
             <Ionicons
@@ -228,7 +230,7 @@ export default function OfflineQueueScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="light" />
+      <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
       <View style={styles.container}>
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
@@ -468,7 +470,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(234, 179, 8, 0.1)",
+    backgroundColor: colorWithAlpha(operationalTheme.colors.warning[500], 0.1),
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: operationalTheme.borderRadius.full,

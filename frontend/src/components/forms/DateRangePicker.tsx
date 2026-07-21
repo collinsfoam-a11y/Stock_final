@@ -14,11 +14,12 @@ import {
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  modernColors,
   modernSpacing,
   modernTypography,
   modernBorderRadius,
 } from "@/styles/unifiedSystem";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import type { ThemeTokens } from "@/theme/themeTokens";
 
 interface DateRangePickerProps {
   startDate: Date;
@@ -35,6 +36,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   onEndDateChange,
   label,
 }) => {
+  const tokens = useUiTokens();
+  const styles = React.useMemo(() => createStyles(tokens), [tokens]);
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
@@ -57,7 +60,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           <Ionicons
             name="calendar"
             size={20}
-            color={modernColors.primary[500]}
+            color={tokens.colors.accent}
           />
           <View style={styles.dateContent}>
             <Text style={styles.dateLabel}>Start Date</Text>
@@ -68,7 +71,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         <Ionicons
           name="arrow-forward"
           size={20}
-          color={modernColors.text.secondary}
+          color={tokens.colors.textSecondary}
         />
 
         <TouchableOpacity
@@ -78,7 +81,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           <Ionicons
             name="calendar"
             size={20}
-            color={modernColors.primary[500]}
+            color={tokens.colors.accent}
           />
           <View style={styles.dateContent}>
             <Text style={styles.dateLabel}>End Date</Text>
@@ -121,13 +124,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   container: {
     marginVertical: modernSpacing.md,
   },
   label: {
     ...modernTypography.body.medium,
-    color: modernColors.text.primary,
+    color: tokens.colors.textPrimary,
     marginBottom: modernSpacing.sm,
     fontWeight: "600",
   },
@@ -142,22 +145,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: modernSpacing.sm,
     padding: modernSpacing.md,
-    backgroundColor: modernColors.background.elevated,
+    backgroundColor: tokens.colors.surfaceElevated,
     borderRadius: modernBorderRadius.md,
     borderWidth: 1,
-    borderColor: modernColors.border.light,
+    borderColor: tokens.colors.border,
   },
   dateContent: {
     flex: 1,
   },
   dateLabel: {
     ...modernTypography.body.small,
-    color: modernColors.text.secondary,
+    color: tokens.colors.textSecondary,
     marginBottom: modernSpacing.xs,
   },
   dateValue: {
     ...modernTypography.body.medium,
-    color: modernColors.text.primary,
+    color: tokens.colors.textPrimary,
     fontWeight: "600",
   },
 });

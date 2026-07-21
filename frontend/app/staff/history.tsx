@@ -508,23 +508,16 @@ const styles = StyleSheet.create({
     paddingBottom: gap.lg,
     backgroundColor: "transparent",
   },
-  backButton: {
-    width: 40, height: 40, borderRadius: radius.lg,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    alignItems: "center", justifyContent: "center",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-  },
-  headerTitle: { fontSize: font.size.display, fontWeight: font.weight.bold, color: "rgba(255,255,255,0.95)", letterSpacing: font.tracking.tight },
   list:        { paddingHorizontal: gap.lg, paddingTop: gap.sm },
-  filterTitle: { color: "rgba(255,255,255,0.95)", fontWeight: font.weight.bold, fontSize: font.size.lg, marginBottom: gap.md, letterSpacing: font.tracking.tight },
+  // Colors for the filter UI are applied inline from uiTokens at the call sites.
+  filterTitle: { fontWeight: font.weight.bold, fontSize: font.size.lg, marginBottom: gap.md, letterSpacing: font.tracking.tight },
   filterChip: {
     flexDirection: "row", alignItems: "center", gap: gap.sm,
     paddingHorizontal: gap.md, paddingVertical: gap.sm,
     borderRadius: radius.lg, borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)", backgroundColor: "rgba(255,255,255,0.05)",
     alignSelf: "flex-start",
   },
-  filterChipText:   { color: "rgba(255,255,255,0.65)", fontWeight: font.weight.semibold, fontSize: font.size.base },
+  filterChipText:   { fontWeight: font.weight.semibold, fontSize: font.size.base },
   // ── Count line card ───────────────────────────────────────────────────────
   countCard:  { marginBottom: gap.md, paddingVertical: gap.lg, paddingHorizontal: gap.lg, borderRadius: radius.xl },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: gap.sm },
@@ -536,22 +529,22 @@ const styles = StyleSheet.create({
   itemCode: { fontSize: font.size.label, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" },
   codeRow:  { flexDirection: "row", alignItems: "center", gap: gap.sm, marginBottom: gap.md },
   batchBadge: {
-    backgroundColor: "rgba(14,165,233,0.1)", paddingHorizontal: gap.sm, paddingVertical: 3,
-    borderRadius: radius.xs, borderWidth: 1, borderColor: "rgba(14,165,233,0.2)",
+    paddingHorizontal: gap.sm, paddingVertical: 3,
+    borderRadius: radius.xs, borderWidth: 1,
   },
   batchBadgeText: { fontSize: font.size.label, fontWeight: font.weight.bold, textTransform: "uppercase", letterSpacing: font.tracking.normal },
 
   // Qty grid
   qtyRow:   { flexDirection: "row", justifyContent: "space-between", marginBottom: gap.md, gap: gap.sm },
-  qtyItem:  { flex: 1, alignItems: "center", backgroundColor: "rgba(255,255,255,0.03)", paddingVertical: gap.sm, borderRadius: radius.md },
+  qtyItem:  { flex: 1, alignItems: "center", paddingVertical: gap.sm, borderRadius: radius.md },
   qtyLabel: { fontSize: font.size.label, marginBottom: 4, fontWeight: font.weight.semibold, textTransform: "uppercase", letterSpacing: font.tracking.wide },
   qtyValue: { fontSize: font.size.xl, fontWeight: font.weight.bold, letterSpacing: font.tracking.tight },
 
   // Reason / remark
   reasonBox: {
-    backgroundColor: "rgba(245,158,11,0.08)", borderRadius: radius.md,
+    borderRadius: radius.md,
     paddingVertical: gap.sm, paddingHorizontal: gap.md,
-    marginBottom: gap.sm, borderWidth: 1, borderColor: "rgba(245,158,11,0.2)",
+    marginBottom: gap.sm, borderWidth: 1,
   },
   reasonLabel: { fontSize: font.size.label, marginBottom: 4, fontWeight: font.weight.semibold, textTransform: "uppercase", letterSpacing: font.tracking.wide },
   reasonText:  { fontSize: font.size.sm, fontWeight: font.weight.bold },

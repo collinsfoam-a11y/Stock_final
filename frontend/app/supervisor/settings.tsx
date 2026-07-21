@@ -12,6 +12,7 @@ import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
 
 import { useSettingsStore } from "@/store/settingsStore";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import { ScreenContainer } from "@/components/ui";
 import { AppearanceSettings } from "@/components/ui/AppearanceSettings";
 import {
@@ -27,6 +28,7 @@ import { safeBackNavigation } from "@/utils/navigation";
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const uiTokens = useUiTokens();
   const { resetSettings } = useSettingsStore();
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
@@ -79,7 +81,8 @@ export default function SettingsScreen() {
         }}
         scrollable
       >
-        <StatusBar style="auto" />
+        {/* Follow the app theme override, not just the system scheme */}
+        <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
         <SettingsSyncStatus />
 
         <SettingsSectionHeading title="Appearance" />

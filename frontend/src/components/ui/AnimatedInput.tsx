@@ -16,7 +16,9 @@ import {
   TextStyle,
 } from "react-native";
 import * as Haptics from "expo-haptics";
-import { modernColors, modernBorderRadius } from "../../styles/modernDesignSystem";
+import { modernBorderRadius } from "../../styles/modernDesignSystem";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import type { ThemeTokens } from "@/theme/themeTokens";
 
 import { shadows as uiShadows } from "@/theme/legacyCompat";
 interface AnimatedInputProps extends TextInputProps {
@@ -40,6 +42,8 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
   value,
   ...props
 }) => {
+  const tokens = useUiTokens();
+  const styles = React.useMemo(() => createStyles(tokens), [tokens]);
   const [isFocused, setIsFocused] = useState(false);
 
   // Animation values
@@ -122,8 +126,8 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
   const animatedBorderColor = borderColor.interpolate({
     inputRange: [0, 1],
     outputRange: [
-      error ? modernColors.error.main : modernColors.border.medium,
-      error ? modernColors.error.main : modernColors.primary[500],
+      error ? tokens.colors.error : tokens.colors.border,
+      error ? tokens.colors.error : tokens.colors.accent,
     ],
   });
 
@@ -137,8 +141,8 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
       case "filled":
         return {
           backgroundColor: isFocused
-            ? modernColors.background.paper
-            : modernColors.background.elevated,
+            ? tokens.colors.surface
+            : tokens.colors.surfaceElevated,
           borderWidth: 0,
           borderBottomWidth: 2,
           borderRadius: modernBorderRadius.md,
@@ -148,7 +152,7 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
       case "outlined":
       default:
         return {
-          backgroundColor: modernColors.background.paper,
+          backgroundColor: tokens.colors.surface,
           borderWidth: 1.5,
           borderRadius: modernBorderRadius.md,
         };
@@ -175,10 +179,10 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
               {
                 transform: [{ translateY: animatedLabelY }, { scale: labelScale }],
                 color: isFocused
-                  ? modernColors.primary[500]
+                  ? tokens.colors.accent
                   : error
-                    ? modernColors.error.main
-                    : modernColors.text.secondary,
+                    ? tokens.colors.error
+                    : tokens.colors.textSecondary,
               },
             ]}
           >
@@ -186,12 +190,13 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
           </Animated.Text>
         )}
         <TextInput
+          selectionColor={tokens.colors.accent}
+          placeholderTextColor={tokens.colors.textMuted}
           {...props}
           value={value}
           onFocus={handleFocus}
           onBlur={handleBlur}
           style={[styles.input, props.style, { paddingTop: label ? 20 : 12 }]}
-          placeholderTextColor={modernColors.text.tertiary}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -201,7 +206,7 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   container: {
     marginBottom: 16,
   },
@@ -214,7 +219,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 16,
     top: 0,
-    backgroundColor: modernColors.background.paper,
+    backgroundColor: tokens.colors.surface,
     paddingHorizontal: 4,
     fontSize: 14,
     fontWeight: "500",
@@ -224,14 +229,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     fontSize: 16,
-    color: modernColors.text.primary,
+    color: tokens.colors.textPrimary,
     minHeight: 52,
   },
   errorText: {
     marginTop: 4,
     marginLeft: 4,
     fontSize: 12,
-    color: modernColors.error.main,
+    color: tokens.colors.error,
   },
 });
 

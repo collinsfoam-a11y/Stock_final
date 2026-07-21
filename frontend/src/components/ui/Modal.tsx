@@ -29,7 +29,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { BlurView } from "expo-blur";
 import { haptics } from "@/services/haptics";
 
-import { shadows as uiShadows } from "@/theme/legacyCompat";
+import { scrim, shadows as uiShadows } from "@/theme/legacyCompat";
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export interface ModalProps {
@@ -146,7 +146,7 @@ export const Modal: React.FC<ModalProps> = ({
         {Platform.OS !== "web" ? (
           <BlurView intensity={20} style={StyleSheet.absoluteFill} />
         ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.5)" }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: scrim.medium }]} />
         )}
         <Pressable
           onPress={(e: GestureResponderEvent) => e.stopPropagation()}

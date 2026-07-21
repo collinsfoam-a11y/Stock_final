@@ -31,7 +31,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { modernColors, modernAnimations } from "../../styles/modernDesignSystem";
+import { modernAnimations } from "../../styles/modernDesignSystem";
 import {
   colors,
   semanticColors,
@@ -40,6 +40,7 @@ import {
   textStyles,
   touchTargets,
 } from "@/theme/legacyCompat";
+import { colorWithAlpha } from "@/theme/themeTokens";
 import { useThemeContextSafe } from "../../context/ThemeContext";
 import { getDecorativeIconProps } from "@/utils/accessibility";
 import { haptics } from "@/services/haptics";
@@ -279,7 +280,7 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
             variant === "outline" || variant === "ghost"
               ? theme
                 ? theme.colors.accent
-                : modernColors.primary[500]
+                : colors.primary[500]
               : primaryText
           }
         />
@@ -323,12 +324,13 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     };
 
     if (variant === "gradient") {
-      const colors =
-        gradientColors || (theme ? theme.gradients.primary : modernColors.gradients.primary);
+      const gradientPalette =
+        gradientColors ||
+        (theme ? theme.gradients.primary : [colors.primary[500], colors.primary[600]]);
       return (
         <Component {...props}>
           <LinearGradient
-            colors={colors as unknown as readonly [string, string, ...string[]]}
+            colors={gradientPalette as unknown as readonly [string, string, ...string[]]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.gradient}
@@ -349,7 +351,11 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
                 {
                   backgroundColor:
                     themedColors?.glass ??
-                    (theme?.isDark ? "rgba(22, 27, 34, 0.85)" : "rgba(255, 255, 255, 0.85)"),
+                    colorWithAlpha(
+                      themedColors?.surfaceElevated ??
+                        (theme?.isDark ? colors.neutral[900] : colors.white),
+                      0.85
+                    ),
                   borderColor: surfaceBorder,
                 },
               ]}
@@ -357,7 +363,11 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
               {renderContent()}
             </View>
           ) : (
-            <BlurView intensity={20} tint="dark" style={styles.blur}>
+            <BlurView
+              intensity={20}
+              tint={theme?.isDark ? "dark" : "light"}
+              style={styles.blur}
+            >
               {renderContent()}
             </BlurView>
           )}
@@ -394,7 +404,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    // Faint invariant hairline for the dark BlurView glass edge; web glass
+    // overrides borderColor inline with the themed surfaceBorder.
+    borderColor: colorWithAlpha(colors.white, 0.1),
   },
 });
 

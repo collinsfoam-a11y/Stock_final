@@ -4,10 +4,9 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "rea
 import { SearchableSelectModal } from "../modals/SearchableSelectModal";
 import { Modal } from "../ui/Modal";
 import ModernInput from "../ui/ModernInput";
-import { theme } from "../../styles/unifiedSystem";
 import { useUiTokens } from "@/hooks/useUiTokens";
-
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import type { ThemeTokens } from "@/theme/themeTokens";
+import { colors as staticColors } from "@/theme/legacyCompat";
 export interface AssignableStaffUser {
   username: string;
   full_name?: string | null;
@@ -42,6 +41,7 @@ export default function RecountAssignmentModal({
   onSubmit,
 }: RecountAssignmentModalProps) {
   const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const [notes, setNotes] = useState("");
   const [selectedAssignee, setSelectedAssignee] = useState<string | undefined>();
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -149,7 +149,7 @@ export default function RecountAssignmentModal({
               activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator color={uiSemanticColors.text.inverse} />
+                <ActivityIndicator color={staticColors.white} />
               ) : (
                 <Text style={styles.confirmText}>Assign Recount</Text>
               )}
@@ -176,16 +176,17 @@ export default function RecountAssignmentModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ spacing, radius }: ThemeTokens) =>
+  StyleSheet.create({
   content: {
-    gap: theme.spacing.md,
+    gap: spacing.md,
   },
   description: {
     fontSize: 14,
     lineHeight: 20,
   },
   fieldGroup: {
-    gap: theme.spacing.xs,
+    gap: spacing.xs,
   },
   fieldLabel: {
     fontSize: 12,
@@ -196,27 +197,27 @@ const styles = StyleSheet.create({
   selector: {
     minHeight: 48,
     justifyContent: "center",
-    borderRadius: theme.borderRadius.md,
+    borderRadius: radius.md,
     borderWidth: 1,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: spacing.md,
   },
   selectorText: {
     fontSize: 15,
     fontWeight: "500",
   },
   notesInput: {
-    marginBottom: theme.spacing.xs,
+    marginBottom: spacing.xs,
   },
   actions: {
     flexDirection: "row",
-    gap: theme.spacing.md,
+    gap: spacing.md,
   },
   button: {
     flex: 1,
     minHeight: 48,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: theme.borderRadius.full,
+    borderRadius: radius.full,
   },
   cancelButton: {
     borderWidth: 1,
@@ -229,8 +230,9 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.55,
   },
+  // White regardless of theme: sits on the semantic warning-filled button.
   confirmText: {
-    color: uiSemanticColors.text.inverse,
+    color: staticColors.white,
     fontSize: 15,
     fontWeight: "700",
   },

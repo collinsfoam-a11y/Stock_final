@@ -21,7 +21,7 @@ import { searchItems, SearchResult } from "../../services/enhancedSearchService"
 import { useStableDebouncedCallback } from "../../hooks/useDebouncedCallback";
 import { localDb } from "../../db/localDb";
 
-import { shadows as uiShadows } from "@/theme/legacyCompat";
+import { scrim, shadows as uiShadows } from "@/theme/legacyCompat";
 import { zIndex as uiZIndex } from "@/theme/designTokens";
 interface SearchAutocompleteProps {
   onSelectItem: (item: SearchResult) => void;
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.05)",
-    backgroundColor: "rgba(0,0,0,0.2)",
+    backgroundColor: scrim.subtle,
   },
   resultsHeaderText: {
     fontSize: 11,

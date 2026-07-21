@@ -22,12 +22,13 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import {
-  modernColors,
   modernTypography,
   modernSpacing,
   modernBorderRadius,
   modernShadows,
 } from "../../styles/unifiedSystem";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import type { ThemeTokens } from "@/theme/themeTokens";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
@@ -67,6 +68,8 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   style,
   accessibilityLabel,
 }) => {
+  const tokens = useUiTokens();
+  const styles = React.useMemo(() => createStyles(tokens), [tokens]);
   const scale = useSharedValue(1);
   const pulseScale = useSharedValue(1);
   const shadowOpacity = useSharedValue(0.3);
@@ -118,7 +121,8 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
     paddingHorizontal: size === "extended" && label ? modernSpacing.lg : 0,
   };
 
-  const defaultGradient: [string, string] = [modernColors.primary[500], modernColors.primary[600]];
+  // Consumer gradientColors override wins; default is the semantic accent fill.
+  const defaultGradient: [string, string] = [tokens.colors.accent, tokens.colors.accentStrong];
   const colors = gradientColors || defaultGradient;
 
   return (
@@ -173,7 +177,7 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   wrapper: {
     position: "relative",
   },
@@ -199,12 +203,12 @@ const styles = StyleSheet.create({
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: modernColors.error.main,
+    backgroundColor: tokens.colors.error,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 6,
     borderWidth: 2,
-    borderColor: modernColors.background.default,
+    borderColor: tokens.colors.background,
   },
   badgeText: {
     ...modernTypography.label.small,

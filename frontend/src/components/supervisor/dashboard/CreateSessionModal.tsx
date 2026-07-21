@@ -18,6 +18,7 @@ import {
 } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 import { theme } from "@/styles/unifiedSystem";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface CreateSessionModalProps {
@@ -61,8 +62,13 @@ export function CreateSessionModal({
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <Pressable style={styles.modalBackdrop} onPress={onClose} />
+      <View style={[styles.modalOverlay, { backgroundColor: uiTokens.colors.overlay }]}>
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close create session dialog"
+        />
         <View style={styles.modalSheet}>
           <View style={[styles.modalContent, { backgroundColor: uiTokens.colors.surfaceElevated }]}>
             <View style={styles.modalHeader}>
@@ -100,11 +106,14 @@ export function CreateSessionModal({
                           {
                             borderColor: isSelected ? uiTokens.colors.accent : uiTokens.colors.border,
                             backgroundColor: isSelected
-                              ? `${uiTokens.colors.accent}15`
+                              ? colorWithAlpha(uiTokens.colors.accent, 0.08)
                               : uiTokens.colors.surface,
                           },
                         ]}
                         onPress={() => onChangeLocationType(zone.zone_name)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isSelected }}
+                        accessibilityLabel={`Location type ${zone.zone_name}`}
                       >
                         <Text
                           style={[
@@ -142,11 +151,14 @@ export function CreateSessionModal({
                                   ? uiTokens.colors.accent
                                   : uiTokens.colors.border,
                                 backgroundColor: isSelected
-                                  ? `${uiTokens.colors.accent}15`
+                                  ? colorWithAlpha(uiTokens.colors.accent, 0.08)
                                   : uiTokens.colors.surface,
                               },
                             ]}
                             onPress={() => onChangeSelectedFloor(warehouse.warehouse_name)}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: isSelected }}
+                            accessibilityLabel={`Floor or area ${warehouse.warehouse_name}`}
                           >
                             <Text
                               style={[
@@ -193,6 +205,13 @@ export function CreateSessionModal({
                 ]}
                 onPress={onSubmit}
                 disabled={!locationType || !selectedFloor || !rackName.trim() || isCreatingSession}
+                accessibilityRole="button"
+                accessibilityLabel="Start session"
+                accessibilityState={{
+                  disabled:
+                    !locationType || !selectedFloor || !rackName.trim() || isCreatingSession,
+                  busy: isCreatingSession,
+                }}
               >
                 {isCreatingSession ? (
                   <ActivityIndicator color={uiSemanticColors.text.inverse} />
@@ -214,7 +233,6 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,

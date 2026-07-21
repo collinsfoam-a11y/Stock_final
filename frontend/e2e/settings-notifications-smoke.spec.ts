@@ -24,6 +24,18 @@ const MOCK_ACCESS_TOKENS: Record<Role, string> = {
 
 const SCENARIOS: SmokeScenario[] = [
   {
+    // Regression guard for the camera stack on web: this route imports the
+    // vision-camera service layer (ScanCameraOverlay, useHardwareScanner), so
+    // a platform-resolution mistake that pulls the native module into the web
+    // bundle crashes the app before this heading can render.
+    name: "staff scan camera-stack 390",
+    path: "/staff/scan?e2e=1",
+    role: "staff",
+    width: 390,
+    height: 844,
+    heading: /scan session required/i,
+  },
+  {
     name: "notifications staff 320",
     path: "/notifications?e2e=1",
     role: "staff",

@@ -8,7 +8,7 @@ import React from "react";
 import { View, StyleSheet, ViewStyle } from "react-native";
 import { Skeleton, SkeletonListItem, SkeletonCard } from "./Skeleton";
 import { FadeIn } from "./FadeIn";
-import { modernColors } from "../../styles/unifiedSystem";
+import { useUiTokens } from "@/hooks/useUiTokens";
 
 interface SkeletonListProps {
   count?: number;
@@ -123,8 +123,9 @@ export const SkeletonScreen: React.FC<SkeletonScreenProps> = ({
   tabs = false,
   listCount = 5,
 }) => {
+  const tokens = useUiTokens();
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: tokens.colors.background }]}>
       {header && (
         <FadeIn direction="down" duration={200}>
           <View style={styles.header}>
@@ -177,7 +178,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     padding: 16,
-    backgroundColor: modernColors.background.default,
   },
   header: {
     flexDirection: "row",

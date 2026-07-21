@@ -1,11 +1,12 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import {
-  modernColors,
   modernTypography,
   modernSpacing,
   modernBorderRadius,
 } from "../../styles/unifiedSystem";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 
 interface RackProgressCardProps {
   rack: string;
@@ -24,10 +25,13 @@ export const RackProgressCard: React.FC<RackProgressCardProps> = ({
   isSelected,
   onPress,
 }) => {
-  // Determine progress color
-  let progressColor = modernColors.primary[500];
-  if (percentage >= 100) progressColor = modernColors.success.main;
-  else if (percentage < 30) progressColor = modernColors.warning.main;
+  const tokens = useUiTokens();
+  const styles = React.useMemo(() => createStyles(tokens), [tokens]);
+  // Progress is also conveyed by the % value and "counted / total" text, so
+  // color is a secondary signal only.
+  let progressColor = tokens.colors.accent;
+  if (percentage >= 100) progressColor = tokens.colors.success;
+  else if (percentage < 30) progressColor = tokens.colors.warning;
 
   return (
     <View
@@ -65,18 +69,18 @@ export const RackProgressCard: React.FC<RackProgressCardProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   container: {
-    backgroundColor: modernColors.background.paper, // Fixed: secondary -> paper
+    backgroundColor: tokens.colors.surface,
     borderRadius: modernBorderRadius.md,
     padding: modernSpacing.md,
     marginBottom: modernSpacing.sm,
     borderWidth: 1,
-    borderColor: modernColors.border.medium, // Fixed: border -> border.medium
+    borderColor: tokens.colors.border,
   },
   selectedContainer: {
-    borderColor: modernColors.primary[500], // Fixed: primary -> primary[500]
-    backgroundColor: modernColors.background.elevated, // Fixed: tertiary -> elevated
+    borderColor: tokens.colors.accent,
+    backgroundColor: tokens.colors.surfaceElevated,
   },
   header: {
     flexDirection: "row",
@@ -87,7 +91,7 @@ const styles = StyleSheet.create({
   rackName: {
     ...modernTypography.h6, // Fixed: lead -> h6
     fontWeight: "600",
-    color: modernColors.text.primary,
+    color: tokens.colors.textPrimary,
   },
   percentage: {
     ...modernTypography.body.medium, // Fixed: body -> body.medium
@@ -95,7 +99,7 @@ const styles = StyleSheet.create({
   },
   progressBarBg: {
     height: 6,
-    backgroundColor: modernColors.background.elevated,
+    backgroundColor: colorWithAlpha(tokens.colors.textMuted, 0.18),
     borderRadius: 3,
     overflow: "hidden",
     marginBottom: modernSpacing.xs,
@@ -106,7 +110,7 @@ const styles = StyleSheet.create({
   },
   stats: {
     ...modernTypography.label.medium, // Fixed: caption -> label.medium
-    color: modernColors.text.secondary,
+    color: tokens.colors.textSecondary,
     textAlign: "right",
   },
   selectedText: {

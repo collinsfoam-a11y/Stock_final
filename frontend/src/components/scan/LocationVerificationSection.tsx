@@ -2,8 +2,8 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { AppInput } from "@/components/ui/AppInput";
-import { modernColors } from "@/styles/modernDesignSystem";
 import { DEFAULT_FLOOR_OPTIONS } from "@/config/location";
+import { useUiTokens } from "@/hooks/useUiTokens";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 export type LocationVerificationSectionProps = {
@@ -29,6 +29,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
   floorOptions,
   recentRacks,
 }) => {
+  const tokens = useUiTokens();
   const nowText = dateTimeText || new Date().toLocaleString();
   const OPTIONS = floorOptions && floorOptions.length ? floorOptions : DEFAULT_FLOOR_OPTIONS;
   const typedRack = (rackNo || "").trim();
@@ -58,7 +59,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
             borderRadius: 11,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: modernColors.primary[500],
+            backgroundColor: tokens.colors.accent,
           }}
         >
           <Ionicons name="location" size={14} color={uiSemanticColors.text.inverse} />
@@ -67,7 +68,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
           style={{
             fontWeight: "600",
             fontSize: 16,
-            color: modernColors.text.primary,
+            color: tokens.colors.textPrimary,
           }}
         >
           Location & Verification
@@ -75,7 +76,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
         <Text
           style={{
             marginLeft: 8,
-            color: modernColors.text.tertiary,
+            color: tokens.colors.textMuted,
             fontSize: 12,
           }}
         >
@@ -86,7 +87,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
       <View style={{ flexDirection: "row", gap: 12 }}>
         {/* Floor chips */}
         <View style={{ flex: 1 }}>
-          <Text style={{ color: modernColors.text.secondary, marginBottom: 6 }}>Floor</Text>
+          <Text style={{ color: tokens.colors.textSecondary, marginBottom: 6 }}>Floor</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
             {OPTIONS.map((opt) => {
               const active = floorNo === opt;
@@ -98,16 +99,18 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                     paddingVertical: 6,
                     borderRadius: 8,
                     backgroundColor: active
-                      ? modernColors.primary[500]
-                      : modernColors.background.elevated,
+                      ? tokens.colors.accent
+                      : tokens.colors.surfaceElevated,
                   }}
                   onPress={() => onSelectFloor(opt)}
                   accessibilityLabel={`Select floor ${opt}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
                   testID={`chip-floor-${opt.replace(/\s+/g, "-").toLowerCase()}`}
                 >
                   <Text
                     style={{
-                      color: active ? uiSemanticColors.text.inverse : modernColors.text.primary,
+                      color: active ? uiSemanticColors.text.inverse : tokens.colors.textPrimary,
                       fontWeight: "600",
                     }}
                   >
@@ -135,9 +138,9 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
               style={{
                 marginTop: 6,
                 borderWidth: 1,
-                borderColor: modernColors.border.light,
+                borderColor: tokens.colors.border,
                 borderRadius: 10,
-                backgroundColor: modernColors.background.elevated,
+                backgroundColor: tokens.colors.surfaceElevated,
               }}
             >
               {rackSuggestions.map((sugg) => (
@@ -148,7 +151,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                   accessibilityLabel={`Use suggestion ${sugg}`}
                   testID={`suggest-rack-${sugg.replace(/\s+/g, "-").toLowerCase()}`}
                 >
-                  <Text style={{ color: modernColors.text.primary }}>{sugg}</Text>
+                  <Text style={{ color: tokens.colors.textPrimary }}>{sugg}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -164,7 +167,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                   marginBottom: 6,
                 }}
               >
-                <Text style={{ color: modernColors.text.secondary }}>Recent Racks</Text>
+                <Text style={{ color: tokens.colors.textSecondary }}>Recent Racks</Text>
                 {onClearRecentRacks && (
                   <TouchableOpacity
                     onPress={onClearRecentRacks}
@@ -173,7 +176,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                   >
                     <Text
                       style={{
-                        color: modernColors.primary[400],
+                        color: tokens.colors.accent,
                         fontWeight: "600",
                       }}
                     >
@@ -190,9 +193,9 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                       paddingHorizontal: 10,
                       paddingVertical: 6,
                       borderRadius: 8,
-                      backgroundColor: modernColors.background.elevated,
+                      backgroundColor: tokens.colors.surfaceElevated,
                       borderWidth: 1,
-                      borderColor: modernColors.border.light,
+                      borderColor: tokens.colors.border,
                     }}
                     onPress={() => onChangeRack(r)}
                     accessibilityLabel={`Use recent rack ${r}`}
@@ -200,7 +203,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                   >
                     <Text
                       style={{
-                        color: modernColors.text.primary,
+                        color: tokens.colors.textPrimary,
                         fontWeight: "600",
                       }}
                     >
@@ -217,43 +220,43 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
       {/* Verified by & Date/Time */}
       <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: modernColors.text.secondary, marginBottom: 6 }}>Verified By</Text>
+          <Text style={{ color: tokens.colors.textSecondary, marginBottom: 6 }}>Verified By</Text>
           <View
             style={{
               height: 44,
               borderRadius: 10,
               borderWidth: 1,
-              borderColor: modernColors.border.light,
-              backgroundColor: modernColors.background.elevated,
+              borderColor: tokens.colors.border,
+              backgroundColor: tokens.colors.surfaceElevated,
               paddingHorizontal: 12,
               flexDirection: "row",
               alignItems: "center",
               gap: 8,
             }}
           >
-            <Ionicons name="person" size={16} color={modernColors.text.tertiary} />
-            <Text numberOfLines={1} style={{ color: modernColors.text.primary }}>
+            <Ionicons name="person" size={16} color={tokens.colors.textMuted} />
+            <Text numberOfLines={1} style={{ color: tokens.colors.textPrimary }}>
               {username}
             </Text>
           </View>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: modernColors.text.secondary, marginBottom: 6 }}>Date & Time</Text>
+          <Text style={{ color: tokens.colors.textSecondary, marginBottom: 6 }}>Date & Time</Text>
           <View
             style={{
               height: 44,
               borderRadius: 10,
               borderWidth: 1,
-              borderColor: modernColors.border.light,
-              backgroundColor: modernColors.background.elevated,
+              borderColor: tokens.colors.border,
+              backgroundColor: tokens.colors.surfaceElevated,
               paddingHorizontal: 12,
               flexDirection: "row",
               alignItems: "center",
               gap: 8,
             }}
           >
-            <Ionicons name="time" size={16} color={modernColors.text.tertiary} />
-            <Text numberOfLines={1} style={{ color: modernColors.text.primary }}>
+            <Ionicons name="time" size={16} color={tokens.colors.textMuted} />
+            <Text numberOfLines={1} style={{ color: tokens.colors.textPrimary }}>
               {nowText}
             </Text>
           </View>

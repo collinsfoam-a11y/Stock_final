@@ -19,13 +19,14 @@ import Animated, {
   FadeInDown,
 } from "react-native-reanimated";
 import {
-  modernColors,
   modernTypography,
   modernSpacing,
   modernBorderRadius,
   modernShadows,
 } from "../../styles/unifiedSystem";
 import { StatusBadge } from "./StatusBadge";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
@@ -77,6 +78,8 @@ export const SessionCard: React.FC<SessionCardProps> = ({
   style,
   index = 0,
 }) => {
+  const tokens = useUiTokens();
+  const styles = React.useMemo(() => createStyles(tokens), [tokens]);
   const scale = useSharedValue(1);
   const statusInfo = statusConfig[status];
 
@@ -102,7 +105,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
       <View style={styles.progressContainer}>
         <View style={styles.progressTrack}>
           <LinearGradient
-            colors={[modernColors.primary[500], modernColors.secondary[500]]}
+            colors={[tokens.colors.accent, tokens.colors.accentStrong]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={[styles.progressFill, { width: `${Math.min(progress, 100)}%` }]}
@@ -128,7 +131,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.iconContainer}>
-              <Ionicons name="folder-open" size={20} color={modernColors.primary[400]} />
+              <Ionicons name="folder-open" size={20} color={tokens.colors.accent} />
             </View>
             <View style={styles.headerInfo}>
               <Text style={styles.name} numberOfLines={1}>
@@ -136,13 +139,13 @@ export const SessionCard: React.FC<SessionCardProps> = ({
               </Text>
               {location && (
                 <View style={styles.locationRow}>
-                  <Ionicons name="location-outline" size={12} color={modernColors.text.tertiary} />
+                  <Ionicons name="location-outline" size={12} color={tokens.colors.textMuted} />
                   <Text style={styles.location}>{location}</Text>
                 </View>
               )}
               {barcode && (
                 <View style={styles.locationRow}>
-                  <Ionicons name="barcode-outline" size={12} color={modernColors.text.tertiary} />
+                  <Ionicons name="barcode-outline" size={12} color={tokens.colors.textMuted} />
                   <Text style={styles.location}>{barcode}</Text>
                 </View>
               )}
@@ -165,13 +168,13 @@ export const SessionCard: React.FC<SessionCardProps> = ({
           <View style={styles.footerInfo}>
             {createdBy && (
               <View style={styles.infoItem}>
-                <Ionicons name="person-outline" size={12} color={modernColors.text.tertiary} />
+                <Ionicons name="person-outline" size={12} color={tokens.colors.textMuted} />
                 <Text style={styles.infoText}>{createdBy}</Text>
               </View>
             )}
             {lastUpdated && (
               <View style={styles.infoItem}>
-                <Ionicons name="time-outline" size={12} color={modernColors.text.tertiary} />
+                <Ionicons name="time-outline" size={12} color={tokens.colors.textMuted} />
                 <Text style={styles.infoText}>{lastUpdated}</Text>
               </View>
             )}
@@ -197,13 +200,13 @@ export const SessionCard: React.FC<SessionCardProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   container: {
-    backgroundColor: "rgba(30, 41, 59, 0.6)",
+    backgroundColor: tokens.colors.surface,
     borderRadius: modernBorderRadius.lg,
     padding: modernSpacing.md,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: tokens.colors.border,
     ...modernShadows.sm,
   },
   header: {
@@ -223,11 +226,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: modernBorderRadius.md,
-    backgroundColor: "rgba(99, 102, 241, 0.12)",
+    backgroundColor: colorWithAlpha(tokens.colors.accent, 0.12),
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(99, 102, 241, 0.25)",
+    borderColor: colorWithAlpha(tokens.colors.accent, 0.25),
   },
   headerInfo: {
     flex: 1,
@@ -236,7 +239,7 @@ const styles = StyleSheet.create({
   name: {
     ...modernTypography.body.medium,
     fontWeight: "600",
-    color: modernColors.text.primary,
+    color: tokens.colors.textPrimary,
   },
   locationRow: {
     flexDirection: "row",
@@ -245,7 +248,7 @@ const styles = StyleSheet.create({
   },
   location: {
     ...modernTypography.label.small,
-    color: modernColors.text.tertiary,
+    color: tokens.colors.textMuted,
   },
   progressContainer: {
     marginBottom: modernSpacing.md,
@@ -253,7 +256,7 @@ const styles = StyleSheet.create({
   progressTrack: {
     height: 4,
     borderRadius: 2,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: colorWithAlpha(tokens.colors.textMuted, 0.18),
     overflow: "hidden",
     marginBottom: 6,
   },
@@ -263,7 +266,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     ...modernTypography.label.small,
-    color: modernColors.text.tertiary,
+    color: tokens.colors.textMuted,
     textAlign: "right",
   },
   footer: {
@@ -272,7 +275,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingTop: modernSpacing.sm,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.05)",
+    borderTopColor: colorWithAlpha(tokens.colors.border, 0.6),
   },
   footerInfo: {
     flexDirection: "row",
@@ -286,7 +289,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     ...modernTypography.label.small,
-    color: modernColors.text.tertiary,
+    color: tokens.colors.textMuted,
   },
   resumeButton: {
     flexDirection: "row",
@@ -295,7 +298,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: modernSpacing.sm,
     paddingVertical: 6,
     borderRadius: modernBorderRadius.sm,
-    backgroundColor: modernColors.primary[500],
+    backgroundColor: tokens.colors.accent,
   },
   resumeText: {
     ...modernTypography.label.small,
@@ -306,7 +309,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -8,
     right: modernSpacing.md,
-    backgroundColor: modernColors.primary[500],
+    backgroundColor: tokens.colors.accent,
     paddingHorizontal: modernSpacing.sm,
     paddingVertical: 4,
     borderRadius: modernBorderRadius.full,
@@ -323,7 +326,7 @@ const styles = StyleSheet.create({
   },
   countLabel: {
     ...modernTypography.label.small,
-    color: "rgba(255, 255, 255, 0.8)",
+    color: colorWithAlpha(uiSemanticColors.text.inverse, 0.8),
   },
 });
 

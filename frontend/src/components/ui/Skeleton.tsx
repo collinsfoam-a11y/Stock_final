@@ -4,10 +4,12 @@
  * Safe, non-breaking addition for loading states
  */
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { View, StyleSheet, Animated, ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { modernColors } from "../../styles/unifiedSystem";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 interface SkeletonProps {
   width?: number | string;
@@ -26,10 +28,31 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   variant = "rectangular",
   shimmer = true,
 }) => {
+  const tokens = useUiTokens();
+  const reducedMotion = useReducedMotion();
+  // Muted, theme-adaptive placeholder fill: a low-alpha neutral that darkens
+  // on light surfaces and lightens on dark surfaces without a bright block.
+  const baseColor = useMemo(
+    () => colorWithAlpha(tokens.colors.textMuted, tokens.mode === "dark" ? 0.22 : 0.16),
+    [tokens.colors.textMuted, tokens.mode],
+  );
+  // Sweep uses the elevated surface (near-white in light, light-slate in dark)
+  // so the shimmer never flashes bright white in dark mode.
+  const shimmerHighlight = useMemo(
+    () => colorWithAlpha(tokens.colors.surfaceElevated, tokens.mode === "dark" ? 0.35 : 0.9),
+    [tokens.colors.surfaceElevated, tokens.mode],
+  );
+  const animate = shimmer && !reducedMotion;
+
   const translateX = useRef(new Animated.Value(-1)).current;
   const opacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
+    if (reducedMotion) {
+      // Respect reduced-motion: static muted block still communicates loading.
+      opacity.setValue(0.6);
+      return;
+    }
     if (shimmer) {
       // Shimmer animation - sweeping highlight
       const shimmerAnimation = Animated.loop(
@@ -60,7 +83,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
       pulseAnimation.start();
       return () => pulseAnimation.stop();
     }
-  }, [translateX, opacity, shimmer]);
+  }, [translateX, opacity, shimmer, reducedMotion]);
 
   const getVariantStyle = (): ViewStyle => {
     switch (variant) {
@@ -85,7 +108,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 
   const variantStyle = getVariantStyle();
 
-  if (shimmer) {
+  if (animate) {
     return (
       <View
         style={[
@@ -94,7 +117,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
             width,
             height: variantStyle.height,
             borderRadius: variantStyle.borderRadius,
-            backgroundColor: modernColors.neutral[200],
+            backgroundColor: baseColor,
           } as ViewStyle,
           style as ViewStyle,
         ]}
@@ -115,7 +138,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
           ]}
         >
           <LinearGradient
-            colors={["transparent", "rgba(255, 255, 255, 0.4)", "transparent"]}
+            colors={["transparent", shimmerHighlight, "transparent"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={StyleSheet.absoluteFillObject}
@@ -133,7 +156,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
           width,
           height: variantStyle.height,
           borderRadius: variantStyle.borderRadius,
-          backgroundColor: modernColors.neutral[200],
+          backgroundColor: baseColor,
           opacity,
         } as ViewStyle,
         style as ViewStyle,
@@ -170,8 +193,9 @@ export const SkeletonText: React.FC<SkeletonTextProps> = ({
 
 // Card skeleton for common card loading states
 export const SkeletonCard: React.FC<{ style?: ViewStyle }> = ({ style }) => {
+  const tokens = useUiTokens();
   return (
-    <View style={[styles.card, style]}>
+    <View style={[styles.card, { backgroundColor: tokens.colors.surface }, style]}>
       <View style={styles.cardHeader}>
         <Skeleton width={48} height={48} variant="circular" />
         <View style={styles.cardHeaderText}>
@@ -188,8 +212,9 @@ export const SkeletonCard: React.FC<{ style?: ViewStyle }> = ({ style }) => {
 export const SkeletonListItem: React.FC<{ style?: ViewStyle }> = ({
   style,
 }) => {
+  const tokens = useUiTokens();
   return (
-    <View style={[styles.listItem, style]}>
+    <View style={[styles.listItem, { backgroundColor: tokens.colors.surface }, style]}>
       <Skeleton width={40} height={40} borderRadius={8} />
       <View style={styles.listItemContent}>
         <Skeleton width="60%" height={14} style={{ marginBottom: 6 }} />
@@ -206,7 +231,6 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 16,
-    backgroundColor: modernColors.background.paper,
     borderRadius: 12,
     marginBottom: 12,
   },
@@ -223,7 +247,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
-    backgroundColor: modernColors.background.paper,
     borderRadius: 8,
     marginBottom: 8,
   },

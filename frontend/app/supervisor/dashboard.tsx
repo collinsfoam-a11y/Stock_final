@@ -5,7 +5,7 @@
  * Presentational sections live in focused supervisor dashboard components.
  */
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Platform,
@@ -47,14 +47,14 @@ import {
 } from "@/components/ui";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { createSession, getSessions, getWarehouses, getZones } from "@/services/api/api";
-import { theme } from "@/styles/modernDesignSystem";
-import { colorWithAlpha } from "@/theme/themeTokens";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 import { Session } from "@/types";
 
 export default function SupervisorDashboard() {
   const router = useRouter();
   const { show } = useToast();
   const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const { width } = useWindowDimensions();
   const showCompactQuickActions = width < 768;
 
@@ -590,12 +590,13 @@ function buildRecommendedActions({
   return actions.slice(0, 3);
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ spacing, radius }: ThemeTokens) =>
+  StyleSheet.create({
   scrollView: {
     flex: 1,
   },
   contentContainer: {
-    padding: theme.spacing.lg,
+    padding: spacing.lg,
   },
   loadingState: {
     flex: 1,
@@ -607,35 +608,35 @@ const styles = StyleSheet.create({
   },
   loadingText: {},
   recommendationsCard: {
-    marginBottom: theme.spacing.xl,
-    padding: theme.spacing.lg,
+    marginBottom: spacing.xl,
+    padding: spacing.lg,
   },
   recommendationsHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   recommendationsTitle: {
     fontSize: 16,
     fontWeight: "700",
   },
   recommendationsList: {
-    gap: theme.spacing.sm,
+    gap: spacing.sm,
   },
   recommendationAction: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.lg,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
     borderWidth: 1,
   },
   recommendationIcon: {
     width: 28,
     height: 28,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -9,7 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { flags } from "../../constants/flags";
 
-import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { colors as uiColors, scrim, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -79,7 +79,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: scrim.medium,
   },
   sheet: {
     position: "absolute",

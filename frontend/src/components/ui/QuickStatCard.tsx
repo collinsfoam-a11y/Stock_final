@@ -27,12 +27,13 @@ import Animated, {
   FadeInUp,
 } from "react-native-reanimated";
 import {
-  modernColors,
   modernTypography,
   modernSpacing,
   modernBorderRadius,
   modernShadows,
 } from "../../styles/unifiedSystem";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
@@ -61,21 +62,22 @@ interface QuickStatCardProps {
   index?: number;
 }
 
-const trendConfig: Record<
-  TrendDirection,
-  { color: string; icon: keyof typeof Ionicons.glyphMap }
-> = {
-  up: { color: modernColors.success.main, icon: "trending-up" },
-  down: { color: modernColors.error.main, icon: "trending-down" },
-  neutral: { color: modernColors.text.tertiary, icon: "remove" },
-};
+// Trend direction is conveyed by icon (trending-up/down/remove) and the value
+// text in addition to color, so meaning is not color-only.
+const buildTrendConfig = (
+  tokens: ThemeTokens,
+): Record<TrendDirection, { color: string; icon: keyof typeof Ionicons.glyphMap }> => ({
+  up: { color: tokens.colors.success, icon: "trending-up" },
+  down: { color: tokens.colors.error, icon: "trending-down" },
+  neutral: { color: tokens.colors.textMuted, icon: "remove" },
+});
 
 export const QuickStatCard: React.FC<QuickStatCardProps> = ({
   title,
   value,
   subtitle,
   icon,
-  iconColor = modernColors.primary[400],
+  iconColor,
   trend,
   variant = "default",
   gradientColors,
@@ -86,6 +88,11 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
   style,
   index = 0,
 }) => {
+  const tokens = useUiTokens();
+  const styles = React.useMemo(() => createStyles(tokens), [tokens]);
+  const trendConfig = React.useMemo(() => buildTrendConfig(tokens), [tokens]);
+  // Explicit consumer override wins; default resolves to the semantic accent.
+  const resolvedIconColor = iconColor ?? tokens.colors.accent;
   const scale = useSharedValue(1);
   const animatedValue = useSharedValue(0);
   const [displayValue, setDisplayValue] = React.useState(
@@ -134,9 +141,9 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
       {/* Icon */}
       {icon && (
         <View
-          style={[styles.iconContainer, { backgroundColor: `${iconColor}15` }]}
+          style={[styles.iconContainer, { backgroundColor: colorWithAlpha(resolvedIconColor, 0.08) }]}
         >
-          <Ionicons name={icon} size={24} color={iconColor} />
+          <Ionicons name={icon} size={24} color={resolvedIconColor} />
         </View>
       )}
 
@@ -161,7 +168,7 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
           <View
             style={[
               styles.trendContainer,
-              { backgroundColor: `${trendConfig[trend.direction].color}15` },
+              { backgroundColor: colorWithAlpha(trendConfig[trend.direction].color, 0.08) },
             ]}
           >
             <Ionicons
@@ -197,10 +204,7 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
       <LinearGradient
         colors={
           (gradientColors as [string, string, ...string[]]) ||
-          ([modernColors.primary[600], modernColors.primary[500]] as [
-            string,
-            string,
-          ])
+          ([tokens.colors.accentStrong, tokens.colors.accent] as [string, string])
         }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -237,13 +241,13 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   container: {
-    backgroundColor: "rgba(30, 41, 59, 0.6)",
+    backgroundColor: tokens.colors.surface,
     borderRadius: modernBorderRadius.lg,
     padding: modernSpacing.md,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: tokens.colors.border,
     ...modernShadows.sm,
   },
   gradientContainer: {
@@ -251,7 +255,7 @@ const styles = StyleSheet.create({
   },
   outlineContainer: {
     backgroundColor: "transparent",
-    borderColor: "rgba(99, 102, 241, 0.3)",
+    borderColor: colorWithAlpha(tokens.colors.accent, 0.3),
     borderWidth: 1.5,
   },
   content: {
@@ -272,11 +276,11 @@ const styles = StyleSheet.create({
   },
   title: {
     ...modernTypography.label.medium,
-    color: modernColors.text.secondary,
+    color: tokens.colors.textSecondary,
   },
   subtitle: {
     ...modernTypography.label.small,
-    color: modernColors.text.tertiary,
+    color: tokens.colors.textMuted,
     marginTop: 2,
   },
   valueRow: {
@@ -286,7 +290,7 @@ const styles = StyleSheet.create({
   },
   value: {
     ...modernTypography.h3,
-    color: modernColors.text.primary,
+    color: tokens.colors.textPrimary,
     fontWeight: "700",
   },
   trendContainer: {
@@ -305,7 +309,7 @@ const styles = StyleSheet.create({
   },
   trendLabel: {
     ...modernTypography.label.small,
-    color: modernColors.text.tertiary,
+    color: tokens.colors.textMuted,
   },
 });
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, ActivityIndicator, Platform } from "react-native";
+import { Alert, View, Text, StyleSheet, ActivityIndicator, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { FlashList } from "@shopify/flash-list";
@@ -16,7 +16,15 @@ import RecountAssignmentModal, {
 import { useToast } from "@/components/feedback/ToastProvider";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useSettingsStore } from "@/store/settingsStore";
-import { colors, spacing, typography, borderRadius, shadows } from "@/theme/legacyCompat";
+import {
+  colors as staticColors,
+  spacing,
+  typography,
+  borderRadius,
+  shadows,
+} from "@/theme/legacyCompat";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 import { safeBackNavigation } from "@/utils/navigation";
 import {
   getSession,
@@ -32,33 +40,33 @@ import {
 
 type BadgeTone = "neutral" | "success" | "warning" | "error" | "info";
 
-const badgeToneStyles = {
+const createBadgeToneStyles = (uiTokens: ThemeTokens) => ({
   neutral: {
-    backgroundColor: colors.gray[100],
-    borderColor: colors.gray[200],
-    textColor: colors.gray[700],
+    backgroundColor: uiTokens.colors.surface,
+    borderColor: uiTokens.colors.border,
+    textColor: uiTokens.colors.textSecondary,
   },
   success: {
-    backgroundColor: colors.success[50],
-    borderColor: colors.success[200],
-    textColor: colors.success[600],
+    backgroundColor: colorWithAlpha(uiTokens.colors.success, 0.12),
+    borderColor: colorWithAlpha(uiTokens.colors.success, 0.3),
+    textColor: uiTokens.colors.success,
   },
   warning: {
-    backgroundColor: colors.warning[50],
-    borderColor: colors.warning[200],
-    textColor: colors.warning[600],
+    backgroundColor: colorWithAlpha(uiTokens.colors.warning, 0.12),
+    borderColor: colorWithAlpha(uiTokens.colors.warning, 0.3),
+    textColor: uiTokens.colors.warning,
   },
   error: {
-    backgroundColor: colors.error[50],
-    borderColor: colors.error[200],
-    textColor: colors.error[600],
+    backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.12),
+    borderColor: colorWithAlpha(uiTokens.colors.error, 0.3),
+    textColor: uiTokens.colors.error,
   },
   info: {
-    backgroundColor: colors.primary[50],
-    borderColor: colors.primary[200],
-    textColor: colors.primary[700],
+    backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.12),
+    borderColor: colorWithAlpha(uiTokens.colors.accent, 0.3),
+    textColor: uiTokens.colors.accentStrong,
   },
-} as const;
+});
 
 const getSessionStatusTone = (status: string): BadgeTone => {
   switch (status.trim().toUpperCase()) {
@@ -101,6 +109,9 @@ export default function SessionDetail() {
 
   const router = useRouter();
   const { show } = useToast();
+  const uiTokens = useUiTokens();
+  const badgeToneStyles = React.useMemo(() => createBadgeToneStyles(uiTokens), [uiTokens]);
+  const styles = React.useMemo(() => createStyles(uiTokens), [uiTokens]);
   const prefersReducedMotion = useReducedMotion();
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [session, setSession] = React.useState<any>(null);
@@ -139,7 +150,7 @@ export default function SessionDetail() {
         </View>
       );
     },
-    []
+    [badgeToneStyles, styles]
   );
 
   const loadData = React.useCallback(async () => {
@@ -202,6 +213,25 @@ export default function SessionDetail() {
     }
   }, [assignableStaff, offlineMode, show]);
 
+  const confirmStaleApproval = (message: string): Promise<boolean> => {
+    if (Platform.OS === "web") {
+      return Promise.resolve(
+        typeof window !== "undefined" && window.confirm(message),
+      );
+    }
+    return new Promise((resolve) => {
+      Alert.alert(
+        "Master data changed",
+        message,
+        [
+          { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+          { text: "Approve anyway", style: "destructive", onPress: () => resolve(true) },
+        ],
+        { cancelable: true },
+      );
+    });
+  };
+
   const handleApproveLine = async (lineId: string) => {
     if (offlineMode) {
       show("Approvals require a live connection", "warning");
@@ -215,7 +245,26 @@ export default function SessionDetail() {
       await approveCountLine(lineId);
       await loadData();
       show("Count line approved", "success");
-    } catch {
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      if (error?.response?.status === 409 && detail?.code === "STALE_MASTER_DATA") {
+        const acknowledged = await confirmStaleApproval(
+          `${detail.message ?? "ERP master data changed after this item was counted."}\n\n` +
+            "Approve anyway using the recorded count? This acknowledgement is audit-logged.",
+        );
+        if (!acknowledged) {
+          show("Approval cancelled - recount recommended", "warning");
+          return;
+        }
+        try {
+          await approveCountLine(lineId, { acknowledgeStaleMasterData: true });
+          await loadData();
+          show("Approved with stale-data acknowledgement", "success");
+          return;
+        } catch {
+          // fall through to generic failure handling
+        }
+      }
       show("Failed to approve", "error");
       if (Platform.OS !== "web") {
         void haptics.error();
@@ -381,8 +430,8 @@ export default function SessionDetail() {
 
   if (!loading && sessionMissing) {
     return (
-      <Screen padding={0} backgroundColor={colors.gray[50]}>
-        <StatusBar style="dark" />
+      <Screen padding={0} backgroundColor={uiTokens.colors.surface}>
+        <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
         <View style={styles.header}>
           <AnimatedPressable
             onPress={() => router.replace("/supervisor/sessions")}
@@ -390,14 +439,14 @@ export default function SessionDetail() {
             accessibilityRole="button"
             accessibilityLabel="Back to sessions"
           >
-            <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
+            <Ionicons name="arrow-back" size={22} color={uiTokens.colors.textSecondary} />
           </AnimatedPressable>
           <Text style={styles.headerTitle}>Session Details</Text>
           <View style={styles.headerSpacer} />
         </View>
 
         <View style={styles.loadingContainer}>
-          <Ionicons name="alert-circle-outline" size={56} color={colors.warning[500]} />
+          <Ionicons name="alert-circle-outline" size={56} color={uiTokens.colors.warning} />
           <Text style={styles.loadingText}>This session is no longer available.</Text>
           {offlineMode ? (
             <Text style={styles.offlineMissingText}>
@@ -419,8 +468,8 @@ export default function SessionDetail() {
 
   if (loading || !session) {
     return (
-      <Screen padding={0} backgroundColor={colors.gray[50]}>
-        <StatusBar style="dark" />
+      <Screen padding={0} backgroundColor={uiTokens.colors.surface}>
+        <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
         <View style={styles.header}>
           <AnimatedPressable
             onPress={() => safeBackNavigation(router, { fallbackHref: "/supervisor/sessions" })}
@@ -428,14 +477,14 @@ export default function SessionDetail() {
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
+            <Ionicons name="arrow-back" size={22} color={uiTokens.colors.textSecondary} />
           </AnimatedPressable>
           <Text style={styles.headerTitle}>Session Details</Text>
           <View style={styles.headerSpacer} />
         </View>
 
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary[500]} />
+          <ActivityIndicator size="large" color={uiTokens.colors.accent} />
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
       </Screen>
@@ -512,7 +561,7 @@ export default function SessionDetail() {
         <Animated.View entering={getFadeInDown(220)}>
           <View style={[styles.noticeCard, styles.noticeSuccess]}>
             <View style={styles.noticeRow}>
-              <Ionicons name="lock-closed-outline" size={18} color={colors.success[600]} />
+              <Ionicons name="lock-closed-outline" size={18} color={uiTokens.colors.success} />
               <View style={styles.noticeCopy}>
                 <Text style={styles.noticeTitle}>Session finalized</Text>
                 <Text style={styles.noticeBody}>
@@ -529,7 +578,7 @@ export default function SessionDetail() {
         <Animated.View entering={getFadeInDown(220)}>
           <View style={[styles.noticeCard, styles.noticeWarning]}>
             <View style={styles.noticeRow}>
-              <Ionicons name="cloud-offline-outline" size={18} color={colors.warning[600]} />
+              <Ionicons name="cloud-offline-outline" size={18} color={uiTokens.colors.warning} />
               <View style={styles.noticeCopy}>
                 <Text style={styles.noticeTitle}>Viewing cached session data</Text>
                 <Text style={styles.noticeBody}>
@@ -558,7 +607,7 @@ export default function SessionDetail() {
           <Ionicons
             name="list-outline"
             size={18}
-            color={activeTab === "toVerify" ? colors.white : colors.gray[600]}
+            color={activeTab === "toVerify" ? staticColors.white : uiTokens.colors.textSecondary}
           />
           <Text style={[styles.tabText, activeTab === "toVerify" && styles.tabTextActive]}>
             To Verify ({toVerifyLines.length})
@@ -575,7 +624,7 @@ export default function SessionDetail() {
           <Ionicons
             name="checkmark-circle-outline"
             size={18}
-            color={activeTab === "verified" ? colors.white : colors.gray[600]}
+            color={activeTab === "verified" ? staticColors.white : uiTokens.colors.textSecondary}
           />
           <Text style={[styles.tabText, activeTab === "verified" && styles.tabTextActive]}>
             Verified ({verifiedLines.length})
@@ -588,7 +637,7 @@ export default function SessionDetail() {
   const renderItem = ({ item }: { item: any }) => {
     const normalizedStatus = String(item.status || "").toLowerCase();
     const requiresSupervisorReview = Number(item.variance ?? 0) !== 0;
-    const varianceColor = item.variance === 0 ? colors.success[600] : colors.error[600];
+    const varianceColor = item.variance === 0 ? uiTokens.colors.success : uiTokens.colors.error;
     const verifiedAtLabel = item.verified_at
       ? new Date(item.verified_at).toLocaleString()
       : "Unknown time";
@@ -639,7 +688,7 @@ export default function SessionDetail() {
 
         {item.verified && item.verified_by ? (
           <View style={styles.verifiedInfo}>
-            <Ionicons name="checkmark-circle" size={16} color={colors.success[600]} />
+            <Ionicons name="checkmark-circle" size={16} color={uiTokens.colors.success} />
             <Text style={styles.verifiedInfoText}>
               Verified by {item.verified_by} on {verifiedAtLabel}
             </Text>
@@ -656,7 +705,7 @@ export default function SessionDetail() {
                   accessibilityRole="button"
                   accessibilityLabel={`Approve ${item.item_name}`}
                 >
-                  <Ionicons name="checkmark" size={20} color={colors.white} />
+                  <Ionicons name="checkmark" size={20} color={staticColors.white} />
                   <Text style={styles.actionButtonText}>Approve</Text>
                 </AnimatedPressable>
 
@@ -666,7 +715,7 @@ export default function SessionDetail() {
                   accessibilityRole="button"
                   accessibilityLabel={`Reject ${item.item_name}`}
                 >
-                  <Ionicons name="close" size={20} color={colors.white} />
+                  <Ionicons name="close" size={20} color={staticColors.white} />
                   <Text style={styles.actionButtonText}>Reject</Text>
                 </AnimatedPressable>
               </>
@@ -685,10 +734,10 @@ export default function SessionDetail() {
                 accessibilityLabel={`Verify stock for ${item.item_name}`}
               >
                 {verifying === item.id ? (
-                  <ActivityIndicator size="small" color={colors.white} />
+                  <ActivityIndicator size="small" color={staticColors.white} />
                 ) : (
                   <>
-                    <Ionicons name="checkmark-circle-outline" size={20} color={colors.white} />
+                    <Ionicons name="checkmark-circle-outline" size={20} color={staticColors.white} />
                     <Text style={styles.actionButtonText}>Verify Stock</Text>
                   </>
                 )}
@@ -708,10 +757,10 @@ export default function SessionDetail() {
                 accessibilityLabel={`Remove verification for ${item.item_name}`}
               >
                 {verifying === item.id ? (
-                  <ActivityIndicator size="small" color={colors.white} />
+                  <ActivityIndicator size="small" color={staticColors.white} />
                 ) : (
                   <>
-                    <Ionicons name="close-circle-outline" size={20} color={colors.white} />
+                    <Ionicons name="close-circle-outline" size={20} color={staticColors.white} />
                     <Text style={styles.actionButtonText}>Unverify</Text>
                   </>
                 )}
@@ -732,7 +781,7 @@ export default function SessionDetail() {
       <Ionicons
         name={activeTab === "toVerify" ? "list-outline" : "checkmark-circle"}
         size={64}
-        color={colors.gray[300]}
+        color={uiTokens.colors.border}
       />
       <Text style={styles.emptyText}>
         {activeTab === "toVerify" ? "No items to verify" : "No verified items"}
@@ -741,8 +790,8 @@ export default function SessionDetail() {
   );
 
   return (
-    <Screen padding={0} backgroundColor={colors.gray[50]}>
-      <StatusBar style="dark" />
+    <Screen padding={0} backgroundColor={uiTokens.colors.surface}>
+      <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
 
       <Animated.View entering={getFadeInDown(50)} style={styles.header}>
         <AnimatedPressable
@@ -751,7 +800,7 @@ export default function SessionDetail() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
+          <Ionicons name="arrow-back" size={22} color={uiTokens.colors.textSecondary} />
         </AnimatedPressable>
         <Text style={styles.headerTitle}>Session Details</Text>
         <View style={styles.headerSpacer} />
@@ -788,7 +837,8 @@ export default function SessionDetail() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (uiTokens: ThemeTokens) =>
+  StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -797,17 +847,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
-    backgroundColor: colors.gray[50],
+    backgroundColor: uiTokens.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: uiTokens.colors.border,
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.white,
+    backgroundColor: uiTokens.colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: uiTokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
     ...shadows.sm,
@@ -821,7 +871,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: uiTokens.colors.textPrimary,
   },
   loadingContainer: {
     flex: 1,
@@ -832,12 +882,12 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: typography.fontSize.base,
     marginTop: spacing.md,
-    color: colors.gray[700],
+    color: uiTokens.colors.textSecondary,
     textAlign: "center",
   },
   offlineMissingText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: uiTokens.colors.textMuted,
     marginTop: spacing.sm,
     marginBottom: spacing.lg,
     textAlign: "center",
@@ -868,18 +918,18 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.gray[500],
+    color: uiTokens.colors.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.6,
   },
   sessionTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: uiTokens.colors.textPrimary,
   },
   sessionSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
+    color: uiTokens.colors.textSecondary,
   },
   metricRow: {
     flexDirection: "row",
@@ -887,24 +937,24 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     flex: 1,
-    backgroundColor: colors.gray[50],
+    backgroundColor: uiTokens.colors.surface,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: uiTokens.colors.border,
     padding: spacing.md,
   },
   metricLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: uiTokens.colors.textMuted,
     marginBottom: 4,
   },
   metricValue: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: uiTokens.colors.textPrimary,
   },
   metricValueDanger: {
-    color: colors.error[600],
+    color: uiTokens.colors.error,
   },
   actionButtons: {
     marginBottom: spacing.lg,
@@ -919,19 +969,19 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   primaryActionFill: {
-    backgroundColor: colors.primary[600],
+    backgroundColor: uiTokens.colors.accent,
   },
   successActionButton: {
-    backgroundColor: colors.success[600],
+    backgroundColor: uiTokens.colors.success,
   },
   warningActionButton: {
-    backgroundColor: colors.warning[600],
+    backgroundColor: uiTokens.colors.warning,
   },
   dangerActionButton: {
-    backgroundColor: colors.error[600],
+    backgroundColor: uiTokens.colors.error,
   },
   buttonText: {
-    color: colors.white,
+    color: staticColors.white,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
   },
@@ -942,12 +992,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   noticeSuccess: {
-    backgroundColor: colors.success[50],
-    borderColor: colors.success[200],
+    backgroundColor: colorWithAlpha(uiTokens.colors.success, 0.12),
+    borderColor: colorWithAlpha(uiTokens.colors.success, 0.3),
   },
   noticeWarning: {
-    backgroundColor: colors.warning[50],
-    borderColor: colors.warning[200],
+    backgroundColor: colorWithAlpha(uiTokens.colors.warning, 0.12),
+    borderColor: colorWithAlpha(uiTokens.colors.warning, 0.3),
   },
   noticeRow: {
     flexDirection: "row",
@@ -961,21 +1011,21 @@ const styles = StyleSheet.create({
   noticeTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: uiTokens.colors.textPrimary,
   },
   noticeBody: {
     fontSize: typography.fontSize.sm,
     lineHeight: 18,
-    color: colors.gray[700],
+    color: uiTokens.colors.textSecondary,
   },
   tabContainer: {
     flexDirection: "row",
-    backgroundColor: colors.white,
+    backgroundColor: uiTokens.colors.surfaceElevated,
     borderRadius: borderRadius.xl,
     padding: 4,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: uiTokens.colors.border,
   },
   tab: {
     flex: 1,
@@ -988,15 +1038,15 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
   },
   tabActive: {
-    backgroundColor: colors.primary[600],
+    backgroundColor: uiTokens.colors.accent,
   },
   tabText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[600],
+    color: uiTokens.colors.textSecondary,
   },
   tabTextActive: {
-    color: colors.white,
+    color: staticColors.white,
     fontWeight: typography.fontWeight.bold,
   },
   badge: {
@@ -1024,7 +1074,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     textAlign: "center",
     fontSize: typography.fontSize.base,
-    color: colors.gray[600],
+    color: uiTokens.colors.textSecondary,
   },
   lineCard: {
     marginBottom: spacing.md,
@@ -1040,7 +1090,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: uiTokens.colors.textPrimary,
   },
   badgeContainer: {
     flexDirection: "row",
@@ -1050,7 +1100,7 @@ const styles = StyleSheet.create({
   },
   lineCode: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
+    color: uiTokens.colors.textSecondary,
     marginBottom: spacing.md,
   },
   qtyRow: {
@@ -1059,9 +1109,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     padding: spacing.sm,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.gray[50],
+    backgroundColor: uiTokens.colors.surface,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: uiTokens.colors.border,
   },
   qtyItem: {
     flex: 1,
@@ -1069,35 +1119,35 @@ const styles = StyleSheet.create({
   },
   qtyLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray[500],
+    color: uiTokens.colors.textMuted,
     marginBottom: 4,
   },
   qtyValue: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: uiTokens.colors.textPrimary,
   },
   reasonBox: {
-    backgroundColor: colors.warning[50],
+    backgroundColor: colorWithAlpha(uiTokens.colors.warning, 0.12),
     borderRadius: borderRadius.md,
     padding: 12,
     marginBottom: 8,
     borderLeftWidth: 3,
-    borderLeftColor: colors.warning[600],
+    borderLeftColor: uiTokens.colors.warning,
   },
   reasonLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
-    color: colors.warning[600],
+    color: uiTokens.colors.warning,
     marginBottom: 4,
   },
   reasonNote: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[700],
+    color: uiTokens.colors.textSecondary,
   },
   remark: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[700],
+    color: uiTokens.colors.textSecondary,
     fontStyle: "italic",
     marginBottom: spacing.sm,
   },
@@ -1108,12 +1158,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     padding: 8,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.success[50],
+    backgroundColor: colorWithAlpha(uiTokens.colors.success, 0.12),
   },
   verifiedInfoText: {
     flex: 1,
     fontSize: typography.fontSize.xs,
-    color: colors.success[600],
+    color: uiTokens.colors.success,
   },
   lineActions: {
     flexDirection: "row",
@@ -1138,7 +1188,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   actionButtonText: {
-    color: colors.white,
+    color: staticColors.white,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
   },

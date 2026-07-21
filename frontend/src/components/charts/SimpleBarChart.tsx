@@ -1,16 +1,21 @@
 /**
  * Simple Bar Chart - View-based implementation (no SVG required)
  * Fully functional bar chart using React Native Views
+ *
+ * Colors resolve at runtime from useUiTokens (dark-mode aware); explicit
+ * per-bar `color` values from consumers always win. modernTypography /
+ * modernSpacing / modernBorderRadius are retained for metrics only.
  */
 
 import React from "react";
 import { View, Text, StyleSheet, Dimensions } from "react-native";
 import {
-  modernColors,
   modernTypography,
   modernSpacing,
   modernBorderRadius,
 } from "../../styles/unifiedSystem";
+import { useUiTokens } from "../../hooks/useUiTokens";
+import { colorWithAlpha, type ThemeTokens } from "../../theme/themeTokens";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CHART_WIDTH = SCREEN_WIDTH - modernSpacing.lg * 2 - 80;
@@ -35,6 +40,9 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
   title,
   showValues = true,
 }) => {
+  const uiTokens = useUiTokens();
+  const styles = React.useMemo(() => createStyles(uiTokens), [uiTokens]);
+
   if (!data || data.length === 0) {
     return (
       <View style={styles.container}>
@@ -120,7 +128,8 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
             const barHeight = item.value * scale;
             const x = index * (barWidth + BAR_SPACING);
 
-            const color = item.color || modernColors.primary[500];
+            // Explicit consumer color wins; semantic accent is the default.
+            const color = item.color || uiTokens.colors.accent;
 
             return (
               <View key={index} style={styles.barContainer}>
@@ -171,87 +180,88 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    marginVertical: modernSpacing.md,
-  },
-  title: {
-    ...modernTypography.h5,
-    color: modernColors.text.primary,
-    marginBottom: modernSpacing.sm,
-  },
-  chartContainer: {
-    flexDirection: "row",
-    height: CHART_HEIGHT + 30,
-  },
-  yAxis: {
-    width: PADDING,
-    position: "relative",
-  },
-  yAxisLabel: {
-    position: "absolute",
-    right: modernSpacing.xs,
-  },
-  yAxisText: {
-    ...modernTypography.body.small,
-    fontSize: 10,
-    color: modernColors.text.secondary,
-  },
-  chartArea: {
-    flex: 1,
-    position: "relative",
-    height: CHART_HEIGHT,
-  },
-  gridLine: {
-    position: "absolute",
-    height: 1,
-    backgroundColor: modernColors.border.light,
-    opacity: 0.3,
-  },
-  axisLine: {
-    position: "absolute",
-    backgroundColor: modernColors.border.medium,
-  },
-  barContainer: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
-  },
-  bar: {
-    position: "absolute",
-    borderRadius: modernBorderRadius.xs,
-  },
-  valueLabel: {
-    position: "absolute",
-    transform: [{ translateX: -20 }],
-  },
-  valueText: {
-    ...modernTypography.body.small,
-    fontSize: 10,
-    color: modernColors.text.primary,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  xLabel: {
-    position: "absolute",
-    transform: [{ translateX: -30 }],
-    width: 60,
-  },
-  xLabelText: {
-    ...modernTypography.body.small,
-    fontSize: 10,
-    color: modernColors.text.secondary,
-    textAlign: "center",
-  },
-  emptyState: {
-    height: CHART_HEIGHT,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: modernColors.background.elevated,
-    borderRadius: 8,
-  },
-  emptyText: {
-    ...modernTypography.body.medium,
-    color: modernColors.text.secondary,
-  },
-});
+const createStyles = (uiTokens: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      marginVertical: modernSpacing.md,
+    },
+    title: {
+      ...modernTypography.h5,
+      color: uiTokens.colors.textPrimary,
+      marginBottom: modernSpacing.sm,
+    },
+    chartContainer: {
+      flexDirection: "row",
+      height: CHART_HEIGHT + 30,
+    },
+    yAxis: {
+      width: PADDING,
+      position: "relative",
+    },
+    yAxisLabel: {
+      position: "absolute",
+      right: modernSpacing.xs,
+    },
+    yAxisText: {
+      ...modernTypography.body.small,
+      fontSize: 10,
+      color: uiTokens.colors.textSecondary,
+    },
+    chartArea: {
+      flex: 1,
+      position: "relative",
+      height: CHART_HEIGHT,
+    },
+    gridLine: {
+      position: "absolute",
+      height: 1,
+      backgroundColor: colorWithAlpha(uiTokens.colors.border, 0.6),
+      opacity: 0.3,
+    },
+    axisLine: {
+      position: "absolute",
+      backgroundColor: uiTokens.colors.border,
+    },
+    barContainer: {
+      position: "absolute",
+      width: "100%",
+      height: "100%",
+    },
+    bar: {
+      position: "absolute",
+      borderRadius: modernBorderRadius.xs,
+    },
+    valueLabel: {
+      position: "absolute",
+      transform: [{ translateX: -20 }],
+    },
+    valueText: {
+      ...modernTypography.body.small,
+      fontSize: 10,
+      color: uiTokens.colors.textPrimary,
+      fontWeight: "600",
+      textAlign: "center",
+    },
+    xLabel: {
+      position: "absolute",
+      transform: [{ translateX: -30 }],
+      width: 60,
+    },
+    xLabelText: {
+      ...modernTypography.body.small,
+      fontSize: 10,
+      color: uiTokens.colors.textSecondary,
+      textAlign: "center",
+    },
+    emptyState: {
+      height: CHART_HEIGHT,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: uiTokens.colors.surface,
+      borderRadius: 8,
+    },
+    emptyText: {
+      ...modernTypography.body.medium,
+      color: uiTokens.colors.textSecondary,
+    },
+  });

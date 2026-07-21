@@ -1,6 +1,9 @@
 /**
  * SearchableSelectModal Component
  * Modal with searchable dropdown for selecting options
+ *
+ * Colors resolve at runtime from useUiTokens (dark-mode aware).
+ * modernTypography/Spacing/Radius are retained for metrics only.
  */
 
 import React, { useState, useMemo } from "react";
@@ -18,11 +21,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { VirtualList } from "../common/VirtualList";
 import {
-  modernColors,
   modernTypography,
   modernSpacing,
   modernBorderRadius,
 } from "../../styles/unifiedSystem";
+import { useUiTokens } from "../../hooks/useUiTokens";
+import type { ThemeTokens } from "../../theme/themeTokens";
 
 interface SearchableSelectModalProps {
   visible: boolean;
@@ -43,6 +47,8 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
   placeholder = "Search...",
   testID,
 }) => {
+  const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Filter options based on search query
@@ -77,7 +83,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
       <Ionicons
         name="chevron-forward"
         size={20}
-        color={modernColors.text.tertiary}
+        color={uiTokens.colors.textMuted}
       />
     </TouchableOpacity>
   );
@@ -108,7 +114,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
               <Ionicons
                 name="close"
                 size={24}
-                color={modernColors.text.primary}
+                color={uiTokens.colors.textPrimary}
               />
             </TouchableOpacity>
           </View>
@@ -118,7 +124,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
             <Ionicons
               name="search"
               size={20}
-              color={modernColors.text.tertiary}
+              color={uiTokens.colors.textMuted}
               style={styles.searchIcon}
             />
             <TextInput
@@ -126,7 +132,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder={placeholder}
-              placeholderTextColor={modernColors.text.disabled}
+              placeholderTextColor={uiTokens.colors.textMuted}
               autoCapitalize="none"
               autoCorrect={false}
               testID={`${testID}-search`}
@@ -141,7 +147,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
                 <Ionicons
                   name="close-circle"
                   size={20}
-                  color={modernColors.text.tertiary}
+                  color={uiTokens.colors.textMuted}
                 />
               </TouchableOpacity>
             )}
@@ -162,7 +168,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
                 <Ionicons
                   name="search-outline"
                   size={48}
-                  color={modernColors.text.disabled}
+                  color={uiTokens.colors.textMuted}
                 />
                 <Text style={styles.emptyText}>No options found</Text>
               </View>
@@ -174,82 +180,83 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: modernColors.background.default,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: modernSpacing.md,
-    paddingVertical: modernSpacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: modernColors.border.light,
-  },
-  title: {
-    ...modernTypography.h4,
-    color: modernColors.text.primary,
-  },
-  closeButton: {
-    padding: modernSpacing.xs,
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: modernColors.background.paper,
-    borderRadius: modernBorderRadius.md,
-    marginHorizontal: modernSpacing.md,
-    marginVertical: modernSpacing.sm,
-    paddingHorizontal: modernSpacing.sm,
-  },
-  searchIcon: {
-    marginRight: modernSpacing.xs,
-  },
-  searchInput: {
-    flex: 1,
-    ...modernTypography.body.medium,
-    color: modernColors.text.primary,
-    paddingVertical: modernSpacing.sm,
-  },
-  clearButton: {
-    padding: modernSpacing.xs,
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    paddingHorizontal: modernSpacing.md,
-    paddingBottom: modernSpacing.xl,
-  },
-  optionItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: modernSpacing.md,
-    paddingHorizontal: modernSpacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: modernColors.border.light,
-  },
-  optionText: {
-    ...modernTypography.body.medium,
-    color: modernColors.text.primary,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: modernSpacing["2xl"],
-  },
-  emptyText: {
-    ...modernTypography.body.medium,
-    color: modernColors.text.disabled,
-    marginTop: modernSpacing.sm,
-  },
-});
+const createStyles = (uiTokens: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: uiTokens.colors.background,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: modernSpacing.md,
+      paddingVertical: modernSpacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: uiTokens.colors.border,
+    },
+    title: {
+      ...modernTypography.h4,
+      color: uiTokens.colors.textPrimary,
+    },
+    closeButton: {
+      padding: modernSpacing.xs,
+    },
+    searchContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: uiTokens.colors.surfaceElevated,
+      borderRadius: modernBorderRadius.md,
+      marginHorizontal: modernSpacing.md,
+      marginVertical: modernSpacing.sm,
+      paddingHorizontal: modernSpacing.sm,
+    },
+    searchIcon: {
+      marginRight: modernSpacing.xs,
+    },
+    searchInput: {
+      flex: 1,
+      ...modernTypography.body.medium,
+      color: uiTokens.colors.textPrimary,
+      paddingVertical: modernSpacing.sm,
+    },
+    clearButton: {
+      padding: modernSpacing.xs,
+    },
+    list: {
+      flex: 1,
+    },
+    listContent: {
+      paddingHorizontal: modernSpacing.md,
+      paddingBottom: modernSpacing.xl,
+    },
+    optionItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: modernSpacing.md,
+      paddingHorizontal: modernSpacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: uiTokens.colors.border,
+    },
+    optionText: {
+      ...modernTypography.body.medium,
+      color: uiTokens.colors.textPrimary,
+    },
+    emptyContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingTop: modernSpacing["2xl"],
+    },
+    emptyText: {
+      ...modernTypography.body.medium,
+      color: uiTokens.colors.textMuted,
+      marginTop: modernSpacing.sm,
+    },
+  });
 
 export type { SearchableSelectModalProps };

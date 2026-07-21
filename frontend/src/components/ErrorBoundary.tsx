@@ -9,8 +9,10 @@ import { View, Text, StyleSheet, ScrollView } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary";
 import { errorReporter } from "../services/errorRecovery";
-import { modernColors, modernTypography, modernSpacing } from "../styles/modernDesignSystem";
+import { modernTypography, modernSpacing } from "../styles/modernDesignSystem";
 import { AppButton } from "./ui/AppButton";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 
 interface Props {
   children: ReactNode;
@@ -24,6 +26,8 @@ const ErrorFallback = ({
   error: any;
   resetErrorBoundary: () => void;
 }) => {
+  const tokens = useUiTokens();
+  const styles = React.useMemo(() => createStyles(tokens), [tokens]);
   // Report error when component mounts
   React.useEffect(() => {
     try {
@@ -39,7 +43,7 @@ const ErrorFallback = ({
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.iconContainer}>
-          <Ionicons name="alert-circle-outline" size={80} color={modernColors.error.main} />
+          <Ionicons name="alert-circle-outline" size={80} color={tokens.colors.error} />
         </View>
 
         <Text style={styles.title}>Application Recovery Required</Text>
@@ -84,10 +88,10 @@ export const ErrorBoundary = ({ children, fallback }: Props) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: modernColors.background.default,
+    backgroundColor: tokens.colors.background,
   },
   content: {
     flexGrow: 1,
@@ -98,18 +102,18 @@ const styles = StyleSheet.create({
   iconContainer: {
     marginBottom: modernSpacing.lg,
     padding: modernSpacing.lg,
-    backgroundColor: "rgba(255, 82, 82, 0.1)", // Light red background
+    backgroundColor: colorWithAlpha(tokens.colors.error, 0.1),
     borderRadius: 50,
   },
   title: {
     ...modernTypography.h2,
-    color: modernColors.text.primary,
+    color: tokens.colors.textPrimary,
     marginBottom: modernSpacing.md,
     textAlign: "center",
   },
   message: {
     ...modernTypography.body.large,
-    color: modernColors.text.secondary,
+    color: tokens.colors.textSecondary,
     textAlign: "center",
     marginBottom: modernSpacing.xl,
     paddingHorizontal: modernSpacing.md,
@@ -117,20 +121,20 @@ const styles = StyleSheet.create({
   details: {
     width: "100%",
     padding: modernSpacing.md,
-    backgroundColor: modernColors.background.paper,
+    backgroundColor: tokens.colors.surface,
     borderRadius: 12,
     marginBottom: modernSpacing.xl,
     borderWidth: 1,
-    borderColor: modernColors.border.light,
+    borderColor: tokens.colors.border,
   },
   detailsTitle: {
     ...modernTypography.h4,
-    color: modernColors.text.primary,
+    color: tokens.colors.textPrimary,
     marginBottom: modernSpacing.sm,
   },
   detailsText: {
     ...modernTypography.body.small,
-    color: modernColors.text.secondary,
+    color: tokens.colors.textSecondary,
     fontFamily: "monospace",
     marginBottom: modernSpacing.xs,
   },

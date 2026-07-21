@@ -8,9 +8,10 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Modal } from "../ui/Modal";
-import { modernColors } from "@/styles/unifiedSystem";
 import { verifyPin } from "@/services/api/api"; // We will add this next
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import type { ThemeTokens } from "@/theme/themeTokens";
+import { colors as staticColors } from "@/theme/legacyCompat";
 
 interface PinEntryModalProps {
   visible: boolean;
@@ -29,6 +30,8 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
   staffUsername,
   entityId,
 }) => {
+  const uiTokens = useUiTokens();
+  const styles = React.useMemo(() => createStyles(uiTokens), [uiTokens]);
   const [supervisorUsername, setSupervisorUsername] = useState("");
   const [pin, setPin] = useState("");
   const [reason, setReason] = useState("");
@@ -96,7 +99,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             value={supervisorUsername}
             onChangeText={setSupervisorUsername}
             placeholder="Enter username"
-            placeholderTextColor={modernColors.text.secondary}
+            placeholderTextColor={uiTokens.colors.textMuted}
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -109,7 +112,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             value={pin}
             onChangeText={setPin}
             placeholder="Enter PIN"
-            placeholderTextColor={modernColors.text.secondary}
+            placeholderTextColor={uiTokens.colors.textMuted}
             secureTextEntry
             keyboardType="numeric"
             autoCorrect={false}
@@ -123,7 +126,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             value={reason}
             onChangeText={setReason}
             placeholder="Why is this action needed?"
-            placeholderTextColor={modernColors.text.secondary}
+            placeholderTextColor={uiTokens.colors.textMuted}
             multiline
             numberOfLines={3}
             autoCapitalize="sentences"
@@ -146,7 +149,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color={uiSemanticColors.text.inverse} />
+              <ActivityIndicator color={staticColors.white} />
             ) : (
               <Text style={styles.primaryButtonText}>Authorize</Text>
             )}
@@ -157,69 +160,71 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 10,
-  },
-  description: {
-    color: modernColors.text.secondary,
-    marginBottom: 20,
-    fontSize: 14,
-  },
-  errorText: {
-    color: modernColors.error.main,
-    marginBottom: 15,
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    color: modernColors.text.primary,
-    marginBottom: 8,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  input: {
-    backgroundColor: modernColors.background.elevated, // Was tertiary
-    borderRadius: 8,
-    padding: 12,
-    color: modernColors.text.primary,
-    borderWidth: 1,
-    borderColor: modernColors.border.light, // Was default
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: "top",
-  },
-  actions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 20,
-    gap: 10,
-  },
-  button: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    minWidth: 100,
-    alignItems: "center",
-  },
-  cancelButton: {
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: modernColors.border.light,
-  },
-  primaryButton: {
-    backgroundColor: modernColors.primary[500],
-  },
-  cancelButtonText: {
-    color: modernColors.text.primary,
-    fontWeight: "600",
-  },
-  primaryButtonText: {
-    color: uiSemanticColors.text.inverse,
-    fontWeight: "600",
-  },
-});
+const createStyles = (uiTokens: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      paddingVertical: 10,
+    },
+    description: {
+      color: uiTokens.colors.textSecondary,
+      marginBottom: 20,
+      fontSize: 14,
+    },
+    errorText: {
+      color: uiTokens.colors.error,
+      marginBottom: 15,
+      fontSize: 14,
+      fontWeight: "500",
+    },
+    inputGroup: {
+      marginBottom: 16,
+    },
+    label: {
+      color: uiTokens.colors.textPrimary,
+      marginBottom: 8,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    input: {
+      backgroundColor: uiTokens.colors.surfaceElevated,
+      borderRadius: 8,
+      padding: 12,
+      color: uiTokens.colors.textPrimary,
+      borderWidth: 1,
+      borderColor: uiTokens.colors.border,
+    },
+    textArea: {
+      height: 80,
+      textAlignVertical: "top",
+    },
+    actions: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      marginTop: 20,
+      gap: 10,
+    },
+    button: {
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderRadius: 8,
+      minWidth: 100,
+      alignItems: "center",
+    },
+    cancelButton: {
+      backgroundColor: "transparent",
+      borderWidth: 1,
+      borderColor: uiTokens.colors.border,
+    },
+    primaryButton: {
+      backgroundColor: uiTokens.colors.accent,
+    },
+    cancelButtonText: {
+      color: uiTokens.colors.textPrimary,
+      fontWeight: "600",
+    },
+    // White regardless of theme: sits on the semantic accent-filled button.
+    primaryButtonText: {
+      color: staticColors.white,
+      fontWeight: "600",
+    },
+  });

@@ -3,7 +3,7 @@
  * Displays all items with variances (verified qty != system qty)
  * Refactored to use Aurora Design System
  */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -27,8 +27,8 @@ import {
 import { ItemFilters, FilterValues } from "@/domains/inventory/components/ItemFilters";
 import { ScreenContainer, ModernCard, AnimatedPressable } from "@/components/ui";
 import { useSettingsStore } from "@/store/settingsStore";
-import { theme } from "@/styles/modernDesignSystem";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 import { toastService } from "@/services/toastService";
 import { saveArrayBufferExport } from "@/utils/fileExport";
 import { safeBackNavigation } from "@/utils/navigation";
@@ -36,6 +36,7 @@ import { safeBackNavigation } from "@/utils/navigation";
 export default function VariancesScreen() {
   const router = useRouter();
   const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
   const [variances, setVariances] = useState<VarianceItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -250,16 +251,17 @@ export default function VariancesScreen() {
             });
           }
         }}
-        style={{ marginBottom: theme.spacing.md }}
+        style={{ marginBottom: uiTokens.spacing.md }}
       >
         <ModernCard
           variant="outlined"
           elevation="none"
-          padding={theme.spacing.md}
+          padding={uiTokens.spacing.md}
           style={{
             borderColor: isSelected ? uiTokens.colors.accent : `${statusColor}40`,
             borderWidth: isSelected ? 2 : 1,
-            backgroundColor: isSelected ? "rgba(79, 70, 229, 0.1)" : undefined,
+            // 10%-alpha accent as the selected-surface tint
+            backgroundColor: isSelected ? colorWithAlpha(uiTokens.colors.accent, 0.1) : undefined,
           }}
         >
           <View style={styles.varianceHeader}>
@@ -298,7 +300,16 @@ export default function VariancesScreen() {
                 styles.varianceBadge,
                 { backgroundColor: `${statusColor}20` }, // Low opacity background
               ]}
+              accessible
+              accessibilityLabel={`Variance ${varianceSign}${(item.variance ?? 0).toFixed(2)}, ${
+                isPositive ? "overage" : "shortage"
+              }`}
             >
+              <Ionicons
+                name={isPositive ? "trending-up" : "trending-down"}
+                size={14}
+                color={statusColor}
+              />
               <Text style={[styles.varianceBadgeText, { color: statusColor }]}>
                 {varianceSign}
                 {(item.variance ?? 0).toFixed(2)}
@@ -356,7 +367,7 @@ export default function VariancesScreen() {
 
   return (
     <ScreenContainer>
-      <StatusBar style="light" />
+      <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
       <View style={styles.container}>
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
@@ -454,8 +465,8 @@ export default function VariancesScreen() {
           <ModernCard
             variant="outlined"
             elevation="none"
-            padding={theme.spacing.sm}
-            style={{ marginBottom: theme.spacing.md }}
+            padding={uiTokens.spacing.sm}
+            style={{ marginBottom: uiTokens.spacing.md }}
           >
             <ItemFilters
               onFilterChange={setFilters}
@@ -469,8 +480,8 @@ export default function VariancesScreen() {
           <ModernCard
             variant="outlined"
             elevation="none"
-            padding={theme.spacing.sm}
-            style={{ marginBottom: theme.spacing.md }}
+            padding={uiTokens.spacing.sm}
+            style={{ marginBottom: uiTokens.spacing.md }}
           >
             <Text style={[styles.offlineNoticeTitle, { color: uiTokens.colors.textPrimary }]}>
               Offline mode enabled
@@ -486,8 +497,8 @@ export default function VariancesScreen() {
           <ModernCard
             variant="outlined"
             elevation="none"
-            padding={theme.spacing.sm}
-            style={{ marginBottom: theme.spacing.md }}
+            padding={uiTokens.spacing.sm}
+            style={{ marginBottom: uiTokens.spacing.md }}
           >
             <Text style={[styles.exportHintTitle, { color: uiTokens.colors.textPrimary }]}>
               ERPNext import format
@@ -578,11 +589,12 @@ export default function VariancesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ spacing, radius }: ThemeTokens) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 60,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: spacing.md,
   },
   centered: {
     flex: 1,
@@ -594,16 +606,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.md,
+    marginBottom: spacing.md,
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.md,
+    gap: spacing.md,
   },
   backButton: {
-    padding: theme.spacing.xs,
-    borderRadius: theme.borderRadius.full,
+    padding: spacing.xs,
+    borderRadius: radius.full,
     borderWidth: 1,
   },
   pageTitle: {
@@ -621,7 +633,7 @@ const styles = StyleSheet.create({
   },
   exportActions: {
     flexDirection: "row",
-    gap: theme.spacing.xs,
+    gap: spacing.xs,
   },
   exportFormatButton: {
     minWidth: 52,
@@ -634,13 +646,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   listContent: {
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: spacing.xl,
   },
   varianceHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: theme.spacing.md,
+    marginBottom: spacing.md,
   },
   varianceHeaderLeft: {
     flex: 1,
@@ -654,10 +666,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   varianceBadge: {
-    borderRadius: theme.borderRadius.full,
-    paddingHorizontal: theme.spacing.sm,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     minWidth: 60,
+    flexDirection: "row",
+    gap: 4,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -668,10 +682,10 @@ const styles = StyleSheet.create({
   qtyRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-    padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.sm,
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: radius.sm,
   },
   qtyItem: {
     flex: 1,
@@ -693,7 +707,7 @@ const styles = StyleSheet.create({
   locationRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.xs,
+    gap: spacing.xs,
     marginBottom: 4,
   },
   locationText: {
@@ -702,32 +716,32 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 12,
     fontStyle: "italic",
-    marginBottom: theme.spacing.xs,
+    marginBottom: spacing.xs,
     marginTop: 2,
   },
   verificationInfo: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.xs,
-    marginTop: theme.spacing.xs,
-    paddingTop: theme.spacing.xs,
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+    paddingTop: spacing.xs,
     borderTopWidth: 1,
   },
   verificationInfoText: {
     fontSize: 12,
   },
   loadingText: {
-    marginTop: theme.spacing.md,
+    marginTop: spacing.md,
     fontSize: 16,
   },
   emptyText: {
     fontSize: 20,
     fontWeight: "500",
-    marginTop: theme.spacing.md,
+    marginTop: spacing.md,
   },
   emptySubtext: {
     fontSize: 16,
-    marginTop: theme.spacing.xs,
+    marginTop: spacing.xs,
   },
   bulkActionBar: {
     position: "absolute",
@@ -739,7 +753,7 @@ const styles = StyleSheet.create({
   bulkButton: {
     flex: 1,
     height: 50,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: radius.lg,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

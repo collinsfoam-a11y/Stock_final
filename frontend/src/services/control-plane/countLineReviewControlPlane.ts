@@ -28,6 +28,9 @@ type ReviewCommandOptions = {
   session_id?: string;
   notes?: string;
   assign_to?: string;
+  // Set after the backend rejects an approval with 409 STALE_MASTER_DATA and
+  // the supervisor explicitly confirms approving against the stale baseline.
+  acknowledge_stale_master_data?: boolean;
 };
 
 const log = createLogger("countLineReviewControlPlane");
@@ -334,10 +337,10 @@ export const overlayCountLineReviewState = async <T extends Record<string, any>>
 
 export const approveCountLineCommand = async (lineId: string, options?: ReviewCommandOptions) => {
   if (!controlPlaneFlags.enableEventDrivenCountLineReviews) {
-    const response = await api.put(
-      `/api/count-lines/${lineId}/approve`,
-      options?.notes ? { notes: options.notes } : {}
-    );
+    const body: Record<string, unknown> = {};
+    if (options?.notes) body.notes = options.notes;
+    if (options?.acknowledge_stale_master_data) body.acknowledge_stale_master_data = true;
+    const response = await api.put(`/api/count-lines/${lineId}/approve`, body);
     return response.data;
   }
 
