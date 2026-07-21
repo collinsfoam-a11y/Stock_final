@@ -923,6 +923,30 @@ async def lifespan(app: FastAPI):  # noqa: C901
     except Exception as e:
         logger.error("Error saving backend port info: %s", e)
 
+    # v2.2: event-driven ERP sync consumer (feature-flagged; polling stays on
+    # as the fallback path regardless of this flag).
+    erp_event_consumer = None
+    if getattr(settings, "ERP_EVENT_SYNC_ENABLED", False):
+        try:
+            if redis_service is not None and redis_service.is_connected:
+                from backend.services.erp_event_sync import ErpSyncEventConsumer
+                from backend.services.websocket_service import manager as ws_manager
+
+                erp_event_consumer = ErpSyncEventConsumer(
+                    redis_service.client,
+                    db,
+                    broadcast=ws_manager.broadcast,
+                )
+                await erp_event_consumer.start()
+                logger.info("OK: ERP event sync consumer started")
+            else:
+                logger.warning(
+                    "ERP_EVENT_SYNC_ENABLED but Redis unavailable; staying on polling fallback"
+                )
+        except Exception as e:
+            logger.warning("ERP event sync consumer failed to start: %s", e)
+            erp_event_consumer = None
+
     yield
 
     # Shutdown with timeout handling
@@ -931,6 +955,19 @@ async def lifespan(app: FastAPI):  # noqa: C901
     shutdown_timeout = 30  # 30 seconds max for graceful shutdown
 
     shutdown_tasks = []
+
+    # Stop event-driven ERP sync consumer
+    if erp_event_consumer is not None:
+        event_consumer = erp_event_consumer
+
+        async def stop_event_consumer():
+            try:
+                await event_consumer.stop()
+                logger.info("✓ ERP event sync consumer stopped")
+            except Exception as e:
+                logger.error("Error stopping ERP event sync consumer: %s", str(e))
+
+        shutdown_tasks.append(stop_event_consumer())
 
     # Stop sync services
     if erp_sync_service is not None:

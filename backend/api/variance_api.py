@@ -1,9 +1,43 @@
-from typing import Any
+from typing import Any, Optional
+
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import get_current_user
 
 router = APIRouter()
+
+
+class VarianceAssistantRequest(BaseModel):
+    """Input for the AI variance assistant (v2.2 Priority 4)."""
+
+    item_code: str = Field(..., min_length=1)
+    expected_qty: float
+    counted_qty: float
+    session_id: Optional[str] = None
+
+
+@router.post("/variance/assistant")
+async def analyze_variance(
+    payload: VarianceAssistantRequest,
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Explain a variance and recommend next steps.
+
+    Recommendations only -- no automatic decisions are taken. Returns
+    probable_causes (ranked, with confidence and explanation), an overall
+    confidence, recommended_action, similar_items, and risk_level.
+    """
+    from backend.db.runtime import get_db
+    from backend.services.variance_assistant import VarianceAssistant
+
+    assistant = VarianceAssistant(get_db())
+    return await assistant.analyze(
+        item_code=payload.item_code,
+        expected_qty=payload.expected_qty,
+        counted_qty=payload.counted_qty,
+        session_id=payload.session_id,
+    )
 
 
 @router.get("/variance-reasons", deprecated=True)

@@ -965,6 +965,13 @@ register_routers(
     logger,
 )
 
+# v2.2: event-driven ERP sync (feature-flagged at request time; endpoints
+# answer 503 when ERP_EVENT_SYNC_ENABLED is off so the bridge falls back to
+# the polling path).
+from backend.api.sync_events_api import router as sync_events_router  # noqa: E402
+
+app.include_router(sync_events_router)
+
 if os.getenv("LOG_ROUTE_TABLE", "false").lower() == "true":
     for route in app.routes:
         if hasattr(route, "path"):

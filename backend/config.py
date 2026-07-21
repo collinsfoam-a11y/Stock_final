@@ -410,6 +410,9 @@ class Settings(PydanticBaseSettings):
     RATE_LIMIT_TTL_SECONDS: int = Field(300, ge=1)
 
     # Sync Services
+    # v2.2: event-driven ERP sync over Redis Streams (opt-in; polling remains
+    # the fallback path and keeps running regardless of this flag).
+    ERP_EVENT_SYNC_ENABLED: bool = False
     ERP_SYNC_ENABLED: bool = True
     ERP_SYNC_INTERVAL: int = Field(3600, ge=60)  # 1 hour
     AUTO_SYNC_ENABLED: bool = False
@@ -659,6 +662,9 @@ except Exception as e:
             self.RATE_LIMIT_BURST = int(os.getenv("RATE_LIMIT_BURST", 20))
             self.MAX_CONCURRENT = int(os.getenv("MAX_CONCURRENT", 50))
             self.METRICS_HISTORY_SIZE = int(os.getenv("METRICS_HISTORY_SIZE", 1000))
+            self.ERP_EVENT_SYNC_ENABLED = (
+                os.getenv("ERP_EVENT_SYNC_ENABLED", "false").lower() == "true"
+            )
             self.ERP_SYNC_ENABLED = os.getenv("ERP_SYNC_ENABLED", "true").lower() == "true"
             self.ERP_SYNC_INTERVAL = int(os.getenv("ERP_SYNC_INTERVAL", 3600))
             self.AUTO_SYNC_ENABLED = _parse_bool(os.getenv("AUTO_SYNC_ENABLED"), default=False)
