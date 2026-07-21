@@ -28,7 +28,7 @@ import {
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { haptics } from "@/services/haptics";
-import { getAccessibleButtonProps } from "@/utils/accessibility";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 interface ModernInputProps {
   label?: string;
@@ -101,6 +101,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   const isPassword = secureTextEntry;
   const showPasswordToggle = isPassword && value.length > 0;
   const showClear = showClearButton && value.length > 0 && !disabled && editable;
+  const decorativeIconProps = getDecorativeIconProps();
 
   const togglePasswordVisibility = () => {
     void haptics.light();
@@ -190,6 +191,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
               : {})}
           >
             <Ionicons
+              {...decorativeIconProps}
               name={icon}
               size={20}
               color={error ? uiTokens.colors.error : uiTokens.colors.textSecondary}
@@ -233,7 +235,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
               label: `Clear ${label || "input"}`,
             })}
           >
-            <Ionicons name="close-circle" size={20} color={uiTokens.colors.textSecondary} />
+            <Ionicons {...decorativeIconProps} name="close-circle" size={20} color={uiTokens.colors.textSecondary} />
           </TouchableOpacity>
         )}
 
@@ -246,6 +248,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             })}
           >
             <Ionicons
+              {...decorativeIconProps}
               name={isPasswordVisible ? "eye-off" : "eye"}
               size={20}
               color={uiTokens.colors.textSecondary}
@@ -267,7 +270,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
                 })
               : {})}
           >
-            <Ionicons name={rightIcon} size={20} color={uiTokens.colors.textSecondary} />
+            <Ionicons {...decorativeIconProps} name={rightIcon} size={20} color={uiTokens.colors.textSecondary} />
           </TouchableOpacity>
         )}
       </Pressable>

@@ -24,3 +24,7 @@
 ## 2025-05-22 - Enhancing Empty States with Accessible Grouping and Animations
 **Learning:** Empty states benefit from entrance animations (like `FadeIn`) to feel less "stark." For accessibility, grouping the icon, title, and message into a single accessible unit with a descriptive `accessibilityLabel` provides a better experience for screen reader users. However, interactive elements (like action buttons) MUST remain outside this grouping to prevent them from becoming unreachable.
 **Action:** Wrap non-interactive empty state content in a single `accessible={true}` container, but keep action buttons as separate siblings to maintain accessibility tree depth.
+
+## 2026-05-23 - Hiding Decorative Icons from Screen Readers in Composite Components
+**Learning:** In composite interactive components like `ModernInput` or custom buttons, the outer wrapper (like `TouchableOpacity`) often provides the `accessibilityLabel` for the entire interaction unit using `getAccessibleButtonProps`. If the inner structural or visual icons (like `Ionicons`) are not explicitly marked as decorative, screen readers may read them aloud in addition to the wrapper's label, creating redundant and confusing audio clutter.
+**Action:** Always apply `getDecorativeIconProps()` to child structural or visual icons when the parent wrapper already describes the interaction state to screen readers.
