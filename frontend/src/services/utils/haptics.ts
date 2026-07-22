@@ -1,1 +1,0 @@
-export { haptics } from "../haptics";

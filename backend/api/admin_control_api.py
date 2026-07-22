@@ -869,10 +869,14 @@ async def clear_service_logs(
         if service == "backend" or service == "sql_server":
             log_file = settings.LOG_FILE or "app.log"
             log_path = Path(log_file)
-            if log_path.exists():
-                # Clear the file
-                with open(log_path, "w", encoding="utf-8") as f:
-                    f.write("")
+
+            def _truncate_log() -> None:
+                if log_path.exists():
+                    with open(log_path, "w", encoding="utf-8") as f:
+                        f.write("")
+
+            # Offload blocking file I/O so it doesn't stall the event loop.
+            await asyncio.to_thread(_truncate_log)
 
         return {"success": True, "message": f"Logs for {service} cleared successfully"}
     except Exception as e:

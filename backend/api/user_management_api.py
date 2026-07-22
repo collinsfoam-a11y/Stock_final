@@ -5,7 +5,7 @@ Full CRUD endpoints for managing users - Admin only
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional, cast
+from typing import Any, NoReturn, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, EmailStr, Field
@@ -189,7 +189,7 @@ def _error_detail(message: str, code: str) -> dict[str, Any]:
     return {"success": False, "error": {"message": message, "code": code}}
 
 
-def _raise_http_error(status_code: int, message: str, code: str) -> None:
+def _raise_http_error(status_code: int, message: str, code: str) -> NoReturn:
     raise HTTPException(status_code=status_code, detail=_error_detail(message, code))
 
 
