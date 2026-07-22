@@ -7,10 +7,9 @@ type UiTokens = ReturnType<typeof useUiTokens>;
 
 /**
  * Styles for the staff item-detail screen. Extracted from the component so the
- * screen file stays focused on behavior. Depends only on theme tokens and the
- * bottom safe-area inset.
+ * screen file stays focused on behavior. Depends only on theme tokens.
  */
-export function createItemDetailStyles(uiTokens: UiTokens, insetsBottom: number) {
+export function createItemDetailStyles(uiTokens: UiTokens) {
     return StyleSheet.create({
       loadingContainer: {
         flex: 1,
@@ -44,6 +43,12 @@ export function createItemDetailStyles(uiTokens: UiTokens, insetsBottom: number)
         textAlign: "center",
       },
       keyboardView: {
+        flex: 1,
+      },
+      // The ScrollView must claim the viewport height (flex: 1); RN defaults
+      // flexShrink to 0, so without this it sizes to full content height,
+      // overflows the column, and stops scrolling on iOS.
+      scrollView: {
         flex: 1,
       },
       scrollContent: {
@@ -237,9 +242,6 @@ export function createItemDetailStyles(uiTokens: UiTokens, insetsBottom: number)
         fontWeight: "700",
         color: uiTokens.colors.textSecondary,
         textTransform: "uppercase",
-      },
-      submitSpacer: {
-        height: Math.max(96, insetsBottom + 88),
       },
       recountBanner: {
         flexDirection: "row",

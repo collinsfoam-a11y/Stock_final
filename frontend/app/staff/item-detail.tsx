@@ -14,7 +14,6 @@ import {
   KeyboardAvoidingView,
   TouchableOpacity,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
@@ -93,7 +92,6 @@ function SectionHeading({
 }
 
 export default function ItemDetailScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const uiTokens = useUiTokens();
   const decorativeIconProps = getDecorativeIconProps();
@@ -109,8 +107,8 @@ export default function ItemDetailScreen() {
   const [mrp, setMrp] = useState("");
   const [condition] = useState("Good");
   const styles = useMemo(
-    () => createItemDetailStyles(uiTokens, insets.bottom),
-    [insets.bottom, uiTokens]
+    () => createItemDetailStyles(uiTokens),
+    [uiTokens]
   );
 
   const handleBackPress = useCallback(() => {
@@ -390,6 +388,7 @@ export default function ItemDetailScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="on-drag"
@@ -629,7 +628,6 @@ export default function ItemDetailScreen() {
             </>
           )}
 
-          <View style={styles.submitSpacer} />
         </ScrollView>
 
         <ItemSubmitBar
