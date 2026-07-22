@@ -134,7 +134,11 @@ async def is_global_disable_active(*, request_context: Any, db: Any = None) -> b
 
 
 async def _load_phase0_flags(db: Any) -> dict[str, Optional[FeatureFlag]]:
-    return {key: await _load_flag(db, key) for key in (BL_V2_GLOBAL_DISABLE, *_SCOPED_FLAG_KEYS)}
+    import asyncio
+
+    keys = (BL_V2_GLOBAL_DISABLE, *_SCOPED_FLAG_KEYS)
+    results = await asyncio.gather(*[_load_flag(db, key) for key in keys])
+    return dict(zip(keys, results, strict=True))
 
 
 async def _load_flag(db: Any, key: str) -> Optional[FeatureFlag]:

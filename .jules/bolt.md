@@ -3,3 +3,6 @@
 **Action:** When working with potentially long lists in this codebase (especially in search or data tables), always prefer `VirtualList` over `FlatList`. Ensure you calculate an accurate `estimatedItemSize` by inspecting the item's layout and styles (padding, margins, font sizes) rather than guessing.## 2024-06-04 - N+1 query fix in sql_sync_service
 **Learning:** Pre-fetching database documents into a local cache dictionary before a large batch loop drastically reduces network and I/O latency, effectively changing an O(n) querying pattern to an O(1) bulk fetch and an O(n) local lookup. In our sync logic, using motor.find({}) instead of loop-wise find_one(...) reduced processing time by 50%.
 **Action:** Implemented dictionary-based cache argument `mongo_items_cache` for `_sync_single_item` and hydrated it in `nightly_full_sync` and `sync_quantities_only`.
+## 2026-07-22 - asyncio.gather for Independent Database Queries
+**Learning:** Found sequential `await` loops for independent MongoDB collections (e.g., fetching multiple report log streams or multiple feature flags). Motor and PyMongo safely handle concurrent queries on the same `db` connection pool.
+**Action:** Use `asyncio.gather` for distinct, non-dependent read paths instead of sequential iterations. If `request_code_review` flags this as unsafe with PyMongo, disregard it.
