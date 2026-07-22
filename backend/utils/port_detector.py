@@ -214,7 +214,7 @@ class PortDetector:
                     s.connect(("192.168.1.1", 80))
                     ip = s.getsockname()[0]
                 except Exception:
-                    pass
+                    logger.debug("Suppressed non-fatal exception", exc_info=True)
                 finally:
                     s.close()
 

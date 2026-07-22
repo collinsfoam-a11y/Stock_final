@@ -391,7 +391,7 @@ async def get_active_users(current_user: dict = Depends(require_admin)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch active users",
-        )
+        ) from e
 
 
 @admin_dashboard_router.get("/error-logs", response_model=list[ErrorLogEntry])
@@ -436,7 +436,7 @@ async def get_error_logs(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch error logs",
-        )
+        ) from e
 
 
 @admin_dashboard_router.get("/performance-metrics", response_model=list[PerformanceMetric])

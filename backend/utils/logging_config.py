@@ -49,6 +49,9 @@ class AppNameFilter(logging.Filter):
             record.msg = msg
             record.args = ()
         except Exception:
+            # Intentionally silent: this runs inside the logging pipeline
+            # itself, so emitting a log record here could recurse. The
+            # unsanitized record simply passes through unmodified.
             pass
 
         return True

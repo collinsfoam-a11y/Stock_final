@@ -434,7 +434,7 @@ async def get_user(
     # Validate ObjectId
     try:
         oid = ObjectId(user_id)
-    except Exception:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
@@ -444,7 +444,7 @@ async def get_user(
                     "code": "INVALID_ID",
                 },
             },
-        )
+        ) from exc
 
     user = await db.users.find_one({"_id": oid})
 
@@ -617,7 +617,7 @@ async def delete_user(
     # Validate ObjectId
     try:
         oid = ObjectId(user_id)
-    except Exception:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
@@ -627,7 +627,7 @@ async def delete_user(
                     "code": "INVALID_ID",
                 },
             },
-        )
+        ) from exc
 
     # Check if user exists
     existing = await db.users.find_one({"_id": oid})

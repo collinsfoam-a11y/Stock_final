@@ -101,7 +101,7 @@ async def get_failed_logins(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve failed logins: {str(e)}",
-        )
+        ) from e
 
 
 @security_router.get("/suspicious-activity")
@@ -173,7 +173,7 @@ async def get_suspicious_activity(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve suspicious activity: {str(e)}",
-        )
+        ) from e
 
 
 @security_router.get("/sessions")
@@ -257,7 +257,7 @@ async def get_security_sessions(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve sessions: {str(e)}",
-        )
+        ) from e
 
 
 @security_router.get("/audit-log")
@@ -329,7 +329,7 @@ async def get_audit_log(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve audit log: {str(e)}",
-        )
+        ) from e
 
 
 @security_router.get("/ip-tracking")
@@ -394,7 +394,7 @@ async def get_ip_tracking(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve IP tracking: {str(e)}",
-        )
+        ) from e
 
 
 @security_router.get("/summary")
@@ -480,4 +480,4 @@ async def get_security_summary(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve security summary: {str(e)}",
-        )
+        ) from e

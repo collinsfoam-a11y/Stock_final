@@ -35,7 +35,7 @@ os.environ.update(
     }
 )
 
-from httpx import ASGITransport, AsyncClient  # noqa: E402
+from httpx import ASGITransport, AsyncClient
 
 # Import app and test utilities
 try:

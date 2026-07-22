@@ -14,6 +14,10 @@ on:
     - cron: '0 6 * * *'  # Daily at 6 AM UTC
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   # ==========================================
   # Dependency Updates Check
@@ -21,7 +25,8 @@ jobs:
   dependency-check:
     name: Dependency Check
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 15
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -33,7 +38,7 @@ jobs:
 
       - name: Check Python dependencies
         run: |
-          pip install safety pip-audit
+          pip install safety==3.8.1 pip-audit==2.10.1
           echo "## Security Audit" > audit-report.md
           safety check -r backend/requirements.production.txt --full-report >> audit-report.md || true
           pip-audit -r backend/requirements.production.txt >> audit-report.md || true
@@ -50,6 +55,7 @@ jobs:
   stale:
     name: Mark Stale
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       issues: write
       pull-requests: write

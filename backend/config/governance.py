@@ -5,7 +5,7 @@ The canonical governance configuration lives in backend/config_governance.py.
 This file re-exports those values to avoid drift, but should not be used for new imports.
 """
 
-from backend.config_governance import (  # noqa: F401
+from backend.config_governance import (
     GOVERNANCE_FINGERPRINT,
     SQL_MAX_LATENCY_MS,
     SQL_MAX_VARIANCE,

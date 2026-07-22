@@ -300,7 +300,7 @@ async def claim_rack(
             _safe_log_value(rack_id),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=f"Failed to claim rack: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to claim rack: {str(e)}") from e
 
 
 @router.post("/{rack_id}/release", response_model=RackReleaseResponse)

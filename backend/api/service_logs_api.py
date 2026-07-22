@@ -106,7 +106,7 @@ async def get_backend_logs(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get backend logs: {str(e)}",
-        )
+        ) from e
 
 
 @service_logs_router.get("/frontend")
@@ -139,7 +139,7 @@ async def get_frontend_logs(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get frontend logs: {str(e)}",
-        )
+        ) from e
 
 
 @service_logs_router.get("/mongodb")
@@ -187,7 +187,7 @@ async def get_mongodb_logs(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get MongoDB logs: {str(e)}",
-        )
+        ) from e
 
 
 @service_logs_router.get("/system")
@@ -215,7 +215,7 @@ async def get_system_logs(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get system logs: {str(e)}",
-        )
+        ) from e
 
 
 @service_logs_router.post("/clear")
@@ -249,4 +249,4 @@ async def clear_logs(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to clear logs: {str(e)}",
-        )
+        ) from e

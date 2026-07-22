@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from backend import app_factory as _app_factory
-from backend.app_factory import *  # noqa: F401,F403
+from backend.app_factory import *  # noqa: F403
 
 
 def create_app() -> FastAPI:

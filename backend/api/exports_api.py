@@ -95,7 +95,7 @@ async def create_export_schedule(
                 "success": False,
                 "error": {"message": str(e), "code": "INVALID_INPUT"},
             },
-        )
+        ) from e
 
 
 @exports_router.get("/schedules")

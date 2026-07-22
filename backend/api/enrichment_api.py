@@ -148,7 +148,7 @@ async def record_item_enrichment(
             _safe_log_value(request.item_code),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=f"Failed to record enrichment: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to record enrichment: {str(e)}") from e
 
 
 @enrichment_router.get("/completeness/{item_code}", response_model=DataCompletenessResponse)
@@ -180,7 +180,9 @@ async def check_data_completeness(
             _safe_log_value(item_code),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=f"Failed to check completeness: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to check completeness: {str(e)}"
+        ) from e
 
 
 @enrichment_router.get("/stats")
@@ -206,7 +208,9 @@ async def get_enrichment_statistics(
 
     except Exception as e:
         logger.error("Enrichment stats error: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Failed to get enrichment stats: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get enrichment stats: {str(e)}"
+        ) from e
 
 
 @enrichment_router.get("/incomplete")
@@ -232,7 +236,9 @@ async def get_incomplete_items(
 
     except Exception as e:
         logger.error("Get incomplete items error: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Failed to get incomplete items: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get incomplete items: {str(e)}"
+        ) from e
 
 
 @enrichment_router.get("/leaderboard")
@@ -258,7 +264,7 @@ async def get_enrichment_leaderboard_endpoint(
 
     except Exception as e:
         logger.error("Leaderboard error: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Failed to get leaderboard: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get leaderboard: {str(e)}") from e
 
 
 @enrichment_router.post("/bulk")
@@ -289,7 +295,7 @@ async def bulk_import_enrichments_endpoint(
 
     except Exception as e:
         logger.error("Bulk import error: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Bulk import failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Bulk import failed: {str(e)}") from e
 
 
 @enrichment_router.post("/validate")
@@ -325,4 +331,4 @@ async def validate_enrichment_data_endpoint(
 
     except Exception as e:
         logger.error("Validation error: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}") from e

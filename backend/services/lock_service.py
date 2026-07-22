@@ -64,7 +64,7 @@ class LockService:
             logger.debug(f"Lock acquired: {key} by {owner}")
             return True
 
-        except DuplicateKeyError:
+        except DuplicateKeyError as exc:
             # Lock exists. Check if it's expired (in case TTL monitor hasn't run yet)
             # or if we own it (re-entrant? No, we enforce simple locking for now)
 
@@ -89,7 +89,7 @@ class LockService:
             logger.warning(
                 f"Failed to acquire lock: {key} is held by {existing_lock.get('owner') if existing_lock else 'unknown'}"
             )
-            raise ResourceLockedError(f"Resource {key} is currently locked.")
+            raise ResourceLockedError(f"Resource {key} is currently locked.") from exc
 
     async def release_lock(self, key: str, owner: str):
         """

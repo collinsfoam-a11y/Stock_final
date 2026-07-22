@@ -36,7 +36,7 @@ async def test_result_to_response_decorator():
 
     try:
         await fail_func()
-        assert False, "Should raise HTTPException"
+        raise AssertionError("Should raise HTTPException")
     except HTTPException as e:
         assert e.status_code == 500
 
@@ -47,7 +47,7 @@ async def test_result_to_response_decorator():
 
     try:
         await exception_func()
-        assert False, "Should raise HTTPException"
+        raise AssertionError("Should raise HTTPException")
     except HTTPException as e:
         assert e.status_code == 500
 
@@ -102,8 +102,8 @@ def test_result_context_manager():
             r.unwrap()
     except ValueError as e:
         assert str(e) == "inner"
-    except UnwrapError:
-        assert False, "Should have unwrapped the UnwrapError"
+    except UnwrapError as exc:
+        raise AssertionError("Should have unwrapped the UnwrapError") from exc
 
 
 def test_either_methods():
@@ -186,7 +186,7 @@ def test_auth_utils_production_init():
                     # Should verify fallback to bcrypt-only
                     # The code: pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
                     found_bcrypt_only = False
-                    for call in calls:  # calls are accumulated on the mock? No, new mock context?
+                    for _call in calls:  # calls are accumulated on the mock? No, new mock context?
                         # Ah, MockContext is the class.
                         pass
 

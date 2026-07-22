@@ -105,8 +105,20 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
                                 "request_id": request_id,
                             },
                         )
+            except (ValueError, UnicodeDecodeError):
+                # Non-JSON or unparseable body: nothing to sanitize (routine)
+                logger.debug(
+                    "Request body not JSON-parseable, sanitization skipped [Request-ID: %s]",
+                    request_id,
+                )
             except Exception:
-                pass
+                # The sanitization check itself failed — the control is
+                # failing open, which must be visible in logs.
+                logger.warning(
+                    "Input sanitization check failed open [Request-ID: %s]",
+                    request_id,
+                    exc_info=True,
+                )
         return None
 
     def _sanitize_headers(self, request: Request, request_id: str) -> Optional[JSONResponse]:

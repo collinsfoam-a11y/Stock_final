@@ -27,6 +27,27 @@ line-length = 100
 [tool.ruff.lint]
 # Ignore E402 (module level import not at top of file) globally due to conditional import needs
 ignore = ["E402"]
+# B: bugbear (exception chaining, mutable defaults, ...), RUF006: dangling
+# asyncio tasks, RUF100: stale noqa comments.
+extend-select = ["B", "RUF006", "RUF100"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI dependency-injection callables are intentionally used as defaults.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Path",
+    "fastapi.File",
+    "fastapi.Form",
+    "fastapi.Cookie",
+    "fastapi.Security",
+    # Repo-local dependency factories that return / wrap fastapi.Depends
+    "backend.auth.permissions.require_permission",
+    "backend.auth.dependencies.require_permissions",
+    "backend.auth.dependencies.require_role",
+]
 
 [tool.mypy]
 explicit_package_bases = true
