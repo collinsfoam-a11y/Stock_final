@@ -268,7 +268,9 @@ const ScanScreen = React.memo(function ScanScreen() {
       if (status === "PAUSED") {
         safeSetState(setIsScanning, false);
         Alert.alert("Session Paused", reason || "A supervisor has paused this session.", [
-          { text: "OK" },
+          {
+            text: "OK",
+          },
         ]);
       } else if (["REVIEW", "RECONCILE", "FINALIZED", "CLOSED"].includes(status) && !isFinishing) {
         const message =
@@ -281,6 +283,8 @@ const ScanScreen = React.memo(function ScanScreen() {
             onPress: () => router.replace("/staff/home"),
           },
         ]);
+
+        // Session finalized submission complete
       }
 
       // Refresh stats on any update
@@ -622,7 +626,10 @@ const ScanScreen = React.memo(function ScanScreen() {
 
   const handleLogout = () => {
     Alert.alert("Confirm Logout", "Are you sure you want to log out ending your session?", [
-      { text: "Cancel", style: "cancel" },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
       {
         text: "Logout",
         style: "destructive",
@@ -669,6 +676,7 @@ const ScanScreen = React.memo(function ScanScreen() {
         // Dedicated/Bluetooth wedge scanners on native: zero-tap capture.
         // Scanner priority: wedge -> camera -> manual (ADR-002).
         <HardwareScanInput
+          testID="scan-camera-input"
           onScan={(code) => handleBarcodeScan({ data: code })}
           isActive={isScreenFocused && !showCloseSessionModal && !isScanning}
         />
@@ -682,6 +690,7 @@ const ScanScreen = React.memo(function ScanScreen() {
         rightComponent={
           <View style={styles.headerActions}>
             <TouchableOpacity
+              testID="scan-logout-btn"
               onPress={handleLogout}
               style={styles.logoutButton}
               accessibilityLabel="Log out"
@@ -702,6 +711,7 @@ const ScanScreen = React.memo(function ScanScreen() {
         removeClippedSubviews={lazyLoading}
         refreshControl={
           <RefreshControl
+            testID="scan-refresh-control"
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={uiTokens.colors.accent}
@@ -773,6 +783,7 @@ const ScanScreen = React.memo(function ScanScreen() {
         ]}
       >
         <ModernButton
+          testID="scan-finish-rack-btn"
           title="Finish Rack"
           onPress={() => safeSetState(setShowCloseSessionModal, true)}
           variant="primary"
@@ -793,6 +804,7 @@ const ScanScreen = React.memo(function ScanScreen() {
 
       {loading && (
         <View
+          testID="scan-loading-overlay"
           style={[
             styles.loadingOverlay,
             styles.pointerEventsNone,
