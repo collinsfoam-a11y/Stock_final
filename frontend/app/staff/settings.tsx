@@ -106,6 +106,7 @@ export default function StaffSettingsScreen() {
         {/* User Info Card */}
         <Animated.View entering={FadeInDown.delay(100).springify()}>
           <ModernCard
+            testID="settings-user-card"
             style={[
               styles.userCard,
               flags.uiVisualSystemV2 ? getTokenShadowStyle(uiTokens, "md") : null,
