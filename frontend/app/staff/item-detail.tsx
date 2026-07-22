@@ -44,7 +44,8 @@ import { useQuantityCountManager } from "@/domains/inventory/hooks/scan/useQuant
 import { useSerialEntryManager } from "@/domains/inventory/hooks/scan/useSerialEntryManager";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
-import { getDecorativeIconProps } from "@/utils/accessibility";
+import { getDecorativeIconProps, getAccessibleButtonProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 import { safeBackNavigation } from "@/utils/navigation";
 import { createItemDetailStyles } from "@/styles/screens/ItemDetail.styles";
 
@@ -83,9 +84,31 @@ function SectionHeading({
   decorativeIconProps: Record<string, unknown>;
 }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8, marginBottom: 4, paddingHorizontal: 2 }}>
-      <Ionicons {...(decorativeIconProps as any)} name={icon} size={14} color={uiTokens.colors.textMuted} />
-      <Text style={{ fontSize: 11, fontWeight: "700", color: uiTokens.colors.textMuted, textTransform: "uppercase", letterSpacing: 0.8 }}>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        marginTop: 8,
+        marginBottom: 4,
+        paddingHorizontal: 2,
+      }}
+    >
+      <Ionicons
+        {...(decorativeIconProps as any)}
+        name={icon}
+        size={14}
+        color={uiTokens.colors.textMuted}
+      />
+      <Text
+        style={{
+          fontSize: 11,
+          fontWeight: "700",
+          color: uiTokens.colors.textMuted,
+          textTransform: "uppercase",
+          letterSpacing: 0.8,
+        }}
+      >
         {label}
       </Text>
     </View>
@@ -351,15 +374,22 @@ export default function ItemDetailScreen() {
   // Source indicator — single source of truth (shown once in hero)
   const sourceStatus =
     item._source === "cache"
-      ? { label: "Cached",   icon: "cloud-offline-outline" as const,  color: uiTokens.colors.warning }
+      ? { label: "Cached", icon: "cloud-offline-outline" as const, color: uiTokens.colors.warning }
       : item._source === "sql"
-        ? { label: "ERP live", icon: "checkmark-circle-outline" as const, color: uiTokens.colors.success }
-        : { label: "Live",     icon: "shield-checkmark-outline" as const, color: uiTokens.colors.info };
+        ? {
+            label: "ERP live",
+            icon: "checkmark-circle-outline" as const,
+            color: uiTokens.colors.success,
+          }
+        : { label: "Live", icon: "shield-checkmark-outline" as const, color: uiTokens.colors.info };
 
   const heroStockValue = formatStockMetric(itemStock, itemUnit, settings.showItemStock);
-  const heroMrpValue   = formatPriceMetric(item.mrp, settings.showItemPrices && settings.columnVisibility.mrp);
+  const heroMrpValue = formatPriceMetric(
+    item.mrp,
+    settings.showItemPrices && settings.columnVisibility.mrp
+  );
   const parsedQuantity = Number.parseFloat(quantity);
-  const canSubmit      = Number.isFinite(parsedQuantity) && parsedQuantity > 0;
+  const canSubmit = Number.isFinite(parsedQuantity) && parsedQuantity > 0;
   const shouldShowBatchVariants =
     batchLoading || Boolean(batchError) || rawVariantsCount > 0 || sameNameVariants.length > 0;
 
@@ -413,8 +443,16 @@ export default function ItemDetailScreen() {
                 <View style={styles.heroCodeRow}>
                   {/* Barcode */}
                   <View style={[styles.heroPill, styles.heroPillStrong]}>
-                    <Ionicons {...decorativeIconProps} name="barcode-outline" size={13} color={uiTokens.colors.accentStrong} />
-                    <Text style={[styles.heroPillText, styles.heroPillTextStrong]} numberOfLines={1}>
+                    <Ionicons
+                      {...decorativeIconProps}
+                      name="barcode-outline"
+                      size={13}
+                      color={uiTokens.colors.accentStrong}
+                    />
+                    <Text
+                      style={[styles.heroPillText, styles.heroPillTextStrong]}
+                      numberOfLines={1}
+                    >
                       {displayBarcode || itemCode}
                     </Text>
                   </View>
@@ -422,15 +460,40 @@ export default function ItemDetailScreen() {
                   {/* Item code (only if different from barcode) */}
                   {itemCode !== displayBarcode && (
                     <View style={styles.heroPill}>
-                      <Ionicons {...decorativeIconProps} name="pricetag-outline" size={13} color={uiTokens.colors.textSecondary} />
-                      <Text style={styles.heroPillText} numberOfLines={1}>{itemCode}</Text>
+                      <Ionicons
+                        {...decorativeIconProps}
+                        name="pricetag-outline"
+                        size={13}
+                        color={uiTokens.colors.textSecondary}
+                      />
+                      <Text style={styles.heroPillText} numberOfLines={1}>
+                        {itemCode}
+                      </Text>
                     </View>
                   )}
 
                   {/* Data source */}
-                  <View style={[styles.sourcePill, { backgroundColor: colorWithAlpha(sourceStatus.color, uiTokens.mode === "dark" ? 0.2 : 0.1), borderColor: colorWithAlpha(sourceStatus.color, 0.36) }]}>
-                    <Ionicons {...decorativeIconProps} name={sourceStatus.icon} size={13} color={sourceStatus.color} />
-                    <Text style={[styles.sourcePillText, { color: sourceStatus.color }]}>{sourceStatus.label}</Text>
+                  <View
+                    style={[
+                      styles.sourcePill,
+                      {
+                        backgroundColor: colorWithAlpha(
+                          sourceStatus.color,
+                          uiTokens.mode === "dark" ? 0.2 : 0.1
+                        ),
+                        borderColor: colorWithAlpha(sourceStatus.color, 0.36),
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      {...decorativeIconProps}
+                      name={sourceStatus.icon}
+                      size={13}
+                      color={sourceStatus.color}
+                    />
+                    <Text style={[styles.sourcePillText, { color: sourceStatus.color }]}>
+                      {sourceStatus.label}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -440,19 +503,34 @@ export default function ItemDetailScreen() {
             <View style={styles.heroMetrics}>
               <View style={styles.heroMetricTile}>
                 <Text style={styles.heroMetricLabel}>System stock</Text>
-                <Text style={styles.heroMetricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.68}>
+                <Text
+                  style={styles.heroMetricValue}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.68}
+                >
                   {heroStockValue}
                 </Text>
               </View>
               <View style={styles.heroMetricTile}>
                 <Text style={styles.heroMetricLabel}>MRP</Text>
-                <Text style={styles.heroMetricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.68}>
+                <Text
+                  style={styles.heroMetricValue}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.68}
+                >
                   {heroMrpValue}
                 </Text>
               </View>
               <View style={styles.heroMetricTile}>
                 <Text style={styles.heroMetricLabel}>Unit</Text>
-                <Text style={styles.heroMetricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.68}>
+                <Text
+                  style={styles.heroMetricValue}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.68}
+                >
                   {itemUnit || "Each"}
                 </Text>
               </View>
@@ -467,10 +545,16 @@ export default function ItemDetailScreen() {
                     justifyContent: "center",
                   },
                 ]}
-                onPress={handleRefreshStock}
+                onPress={() => {
+                  void haptics.light();
+                  handleRefreshStock();
+                }}
                 disabled={isRefreshing}
-                accessibilityRole="button"
-                accessibilityLabel="Refresh stock from ERP"
+                {...getAccessibleButtonProps({
+                  label: "Refresh stock from ERP",
+                  disabled: isRefreshing,
+                  busy: isRefreshing,
+                })}
               >
                 <Ionicons
                   {...decorativeIconProps}
@@ -486,14 +570,21 @@ export default function ItemDetailScreen() {
 
             {/* Blind recount warning — shown when previous count must stay hidden */}
             {blindRecountRequired && (
-              <View style={[
-                styles.recountBanner,
-                {
-                  backgroundColor: colorWithAlpha(uiTokens.colors.warning, 0.12),
-                  borderColor: colorWithAlpha(uiTokens.colors.warning, 0.35),
-                },
-              ]}>
-                <Ionicons {...decorativeIconProps} name="eye-off-outline" size={16} color={uiTokens.colors.warning} />
+              <View
+                style={[
+                  styles.recountBanner,
+                  {
+                    backgroundColor: colorWithAlpha(uiTokens.colors.warning, 0.12),
+                    borderColor: colorWithAlpha(uiTokens.colors.warning, 0.35),
+                  },
+                ]}
+              >
+                <Ionicons
+                  {...decorativeIconProps}
+                  name="eye-off-outline"
+                  size={16}
+                  color={uiTokens.colors.warning}
+                />
                 <Text style={[styles.recountBannerText, { color: uiTokens.colors.warning }]}>
                   {recountBlockedReason
                     ? `Recount blocked: ${recountBlockedReason}`
@@ -506,7 +597,12 @@ export default function ItemDetailScreen() {
           {/* ── Count Quantity (primary action — first after item identity) ── */}
           {isInteractionsComplete && (
             <>
-              <SectionHeading icon="calculator-outline" label="Count Quantity" uiTokens={uiTokens} decorativeIconProps={decorativeIconProps} />
+              <SectionHeading
+                icon="calculator-outline"
+                label="Count Quantity"
+                uiTokens={uiTokens}
+                decorativeIconProps={decorativeIconProps}
+              />
               <CountQuantitySection
                 isSplitMode={isSplitMode}
                 isWeightBasedUOM={isWeightBasedUOM}
@@ -527,7 +623,12 @@ export default function ItemDetailScreen() {
               />
 
               {/* ── MRP Validation (affects count line, so near count) ── */}
-              <SectionHeading icon="cash-outline" label="Price Validation" uiTokens={uiTokens} decorativeIconProps={decorativeIconProps} />
+              <SectionHeading
+                icon="cash-outline"
+                label="Price Validation"
+                uiTokens={uiTokens}
+                decorativeIconProps={decorativeIconProps}
+              />
               <ItemMrpSection
                 mrp={mrp}
                 mrpEditable={mrpEditable}
@@ -541,7 +642,12 @@ export default function ItemDetailScreen() {
               />
 
               {/* ── Dates ── */}
-              <SectionHeading icon="calendar-clear-outline" label="Date Fields" uiTokens={uiTokens} decorativeIconProps={decorativeIconProps} />
+              <SectionHeading
+                icon="calendar-clear-outline"
+                label="Date Fields"
+                uiTokens={uiTokens}
+                decorativeIconProps={decorativeIconProps}
+              />
               <ItemDateFieldsSection
                 expiryDateField={expiryDateField}
                 hasExpiryDate={hasExpiryDate}
@@ -558,7 +664,12 @@ export default function ItemDetailScreen() {
               />
 
               {/* ── Serial Tracking ── */}
-              <SectionHeading icon="qr-code-outline" label="Serial Tracking" uiTokens={uiTokens} decorativeIconProps={decorativeIconProps} />
+              <SectionHeading
+                icon="qr-code-outline"
+                label="Serial Tracking"
+                uiTokens={uiTokens}
+                decorativeIconProps={decorativeIconProps}
+              />
               <SerializedItemSection
                 enabled={settings.columnVisibility.serialNumber}
                 isSerializedItem={isSerializedItem}
@@ -575,7 +686,12 @@ export default function ItemDetailScreen() {
               {/* ── Batch Variants (optional) ── */}
               {shouldShowBatchVariants && (
                 <>
-                  <SectionHeading icon="layers-outline" label="Batch Variants" uiTokens={uiTokens} decorativeIconProps={decorativeIconProps} />
+                  <SectionHeading
+                    icon="layers-outline"
+                    label="Batch Variants"
+                    uiTokens={uiTokens}
+                    decorativeIconProps={decorativeIconProps}
+                  />
                   <BatchVariantsSection
                     variants={sameNameVariants}
                     rawVariantsCount={rawVariantsCount}
@@ -596,7 +712,12 @@ export default function ItemDetailScreen() {
               )}
 
               {/* ── Evidence & Notes (last before submit) ── */}
-              <SectionHeading icon="document-text-outline" label="Evidence & Notes" uiTokens={uiTokens} decorativeIconProps={decorativeIconProps} />
+              <SectionHeading
+                icon="document-text-outline"
+                label="Evidence & Notes"
+                uiTokens={uiTokens}
+                decorativeIconProps={decorativeIconProps}
+              />
               <EvidenceNotesSection
                 damagePhoto={damagePhoto}
                 damageQty={damageQty}
