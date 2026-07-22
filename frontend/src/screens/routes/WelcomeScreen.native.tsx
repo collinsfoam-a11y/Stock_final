@@ -3,6 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
   TouchableOpacity,
   Platform,
   useWindowDimensions,
@@ -121,8 +122,9 @@ export function WelcomeScreen() {
         colors={[colors.neutral[950], colors.neutral[900], colors.neutral[950]]}
         style={StyleSheet.absoluteFill}
       />
-      <View
-        style={[
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={[
           styles.content,
           {
             maxWidth: isDesktop ? 600 : "100%",
@@ -130,6 +132,8 @@ export function WelcomeScreen() {
             paddingBottom: insets.bottom + 20,
           },
         ]}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
       >
         <SafeAnimatedView entering={FadeInUp.duration(1000).springify()} style={styles.header}>
           <View style={styles.logoContainer}>
@@ -225,7 +229,7 @@ export function WelcomeScreen() {
             Modern inventory operations for structured floor counts
           </Text>
         </SafeAnimatedView>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -235,8 +239,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.neutral[950],
   },
-  content: {
+  scrollArea: {
     flex: 1,
+  },
+  content: {
+    // flexGrow (not flex) so the ScrollView content fills the viewport and
+    // keeps space-between when it fits, but grows and scrolls when it does
+    // not (short screens / large Dynamic Type) instead of clipping.
+    flexGrow: 1,
     alignSelf: "center",
     width: "100%",
     paddingHorizontal: spacing.lg,
