@@ -247,20 +247,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: semanticColors.border.default,
   },
+  // Left/right size to their controls and never shrink; the center takes the
+  // remaining width and truncates. RN defaults flexShrink to 0, so without
+  // minWidth:0 + flexShrink the title keeps its full intrinsic width and
+  // overflows onto (overlaps) the side controls, and a multi-button right
+  // section gets clipped off the edge.
   leftSection: {
-    flex: 1,
+    flexShrink: 0,
     alignItems: "flex-start",
     justifyContent: "center",
   },
   centerSection: {
-    flex: 2,
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
+    paddingHorizontal: spacing.sm,
     alignItems: "center",
     justifyContent: "center",
   },
   rightSection: {
-    flex: 1,
-    alignItems: "flex-end",
-    justifyContent: "center",
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "flex-end",
     flexDirection: "row",
     gap: 4,
   },
@@ -281,6 +289,12 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     alignItems: "center",
+    // Stretch to the center section's width (and allow shrinking) so a long
+    // single-line title truncates with an ellipsis instead of overflowing
+    // onto the back button / right actions.
+    alignSelf: "stretch",
+    width: "100%",
+    minWidth: 0,
   },
   title: {
     fontSize: typography.fontSize.lg,
