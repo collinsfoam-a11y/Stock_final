@@ -1601,6 +1601,11 @@ async def save_count_line_draft(
         _safe_log_value(line_data.item_code),
         line_data.counted_qty,
     )
+    # insert_one() mutates draft_payload in place, adding a raw bson ObjectId
+    # under "_id". Drop it so it doesn't leak into the response and break
+    # FastAPI's jsonable_encoder ("'ObjectId' object is not iterable"). The
+    # stringified id is already exposed as data.id.
+    draft_payload.pop("_id", None)
     return {
         "success": True,
         "message": "Draft saved successfully",
