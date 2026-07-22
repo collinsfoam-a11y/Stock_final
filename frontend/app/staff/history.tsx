@@ -21,6 +21,21 @@ import { colorWithAlpha } from "@/theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { ScreenContainer } from "@/components/ui";
 
+interface CountLine {
+  id: string;
+  item_code: string;
+  batch_id?: string;
+  item_name: string;
+  erp_qty: number;
+  counted_qty: number;
+  variance: number;
+  variance_reason?: string;
+  remark?: string;
+  status: string;
+  approval_status?: string;
+  counted_at: string;
+}
+
 const getHistoryFailureReason = (error: unknown): string => {
   if (error instanceof Error && error.message) {
     return error.message;
@@ -34,7 +49,24 @@ const getHistoryFailureReason = (error: unknown): string => {
   }
 
   return "The request did not finish.";
-};
+}
+
+// Type guard for safeData items
+const isCountLine = (item: unknown): item is CountLine => {
+  return (
+    item !== null &&
+    item !== undefined &&
+    typeof item === 'object' &&
+    'id' in item &&
+    'item_code' in item &&
+    'item_name' in item &&
+    'erp_qty' in item &&
+    'counted_qty' in item &&
+    'variance' in item &&
+    'status' in item &&
+    'counted_at' in item
+  );
+}
 
 export default function HistoryScreen() {
   const params = useLocalSearchParams();
@@ -95,7 +127,8 @@ export default function HistoryScreen() {
       );
       setCountLines(
         showApprovedOnly
-          ? safeData.filter((d: any) => {
+          ? safeData.filter((d: unknown): d is CountLine => {
+              if (!isCountLine(d)) return false;
               const status = normalizeStatus(d.status);
               return status === "approved" || d.approval_status === "APPROVED";
             })
@@ -164,11 +197,21 @@ export default function HistoryScreen() {
       if (flags.enableHaptics) haptics.success();
       Alert.alert("Success", "Count line deleted successfully");
       loadCountLines(); // Refresh list
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete error:", error);
+      let errorMessage = "The count line could not be deleted.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "object" && error !== null) {
+        const errorObj = error as { response?: { data?: { detail?: unknown } } };
+        const detail = errorObj.response?.data?.detail;
+        if (typeof detail === "string") {
+          errorMessage = detail;
+        }
+      }
       Alert.alert(
         "Delete Failed",
-        `${error.response?.data?.detail || "The count line could not be deleted."}\n\nThe item remains unchanged. Check connectivity and retry, or ask a supervisor to review it.`
+        `${errorMessage}\n\nThe item remains unchanged. Check connectivity and retry, or ask a supervisor to review it.`
       );
       if (flags.enableHaptics) haptics.error();
     } finally {
