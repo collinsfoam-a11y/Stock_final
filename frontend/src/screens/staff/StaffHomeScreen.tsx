@@ -465,6 +465,7 @@ const StaffHome = React.memo(function StaffHome() {
           <View style={s.headerActions}>
             {/* Notifications */}
             <TouchableOpacity
+              testID="home-notifications-btn"
               style={[s.iconBtn, { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.08) }]}
               hitSlop={HIT_SLOP}
               onPress={() => router.push("/notifications" as any)}
@@ -485,6 +486,7 @@ const StaffHome = React.memo(function StaffHome() {
 
             {/* Settings */}
             <TouchableOpacity
+              testID="home-settings-btn"
               style={[s.iconBtn, { backgroundColor: colorWithAlpha(uiTokens.colors.textSecondary, 0.08) }]}
               hitSlop={HIT_SLOP}
               onPress={() => router.push("/staff/settings" as any)}
@@ -496,6 +498,7 @@ const StaffHome = React.memo(function StaffHome() {
 
             {/* Logout */}
             <TouchableOpacity
+              testID="home-logout-btn"
               style={[s.iconBtn, { backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.08) }]}
               hitSlop={HIT_SLOP}
               onPress={handleLogout}
@@ -555,6 +558,7 @@ const StaffHome = React.memo(function StaffHome() {
               onPress={() => setActiveTab(tab)}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
+              testID={`home-tab-${tab}`}
             >
               <Text style={[s.tabText, { color: isActive ? uiTokens.colors.accent : uiTokens.colors.textSecondary }]}>
                 {tab === "active" ? "Active" : "History"}
@@ -606,6 +610,7 @@ const StaffHome = React.memo(function StaffHome() {
           ) : activeTab === "active" ? (
             <>
               <ModernButton
+                testID="home-start-session-btn"
                 title="Start New Session"
                 icon="add-circle-outline"
                 onPress={() => setShowCreateModal(true)}
@@ -660,6 +665,7 @@ const StaffHome = React.memo(function StaffHome() {
             </View>
             <Text style={[s.modalTitle, { color: uiTokens.colors.textPrimary }]}>New Session</Text>
             <TouchableOpacity
+              testID="home-modal-close-btn"
               style={[s.modalClose, { backgroundColor: colorWithAlpha(uiTokens.colors.textSecondary, 0.08) }]}
               hitSlop={HIT_SLOP}
               onPress={resetModal}

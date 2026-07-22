@@ -20,6 +20,7 @@ import { font, radius, gap } from "@/theme/staffUiScale";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { ScreenContainer } from "@/components/ui";
+import HistoryStateView from "@/app/staff/components/HistoryStateView";
 
 interface CountLine {
   id: string;
@@ -388,98 +389,34 @@ export default function HistoryScreen() {
       noPadding
       statusBarStyle="dark"
     >
-      {loading && !refreshing ? (
-        <View style={{ padding: 16 }}>
-          <SkeletonList itemHeight={120} count={6} />
-        </View>
-      ) : (
-        <PullToRefresh refreshing={refreshing} onRefresh={onRefresh}>
-          <FlashList
-            data={countLines}
-            renderItem={renderCountLine}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.list}
-            ListHeaderComponent={
-              loadWarning ? (
-                <View
-                  style={[
-                    styles.warningContainer,
-                    {
-                      backgroundColor: colorWithAlpha(uiTokens.colors.warning, 0.08),
-                      borderColor: colorWithAlpha(uiTokens.colors.warning, 0.28),
-                    },
-                  ]}
-                  testID="history-load-warning"
-                >
-                  <Ionicons name="warning-outline" size={20} color={uiTokens.colors.warning} />
-                  <Text style={[styles.warningText, { color: uiTokens.colors.textSecondary }]}>
-                    {loadWarning}
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.warningRetry}
-                    onPress={onRefresh}
-                    accessibilityRole="button"
-                    accessibilityLabel="Retry live history refresh"
-                  >
-                    <Ionicons name="refresh" size={18} color={uiTokens.colors.warning} />
-                  </TouchableOpacity>
-                </View>
-              ) : null
-            }
-            ListEmptyComponent={
-              loadError ? (
-                <View
-                  style={[
-                    styles.errorContainer,
-                    {
-                      backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.08),
-                      borderColor: colorWithAlpha(uiTokens.colors.error, 0.26),
-                    },
-                  ]}
-                  testID="history-load-error"
-                >
-                  <Ionicons name="alert-circle-outline" size={44} color={uiTokens.colors.error} />
-                  <Text style={[styles.errorTitle, { color: uiTokens.colors.textPrimary }]}>
-                    Count history unavailable
-                  </Text>
-                  <Text style={[styles.errorBody, { color: uiTokens.colors.textSecondary }]}>
-                    Could not load this session's count lines. Reason: {loadError} Pull down to
-                    refresh or retry now.
-                  </Text>
-                  <TouchableOpacity
-                    style={[
-                      styles.retryButton,
-                      {
-                        backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.12),
-                        borderColor: colorWithAlpha(uiTokens.colors.error, 0.34),
-                      },
-                    ]}
-                    onPress={onRefresh}
-                    accessibilityRole="button"
-                    accessibilityLabel="Retry loading count history"
-                  >
-                    <Ionicons name="refresh" size={18} color={uiTokens.colors.error} />
-                    <Text style={[styles.retryButtonText, { color: uiTokens.colors.error }]}>
-                      Retry
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="file-tray-outline" size={64} color={uiTokens.colors.textMuted} />
-                  <Text style={[styles.emptyText, { color: uiTokens.colors.textSecondary }]}>
-                    {loading
-                      ? "Loading..."
-                      : sessionId
-                        ? "No counts yet"
-                        : "Open a session from Dashboard history to view its counts"}
-                  </Text>
-                </View>
-              )
-            }
-          />
-        </PullToRefresh>
-      )}
+      <PullToRefresh refreshing={refreshing} onRefresh={onRefresh}>
+        <FlashList
+          data={countLines}
+          renderItem={renderCountLine}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            loadWarning ? (
+              <HistoryStateView
+                loading={false}
+                loadError={null}
+                loadWarning={loadWarning}
+                isEmpty={false}
+                onRetry={onRefresh}
+              />
+            ) : null
+          }
+          ListEmptyComponent={
+            <HistoryStateView
+              loading={loading && !refreshing}
+              loadError={loadError}
+              loadWarning={null}
+              isEmpty={countLines.length === 0}
+              onRetry={onRefresh}
+            />
+          }
+        />
+      </PullToRefresh>
 
       <BottomSheet visible={filtersOpen} onClose={() => setFiltersOpen(false)} height={260}>
         <Text style={[styles.filterTitle, { color: uiTokens.colors.textPrimary }]}>Filters</Text>
