@@ -3,6 +3,7 @@ import { Text } from "react-native";
 import { render, fireEvent } from "@testing-library/react-native";
 import { Accordion, AccordionItem } from "../Accordion";
 import { haptics } from "@/services/haptics";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 // Mock haptics
 jest.mock("@/services/haptics", () => ({
@@ -52,5 +53,19 @@ describe("Accordion", () => {
     fireEvent.press(header);
 
     expect(header.props.accessibilityState.expanded).toBe(true);
+  });
+
+  it("hides decorative icons from screen readers", () => {
+    const itemsWithIcon: AccordionItem[] = [
+      { id: "1", title: "Item 1", content: <Text>Content 1</Text>, icon: "home" },
+    ];
+    const { UNSAFE_getAllByType } = render(<Accordion items={itemsWithIcon} />);
+    const icons = UNSAFE_getAllByType(Ionicons);
+
+    expect(icons.length).toBeGreaterThan(0);
+    icons.forEach((icon) => {
+      expect(icon.props.accessibilityElementsHidden).toBe(true);
+      expect(icon.props.importantForAccessibility).toBe("no");
+    });
   });
 });
