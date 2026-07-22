@@ -210,8 +210,12 @@ export const useWiFiStatus = () => {
     const service = WiFiConnectionService.getInstance();
     service.initialize();
 
-    // Check initial status
-    service.checkStatus().then(setWifiStatus);
+    // Check initial status (guard the promise so a rejected status check
+    // cannot surface as an unhandled promise rejection).
+    service
+      .checkStatus()
+      .then(setWifiStatus)
+      .catch((error) => console.warn("Initial WiFi status check failed:", error));
 
     // Add listener for manual checks
     const unsubscribe = service.addListener((status) => {

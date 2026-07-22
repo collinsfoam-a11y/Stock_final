@@ -4,7 +4,7 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, NoReturn, Optional
 
 from backend.services.observability import metrics
 
@@ -177,7 +177,7 @@ class ProjectionReadService:
         endpoint: str,
         reason: str,
         context: Optional[dict[str, Any]] = None,
-    ) -> None:
+    ) -> NoReturn:
         await self._record_gap(endpoint=endpoint, reason=reason, context=context)
         raise ProjectionReadError(endpoint=endpoint, reason=reason, context=context)
 

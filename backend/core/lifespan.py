@@ -437,12 +437,15 @@ async def lifespan(app: FastAPI):
                     timeout=startup_sql_timeout,
                 )
                 logger.info("OK: SQL Server connection established")
+            except asyncio.TimeoutError:
+                # Must precede OSError: asyncio.TimeoutError is builtins.TimeoutError,
+                # which is a subclass of OSError, so ordering it after would make
+                # this branch unreachable and mislabel timeouts as network errors.
+                logger.warning("SQL Server connection timed out during startup")
+                logger.warning("ERP sync will be disabled until SQL Server is available")
             except (ConnectionError, OSError) as e:
                 logger.warning("SQL Server connection failed (network/system error): %s", str(e))
                 logger.warning("ERP sync will be disabled until SQL Server is configured")
-            except asyncio.TimeoutError:
-                logger.warning("SQL Server connection timed out during startup")
-                logger.warning("ERP sync will be disabled until SQL Server is available")
             except Exception as e:
                 # Catch-all for other SQL Server connection errors (authentication, database not found, etc.)
                 logger.warning("SQL Server connection failed: %s", str(e))

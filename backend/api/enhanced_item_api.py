@@ -9,7 +9,7 @@ import re
 import time
 from copy import deepcopy
 from datetime import datetime, timezone
-from typing import Any, Optional, cast
+from typing import Any, NoReturn, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -188,7 +188,7 @@ def _build_lookup_metadata(
     }
 
 
-def _raise_item_not_found(barcode: str, response_time_ms: float) -> None:
+def _raise_item_not_found(barcode: str, response_time_ms: float) -> NoReturn:
     logger.warning("Item not found for barcode: %s", sanitize_for_logging(barcode))
     raise HTTPException(
         status_code=404,
