@@ -10,13 +10,22 @@ jest.mock("@/services/haptics", () => ({
   },
 }));
 
-// Mock theme context
-jest.mock("../../../context/ThemeContext", () => ({
-  useThemeContextSafe: () => ({
-    theme: {
-      gradients: {
-        primary: ["#000", "#fff"],
-      },
+// Mock useUiTokens — ModernButton was migrated from useThemeContextSafe to
+// useUiTokens (commit 15514d13), so the old ThemeContext mock no longer drives
+// the component. Provide the full token surface ModernButton reads.
+jest.mock("../../../hooks/useUiTokens", () => ({
+  useUiTokens: () => ({
+    mode: "light",
+    colors: {
+      accent: "#2563eb",
+      border: "#d1d5db",
+      error: "#dc2626",
+      surfaceElevated: "#f9fafb",
+      textPrimary: "#111827",
+      textSecondary: "#4b5563",
+    },
+    gradients: {
+      primary: ["#000", "#fff"],
     },
   }),
 }));
