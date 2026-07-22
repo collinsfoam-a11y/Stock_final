@@ -108,12 +108,15 @@ export function ScanCameraOverlay({
   };
 
   if (!device) {
+    // No camera hardware available (e.g. the iOS Simulator, or a device
+    // without a rear camera). This is expected there, not an error — guide
+    // the user to manual entry instead of leaving a dead-end.
     return (
       <View style={[styles.permissionContainer, { backgroundColor: tokens.colors.background }]}>
         <Text style={[styles.permissionText, { color: tokens.colors.textSecondary }]}>
-          Camera device not found
+          No camera available on this device. Use manual entry to continue.
         </Text>
-        <ModernButton onPress={onClose} title="Cancel" variant="outline" />
+        <ModernButton onPress={onClose} title="Use Manual Entry" />
       </View>
     );
   }
