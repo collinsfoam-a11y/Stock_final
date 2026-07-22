@@ -459,9 +459,11 @@ export const getItemByIdentifier = async (
  */
 export const checkSerialUniqueness = async (
   sessionId: string,
-  serialNumber: string
+  serialNumber: string,
+  itemCode?: string
 ): Promise<{
   exists: boolean;
+  scope?: "item" | "global";
   item_code?: string;
   item_name?: string;
   counted_by?: string;
@@ -470,7 +472,15 @@ export const checkSerialUniqueness = async (
   status?: string;
 }> => {
   try {
-    const response = await api.get(`/api/count-lines/check-serial/${sessionId}/${serialNumber}`);
+    // Pass item_code so the backend scopes the uniqueness check per item
+    // (item_code + serial), matching the write-path contract. Omitting it
+    // makes the backend fall back to a global scope, which would flag a
+    // serial that legitimately belongs to a different item as a duplicate.
+    const params = itemCode ? { item_code: itemCode } : undefined;
+    const response = await api.get(
+      `/api/count-lines/check-serial/${sessionId}/${serialNumber}`,
+      params ? { params } : undefined
+    );
     return response.data;
   } catch (error) {
     console.error("Error checking serial uniqueness:", error);
