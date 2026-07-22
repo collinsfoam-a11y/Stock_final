@@ -20,7 +20,7 @@ import { font, radius, gap } from "@/theme/staffUiScale";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { ScreenContainer } from "@/components/ui";
-import HistoryStateView from "@/app/staff/components/HistoryStateView";
+import HistoryStateView from "@/components/staff/HistoryStateView";
 
 interface CountLine {
   id: string;
