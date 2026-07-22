@@ -401,13 +401,31 @@ class DynamicReportService:
 
     # Allow-list of filterable fields per report type. Keys outside this set
     # are rejected so an authenticated reporter cannot probe arbitrary document
-    # fields via NoSQL operators (audit C8).
+    # fields via NoSQL operators (audit C8). The items set mirrors the public
+    # Item schema in backend/api/schemas.py — extend it (not bypass it) when
+    # new filterable fields are added upstream.
     _FILTER_FIELD_ALLOWLIST: dict[str, set[str]] = {
         "items": {
             "item_code", "item_name", "name", "barcode", "category",
-            "subcategory", "uom", "mrp", "stock_qty", "current_stock",
-            "warehouse", "location", "item_group", "is_serialized",
-            "created_at", "updated_at", "_source",
+            "subcategory", "uom", "uom_code", "uom_name", "mrp",
+            "stock_qty", "current_stock", "quantity",
+            "warehouse", "location", "item_group", "item_type", "is_serialized",
+            # Pricing fields (see schemas.py + variance_service.py)
+            "sales_price", "sale_price", "standard_rate",
+            "last_purchase_rate", "last_purchase_price", "last_purchase_cost",
+            "purchase_price", "last_cost", "cost_price",
+            # Tax / compliance
+            "hsn_code", "gst_category", "gst_percent",
+            "sgst_percent", "cgst_percent", "igst_percent",
+            # Brand / supplier
+            "brand_id", "brand_name", "brand_code",
+            "supplier_id", "supplier_code", "supplier_name",
+            # Barcode variants
+            "manual_barcode", "unit2_barcode", "unit_m_barcode",
+            # Lifecycle
+            "manufacturing_date", "expiry_date", "batch_id", "batch_no",
+            "image_url", "description",
+            "created_at", "updated_at", "is_deleted", "_source",
         },
         "sessions": {
             "id", "_id", "session_id", "staff_user", "warehouse", "floor_no",
