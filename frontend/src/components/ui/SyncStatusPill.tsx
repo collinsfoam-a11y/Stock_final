@@ -135,6 +135,7 @@ const styles = StyleSheet.create({
     borderRadius: modernBorderRadius.full,
     borderWidth: 1,
     gap: 6,
+    minHeight: 44,
   },
   label: {
     fontSize: 12,

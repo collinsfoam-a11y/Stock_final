@@ -162,25 +162,6 @@ def register_middleware(
     allowed_origins = _resolve_allowed_origins(settings, env, logger)
     cors_origin_regex = _resolve_cors_origin_regex(env)
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=allowed_origins,
-        allow_origin_regex=cors_origin_regex,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-        allow_headers=[
-            "Accept",
-            "Accept-Language",
-            "Content-Language",
-            "Content-Type",
-            "Authorization",
-            "X-Device-ID",
-            "X-Requested-With",
-            "X-Request-ID",
-            "X-Idempotency-Key",
-        ],
-    )
-
     _register_trusted_host_middleware(app, allowed_hosts=allowed_hosts, env=env, logger=logger)
     _register_security_headers(app, security_headers_middleware, logger)
     _register_lan_enforcement(app, settings, logger)
@@ -190,3 +171,14 @@ def register_middleware(
     logger.info("API version middleware enabled (version: %s)", API_VERSION)
 
     app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+    # CORSMiddleware MUST be registered last so it is the outermost middleware
+    # in Starlette's execution stack and can apply CORS headers to all responses (including 500 errors).
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_origin_regex=cors_origin_regex,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )

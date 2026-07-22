@@ -33,7 +33,7 @@ PRODUCTS_COLUMN_MAP = {
     "item_code": "ProductCode",
     "item_name": "ProductName",
     # Default to ProductCode, will be enhanced with ProductBarcodes
-    "barcode": "ProductCode",
+    # "barcode": "ProductCode", # REMOVED: wrong mapping, barcode should not map to ProductCode
     "uom_code": "BasicUnitID",  # FK to UnitOfMeasures
     "category": "ProductGroupID",  # FK to ProductGroups
     "subcategory": "ProductCategoryID",  # FK to ProductCategory

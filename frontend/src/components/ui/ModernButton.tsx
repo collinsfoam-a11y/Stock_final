@@ -34,14 +34,13 @@ import Animated, {
 import { modernAnimations } from "../../styles/modernDesignSystem";
 import {
   colors,
-  semanticColors,
   radius,
   spacing,
   textStyles,
   touchTargets,
 } from "@/theme/legacyCompat";
 import { colorWithAlpha } from "@/theme/themeTokens";
-import { useThemeContextSafe } from "../../context/ThemeContext";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import { getDecorativeIconProps } from "@/utils/accessibility";
 import { haptics } from "@/services/haptics";
 
@@ -92,18 +91,16 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   accessibilityLabel,
   accessibilityHint,
 }) => {
-  const themeContext = useThemeContextSafe();
-  const theme = themeContext?.themeLegacy;
-  const themedColors = theme?.colors;
-  const primaryBackground = theme?.isDark ? colors.primary[500] : semanticColors.button.primary;
-  const primaryBorder = theme?.isDark ? colors.primary[600] : semanticColors.button.primary;
-  const secondaryBackground = themedColors?.surfaceElevated ?? semanticColors.button.secondary;
-  const surfaceBorder = themedColors?.border ?? semanticColors.border.default;
+  const uiTokens = useUiTokens();
+  const primaryBackground = uiTokens.colors.accent;
+  const primaryBorder = uiTokens.colors.accent;
+  const secondaryBackground = uiTokens.colors.surfaceElevated;
+  const surfaceBorder = uiTokens.colors.border;
   const primaryText = colors.white;
-  const bodyText = themedColors?.textPrimary ?? semanticColors.text.primary;
-  const secondaryText = themedColors?.textSecondary ?? semanticColors.button.secondaryText;
-  const accentText = themedColors?.accent ?? semanticColors.text.link;
-  const dangerBackground = themedColors?.error ?? semanticColors.status.error;
+  const bodyText = uiTokens.colors.textPrimary;
+  const secondaryText = uiTokens.colors.textSecondary;
+  const accentText = uiTokens.colors.accent;
+  const dangerBackground = uiTokens.colors.error;
 
   // Animation values
   const scale = useSharedValue(1);
@@ -278,9 +275,7 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
           size="small"
           color={
             variant === "outline" || variant === "ghost"
-              ? theme
-                ? theme.colors.accent
-                : colors.primary[500]
+              ? uiTokens.colors.accent
               : primaryText
           }
         />
@@ -325,8 +320,7 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
 
     if (variant === "gradient") {
       const gradientPalette =
-        gradientColors ||
-        (theme ? theme.gradients.primary : [colors.primary[500], colors.primary[600]]);
+        gradientColors || uiTokens.gradients.primary;
       return (
         <Component {...props}>
           <LinearGradient

@@ -299,6 +299,7 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
     paddingVertical: 6,
     borderRadius: modernBorderRadius.sm,
     backgroundColor: tokens.colors.accent,
+    minHeight: 44,
   },
   resumeText: {
     ...modernTypography.label.small,

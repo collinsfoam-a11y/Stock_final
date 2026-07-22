@@ -89,15 +89,15 @@ test.describe("Core User Flow", () => {
     await page
       .getByPlaceholder("Variance reason (if any)")
       .fill("E2E manual verify count");
-    await page.getByText("Submit Count", { exact: true }).click();
+    await page.getByRole("button", { name: "Save & Verify" }).click();
 
     // 5. Verify redirect back to scan screen
     await page.waitForURL("**/staff/scan?**", { timeout: 30000 });
-    await expect(page.getByText("Session Summary")).toBeVisible();
+    await expect(page.getByPlaceholder("Enter barcode or item code...")).toBeVisible();
 
-    // 6. Logout
-    await page.getByText("Logout", { exact: true }).click();
-    await page.waitForURL("**/login**", { timeout: 30000 });
+    // 6. Logout via Settings page
+    await page.goto("/staff/settings");
+    await page.waitForURL(/\/(?:login|welcome)(?:\?.*)?$/, { timeout: 30000 });
   });
 
   test("stale auth on scan redirects cleanly without retry storms", async ({

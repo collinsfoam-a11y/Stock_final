@@ -310,3 +310,26 @@ async def test_newer_version_event_applies_over_older_stored():
     db.erp_items.update_one.assert_awaited_once()
     args, kwargs = db.erp_items.update_one.call_args
     assert args[1]["$set"]["sync_source_version"] == 7.0
+
+
+@pytest.mark.asyncio
+async def test_unversioned_event_preserves_existing_numeric_version():
+    # An event with no parseable source_version must NOT overwrite a previously
+    # stored numeric version with None — otherwise the staleness guard for this
+    # item is permanently disabled (regression found in review).
+    redis = FakeRedis()
+    db = make_db(stored_version=7)
+    consumer = ErpSyncEventConsumer(redis, db)
+    await ErpSyncEventProducer(redis).publish(
+        change_type="update", item_code="ITEM001", payload={"stock_qty": 99},
+        source_version="",  # unparseable -> version is None
+    )
+
+    await consumer.consume_once()
+
+    db.erp_items.update_one.assert_awaited_once()
+    set_doc = db.erp_items.update_one.call_args.args[1]["$set"]
+    # The event payload is applied...
+    assert set_doc.get("stock_qty") == 99
+    # ...but sync_source_version is NOT clobbered to None.
+    assert "sync_source_version" not in set_doc

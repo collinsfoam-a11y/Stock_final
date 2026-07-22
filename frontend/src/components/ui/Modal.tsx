@@ -3,7 +3,7 @@
  * Safe, non-breaking addition to component library
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import {
   Modal as RNModal,
   View,
@@ -25,11 +25,12 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme } from "../../hooks/useTheme";
+import { useUiTokens } from "../../hooks/useUiTokens";
 import { BlurView } from "expo-blur";
 import { haptics } from "@/services/haptics";
 
-import { scrim, shadows as uiShadows } from "@/theme/legacyCompat";
+import { shadows as uiShadows } from "@/theme/legacyCompat";
+import { colorWithAlpha } from "@/theme/themeTokens";
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export interface ModalProps {
@@ -53,7 +54,7 @@ export const Modal: React.FC<ModalProps> = ({
   size = "medium",
   animationType = "fade",
 }) => {
-  const theme = useTheme();
+  const uiTokens = useUiTokens();
 
   // Reanimated values for smooth animations
   const opacity = useSharedValue(0);
@@ -105,6 +106,76 @@ export const Modal: React.FC<ModalProps> = ({
     }
   }, [visible, opacity, scale, translateY]);
 
+  // Web-only focus trap: confines Tab/Shift+Tab within the modal and
+  // restores focus to the previously-active element on close.
+  const modalContentRef = useRef<View>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  const getFocusableElements = useCallback((container: HTMLElement): HTMLElement[] => {
+    const selectors = [
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      'button:not([disabled])',
+      'a[href]',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(', ');
+    return Array.from(container.querySelectorAll<HTMLElement>(selectors));
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+
+    if (visible) {
+      previousFocusRef.current = document.activeElement as HTMLElement;
+
+      // Defer focus move so the modal animation has a chance to mount
+      const timer = setTimeout(() => {
+        const node = modalContentRef.current;
+        if (!node) return;
+        const host = (node as unknown as HTMLElement) ?? node;
+        // Walk up to find the real DOM element (Animated.View wraps)
+        const el = host.closest?.('[class]') ?? host;
+        const focusable = getFocusableElements(el as HTMLElement);
+        if (focusable.length > 0) {
+          focusable[0].focus();
+        } else {
+          (el as HTMLElement).setAttribute("tabindex", "-1");
+          (el as HTMLElement).focus();
+        }
+      }, 100);
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key !== "Tab") return;
+        const node = modalContentRef.current;
+        if (!node) return;
+        const host = (node as unknown as HTMLElement) ?? node;
+        const el = host.closest?.('[class]') ?? host;
+        const focusable = getFocusableElements(el as HTMLElement);
+        if (focusable.length === 0) {
+          e.preventDefault();
+          return;
+        }
+        const first = focusable[0]!;
+        const last = focusable[focusable.length - 1]!;
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      };
+
+      document.addEventListener("keydown", handleKeyDown);
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener("keydown", handleKeyDown);
+        previousFocusRef.current?.focus();
+      };
+    }
+  }, [visible, getFocusableElements]);
+
   // Animated backdrop style
   const backdropAnimatedStyle = useAnimatedStyle(() => {
     return {
@@ -146,7 +217,7 @@ export const Modal: React.FC<ModalProps> = ({
         {Platform.OS !== "web" ? (
           <BlurView intensity={20} style={StyleSheet.absoluteFill} />
         ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: scrim.medium }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: colorWithAlpha(uiTokens.colors.textPrimary, 0.5) }]} />
         )}
         <Pressable
           onPress={(e: GestureResponderEvent) => e.stopPropagation()}
@@ -157,20 +228,22 @@ export const Modal: React.FC<ModalProps> = ({
             style={styles.container}
           >
             <Animated.View
+              ref={modalContentRef}
               style={[
                 styles.modal,
                 sizeStyles[size],
                 {
-                  backgroundColor: theme.colors.card,
-                  borderColor: theme.colors.border,
+                  backgroundColor: uiTokens.colors.surface,
+                  borderColor: uiTokens.colors.border,
                 },
                 modalAnimatedStyle,
+                Platform.OS === "web" ? { "aria-modal": true as any } : undefined,
               ]}
             >
               {(title || showCloseButton) && (
-                <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
+                <View style={[styles.header, { borderBottomColor: uiTokens.colors.border }]}>
                   {!!title && (
-                    <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
+                    <Text style={[styles.title, { color: uiTokens.colors.textPrimary }]}>{title}</Text>
                   )}
                   {showCloseButton && (
                     <TouchableOpacity
@@ -183,7 +256,7 @@ export const Modal: React.FC<ModalProps> = ({
                       accessibilityRole="button"
                       accessibilityLabel="Close"
                     >
-                      <Ionicons name="close" size={24} color={theme.colors.textSecondary} />
+                      <Ionicons name="close" size={24} color={uiTokens.colors.textSecondary} />
                     </TouchableOpacity>
                   )}
                 </View>

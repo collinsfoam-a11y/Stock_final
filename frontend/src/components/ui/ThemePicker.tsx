@@ -9,25 +9,24 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
 
-import { useTheme } from "../../hooks/useTheme";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import { useSettingsStore } from "../../store/settingsStore";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface ThemePickerProps {
   compact?: boolean;
 }
 
 export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => {
-  const { colors } = useTheme();
+  const uiTokens = useUiTokens();
   const theme = useSettingsStore((state) => state.settings.theme);
   const setSetting = useSettingsStore((state) => state.setSetting);
 
   return (
     <View style={styles.container}>
       <View style={styles.modeSection}>
-        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Appearance Mode</Text>
+        <Text style={[styles.sectionLabel, { color: uiTokens.colors.textSecondary }]}>Appearance Mode</Text>
         <View
-          style={[styles.modeToggle, { backgroundColor: colors.surface, gap: compact ? 6 : 8 }]}
+          style={[styles.modeToggle, { backgroundColor: uiTokens.colors.surface, gap: compact ? 6 : 8 }]}
         >
           {[
             { value: "light" as const, label: "Light", icon: "sunny-outline" },
@@ -37,7 +36,7 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => 
               key={mode.value}
               style={[
                 styles.modeButton,
-                theme === mode.value && { backgroundColor: colors.accent },
+                theme === mode.value && { backgroundColor: uiTokens.colors.accent },
               ]}
               onPress={() => {
                 if (Platform.OS !== "web") {
@@ -49,14 +48,14 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => 
               <Ionicons
                 name={mode.icon as any}
                 size={18}
-                color={theme === mode.value ? uiSemanticColors.text.inverse : colors.textSecondary}
+                color={theme === mode.value ? uiTokens.colors.surface : uiTokens.colors.textSecondary}
               />
               <Text
                 style={[
                   styles.modeButtonText,
                   {
                     color:
-                      theme === mode.value ? uiSemanticColors.text.inverse : colors.textSecondary,
+                      theme === mode.value ? uiTokens.colors.surface : uiTokens.colors.textSecondary,
                   },
                 ]}
               >

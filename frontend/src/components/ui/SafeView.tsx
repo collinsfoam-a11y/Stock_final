@@ -6,7 +6,7 @@
 import React, { ReactNode } from "react";
 import { View, StyleSheet, ViewStyle } from "react-native";
 import { ErrorBoundary } from "../ErrorBoundary";
-import { useTheme } from "../../hooks/useTheme";
+import { useUiTokens } from "@/hooks/useUiTokens";
 
 interface SafeViewProps {
   children: ReactNode;
@@ -15,17 +15,17 @@ interface SafeViewProps {
 }
 
 export const SafeView: React.FC<SafeViewProps> = ({ children, style, fallback }) => {
-  const theme = useTheme();
+  const uiTokens = useUiTokens();
 
   const defaultFallback = (_error: Error) => (
-    <View style={[styles.errorContainer, { backgroundColor: theme.colors.background }]}>
+    <View style={[styles.errorContainer, { backgroundColor: uiTokens.colors.background }]}>
       <ErrorBoundary fallback={fallback}>{children}</ErrorBoundary>
     </View>
   );
 
   return (
     <ErrorBoundary fallback={fallback || defaultFallback}>
-      <View style={[styles.container, { backgroundColor: theme.colors.background }, style]}>
+      <View style={[styles.container, { backgroundColor: uiTokens.colors.background }, style]}>
         {children}
       </View>
     </ErrorBoundary>
@@ -38,6 +38,5 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     flex: 1,
-    padding: 16,
   },
 });

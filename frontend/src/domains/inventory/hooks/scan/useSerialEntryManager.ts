@@ -55,12 +55,28 @@ export const useSerialEntryManager = ({
         if (updated[index]) {
           updated[index] = {
             ...updated[index],
-            [field]: field === "serial_number" ? String(value).toUpperCase() : value,
+            [field]: value,
           };
         }
         return updated;
       });
       setSerialValidationErrors([]);
+    },
+    []
+  );
+
+  const handleSerialBlur = useCallback(
+    (index: number) => {
+      setSerialEntries((previous) => {
+        const updated = [...previous];
+        if (updated[index] && typeof updated[index].serial_number === "string") {
+          updated[index] = {
+            ...updated[index],
+            serial_number: updated[index].serial_number.toUpperCase(),
+          };
+        }
+        return updated;
+      });
     },
     []
   );
@@ -178,6 +194,7 @@ export const useSerialEntryManager = ({
   return {
     handleAddSerial,
     handleRemoveSerial,
+    handleSerialBlur,
     handleSerialChange,
     handleSerialScanned,
     isSerializedItem,

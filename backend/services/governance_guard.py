@@ -268,6 +268,9 @@ class GovernedCollection:
     def __getattr__(self, item: str) -> Any:
         return getattr(self._collection, item)
 
+    def __bool__(self) -> bool:
+        return True
+
     def _guard(self, method_name: str) -> None:
         _require_write_authority(f"{self._collection_name}.{method_name}")
 

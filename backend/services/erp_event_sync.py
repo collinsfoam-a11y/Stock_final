@@ -200,10 +200,15 @@ class ErpSyncEventConsumer:
         if change_type == "delete":
             # Soft-delete: exports and audit history must keep referencing the
             # item, so mark rather than remove (database compatibility).
+            delete_set: dict[str, Any] = {"is_deleted": True, "updated_at": _utc_now()}
+            # Only update sync_source_version when the event actually carries
+            # one; otherwise we would clobber a previously-stored numeric
+            # version with None and disable the staleness guard for future
+            # events on this item.
+            if version is not None:
+                delete_set["sync_source_version"] = version
             await self._db.erp_items.update_one(
-                {"item_code": item_code},
-                {"$set": {"is_deleted": True, "updated_at": _utc_now(),
-                          "sync_source_version": version}},
+                {"item_code": item_code}, {"$set": delete_set}
             )
             return
 
@@ -212,7 +217,10 @@ class ErpSyncEventConsumer:
         doc["updated_at"] = _utc_now()
         doc["is_deleted"] = False
         doc["sync_source"] = "event"
-        doc["sync_source_version"] = version
+        # Same guard as the delete path: preserve any existing numeric version
+        # when this event has no parseable source_version.
+        if version is not None:
+            doc["sync_source_version"] = version
         await self._db.erp_items.update_one(
             {"item_code": item_code}, {"$set": doc}, upsert=True
         )

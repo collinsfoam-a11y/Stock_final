@@ -10,6 +10,7 @@ interface SerialEntryCardProps {
   index: number;
   validationError?: string | null;
   onChangeText: (text: string) => void;
+  onBlur?: () => void;
   onRemove: () => void;
 }
 
@@ -18,10 +19,11 @@ export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
   index,
   validationError,
   onChangeText,
+  onBlur,
   onRemove,
 }) => {
   const uiTokens = useUiTokens();
-  const hasValue = entry.serial_number.trim().length > 0;
+  const hasValue = (entry.serial_number || "").trim().length > 0;
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -71,7 +73,7 @@ export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
   );
 
   return (
-    <View style={styles.card}>
+    <View style={styles.card} pointerEvents="auto">
       <View style={styles.header}>
         <Text style={styles.label}>Unit #{index + 1}</Text>
         <TouchableOpacity
@@ -96,12 +98,15 @@ export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
               : uiTokens.colors.border,
           },
         ]}
-        value={entry.serial_number}
+        value={entry.serial_number ?? ""}
         onChangeText={onChangeText}
+        onBlur={onBlur}
         placeholder="Serial number"
         placeholderTextColor={uiTokens.colors.textMuted}
         autoCapitalize="characters"
         autoCorrect={false}
+        editable={true}
+        pointerEvents="auto"
       />
 
       {validationError && <Text style={styles.errorText}>{validationError}</Text>}

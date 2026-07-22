@@ -287,6 +287,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: semanticColors.background.primary,
+    minHeight: 44,
   },
   cancelText: {
     ...textStyles.label,

@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo } from "react";
-import { FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useMemo } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { SerialEntryData } from "@/types/scan";
 import { useUiTokens } from "@/hooks/useUiTokens";
@@ -13,6 +13,7 @@ interface SerialEntriesSectionProps {
   onOpenScanner: () => void;
   onAddSerial: () => void;
   onSerialChange: (index: number, text: string) => void;
+  onSerialBlur?: (index: number) => void;
   onRemoveSerial: (index: number) => void;
 }
 
@@ -23,6 +24,7 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
   onOpenScanner,
   onAddSerial,
   onSerialChange,
+  onSerialBlur,
   onRemoveSerial,
 }) => {
   const uiTokens = useUiTokens();
@@ -111,18 +113,6 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
     [uiTokens]
   );
 
-  const renderSerialEntry = useCallback(
-    ({ item, index }: { item: SerialEntryData; index: number }) => (
-      <SerialEntryCard
-        entry={item}
-        index={index}
-        validationError={serialValidationMessages[index]}
-        onChangeText={(text) => onSerialChange(index, text)}
-        onRemove={() => onRemoveSerial(index)}
-      />
-    ),
-    [onRemoveSerial, onSerialChange, serialValidationMessages]
-  );
 
   return (
     <View style={styles.section}>
@@ -156,20 +146,19 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
         </View>
       )}
 
-      <FlatList
-        data={serialEntries}
-        keyExtractor={(entry) => entry.id}
-        renderItem={renderSerialEntry}
-        extraData={serialValidationMessages}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        nestedScrollEnabled={Platform.OS === "android"}
-        scrollEnabled={false}
-        initialNumToRender={8}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-        removeClippedSubviews={Platform.OS === "android"}
-      />
+      <View style={[styles.list, styles.listContent]}>
+        {serialEntries.map((entry, index) => (
+          <SerialEntryCard
+            key={entry.id}
+            entry={entry}
+            index={index}
+            validationError={serialValidationMessages[index]}
+            onChangeText={(text) => onSerialChange(index, text)}
+            onBlur={() => onSerialBlur?.(index)}
+            onRemove={() => onRemoveSerial(index)}
+          />
+        ))}
+      </View>
 
       <TouchableOpacity
         style={styles.addButton}

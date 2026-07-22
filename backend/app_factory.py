@@ -285,6 +285,20 @@ async def _governance_violation_handler(request: Request, exc: GovernanceViolati
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception):
+    """
+    Safety net for any unhandled Exception.
+    Logs the stack trace and returns a structured JSON 500 error response
+    ensuring CORS headers are properly attached.
+    """
+    logger.error("Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error", "error": str(exc)},
+    )
+
+
 # Create API router
 api_router = APIRouter()
 

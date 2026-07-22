@@ -98,6 +98,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                     paddingHorizontal: 10,
                     paddingVertical: 6,
                     borderRadius: 8,
+                    minHeight: 44,
                     backgroundColor: active
                       ? tokens.colors.accent
                       : tokens.colors.surfaceElevated,
@@ -146,7 +147,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
               {rackSuggestions.map((sugg) => (
                 <TouchableOpacity
                   key={`sugg-${sugg}`}
-                  style={{ paddingHorizontal: 10, paddingVertical: 8 }}
+                  style={{ paddingHorizontal: 10, paddingVertical: 8, minHeight: 44 }}
                   onPress={() => onChangeRack(sugg)}
                   accessibilityLabel={`Use suggestion ${sugg}`}
                   testID={`suggest-rack-${sugg.replace(/\s+/g, "-").toLowerCase()}`}
@@ -173,6 +174,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                     onPress={onClearRecentRacks}
                     accessibilityLabel="Clear recent racks"
                     testID="btn-clear-recent-racks"
+                    style={{ minHeight: 44, paddingHorizontal: 8 }}
                   >
                     <Text
                       style={{
@@ -193,6 +195,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                       paddingHorizontal: 10,
                       paddingVertical: 6,
                       borderRadius: 8,
+                      minHeight: 44,
                       backgroundColor: tokens.colors.surfaceElevated,
                       borderWidth: 1,
                       borderColor: tokens.colors.border,

@@ -1,3 +1,8 @@
+/**
+ * @deprecated Use `ModernButton` directly with the appropriate variant prop.
+ * This wrapper will be removed in a future release.
+ */
+
 import React from "react";
 
 import ModernButton from "./ModernButton";
@@ -20,7 +25,15 @@ const variantMap: Record<AppButtonVariant, NonNullable<ModernButtonProps["varian
   destructive: "danger",
 };
 
+let _deprecatedWarned = false;
+
 export function AppButton({ variant = "primary", size = "medium", ...props }: AppButtonProps) {
+  if (__DEV__ && !_deprecatedWarned) {
+    _deprecatedWarned = true;
+    console.warn(
+      "[Stock Verify] AppButton is deprecated. Use ModernButton directly with the appropriate variant prop."
+    );
+  }
   return <ModernButton {...props} size={size} variant={variantMap[variant]} />;
 }
 

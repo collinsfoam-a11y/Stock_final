@@ -410,6 +410,8 @@ export default function LoginScreen() {
                       style={styles.hiddenInput}
                       autoFocus
                       caretHidden
+                      accessibilityLabel="PIN entry"
+                      accessibilityRole="text"
                     />
 
                     {/* PIN Display - Clickable to focus */}
@@ -417,6 +419,9 @@ export default function LoginScreen() {
                       activeOpacity={1}
                       onPress={() => pinInputRef.current?.focus()}
                       style={styles.pinDisplay}
+                      accessibilityLabel={`Enter your 4-digit PIN, ${pin.length} of 4 digits entered`}
+                      accessibilityRole="text"
+                      accessibilityState={{ value: pin }}
                     >
                       {[0, 1, 2, 3].map((index) => (
                         <SafeAnimatedView

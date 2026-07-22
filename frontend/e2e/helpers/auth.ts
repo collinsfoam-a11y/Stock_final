@@ -21,17 +21,19 @@ type AuthSession = LoginResponse["data"];
 const BACKEND_BASE_URL = process.env.E2E_BACKEND_URL || "http://localhost:8001";
 
 const credentialsByRole: Record<Role, { username: string; password: string }> = {
-  staff: { username: "staff1", password: "staff123" },
-  supervisor: { username: "supervisor", password: "super123" },
-  admin: { username: "admin", password: "admin123" },
+  staff: { username: "staff1", password: "Staff@123" },
+  supervisor: { username: "supervisor", password: "Super@123" },
+  admin: { username: "admin", password: "Admin@123" },
 };
 
 const SESSION_TTL_MS = 5 * 60 * 1000;
 const sessionCache = new Map<Role, { session: AuthSession; cachedAt: number }>();
 
 function buildClientHeaders(clientId: string): Record<string, string> {
+  const uniqueIp = `10.0.0.${Math.floor(Math.random() * 200) + 1}`;
   return {
     "x-device-id": clientId,
+    "x-forwarded-for": uniqueIp,
   };
 }
 

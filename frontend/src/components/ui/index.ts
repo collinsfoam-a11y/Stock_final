@@ -6,12 +6,16 @@
 export { Modal } from "./Modal";
 export { SafeView } from "./SafeView";
 export * from "./Skeleton";
+// @deprecated Use ModernButton directly
 export { AppButton } from "./AppButton";
 export type { AppButtonProps, AppButtonVariant, AppButtonSize } from "./AppButton";
+// @deprecated Use ModernCard directly
 export { AppCard } from "./AppCard";
 export type { AppCardProps, AppCardVariant } from "./AppCard";
+// @deprecated Use ModernInput directly
 export { AppInput } from "./AppInput";
 export type { AppInputProps } from "./AppInput";
+// @deprecated Use ConfirmModal directly
 export { ConfirmDialog } from "./ConfirmDialog";
 export type { ConfirmDialogProps } from "./ConfirmDialog";
 export { SyncIndicator } from "./SyncIndicator";

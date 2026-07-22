@@ -8,13 +8,13 @@
 import React from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { useTheme } from "../../hooks/useTheme";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { useSettingsStore } from "../../store/settingsStore";
 import { ThemePicker } from "./ThemePicker";
-import { AppCard } from "./AppCard";
+import { ModernCard } from "./ModernCard";
 import { FontSizeSlider, FontStylePicker } from "../settings";
 import { flags } from "../../constants/flags";
+import { fontFamily } from "@/theme/legacyCompat";
 
 interface AppearanceSettingsProps {
   showTitle?: boolean;
@@ -27,7 +27,6 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
   scrollable = true,
   compact = false,
 }) => {
-  const { colors, typography } = useTheme();
   const uiTokens = useUiTokens();
   const { settings, setSetting } = useSettingsStore();
 
@@ -40,8 +39,8 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
       {showTitle && (
         <Animated.View entering={FadeInDown.delay(0).springify()}>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>Appearance</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.title, { color: uiTokens.colors.textPrimary }]}>Appearance</Text>
+            <Text style={[styles.subtitle, { color: uiTokens.colors.textSecondary }]}>
               Customize the look and feel of your app
             </Text>
           </View>
@@ -50,47 +49,47 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
 
       {/* Theme Mode */}
       <Animated.View entering={FadeInDown.delay(100).springify()}>
-        <AppCard variant="outlined" elevation="none" padding={16} style={styles.section}>
+        <ModernCard variant="outlined" elevation="none" padding={16} style={styles.section}>
           <ThemePicker compact={compact} />
-        </AppCard>
+        </ModernCard>
       </Animated.View>
 
       {/* Font Size */}
       <Animated.View entering={FadeInDown.delay(200).springify()}>
-        <AppCard variant="outlined" elevation="none" padding={0} style={styles.section}>
+        <ModernCard variant="outlined" elevation="none" padding={0} style={styles.section}>
           <FontSizeSlider
             value={typeof settings.fontSizeValue === "number" ? settings.fontSizeValue : 16}
             onValueChange={handleFontSizeChange}
           />
-        </AppCard>
+        </ModernCard>
       </Animated.View>
 
       {/* Font Style */}
       <Animated.View entering={FadeInDown.delay(300).springify()}>
-        <AppCard variant="outlined" elevation="none" padding={0} style={styles.section}>
+        <ModernCard variant="outlined" elevation="none" padding={0} style={styles.section}>
           <FontStylePicker
             value={settings.fontStyle}
             onValueChange={(value) => setSetting("fontStyle", value)}
           />
-        </AppCard>
+        </ModernCard>
       </Animated.View>
 
       {/* Preview Card */}
       <Animated.View entering={FadeInDown.delay(400).springify()}>
-        <AppCard variant="outlined" elevation="none" padding={20} style={styles.section}>
-          <Text style={[styles.previewTitle, { color: colors.text }]}>Preview</Text>
-          <View style={[styles.previewBox, { backgroundColor: colors.background }]}>
-            <View style={[styles.previewHeader, { backgroundColor: colors.surface }]}>
-              <View style={[styles.previewDot, { backgroundColor: colors.accent }]} />
-              <View style={[styles.previewLine, { backgroundColor: colors.text, width: "40%" }]} />
+        <ModernCard variant="outlined" elevation="none" padding={20} style={styles.section}>
+          <Text style={[styles.previewTitle, { color: uiTokens.colors.textPrimary }]}>Preview</Text>
+          <View style={[styles.previewBox, { backgroundColor: uiTokens.colors.background }]}>
+            <View style={[styles.previewHeader, { backgroundColor: uiTokens.colors.surface }]}>
+              <View style={[styles.previewDot, { backgroundColor: uiTokens.colors.accent }]} />
+              <View style={[styles.previewLine, { backgroundColor: uiTokens.colors.textPrimary, width: "40%" }]} />
             </View>
             <View style={styles.previewContent}>
-              <View style={[styles.previewCard, { backgroundColor: colors.surface }]}>
+              <View style={[styles.previewCard, { backgroundColor: uiTokens.colors.surface }]}>
                 <View
                   style={[
                     styles.previewLine,
                     {
-                      backgroundColor: colors.text,
+                      backgroundColor: uiTokens.colors.textPrimary,
                       width: "60%",
                       height: Math.max(8, settings.fontSizeValue * 0.55),
                     },
@@ -100,19 +99,19 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
                   style={[
                     styles.previewLine,
                     {
-                      backgroundColor: colors.textSecondary,
+                      backgroundColor: uiTokens.colors.textSecondary,
                       width: "80%",
                       height: Math.max(6, settings.fontSizeValue * 0.35),
                     },
                   ]}
                 />
               </View>
-              <View style={[styles.previewCard, { backgroundColor: colors.surface }]}>
+              <View style={[styles.previewCard, { backgroundColor: uiTokens.colors.surface }]}>
                 <View
                   style={[
                     styles.previewLine,
                     {
-                      backgroundColor: colors.text,
+                      backgroundColor: uiTokens.colors.textPrimary,
                       width: "50%",
                       height: Math.max(8, settings.fontSizeValue * 0.5),
                     },
@@ -122,7 +121,7 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
                   style={[
                     styles.previewLine,
                     {
-                      backgroundColor: colors.textSecondary,
+                      backgroundColor: uiTokens.colors.textSecondary,
                       width: "70%",
                       height: Math.max(6, settings.fontSizeValue * 0.32),
                     },
@@ -134,34 +133,34 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
               style={[
                 styles.previewSampleText,
                 {
-                  color: colors.text,
+                  color: uiTokens.colors.textPrimary,
                   fontSize: settings.fontSizeValue,
-                  fontFamily: typography.fontFamily.body,
+                  fontFamily: fontFamily.regular,
                 },
               ]}
             >
               Sample text uses your selected font style.
             </Text>
-            <View style={[styles.previewButton, { backgroundColor: colors.accent }]}>
+            <View style={[styles.previewButton, { backgroundColor: uiTokens.colors.accent }]}>
               <View
                 style={[
                   styles.previewLine,
-                  { backgroundColor: colors.surfaceElevated, width: "30%" },
+                  { backgroundColor: uiTokens.colors.surfaceElevated, width: "30%" },
                 ]}
               />
             </View>
           </View>
-        </AppCard>
+        </ModernCard>
       </Animated.View>
 
       {flags.uiSettingsV2 && (
         <Animated.View entering={FadeInDown.delay(500).springify()}>
-          <AppCard variant="outlined" elevation="none" padding={16} style={styles.section}>
-            <Text style={[styles.previewTitle, { color: colors.text }]}>Experience Settings</Text>
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+          <ModernCard variant="outlined" elevation="none" padding={16} style={styles.section}>
+            <Text style={[styles.previewTitle, { color: uiTokens.colors.textPrimary }]}>Experience Settings</Text>
+            <Text style={[styles.infoText, { color: uiTokens.colors.textSecondary }]}>
               UI Upgrade Mode: {flags.uiVisualSystemV2 ? "Premium Visual" : "Classic"}
             </Text>
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+            <Text style={[styles.infoText, { color: uiTokens.colors.textSecondary }]}>
               Motion: {uiTokens.motion.enabled ? "Enabled" : "Disabled"}
             </Text>
             <View
@@ -187,7 +186,7 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
                 {uiTokens.motion.slow}ms
               </Text>
             </View>
-          </AppCard>
+          </ModernCard>
         </Animated.View>
       )}
     </View>

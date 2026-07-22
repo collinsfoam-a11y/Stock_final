@@ -18,6 +18,7 @@ interface SerializedItemSectionProps {
   onOpenScanner: () => void;
   onRemoveSerial: (index: number) => void;
   onSerialChange: (index: number, text: string) => void;
+  onSerialBlur?: (index: number) => void;
   onSerializedChange: (value: boolean) => void;
 }
 
@@ -31,6 +32,7 @@ export function SerializedItemSection({
   onOpenScanner,
   onRemoveSerial,
   onSerialChange,
+  onSerialBlur,
   onSerializedChange,
 }: SerializedItemSectionProps) {
   const uiTokens = useUiTokens();
@@ -113,6 +115,7 @@ export function SerializedItemSection({
           onOpenScanner={onOpenScanner}
           onAddSerial={onAddSerial}
           onSerialChange={onSerialChange}
+          onSerialBlur={onSerialBlur}
           onRemoveSerial={onRemoveSerial}
         />
       )}

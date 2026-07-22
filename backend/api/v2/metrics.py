@@ -50,12 +50,15 @@ async def get_connection_pool_metrics(current_user: dict = Depends(get_current_u
         )
 
 
-def _safe_get_metrics(obj: Any, method_name: str, fallback_name: str) -> dict[str, Any]:
+async def _safe_get_metrics(obj: Any, method_name: str, fallback_name: str) -> dict[str, Any]:
     """Safely call a metrics method on an object."""
     if not hasattr(obj, method_name):
         return {}
     try:
-        return getattr(obj, method_name)()
+        res = getattr(obj, method_name)()
+        if hasattr(res, "__await__"):
+            res = await res
+        return res
     except Exception as e:
         return {"error": str(e)}
 
@@ -81,12 +84,12 @@ async def get_system_metrics(current_user: dict = Depends(get_current_user)):
             "services": {},
         }
 
-        metrics["monitoring"] = _safe_get_metrics(monitoring_service, "get_metrics", "monitoring")
-        metrics["services"]["cache"] = _safe_get_metrics(cache_service, "get_status", "cache")
-        metrics["services"]["rate_limiter"] = _safe_get_metrics(
+        metrics["monitoring"] = await _safe_get_metrics(monitoring_service, "get_metrics", "monitoring")
+        metrics["services"]["cache"] = await _safe_get_metrics(cache_service, "get_status", "cache")
+        metrics["services"]["rate_limiter"] = await _safe_get_metrics(
             rate_limiter, "get_stats", "rate_limiter"
         )
-        metrics["services"]["mongodb"] = _safe_get_metrics(
+        metrics["services"]["mongodb"] = await _safe_get_metrics(
             database_health_service, "check_mongodb_health", "mongodb"
         )
 

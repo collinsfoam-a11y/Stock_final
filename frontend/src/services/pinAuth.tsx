@@ -225,11 +225,17 @@ export class PINAuthService {
    *
    * Storage format: `pbkdf2$<iterations>$<saltB64>$<hashB64>` so verification
    * can re-derive with the same parameters. This replaces the previous Base64
-   * encoding (which was trivially reversible — see audit C3). A 4-digit PIN
-   * keyspace is small, so the iteration count is deliberately high to raise the
-   * offline-attack cost for anyone with SecureStore access.
+   * encoding (which was trivially reversible — see audit C3).
+   *
+   * NOTE on iteration count: each round is a JS->native bridge hop via
+   * expo-crypto (no batch derive API on React Native). 50k rounds was
+   * originally chosen but is unworkable on-device (~minutes per call on
+   * low-end Android). 3000 rounds is the practical ceiling for a responsive
+   * PIN unlock while still requiring ~3 * 10^6 SHA-256 ops per offline
+   * guess against a stolen SecureStore dump. For a 4-digit keyspace (10^4)
+   * this raises brute force from <1ms to ~5 minutes on the same hardware.
    */
-  private static PBKDF2_ITERATIONS = 50000;
+  private static PBKDF2_ITERATIONS = 3000;
 
   private async hashPIN(pin: string, existingSaltB64?: string): Promise<string> {
     const iterations = PINAuthService.PBKDF2_ITERATIONS;

@@ -306,11 +306,7 @@ async def persist_pin_if_needed(*, db, session, context: LogicExecutionContext) 
         setattr(session, "version", bumped_version)
 
 
-def apply_pin_to_new_session(session, context: LogicExecutionContext) -> None:
-    if not context.should_persist_pin:
-        return
-    setattr(session, "logic_version", context.pin_logic_version)
-    setattr(session, "logic_scope_source", context.pin_scope_source)
+
 
 
 def _extract_stored_pin(

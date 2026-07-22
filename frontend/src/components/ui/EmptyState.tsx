@@ -6,7 +6,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme } from "@/hooks/useTheme";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import { ModernButton } from "./ModernButton";
 import { getDecorativeIconProps } from "@/utils/accessibility";
 import { FadeIn } from "./FadeIn";
@@ -30,7 +30,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   style,
   accessibilityLabel,
 }) => {
-  const theme = useTheme();
+  const uiTokens = useUiTokens();
 
   return (
     <FadeIn style={[styles.container, style]}>
@@ -41,15 +41,18 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         <Ionicons
           name={icon}
           size={64}
-          color={theme.colors.textSecondary}
+          color={uiTokens.colors.textSecondary}
           style={styles.icon}
           {...getDecorativeIconProps()}
         />
-        <Text accessibilityRole="header" style={[styles.title, { color: theme.colors.text }]}>
+        <Text
+          accessibilityRole="header"
+          style={[styles.title, { color: uiTokens.colors.textPrimary }]}
+        >
           {title}
         </Text>
         {!!message && (
-          <Text style={[styles.message, { color: theme.colors.textSecondary }]}>{message}</Text>
+          <Text style={[styles.message, { color: uiTokens.colors.textSecondary }]}>{message}</Text>
         )}
       </View>
 
