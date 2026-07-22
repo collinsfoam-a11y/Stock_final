@@ -38,6 +38,12 @@ export default function StaffSettingsScreen() {
   const { version, buildVersion } = useAppVersion();
   const uiTokens = useUiTokens();
 
+  // Type-safe navigation helpers for Expo Router dynamic routes
+  const navigateToWelcome = () => router.replace("/welcome" as never);
+  const navigateToSecurity = () => router.push("/security" as never);
+  const navigateToHelp = () => router.push("/help" as never);
+  const navigateToNotifications = () => router.push("/notifications" as never);
+
   const handleLogout = useCallback(() => {
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -48,7 +54,7 @@ export default function StaffSettingsScreen() {
       if (confirmed) {
         logout()
           .then(() => {
-            router.replace("/welcome" as any);
+            navigateToWelcome();
           })
           .catch(() => {
             toastService.showError("Failed to sign out. Please try again.");
@@ -65,7 +71,7 @@ export default function StaffSettingsScreen() {
         onPress: async () => {
           try {
             await logout();
-            router.replace("/welcome" as any);
+            navigateToWelcome();
           } catch {
             toastService.showError("Failed to sign out. Please try again.");
           }
@@ -75,11 +81,11 @@ export default function StaffSettingsScreen() {
   }, [logout, router]);
 
   const handleSecurity = useCallback(() => {
-    router.push("/security" as any);
+    navigateToSecurity();
   }, [router]);
 
   const handleHelp = useCallback(() => {
-    router.push("/help" as any);
+    navigateToHelp();
   }, [router]);
 
   return (
@@ -184,7 +190,7 @@ export default function StaffSettingsScreen() {
               icon="notifications-outline"
               label="Notifications"
               description="Open recount and approval alerts"
-              onPress={() => router.push("/notifications" as any)}
+              onPress={navigateToNotifications}
               type="navigation"
             />
             <SettingsSectionDivider />

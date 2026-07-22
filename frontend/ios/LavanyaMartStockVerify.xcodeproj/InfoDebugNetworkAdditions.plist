@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Debug-only: allow connecting to the Metro/Expo dev server over HTTP on the local network -->
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+    <key>NSAllowsArbitraryLoadsInWebContent</key>
+    <true/>
+    <key>NSAllowsLocalNetworking</key>
+    <true/>
+  </dict>
+
+  <!-- iOS 14+ local network privacy prompt description -->
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>Allows the app to connect to the local development server during debugging.</string>
+
+  <!-- Bonjour service types used by local dev servers (Metro/Expo) -->
+  <key>NSBonjourServices</key>
+  <array>
+    <string>_http._tcp</string>
+    <string>_https._tcp</string>
+  </array>
+</dict>
+</plist>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Required privacy usage descriptions -->
+  <key>NSCameraUsageDescription</key>
+  <string>We use the camera to scan barcodes for stock verification.</string>
+
+  <key>NSMicrophoneUsageDescription</key>
+  <string>We may access the microphone when recording video during scanning.</string>
+
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>We access your photo library if you choose images for verification or import.</string>
+
+  <key>NSPhotoLibraryAddUsageDescription</key>
+  <string>We save images to your photo library when you export or capture photos.</string>
+
+  <key>NSFaceIDUsageDescription</key>
+  <string>Face ID is used to quickly and securely authenticate your account.</string>
+</dict>
+</plist>
