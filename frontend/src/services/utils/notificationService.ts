@@ -254,18 +254,48 @@ export class NotificationService {
       return;
     }
 
-    const Notifications = await this.getNotificationsModule();
-    const projectId = this.getExpoProjectId();
-    const tokenResponse = projectId
-      ? await Notifications.getExpoPushTokenAsync({ projectId })
-      : await Notifications.getExpoPushTokenAsync();
-    const token = tokenResponse.data;
-    if (!token || token === this.registeredPushToken) {
-      return;
-    }
+    try {
+      const Notifications = await this.getNotificationsModule();
+      const projectId = this.getExpoProjectId();
+      const tokenResponse = projectId
+        ? await Notifications.getExpoPushTokenAsync({ projectId })
+        : await Notifications.getExpoPushTokenAsync();
+      const token = tokenResponse.data;
+      if (!token || token === this.registeredPushToken) {
+        return;
+      }
 
-    await registerNotificationDevice(token, Platform.OS);
-    this.registeredPushToken = token;
+      await registerNotificationDevice(token, Platform.OS);
+      this.registeredPushToken = token;
+    } catch (error) {
+      // Remote push registration requires a physical device and a build
+      // signed with the `aps-environment` (iOS) / FCM (Android) entitlement.
+      // On the simulator, in Expo Go, or in a dev build without push
+      // capability this is expected: local notifications still work, only
+      // remote push tokens are unavailable. Downgrade to a warning so it
+      // doesn't surface as a reported error, and don't block initialize().
+      if (this.isExpectedPushUnavailableError(error)) {
+        __DEV__ &&
+          console.warn(
+            "[NotificationService] Remote push unavailable (no push entitlement / not a physical device); continuing with local notifications only.",
+          );
+        return;
+      }
+      throw error;
+    }
+  }
+
+  private static isExpectedPushUnavailableError(error: unknown): boolean {
+    const message = (
+      error instanceof Error ? error.message : String(error ?? "")
+    ).toLowerCase();
+    return (
+      message.includes("aps-environment") ||
+      message.includes("entitlement") ||
+      message.includes("must use physical device") ||
+      message.includes("must be a physical device") ||
+      message.includes("no valid") // covers the raw APNs entitlement message
+    );
   }
 
   private static getExpoProjectId(): string | null {
