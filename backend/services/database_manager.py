@@ -371,6 +371,7 @@ class DatabaseManager:
                         large_collections.append(collection)
 
                 except Exception:
+                    logger.debug("Suppressed non-fatal exception", exc_info=True)
                     continue  # Skip collections that can't be analyzed
 
         except Exception as e:
@@ -429,6 +430,7 @@ class DatabaseManager:
                         )
                     )
             except Exception:
+                logger.debug("Suppressed non-fatal exception", exc_info=True)
                 continue
 
     def _analyze_sql_server(self, insights: dict[str, Any]) -> None:

@@ -132,4 +132,4 @@ async def websocket_endpoint(
         try:
             await websocket.close(code=1011)  # Internal Error
         except Exception:
-            pass
+            logger.debug("Suppressed non-fatal exception", exc_info=True)

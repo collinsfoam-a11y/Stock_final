@@ -142,7 +142,7 @@ class DatabaseHealthService:
 
                     sql_password = getattr(settings, "SQL_SERVER_PASSWORD", None)
                 except Exception:
-                    pass
+                    logger.debug("Suppressed non-fatal exception", exc_info=True)
 
                 # An empty password is intentionally NOT treated as a placeholder:
                 # integrated/trusted auth setups have no password, and for
@@ -283,7 +283,7 @@ class DatabaseHealthService:
             try:
                 self._dedicated_client.close()
             except Exception:
-                pass
+                logger.debug("Suppressed non-fatal exception", exc_info=True)
         logger.info("Database health monitoring stopped")
 
     def get_status(self) -> dict[str, Any]:

@@ -380,7 +380,7 @@ class NotificationService:
         result = response.json()
         tickets = result.get("data", []) if isinstance(result, dict) else []
         invalid_tokens = []
-        for token, ticket in zip(expo_tokens, tickets):
+        for token, ticket in zip(expo_tokens, tickets, strict=False):
             details = ticket.get("details", {}) if isinstance(ticket, dict) else {}
             if ticket.get("status") == "error" and details.get("error") == "DeviceNotRegistered":
                 invalid_tokens.append(token)

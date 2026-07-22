@@ -521,7 +521,7 @@ async def update_item_master(
             _safe_log_value(barcode),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @verification_router.post("/{barcode}/refresh-sql-qty")
@@ -581,7 +581,7 @@ async def refresh_item_qty_from_sql(
         raise
     except Exception as e:
         logger.exception("Error refreshing SQL qty for %s", _safe_log_value(barcode))
-        raise HTTPException(status_code=500, detail=f"Refresh failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Refresh failed: {str(e)}") from e
 
 
 def _calculate_variance(request: VerificationRequest, system_qty: float) -> Optional[float]:
@@ -874,7 +874,7 @@ async def verify_item(
             _safe_log_value(barcode),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail="Verification failed") from e
+        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}") from e
 
 
 @verification_router.get("/filtered")
@@ -947,7 +947,7 @@ async def get_filtered_items(
 
     except Exception as e:
         logger.error("Error getting filtered items: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Failed to get items: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get items: {str(e)}") from e
 
 
 @verification_router.get("/sync")
@@ -1000,7 +1000,7 @@ async def sync_items_for_offline_cache(
 
     except Exception as e:
         logger.error("Error syncing items: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Failed to sync items: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to sync items: {str(e)}") from e
 
 
 @verification_router.get("/export/csv")
@@ -1071,7 +1071,7 @@ async def export_items_csv(
 
     except Exception as e:
         logger.error("Error exporting items to CSV: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"CSV export failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"CSV export failed: {str(e)}") from e
 
 
 @verification_router.get("/export/json")
@@ -1121,7 +1121,7 @@ async def export_items_json(
         raise
     except Exception as e:
         logger.error("Error exporting items to JSON: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"JSON export failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"JSON export failed: {str(e)}") from e
 
 
 @verification_router.get("/export/xlsx")
@@ -1171,7 +1171,7 @@ async def export_items_xlsx(
         raise
     except Exception as e:
         logger.error("Error exporting items to XLSX: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail="Excel export failed") from e
+        raise HTTPException(status_code=500, detail=f"Excel export failed: {str(e)}") from e
 
 
 @verification_router.get("/variances")
@@ -1233,7 +1233,7 @@ async def get_variances(
 
     except Exception as e:
         logger.error("Error getting variances: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Failed to get variances: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get variances: {str(e)}") from e
 
 
 async def _fetch_variance_export_rows(
@@ -1310,7 +1310,7 @@ async def export_variances_csv(
             "Error exporting variances to CSV: %s",
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail="Variance CSV export failed") from e
+        raise HTTPException(status_code=500, detail=f"Variance CSV export failed: {str(e)}") from e
 
 
 @verification_router.get("/variances/export/xlsx")
@@ -1354,7 +1354,9 @@ async def export_variances_xlsx(
             "Error exporting variances to XLSX: %s",
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail="Variance Excel export failed") from e
+        raise HTTPException(
+            status_code=500, detail=f"Variance Excel export failed: {str(e)}"
+        ) from e
 
 
 @verification_router.get("/live/users")
@@ -1403,7 +1405,7 @@ async def get_live_users(current_user: dict = Depends(get_current_user)):
 
     except Exception as e:
         logger.error("Error getting live users: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Failed to get live users: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get live users: {str(e)}") from e
 
 
 @verification_router.get("/live/verifications")
@@ -1453,4 +1455,6 @@ async def get_live_verifications(
             "Error getting live verifications: %s",
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=f"Failed to get live verifications: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get live verifications: {str(e)}"
+        ) from e

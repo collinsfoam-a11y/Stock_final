@@ -285,7 +285,7 @@ class EnhancedSQLServerConnectionPool:
         try:
             conn.close()
         except Exception:
-            pass
+            logger.debug("Suppressed non-fatal exception", exc_info=True)
 
     def _get_connection(self, timeout: Optional[float] = None) -> "pyodbc.Connection":
         """Get a connection from the pool with timeout"""
@@ -352,7 +352,7 @@ class EnhancedSQLServerConnectionPool:
                 try:
                     conn.close()
                 except Exception:
-                    pass
+                    logger.debug("Suppressed non-fatal exception", exc_info=True)
                 with self._lock:
                     self._created -= 1
                     self._metrics.total_closed += 1
@@ -361,7 +361,7 @@ class EnhancedSQLServerConnectionPool:
             try:
                 conn.close()
             except Exception:
-                pass
+                logger.debug("Suppressed non-fatal exception", exc_info=True)
             with self._lock:
                 self._created -= 1
                 self._metrics.total_closed += 1
@@ -482,7 +482,7 @@ class EnhancedSQLServerConnectionPool:
                 conn.close()
                 closed_count += 1
             except Exception:
-                pass
+                logger.debug("Suppressed non-fatal exception", exc_info=True)
 
         with self._lock:
             self._checked_out.clear()

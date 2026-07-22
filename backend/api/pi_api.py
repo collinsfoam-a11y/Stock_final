@@ -58,8 +58,8 @@ async def chat_with_pi(request: Request, current_user: Dict[str, Any] = Depends(
 
     try:
         body = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON body")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON body") from exc
 
     db = get_db()
     messages = body.get("messages", [])
@@ -122,17 +122,17 @@ async def chat_with_pi(request: Request, current_user: Dict[str, Any] = Depends(
                 logger.error("Failed to persist chat history: %s", sanitize_for_logging(str(e)))
 
             return result
-        except httpx.ConnectError:
+        except httpx.ConnectError as exc:
             logger.error(
                 "Could not connect to pi-server sidecar. Ensure it is running on localhost:3000"
             )
             raise HTTPException(
                 status_code=503,
                 detail="AI Assistant sidecar is not running. Please contact the administrator.",
-            )
+            ) from exc
         except Exception as e:
             logger.error("Error communicating with pi-server: %s", sanitize_for_logging(str(e)))
-            raise HTTPException(status_code=500, detail="Internal AI error")
+            raise HTTPException(status_code=500, detail="Internal AI error") from e
 
 
 @router.get("/history")

@@ -102,14 +102,14 @@ class ServiceManager:
                         )
                         killed += 1
                     except Exception:
-                        pass
+                        logger.debug("Suppressed non-fatal exception", exc_info=True)
             else:
                 for pattern in name_patterns:
                     try:
                         subprocess.run(["pkill", "-f", pattern], capture_output=True, timeout=5)
                         killed += 1
                     except Exception:
-                        pass
+                        logger.debug("Suppressed non-fatal exception", exc_info=True)
         except Exception as e:
             logger.warning(f"Error killing processes: {e}")
         return killed

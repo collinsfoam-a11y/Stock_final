@@ -1,14 +1,14 @@
 import os
 import sys
-from pathlib import Path  # noqa: E402
+from pathlib import Path
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, os.getcwd())
 
-from config import settings  # noqa: E402
-from sql_server_connector import SQLServerConnector  # noqa: E402
+from config import settings
+from sql_server_connector import SQLServerConnector
 
 
 def check_other_barcodes():

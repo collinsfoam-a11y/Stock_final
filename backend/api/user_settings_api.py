@@ -294,7 +294,7 @@ async def get_user_settings(
         raise HTTPException(
             status_code=500,
             detail="Error retrieving user settings",
-        )
+        ) from e
 
 
 @router.patch("/settings", response_model=UserSettingsResponse)
@@ -371,7 +371,7 @@ async def update_user_settings(
         raise HTTPException(
             status_code=500,
             detail="Error updating user settings",
-        )
+        ) from e
 
 
 @router.delete("/settings", response_model=UserSettingsResponse)
@@ -412,4 +412,4 @@ async def reset_user_settings(
         raise HTTPException(
             status_code=500,
             detail="Error resetting user settings",
-        )
+        ) from e

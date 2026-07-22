@@ -13,10 +13,16 @@ on:
   pull_request:
     branches: [main, develop, my-fix-branch]
 
+# Only the latest commit on a PR branch needs checking; cancel superseded runs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quick-checks:
     name: Quick Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -59,13 +65,15 @@ jobs:
           python -m pytest tests/governance -q
 
       - name: Check for secrets
-        uses: trufflesecurity/trufflehog@main
+        # Pinned to a release tag rather than @main to avoid pulling in
+        # unreviewed upstream changes to a security-scanning action.
+        uses: trufflesecurity/trufflehog@v3.95.9
         with:
           extra_args: --only-verified
 
       - name: Lint Python
         run: |
-          pip install ruff
+          pip install ruff==0.15.8
           ruff check backend/ --output-format=github
 
       - name: Check commit messages
@@ -76,6 +84,7 @@ jobs:
   frontend-health:
     name: Frontend Health
     runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     steps:
       - name: Checkout

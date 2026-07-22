@@ -131,7 +131,7 @@ async def create_report_template(
 
     except Exception as e:
         logger.error("Error creating report template: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @dynamic_reports_router.get("/templates")
@@ -153,7 +153,7 @@ async def get_report_templates(
 
     except Exception as e:
         logger.error("Error getting report templates: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @dynamic_reports_router.post("/generate")
@@ -228,10 +228,10 @@ async def generate_report(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @dynamic_reports_router.get("/history")
@@ -260,7 +260,7 @@ async def get_generated_reports(
 
     except Exception as e:
         logger.error("Error getting generated reports: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @dynamic_reports_router.get("/{report_id}/download")
@@ -287,10 +287,10 @@ async def download_report(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         logger.error("Error downloading report: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @dynamic_reports_router.get("/quick/items-with-fields")
@@ -352,7 +352,7 @@ async def quick_report_items_with_fields(
 
     except Exception as e:
         logger.error("Error generating quick report: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @dynamic_reports_router.get("/quick/variance-summary")
@@ -417,4 +417,4 @@ async def quick_report_variance_summary(
 
     except Exception as e:
         logger.error("Error generating variance summary: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e

@@ -493,7 +493,7 @@ async def register(
                 "code": error["code"],
                 "category": error["category"],
             },
-        )
+        ) from e
 
 
 async def _check_login_rate_limit(client_ip: str) -> Optional[Result[Any, Exception]]:

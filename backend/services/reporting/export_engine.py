@@ -144,8 +144,8 @@ class ExportEngine:
         """
         try:
             from openpyxl import Workbook
-        except ImportError:
-            raise ImportError("openpyxl is required for XLSX export")
+        except ImportError as exc:
+            raise ImportError("openpyxl is required for XLSX export") from exc
 
         wb = Workbook()
         ws = wb.active

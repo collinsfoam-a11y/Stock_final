@@ -3,7 +3,6 @@ Admin Control Panel API
 Provides endpoints for service management, status monitoring, and system control
 """
 
-# ruff: noqa: E402
 import sys
 from pathlib import Path
 
@@ -13,30 +12,30 @@ project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-import io  # noqa: E402
-import asyncio  # noqa: E402
-import logging  # noqa: E402
+import io
+import asyncio
+import logging
 from backend.utils.api_utils import sanitize_for_logging
-import os  # noqa: E402
+import os
 from collections.abc import Callable, Iterable
-from datetime import datetime, timedelta  # noqa: E402
-from typing import Any, Optional, TypedDict  # noqa: E402, Optional
+from datetime import datetime, timedelta
+from typing import Any, Optional, TypedDict
 
-import psutil  # noqa: E402
-from fastapi import APIRouter, Depends, HTTPException, status  # noqa: E402
-from fastapi.responses import Response, StreamingResponse  # noqa: E402
+import psutil
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response, StreamingResponse
 
 # Import auth
-from backend.auth import get_current_user  # noqa: E402
-from backend.auth.dependencies import auth_deps  # noqa: E402
-from backend.config import settings  # noqa: E402
-from backend.db.runtime import get_db  # noqa: E402
-from backend.services.projection_read_service import ProjectionReadService  # noqa: E402
-from backend.services.system_report_service import SystemReportService  # noqa: E402
-from backend.services.watchdog_service import WatchdogService  # noqa: E402
-from backend.sql_server_connector import sql_connector  # noqa: E402
-from backend.utils.port_detector import PortDetector  # noqa: E402
-from backend.utils.service_manager import ServiceManager  # noqa: E402
+from backend.auth import get_current_user
+from backend.auth.dependencies import auth_deps
+from backend.config import settings
+from backend.db.runtime import get_db
+from backend.services.projection_read_service import ProjectionReadService
+from backend.services.system_report_service import SystemReportService
+from backend.services.watchdog_service import WatchdogService
+from backend.sql_server_connector import sql_connector
+from backend.utils.port_detector import PortDetector
+from backend.utils.service_manager import ServiceManager
 
 # Constants
 BACKEND_PROCESS_NEEDLE = "server.py"
@@ -436,7 +435,7 @@ def _find_running_backend_process() -> Optional[dict[str, Any]]:
                     "pid": pid,
                 }
         except Exception:
-            pass
+            logger.debug("Suppressed non-fatal exception", exc_info=True)
     return None
 
 
@@ -460,7 +459,7 @@ async def start_backend(current_user: dict = Depends(require_admin)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to start backend: {str(e)}",
-        )
+        ) from e
 
 
 def _create_stop_response(killed: int) -> dict[str, Any]:
@@ -488,7 +487,7 @@ async def stop_backend(current_user: dict = Depends(require_admin)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to stop backend: {str(e)}",
-        )
+        ) from e
 
 
 @admin_control_router.post("/services/frontend/start")
@@ -511,7 +510,7 @@ async def start_frontend(current_user: dict = Depends(require_admin)):
                                 "pid": pid,
                             }
                     except Exception:
-                        pass
+                        logger.debug("Suppressed non-fatal exception", exc_info=True)
 
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
@@ -524,7 +523,7 @@ async def start_frontend(current_user: dict = Depends(require_admin)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to start frontend: {str(e)}",
-        )
+        ) from e
 
 
 @admin_control_router.post("/services/frontend/stop")
@@ -550,7 +549,7 @@ async def stop_frontend(current_user: dict = Depends(require_admin)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to stop frontend: {str(e)}",
-        )
+        ) from e
 
 
 def _categorize_issues(issues: list[dict[str, Any]]) -> dict[str, int]:
@@ -585,7 +584,7 @@ async def get_system_issues(current_user: dict = Depends(require_admin)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get system issues: {str(e)}",
-        )
+        ) from e
 
 
 @admin_control_router.get("/devices")
@@ -642,7 +641,7 @@ async def get_login_devices(current_user: dict = Depends(require_admin)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get devices: {str(e)}",
-        )
+        ) from e
 
 
 @admin_control_router.get("/reports/available")
@@ -728,11 +727,11 @@ async def generate_report(
                     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
                         pd.DataFrame([{"message": "No data"}]).to_excel(writer, index=False)
                     data = output.getvalue()
-                except ImportError:
+                except ImportError as exc:
                     raise HTTPException(
                         status_code=500,
                         detail="Pandas or xlsxwriter is not installed. Excel export is disabled.",
-                    )
+                    ) from exc
             return StreamingResponse(
                 io.BytesIO(data),
                 media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -746,7 +745,7 @@ async def generate_report(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate report: {str(e)}",
-        )
+        ) from e
 
 
 def _parse_log_line(line: str) -> Optional[dict[str, Optional[str]]]:
@@ -761,7 +760,7 @@ def _parse_log_line(line: str) -> Optional[dict[str, Optional[str]]]:
                 "message": parts[3],
             }
     except Exception:
-        pass
+        logger.debug("Suppressed non-fatal exception", exc_info=True)
     return None
 
 
@@ -857,7 +856,7 @@ async def get_service_logs(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get logs: {str(e)}",
-        )
+        ) from e
 
 
 @admin_control_router.post("/logs/clear")
@@ -881,7 +880,7 @@ async def clear_service_logs(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to clear logs: {str(e)}",
-        )
+        ) from e
 
 
 @admin_control_router.get("/sql-server/config")
@@ -934,7 +933,7 @@ async def update_sql_server_config(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update configuration: {str(e)}",
-        )
+        ) from e
 
 
 @admin_control_router.post("/sql-server/test")
@@ -993,7 +992,7 @@ async def get_system_health_score(current_user: dict = Depends(require_admin)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to calculate health score: {str(e)}",
-        )
+        ) from e
 
 
 @admin_control_router.get("/system/stats")
@@ -1038,7 +1037,7 @@ async def get_system_stats(current_user: dict = Depends(require_admin)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get system stats: {str(e)}",
-        )
+        ) from e
 
 
 @admin_control_router.post("/watchdog/run")
@@ -1062,4 +1061,4 @@ async def run_watchdog_checks(current_user: dict = Depends(require_admin)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Watchdog execution failed: {str(e)}",
-        )
+        ) from e

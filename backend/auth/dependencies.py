@@ -139,7 +139,7 @@ class JWTValidator:
                     detail=error,
                 )
             return payload
-        except jwt.ExpiredSignatureError:
+        except jwt.ExpiredSignatureError as exc:
             logger.info("JWT token rejected: expired")
             from backend.error_messages import get_error_message
 
@@ -147,8 +147,8 @@ class JWTValidator:
             raise HTTPException(
                 status_code=error["status_code"],
                 detail=error,
-            )
-        except jwt.InvalidTokenError:
+            ) from exc
+        except jwt.InvalidTokenError as exc:
             logger.info("JWT token rejected: invalid")
             from backend.error_messages import get_error_message
 
@@ -156,7 +156,7 @@ class JWTValidator:
             raise HTTPException(
                 status_code=error["status_code"],
                 detail=error,
-            )
+            ) from exc
 
 
 class UserRepository:
@@ -220,7 +220,7 @@ async def get_current_user(
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
-    except Exception:
+    except Exception as exc:
         # Catch any unexpected errors and convert to auth error
         user_context = sanitize_for_logging(username) if "username" in locals() else "unknown"
         logger.exception("Unexpected authentication error for user: %s", user_context)
@@ -230,7 +230,7 @@ async def get_current_user(
         raise HTTPException(
             status_code=error["status_code"],
             detail=error,
-        )
+        ) from exc
 
 
 # Alias for backward compatibility - both names point to same function

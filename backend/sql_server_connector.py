@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-# ruff: noqa: E402
 import asyncio
 import logging
 import re
@@ -664,7 +663,7 @@ class SQLServerConnector:
         if not cursor.description or not row:
             return {}
         columns = [column[0] for column in cursor.description]
-        result = dict(zip(columns, row))
+        result = dict(zip(columns, row, strict=False))
 
         # Synthesize image URL if item_name exists
         if "item_name" in result and result["item_name"]:
@@ -706,7 +705,7 @@ class SQLServerConnector:
 
         except Exception as e:
             logger.error(f"Error fetching item by barcode: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch item by barcode: {str(e)}")
+            raise DatabaseQueryError(f"Failed to fetch item by barcode: {str(e)}") from e
 
     def get_all_items(self) -> list[dict[str, Any]]:
         """
@@ -734,7 +733,7 @@ class SQLServerConnector:
 
         except Exception as e:
             logger.error(f"Error fetching all items: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch all items: {str(e)}")
+            raise DatabaseQueryError(f"Failed to fetch all items: {str(e)}") from e
 
     def search_items(self, search_term: str) -> list[dict[str, Any]]:
         """
@@ -781,7 +780,7 @@ class SQLServerConnector:
 
         except Exception as e:
             logger.error(f"Error searching items: {str(e)}")
-            raise DatabaseQueryError(f"Failed to search items: {str(e)}")
+            raise DatabaseQueryError(f"Failed to search items: {str(e)}") from e
 
     def get_item_batches(self, item_identifier: str) -> list[dict[str, Any]]:
         """
@@ -807,7 +806,7 @@ class SQLServerConnector:
 
         except Exception as e:
             logger.error(f"Error fetching item batches: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch item batches: {str(e)}")
+            raise DatabaseQueryError(f"Failed to fetch item batches: {str(e)}") from e
 
     def get_item_by_code(self, item_code: str) -> Optional[dict[str, Optional[Any]]]:
         """
@@ -839,7 +838,7 @@ class SQLServerConnector:
 
         except Exception as e:
             logger.error(f"Error fetching item by code: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch item by code: {str(e)}")
+            raise DatabaseQueryError(f"Failed to fetch item by code: {str(e)}") from e
 
     def get_all_warehouses(self) -> list[dict[str, Any]]:
         """Fetch all warehouses from ERP"""
@@ -856,7 +855,7 @@ class SQLServerConnector:
             return results
         except Exception as e:
             logger.error(f"Error fetching warehouses: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch warehouses: {str(e)}")
+            raise DatabaseQueryError(f"Failed to fetch warehouses: {str(e)}") from e
 
     def get_all_zones(self) -> list[dict[str, Any]]:
         """Fetch all zones (floors) from ERP"""
@@ -873,7 +872,7 @@ class SQLServerConnector:
             return results
         except Exception as e:
             logger.error(f"Error fetching zones: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch zones: {str(e)}")
+            raise DatabaseQueryError(f"Failed to fetch zones: {str(e)}") from e
 
     def get_items_by_codes(self, item_codes: list[str]) -> list[dict[str, Any]]:
         """
@@ -930,7 +929,7 @@ class SQLServerConnector:
 
         except Exception as e:
             logger.error(f"Error fetching items by codes: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch items by codes: {str(e)}")
+            raise DatabaseQueryError(f"Failed to fetch items by codes: {str(e)}") from e
 
     def get_item_quantities_only(self, item_codes: list[str]) -> dict[str, float]:
         """
@@ -1002,7 +1001,9 @@ class SQLServerConnector:
 
         except Exception as e:
             logger.error(f"Error fetching item quantities by item code: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch item quantities by item code: {str(e)}")
+            raise DatabaseQueryError(
+                f"Failed to fetch item quantities by item code: {str(e)}"
+            ) from e
 
     async def execute_query(
         self, query: str, params: Optional[list[Any]] = None
@@ -1061,7 +1062,7 @@ class SQLServerConnector:
 
             except Exception as e:
                 logger.error(f"Error executing custom query: {str(e)}")
-                raise DatabaseQueryError(f"Failed to execute custom query: {str(e)}")
+                raise DatabaseQueryError(f"Failed to execute custom query: {str(e)}") from e
 
     @staticmethod
     def _strip_sql_comments(query: str) -> str:

@@ -226,7 +226,7 @@ async def get_tables(
         raise
     except Exception as e:
         logger.exception("Error fetching tables")
-        raise HTTPException(status_code=500, detail="Failed to fetch tables from SQL Server") from e
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/columns")
@@ -267,7 +267,7 @@ async def get_columns(
         raise
     except Exception as e:
         logger.exception("Error fetching columns")
-        raise HTTPException(status_code=500, detail="Failed to fetch columns from SQL Server") from e
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/preview")
@@ -318,7 +318,7 @@ async def preview_mapping(
         columns = [column[0] for column in cursor.description]
         results = []
         for row in cursor.fetchall():
-            results.append(dict(zip(columns, row)))
+            results.append(dict(zip(columns, row, strict=False)))
 
         conn.close()
         return {"success": True, "sample_data": results}
@@ -326,7 +326,7 @@ async def preview_mapping(
         raise
     except Exception as e:
         logger.exception("Error testing mapping")
-        raise HTTPException(status_code=500, detail="Failed to test mapping query") from e
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/save")
@@ -390,7 +390,7 @@ async def save_mapping(
         raise
     except Exception as e:
         logger.exception("Error saving mapping")
-        raise HTTPException(status_code=500, detail="Failed to save mapping configuration") from e
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/current")
@@ -418,4 +418,4 @@ async def get_current_mapping(
         return result
     except Exception as e:
         logger.exception("Error fetching current mapping")
-        raise HTTPException(status_code=500, detail="Failed to fetch current mapping configuration") from e
+        raise HTTPException(status_code=500, detail=str(e)) from e

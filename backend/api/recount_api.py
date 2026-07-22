@@ -206,7 +206,7 @@ async def create_recount_request(
         raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
         logger.error("Error creating recount request: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Failed to create recount request") from e
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/list", response_model=dict)
@@ -334,7 +334,7 @@ async def assign_recount_request(
         raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
         logger.error("Error assigning recount: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/{recount_id}/complete")
@@ -553,7 +553,7 @@ async def complete_recount_request(
         raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
         logger.error("Error completing recount: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Failed to complete recount") from e
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/{recount_id}/cancel")
@@ -591,7 +591,7 @@ async def cancel_recount_request(
         raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
         logger.error("Error cancelling recount: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/stats/summary")

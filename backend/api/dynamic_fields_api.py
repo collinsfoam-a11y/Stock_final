@@ -134,10 +134,10 @@ async def create_field_definition(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error("Error creating field definition: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @dynamic_fields_router.get("/definitions")
@@ -163,7 +163,7 @@ async def get_field_definitions(
 
     except Exception as e:
         logger.error("Error getting field definitions: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @dynamic_fields_router.put("/definitions/{field_id}")
@@ -194,10 +194,10 @@ async def update_field_definition(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         logger.error("Error updating field definition: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @dynamic_fields_router.delete("/definitions/{field_id}")
@@ -221,7 +221,7 @@ async def delete_field_definition(
 
     except Exception as e:
         logger.error("Error deleting field definition: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @dynamic_fields_router.post("/values")
@@ -257,10 +257,10 @@ async def set_field_value(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error("Error setting field value: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @dynamic_fields_router.post("/values/bulk")
@@ -318,7 +318,7 @@ async def set_field_values_bulk(
 
     except Exception as e:
         logger.error("Error setting bulk field values: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @dynamic_fields_router.get("/values/{item_code}")
@@ -358,7 +358,7 @@ async def get_item_field_values(
 
     except Exception as e:
         logger.error("Error getting item field values: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @dynamic_fields_router.get("/items")
@@ -394,7 +394,7 @@ async def get_items_with_fields(
 
     except Exception as e:
         logger.error("Error getting items with fields: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @dynamic_fields_router.get("/statistics/{field_name}")
@@ -417,7 +417,7 @@ async def get_field_statistics(
         return {"success": True, "statistics": stats}
 
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         logger.error("Error getting field statistics: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e

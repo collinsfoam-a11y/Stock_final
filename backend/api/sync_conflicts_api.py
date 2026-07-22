@@ -99,7 +99,7 @@ async def resolve_conflict(
         # Validate resolution
         try:
             resolution = ConflictResolution(resolution_request.resolution)
-        except ValueError:
+        except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
@@ -109,7 +109,7 @@ async def resolve_conflict(
                         "code": "INVALID_RESOLUTION",
                     },
                 },
-            )
+            ) from exc
 
         # Resolve conflict
         result = await sync_service.resolve_conflict(
@@ -128,7 +128,7 @@ async def resolve_conflict(
                 "success": False,
                 "error": {"message": str(e), "code": "RESOLUTION_FAILED"},
             },
-        )
+        ) from e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -139,7 +139,7 @@ async def resolve_conflict(
                     "code": "INTERNAL_ERROR",
                 },
             },
-        )
+        ) from e
 
 
 @sync_conflicts_router.post("/batch-resolve")
@@ -153,7 +153,7 @@ async def batch_resolve_conflicts(
         # Validate resolution
         try:
             resolution = ConflictResolution(request.resolution)
-        except ValueError:
+        except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
@@ -163,7 +163,7 @@ async def batch_resolve_conflicts(
                         "code": "INVALID_RESOLUTION",
                     },
                 },
-            )
+            ) from exc
 
         resolved_count = 0
         errors = []
@@ -197,7 +197,7 @@ async def batch_resolve_conflicts(
                     "code": "INTERNAL_ERROR",
                 },
             },
-        )
+        ) from e
 
 
 @sync_conflicts_router.post("/auto-resolve")

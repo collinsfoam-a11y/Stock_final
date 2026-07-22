@@ -21,54 +21,54 @@ from fastapi.responses import JSONResponse  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 from starlette.requests import Request  # noqa: E402
 
-import sentry_sdk  # noqa: E402
-from sentry_sdk.integrations.fastapi import FastApiIntegration  # noqa: E402
-from sentry_sdk.integrations.starlette import StarletteIntegration  # noqa: E402
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
 
-from backend.app.middleware import register_middleware  # noqa: E402
-from backend.app.routers import RouterRegistry, register_routers  # noqa: E402
-from backend.app.settings_runtime import run_server_main  # noqa: E402
-from backend.app.static import register_static_serving  # noqa: E402
+from backend.app.middleware import register_middleware
+from backend.app.routers import RouterRegistry, register_routers
+from backend.app.settings_runtime import run_server_main
+from backend.app.static import register_static_serving
 
-from backend.api import supervisor_pin  # noqa: E402
-from backend.api.admin_control_api import admin_control_router  # noqa: E402
-from backend.api.admin_dashboard_api import admin_dashboard_router  # noqa: E402
-from backend.api.auth import router as auth_router  # noqa: E402
-from backend.api.count_lines_api import router as count_lines_router  # noqa: E402
-from backend.api.analytics_api import router as analytics_router  # noqa: E402
-from backend.api.dynamic_fields_api import dynamic_fields_router  # noqa: E402
-from backend.api.dynamic_reports_api import dynamic_reports_router  # noqa: E402
-from backend.api.erp_api import router as erp_router  # noqa: E402
-from backend.api.error_reporting_api import router as error_reporting_router  # noqa: E402
-from backend.api.exports_api import exports_router  # noqa: E402
-from backend.api.health import health_router, info_router  # noqa: E402
-from backend.api.item_verification_api import verification_router  # noqa: E402
-from backend.api.locations_api import router as locations_router  # noqa: E402
-from backend.api.logs_api import router as logs_router  # noqa: E402
-from backend.api.mapping_api import router as mapping_router  # noqa: E402
-from backend.api.master_settings_api import master_settings_router  # noqa: E402
-from backend.api.metrics_api import metrics_router  # noqa: E402
-from backend.api.notifications_api import router as notifications_router  # noqa: E402
+from backend.api import supervisor_pin
+from backend.api.admin_control_api import admin_control_router
+from backend.api.admin_dashboard_api import admin_dashboard_router
+from backend.api.auth import router as auth_router
+from backend.api.count_lines_api import router as count_lines_router
+from backend.api.analytics_api import router as analytics_router
+from backend.api.dynamic_fields_api import dynamic_fields_router
+from backend.api.dynamic_reports_api import dynamic_reports_router
+from backend.api.erp_api import router as erp_router
+from backend.api.error_reporting_api import router as error_reporting_router
+from backend.api.exports_api import exports_router
+from backend.api.health import health_router, info_router
+from backend.api.item_verification_api import verification_router
+from backend.api.locations_api import router as locations_router
+from backend.api.logs_api import router as logs_router
+from backend.api.mapping_api import router as mapping_router
+from backend.api.master_settings_api import master_settings_router
+from backend.api.metrics_api import metrics_router
+from backend.api.notifications_api import router as notifications_router
 
 # New feature API routers
-from backend.api.permissions_api import permissions_router  # noqa: E402
-from backend.api.preferences_api import router as preferences_router  # noqa: E402
-from backend.api.rack_api import router as rack_router  # noqa: E402
-from backend.api.realtime_dashboard_api import realtime_dashboard_router  # noqa: E402
-from backend.api.report_generation_api import report_generation_router  # noqa: E402
-from backend.api.reporting_api import router as reporting_router  # noqa: E402
-from backend.api.schemas import ApiResponse, Session, TokenResponse  # noqa: E402
-from backend.api.search_api import router as search_router  # noqa: E402
-from backend.api.security_api import security_router  # noqa: E402
-from backend.api.self_diagnosis_api import self_diagnosis_router  # noqa: E402
-from backend.api.service_logs_api import service_logs_router  # noqa: E402
-from backend.api.session_management_api import router as session_mgmt_router  # noqa: E402
-from backend.api.enhanced_item_api import enhanced_item_router  # noqa: E402
-from backend.api.pi_api import router as pi_router  # noqa: E402
+from backend.api.permissions_api import permissions_router
+from backend.api.preferences_api import router as preferences_router
+from backend.api.rack_api import router as rack_router
+from backend.api.realtime_dashboard_api import realtime_dashboard_router
+from backend.api.report_generation_api import report_generation_router
+from backend.api.reporting_api import router as reporting_router
+from backend.api.schemas import ApiResponse, Session, TokenResponse
+from backend.api.search_api import router as search_router
+from backend.api.security_api import security_router
+from backend.api.self_diagnosis_api import self_diagnosis_router
+from backend.api.service_logs_api import service_logs_router
+from backend.api.session_management_api import router as session_mgmt_router
+from backend.api.enhanced_item_api import enhanced_item_router
+from backend.api.pi_api import router as pi_router
 
 # Phase 1-3: New Upgrade APIs
-from backend.api.sync_batch_api import router as sync_batch_router  # noqa: E402
-from backend.api.unknown_items_api import (  # noqa: E402
+from backend.api.sync_batch_api import router as sync_batch_router
+from backend.api.unknown_items_api import (
     public_router as unknown_items_public_router,
     router as unknown_items_router,
 )
@@ -104,11 +104,11 @@ from backend.services.count_line_write_service import CountLineWriteService  # n
 from backend.services.governance_guard import GovernanceViolation  # noqa: E402
 
 # Utils
-from backend.utils.api_utils import result_to_response, sanitize_for_logging  # noqa: E402
-from backend.utils.auth_utils import get_password_hash, get_password_hash_metadata  # noqa: E402
-from backend.utils.result import Fail, Ok, Result  # noqa: E402
-from backend.utils.tracing import instrument_fastapi_app  # noqa: E402
-from backend.services.runtime import get_refresh_token_service  # noqa: E402
+from backend.utils.api_utils import result_to_response, sanitize_for_logging
+from backend.utils.auth_utils import get_password_hash, get_password_hash_metadata
+from backend.utils.result import Fail, Ok, Result
+from backend.utils.tracing import instrument_fastapi_app
+from backend.services.runtime import get_refresh_token_service
 
 # Initialize logger early
 logger = logging.getLogger("stock-verify")
@@ -118,7 +118,7 @@ if not logger.handlers:
 # Optional Services
 enrichment_router: Optional[APIRouter] = None
 try:
-    from backend.api.enrichment_api import enrichment_router as e_router  # noqa: E402
+    from backend.api.enrichment_api import enrichment_router as e_router
 
     enrichment_router = e_router
 except ImportError:
@@ -127,7 +127,7 @@ except ImportError:
 enterprise_router: Optional[APIRouter] = None
 ENTERPRISE_AVAILABLE = False
 try:
-    from backend.api.enterprise_api import enterprise_router as ent_router  # noqa: E402
+    from backend.api.enterprise_api import enterprise_router as ent_router
 
     enterprise_router = ent_router
     ENTERPRISE_AVAILABLE = True
@@ -139,7 +139,7 @@ except ImportError as e:
 
 notes_router: Optional[APIRouter] = None
 try:
-    from backend.api.notes_api import router as n_router  # noqa: E402
+    from backend.api.notes_api import router as n_router
 
     notes_router = n_router
 except ImportError:
@@ -147,7 +147,7 @@ except ImportError:
 
 v2_router: Optional[APIRouter] = None
 try:
-    from backend.api.v2 import v2_router as v2_r  # noqa: E402
+    from backend.api.v2 import v2_router as v2_r
 
     v2_router = v2_r
 except ImportError:
@@ -163,7 +163,7 @@ except ImportError:
 
 pin_auth_router: Optional[APIRouter] = None
 try:
-    from backend.api.pin_auth_api import router as pa_router  # noqa: E402
+    from backend.api.pin_auth_api import router as pa_router
 
     pin_auth_router = pa_router
 except ImportError:
@@ -171,7 +171,7 @@ except ImportError:
 
 SecurityHeadersMiddleware: Any = None
 try:
-    from backend.middleware.security_headers import SecurityHeadersMiddleware as SHM  # noqa: E402
+    from backend.middleware.security_headers import SecurityHeadersMiddleware as SHM
 
     SecurityHeadersMiddleware = SHM
 except ImportError:
@@ -240,7 +240,7 @@ try:
     instrument_fastapi_app(app)
 except Exception:
     # Tracing should never prevent the app from starting
-    pass
+    logger.debug("Suppressed non-fatal exception", exc_info=True)
 
 register_middleware(
     app,

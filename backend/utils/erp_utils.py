@@ -302,7 +302,7 @@ async def fetch_item_from_erp(
                     "category": error["category"],
                     "barcode": barcode,
                 },
-            )
+            ) from e
 
     return await _fetch_from_mongo_fallback(barcode, db, cache_service)
 
@@ -383,7 +383,7 @@ async def refresh_stock_from_erp(
                     "code": error["code"],
                     "category": error["category"],
                 },
-            )
+            ) from e
 
     # Fallback: Get from MongoDB
     item = await db.erp_items.find_one({"item_code": item_code})

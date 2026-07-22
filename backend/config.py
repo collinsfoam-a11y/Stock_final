@@ -12,14 +12,14 @@ from pathlib import Path
 from pydantic import Field, field_validator, model_validator
 
 try:
-    from pydantic_settings import BaseSettings as PydanticBaseSettings  # type: ignore[no-redef]  # noqa: E402
-    from pydantic_settings import SettingsConfigDict  # noqa: E402
+    from pydantic_settings import BaseSettings as PydanticBaseSettings  # type: ignore[no-redef]
+    from pydantic_settings import SettingsConfigDict
 
     HAS_PYDANTIC_V2 = True
 except ImportError:
     HAS_PYDANTIC_V2 = False
     try:
-        from pydantic import BaseSettings as PydanticBaseSettingsFallback  # noqa: E402
+        from pydantic import BaseSettings as PydanticBaseSettingsFallback
     except (
         ImportError
     ) as exc:  # pragma: no cover - configuration import should succeed in production
@@ -586,7 +586,7 @@ class Settings(PydanticBaseSettings):
 try:
     settings = Settings()  # type: ignore[call-arg]
 except Exception as e:
-    import warnings  # noqa: E402
+    import warnings
 
     fallback_env = os.getenv("ENVIRONMENT", os.getenv("APP_ENV", "development")).lower()
     if fallback_env in {"production", "staging"}:
@@ -600,7 +600,7 @@ except Exception as e:
         stacklevel=2,
     )
     # Create a simple settings object from environment variables
-    from dotenv import load_dotenv  # noqa: E402
+    from dotenv import load_dotenv
 
     load_dotenv()
 
@@ -617,7 +617,7 @@ except Exception as e:
 
                     mongo_url = PortDetector.get_mongo_url()
                 except Exception:
-                    pass
+                    logger.warning("Suppressed non-fatal exception", exc_info=True)
             self.MONGO_URL = mongo_url
             self.DB_NAME = os.getenv("DB_NAME", "stock_verification")
             self.SQL_SERVER_HOST = os.getenv("SQL_SERVER_HOST")

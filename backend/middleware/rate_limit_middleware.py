@@ -58,7 +58,8 @@ class RateLimitMiddleware:
                 payload = jwt_decode(token, self.jwt_secret, algorithms=["HS256"])
                 user_id = payload.get("sub")
             except Exception:
-                pass  # Invalid token, use IP-based rate limit
+                # Invalid/expired token: fall back to IP-based rate limiting
+                logger.debug("Rate limit token decode failed; using IP-based limit", exc_info=True)
 
         # Fallback to IP-based limiting if no user ID
         if not user_id:
