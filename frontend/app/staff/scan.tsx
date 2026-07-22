@@ -93,11 +93,21 @@ const ScanScreen = React.memo(function ScanScreen() {
   const [isScreenFocused, setIsScreenFocused] = useState<boolean>(false);
 
   const { currentFloor, currentRack } = useScanSessionStore();
-  const { hasPermission, requestPermission: requestVisionPermission } = useCameraPermission();
+  const cameraPermission = useCameraPermission() as {
+    canAskAgain?: boolean;
+    hasPermission: boolean;
+    requestPermission: () => Promise<boolean>;
+    unavailableReason?: string | null;
+  };
+  const { hasPermission, requestPermission: requestVisionPermission } = cameraPermission;
   // A failed vision-camera permission request resolves false without a prompt
   // when permanently denied -> stop asking and route to "Open Settings" UI.
   const [cameraDeniedAfterRequest, setCameraDeniedAfterRequest] = useState(false);
-  const permission = { granted: hasPermission, canAskAgain: !cameraDeniedAfterRequest };
+  const permission = {
+    granted: hasPermission,
+    canAskAgain: cameraPermission.canAskAgain ?? !cameraDeniedAfterRequest,
+    unavailableReason: cameraPermission.unavailableReason,
+  };
   const requestPermission = useCallback(async () => {
     const granted = await requestVisionPermission();
     if (!granted) setCameraDeniedAfterRequest(true);
@@ -510,7 +520,7 @@ const ScanScreen = React.memo(function ScanScreen() {
     router.push({
       pathname: "/staff/item-detail",
       params: { barcode, sessionId: sessionId! },
-    } as any);
+    } as never);
   };
 
   const getLookupItemIdentifier = (item: Partial<Item> | null | undefined): string | null => {
