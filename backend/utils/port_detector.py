@@ -44,7 +44,7 @@ class PortDetector:
     """Detect available ports and configure services"""
 
     @staticmethod
-    def is_port_available(port: int, host: str = "localhost") -> bool:
+    def is_port_available(port: int, host: str = "127.0.0.1") -> bool:
         """Check if a port is available"""
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:

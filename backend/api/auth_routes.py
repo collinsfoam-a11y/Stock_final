@@ -554,6 +554,9 @@ async def login(
     db = get_db()
     cache_service = get_cache_service()
 
+    # Make username case-insensitive
+    credentials.username = credentials.username.strip().lower()
+
     client_ip = request.client.host if request.client else ""
     logger.debug(
         "Login attempt received",
@@ -777,6 +780,9 @@ async def login_with_pin(
     db = get_db()
     cache_service = get_cache_service()
     client_ip = request.client.host if request.client else ""
+
+    if credentials.username:
+        credentials.username = credentials.username.strip().lower()
 
     logger.debug(
         "PIN login attempt received",
