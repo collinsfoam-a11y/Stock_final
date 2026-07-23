@@ -24,3 +24,7 @@
 ## 2025-05-22 - Enhancing Empty States with Accessible Grouping and Animations
 **Learning:** Empty states benefit from entrance animations (like `FadeIn`) to feel less "stark." For accessibility, grouping the icon, title, and message into a single accessible unit with a descriptive `accessibilityLabel` provides a better experience for screen reader users. However, interactive elements (like action buttons) MUST remain outside this grouping to prevent them from becoming unreachable.
 **Action:** Wrap non-interactive empty state content in a single `accessible={true}` container, but keep action buttons as separate siblings to maintain accessibility tree depth.
+
+## 2026-06-25 - Standardizing Header Accessibility and Tactile Feedback
+**Learning:** Icon-only buttons in the application header (such as `rightAction`, `onLogout`, `onMenuPress` in `PremiumHeader`) were missing both screen reader descriptions and tactile confirmation, which are essential for an inclusive and responsive mobile experience. Additionally, omitting `void` before asynchronous fire-and-forget haptic calls within `onPress` events can lead to floating promise warnings.
+**Action:** Always implement `getAccessibleButtonProps` on the button wrapper and `getDecorativeIconProps` on the icon for header-level icon actions. Use the `void` keyword when calling `haptics.light()` or `haptics.medium()` in `onPress` handlers to ensure they are both discoverable, satisfying to use, and free of promise warnings.
