@@ -17,9 +17,9 @@ import {
   spacing,
   textStyles,
   touchTargets,
-  hitSlop,
 } from "@/theme/legacyCompat";
 import { haptics } from "@/services/haptics";
+import { OPERATIONAL_HIT_SLOP } from "@/utils/accessibility";
 
 export interface RadioOption {
   value: string;
@@ -91,7 +91,7 @@ const RadioItem: React.FC<RadioItemProps> = ({
       }}
       disabled={disabled}
       activeOpacity={0.8}
-      hitSlop={hitSlop.small}
+      hitSlop={OPERATIONAL_HIT_SLOP.standard}
       accessibilityRole="radio"
       accessibilityLabel={option.label}
       accessibilityState={{ selected, disabled }}
