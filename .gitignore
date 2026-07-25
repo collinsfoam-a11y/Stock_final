@@ -25,3 +25,10 @@ vibe-kanban/
 # Frontend (empty placeholder — add back if used)
 frontend/
 Stock_final_release/
+
+# IDE and backup directories
+.vscode/
+.kilo/
+.zcode/
+Stock_final_baseline/
+Stock_final_remote/
