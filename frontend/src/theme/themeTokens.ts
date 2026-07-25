@@ -237,34 +237,6 @@ export const getTokenShadowStyle = (
   tokens: ThemeTokens,
   level: keyof ThemeTokens["shadows"]
 ): ViewStyle => {
-  const base = (tokens.shadows[level] || {}) as ViewStyle & {
-    boxShadow?: string;
-  };
-
-  if (Platform.OS === "web") {
-    if (typeof base.boxShadow === "string") {
-      return base;
-    }
-
-    const offset = base.shadowOffset;
-    const shadowRadius = typeof base.shadowRadius === "number" ? base.shadowRadius : 0;
-    const shadowOpacity =
-      typeof base.shadowOpacity === "number" ? Math.max(0, Math.min(1, base.shadowOpacity)) : 0;
-    const shadowColor = typeof base.shadowColor === "string" ? base.shadowColor : "#000000";
-
-    const width = offset && typeof offset.width === "number" ? offset.width : 0;
-    const height = offset && typeof offset.height === "number" ? offset.height : 0;
-
-    if (shadowRadius > 0 || shadowOpacity > 0) {
-      return {
-        ...base,
-        boxShadow: `${width}px ${height}px ${shadowRadius}px ${colorWithAlpha(
-          shadowColor,
-          shadowOpacity
-        )}`,
-      };
-    }
-  }
-
-  return base;
+  // Flat Design enforced: No shadows
+  return {};
 };

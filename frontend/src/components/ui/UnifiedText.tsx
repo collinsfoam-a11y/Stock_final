@@ -1,15 +1,17 @@
 /**
  * UnifiedText Component
- * Text component that uses unified typography tokens
+ * Canonical text primitive.
  *
  * Features:
- * - Consistent typography from unified system
- * - Supports all text style variants
+ * - Typography from the unified token scale on Android/web, and the iOS system
+ *   text-style ramp (17pt body, 11pt floor) on iOS
+ * - Theme-reactive colors (follows light/dark at runtime)
+ * - Dynamic Type aware: `density` caps how far text scales before dense
+ *   layouts break, instead of leaving it uncapped
  * - Accessibility props
- * - Dark mode aware
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Text, TextStyle, StyleProp, StyleSheet, TextProps } from "react-native";
 import {
   textStyles,
@@ -17,9 +19,14 @@ import {
   fontSize,
   fontWeight as fw,
   lineHeight,
-  colors,
-  semanticColors,
 } from "@/theme/legacyCompat";
+import {
+  appleTextStyleFor,
+  enforceMinFontSize,
+  maxFontSizeMultiplierFor,
+  type TextDensity,
+} from "@/theme/appleTypography";
+import { useUiTokens } from "@/hooks/useUiTokens";
 
 // ==========================================
 // TYPES
@@ -64,28 +71,16 @@ export interface UnifiedTextProps extends TextProps {
   center?: boolean;
   /** Right align text */
   right?: boolean;
+  /**
+   * How much room the surrounding layout has for Dynamic Type growth.
+   * `flowing` is uncapped; `dense` (badges, table cells, stat tiles) caps at 1.2x.
+   */
+  density?: TextDensity;
   /** Additional styles */
   style?: StyleProp<TextStyle>;
   /** Children text content */
   children: React.ReactNode;
 }
-
-// ==========================================
-// COLOR MAPPING
-// ==========================================
-const colorMap: Record<TextColor, string> = {
-  primary: semanticColors.text.primary,
-  secondary: semanticColors.text.secondary,
-  tertiary: semanticColors.text.tertiary,
-  muted: semanticColors.text.muted,
-  disabled: semanticColors.text.disabled,
-  inverse: colors.white,
-  success: colors.success[500],
-  warning: colors.warning[600],
-  error: colors.error[500],
-  info: colors.info[500],
-  link: colors.primary[500],
-};
 
 // ==========================================
 // VARIANT MAPPING
@@ -111,6 +106,13 @@ const variantMap: Record<TextVariant, TextStyle> = {
   },
 };
 
+/** Variants whose default density is tighter than `standard`. */
+const variantDensity: Partial<Record<TextVariant, TextDensity>> = {
+  button: "compact",
+  overline: "dense",
+  caption: "compact",
+};
+
 // ==========================================
 // COMPONENT
 // ==========================================
@@ -120,16 +122,41 @@ export const UnifiedText: React.FC<UnifiedTextProps> = ({
   weight,
   center,
   right,
+  density,
   style,
   children,
   accessibilityRole = "text",
+  maxFontSizeMultiplier,
   ...props
 }) => {
-  const variantStyle = variantMap[variant];
+  const tokens = useUiTokens();
+
+  const colorMap: Record<TextColor, string> = useMemo(
+    () => ({
+      primary: tokens.colors.textPrimary,
+      secondary: tokens.colors.textSecondary,
+      tertiary: tokens.colors.textMuted,
+      muted: tokens.colors.textMuted,
+      disabled: tokens.colors.textMuted,
+      inverse: tokens.colors.background,
+      success: tokens.colors.success,
+      warning: tokens.colors.warning,
+      error: tokens.colors.error,
+      info: tokens.colors.info,
+      link: tokens.colors.accent,
+    }),
+    [tokens],
+  );
+
+  const variantStyle = useMemo(
+    () => enforceMinFontSize(appleTextStyleFor(variant) ?? variantMap[variant]),
+    [variant],
+  );
+
+  const resolvedDensity = density ?? variantDensity[variant] ?? "standard";
   const textColor = colorMap[color];
 
   const combinedStyle: StyleProp<TextStyle> = [
-    styles.base,
     variantStyle,
     { color: textColor },
     weight && { fontWeight: fw[weight] as TextStyle["fontWeight"] },
@@ -139,7 +166,12 @@ export const UnifiedText: React.FC<UnifiedTextProps> = ({
   ];
 
   return (
-    <Text style={combinedStyle} accessibilityRole={accessibilityRole} {...props}>
+    <Text
+      style={combinedStyle}
+      accessibilityRole={accessibilityRole}
+      maxFontSizeMultiplier={maxFontSizeMultiplier ?? maxFontSizeMultiplierFor(resolvedDensity)}
+      {...props}
+    >
       {children}
     </Text>
   );
@@ -149,9 +181,6 @@ export const UnifiedText: React.FC<UnifiedTextProps> = ({
 // STYLES
 // ==========================================
 const styles = StyleSheet.create({
-  base: {
-    color: semanticColors.text.primary,
-  },
   center: {
     textAlign: "center",
   },

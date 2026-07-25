@@ -13,13 +13,9 @@ import {
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import {
-  modernSpacing,
-  modernTypography,
-  modernBorderRadius,
-} from "@/styles/unifiedSystem";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import type { ThemeTokens } from "@/theme/themeTokens";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
 
 interface DateRangePickerProps {
   startDate: Date;
@@ -124,43 +120,44 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   );
 };
 
-const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
-  container: {
-    marginVertical: modernSpacing.md,
-  },
-  label: {
-    ...modernTypography.body.medium,
-    color: tokens.colors.textPrimary,
-    marginBottom: modernSpacing.sm,
-    fontWeight: "600",
-  },
-  dateRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: modernSpacing.md,
-  },
-  dateButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: modernSpacing.sm,
-    padding: modernSpacing.md,
-    backgroundColor: tokens.colors.surfaceElevated,
-    borderRadius: modernBorderRadius.md,
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
-  },
-  dateContent: {
-    flex: 1,
-  },
-  dateLabel: {
-    ...modernTypography.body.small,
-    color: tokens.colors.textSecondary,
-    marginBottom: modernSpacing.xs,
-  },
-  dateValue: {
-    ...modernTypography.body.medium,
-    color: tokens.colors.textPrimary,
-    fontWeight: "600",
-  },
-});
+const createStyles = (tokens: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      marginVertical: gap.md,
+    },
+    label: {
+      fontSize: font.size.base,
+      fontWeight: font.weight.bold,
+      color: tokens.colors.textPrimary,
+      marginBottom: gap.sm,
+    },
+    dateRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: gap.md,
+    },
+    dateButton: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: gap.sm,
+      padding: gap.md,
+      backgroundColor: tokens.colors.surfaceElevated,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: tokens.colors.border,
+    },
+    dateContent: {
+      flex: 1,
+    },
+    dateLabel: {
+      fontSize: font.size.sm,
+      color: tokens.colors.textSecondary,
+      marginBottom: gap.xs,
+    },
+    dateValue: {
+      fontSize: font.size.base,
+      color: tokens.colors.textPrimary,
+      fontWeight: font.weight.bold,
+    },
+  });

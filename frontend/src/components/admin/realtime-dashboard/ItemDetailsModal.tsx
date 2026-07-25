@@ -32,6 +32,9 @@ export function ItemDetailsModal({ item, onClose, visible }: ItemDetailsModalPro
     { label: "Floor", value: item.floor },
     { label: "Rack", value: item.rack_id },
     { label: "ERP Qty", value: item.stock_qty, format: "number" },
+    { label: "Qty Source", value: item.quantity_source === "sql_live" ? "Live SQL" : "Cached" },
+    { label: "SQL Available", value: item.sql_available !== undefined ? (item.sql_available ? "Yes" : "No") : "N/A" },
+    { label: "Stale Cache", value: item.sync_stale ? "Yes" : "No" },
     { label: "Counted Qty", value: item.counted_qty, format: "number" },
     { label: "Variance", value: item.variance, format: "number" },
     {

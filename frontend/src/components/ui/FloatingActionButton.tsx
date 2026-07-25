@@ -21,14 +21,9 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import {
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-  modernShadows,
-} from "../../styles/unifiedSystem";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import type { ThemeTokens } from "@/theme/themeTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
@@ -117,8 +112,8 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   const buttonStyle: ViewStyle = {
     width: size === "extended" && label ? "auto" : config.width,
     height: config.height,
-    borderRadius: size === "extended" && label ? modernBorderRadius.xl : config.width / 2,
-    paddingHorizontal: size === "extended" && label ? modernSpacing.lg : 0,
+    borderRadius: size === "extended" && label ? radius.xl : config.width / 2,
+    paddingHorizontal: size === "extended" && label ? gap.md : 0,
   };
 
   // Consumer gradientColors override wins; default is the semantic accent fill.
@@ -185,16 +180,15 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: modernSpacing.sm,
-    ...modernShadows.lg,
+    gap: gap.sm,
   },
   disabled: {
     opacity: 0.5,
   },
   label: {
-    ...modernTypography.button.medium,
+    fontSize: font.size.base,
+    fontWeight: font.weight.semibold,
     color: uiSemanticColors.text.inverse,
-    fontWeight: "600",
   },
   badge: {
     position: "absolute",
@@ -211,10 +205,9 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
     borderColor: tokens.colors.background,
   },
   badgeText: {
-    ...modernTypography.label.small,
+    fontSize: font.size.sm,
+    fontWeight: font.weight.bold,
     color: uiSemanticColors.text.inverse,
-    fontWeight: "700",
-    fontSize: 10,
   },
   glow: {
     position: "absolute",

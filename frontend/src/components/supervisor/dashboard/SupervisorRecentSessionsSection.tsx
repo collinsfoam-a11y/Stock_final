@@ -5,8 +5,8 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { AnimatedPressable, ModernCard } from "@/components/ui";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { theme } from "@/styles/modernDesignSystem";
 import { semanticColors } from "@/theme/legacyCompat";
+import { font, gap, radius } from "@/theme/staffUiScale";
 import { Session } from "@/types";
 
 interface SupervisorRecentSessionsSectionProps {
@@ -41,7 +41,7 @@ export function SupervisorRecentSessionsSection({
             <ModernCard
               variant="outlined"
               elevation="sm"
-              padding={theme.spacing.md}
+              padding={gap.md}
               style={styles.sessionCard}
             >
               <View style={styles.sessionHeader}>
@@ -128,7 +128,7 @@ export function SupervisorRecentSessionsSection({
         <ModernCard
           variant="outlined"
           elevation="sm"
-          padding={theme.spacing.lg}
+          padding={gap.lg}
           style={styles.emptyCard}
         >
           <View style={styles.emptyState}>
@@ -145,80 +145,80 @@ export function SupervisorRecentSessionsSection({
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: gap.xl,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.md,
+    marginBottom: gap.md,
   },
   sectionTitle: {
-    fontSize: 24,
-    fontWeight: "600",
+    fontSize: font.size.xl,
+    fontWeight: font.weight.semibold,
   },
   sectionLink: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: font.size.base,
+    fontWeight: font.weight.semibold,
   },
   sessionCard: {
-    marginBottom: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
+    marginBottom: gap.md,
+    borderRadius: radius.lg,
   },
   emptyCard: {
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: radius.lg,
   },
   sessionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: theme.spacing.md,
+    marginBottom: gap.md,
   },
   sessionInfo: {
     flex: 1,
-    gap: theme.spacing.xs,
+    gap: gap.xs,
   },
   sessionWarehouse: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: font.size.lg,
+    fontWeight: font.weight.semibold,
   },
   sessionStaff: {
-    fontSize: 14,
+    fontSize: font.size.base,
   },
   sessionBarcode: {
     marginTop: 2,
-    fontSize: 12,
-    fontWeight: "500",
+    fontSize: font.size.sm,
+    fontWeight: font.weight.medium,
   },
   statusBadge: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: gap.sm,
+    paddingVertical: gap.xs,
+    borderRadius: radius.full,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: font.size.sm,
+    fontWeight: font.weight.bold,
   },
   sessionStats: {
     flexDirection: "row",
-    gap: theme.spacing.lg,
+    gap: gap.lg,
   },
   sessionStat: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.xs,
+    gap: gap.xs,
   },
   sessionStatText: {
-    fontSize: 14,
+    fontSize: font.size.base,
   },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: theme.spacing.xl,
-    gap: theme.spacing.md,
+    paddingVertical: gap.xl,
+    gap: gap.md,
   },
   emptyText: {
     textAlign: "center",
-    fontSize: 16,
+    fontSize: font.size.lg,
   },
 });

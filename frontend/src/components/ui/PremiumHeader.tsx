@@ -85,14 +85,16 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
   );
 
   const renderLogo = () => (
-    <Animated.View style={[styles.logoContainer, logoStyle]} entering={FadeIn.delay(100)}>
-      <View style={styles.iconGlow}>
-        <BrandLogo variant="symbol" width={32} height={32} />
-      </View>
-      <View style={styles.titleContainer}>
-        <Text style={styles.title}>{title}</Text>
-        {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-      </View>
+    <Animated.View entering={FadeIn.delay(100)}>
+      <Animated.View style={[styles.logoContainer, logoStyle]}>
+        <View style={styles.iconGlow}>
+          <BrandLogo variant="symbol" width={32} height={32} />
+        </View>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>{title}</Text>
+          {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+        </View>
+      </Animated.View>
     </Animated.View>
   );
 

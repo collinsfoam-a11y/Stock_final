@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import {
   View,
   Text,
@@ -12,6 +13,7 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Platform,
 } from "react-native";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -34,7 +36,7 @@ import { useSafeAsync } from "@/hooks/useSafeAsync";
 import { usePerformanceMonitor } from "@/hooks/usePerformanceMonitor";
 import { useScanSessionStore } from "@/store/scanSessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
-import { useWebSocket } from "@/hooks/useWebSocket";
+import { useSessionWebSocket } from "@/hooks/useSessionWebSocket";
 import {
   getItemByBarcode,
   searchItems,
@@ -42,6 +44,8 @@ import {
   checkItemScanStatus,
   getSessionStats,
   SessionStatsResponse,
+  verifyItemQuantity,
+  batchVerifyItemQuantities,
   type ItemScanStatus,
 } from "@/services/api/api";
 import type { Item } from "@/types/scan";
@@ -57,6 +61,8 @@ import { dedupeItemsKeepingHighestStock } from "@/utils/itemBatchUtils";
 import ModernHeader from "@/components/ui/ModernHeader";
 import ModernButton from "@/components/ui/ModernButton";
 import { SyncStatusPill } from "@/components/ui/SyncStatusPill";
+import { SessionStateBanner } from "@/components/scan/SessionStateBanner";
+import { DuplicateScanModal } from "@/components/scan/DuplicateScanModal";
 import { FinishRackModal } from "@/components/scan/FinishRackModal";
 import { HardwareScanInput } from "@/components/scan/HardwareScanInput";
 import { ScanCameraOverlay } from "@/components/scan/ScanCameraOverlay";
@@ -67,7 +73,6 @@ import { styles } from "@/styles/screens/Scan.styles";
 
 import { useAuthStore } from "@/store/authStore";
 
-import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha, getTokenShadowStyle } from "@/theme/themeTokens";
 import { flags } from "@/constants/flags";
 const SCAN_BUFFER_TIMEOUT = 2000; // 2 seconds
@@ -76,8 +81,11 @@ const SCAN_CONFIDENCE_THRESHOLD = 2;
 
 const ScanScreen = React.memo(function ScanScreen() {
   const router = useRouter();
-  const { sessionId: rawSessionId, debugPerf: rawDebugPerf } = useLocalSearchParams();
-  const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId;
+  const { sessionId: rawSessionId, resumeCamera: rawResumeCamera, debugPerf: rawDebugPerf } = useLocalSearchParams();
+  const activeSessionId = useScanSessionStore((state) => state.activeSessionId);
+  const paramSessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId;
+  const sessionId = paramSessionId || activeSessionId;
+  const resumeCamera = Array.isArray(rawResumeCamera) ? rawResumeCamera[0] : rawResumeCamera;
   const debugPerf = Array.isArray(rawDebugPerf) ? rawDebugPerf[0] : rawDebugPerf;
   const showPerformanceOverlay = __DEV__ && flags.enableDebugMode && debugPerf === "1";
 
@@ -116,6 +124,13 @@ const ScanScreen = React.memo(function ScanScreen() {
   useEffect(() => {
     if (hasPermission) setCameraDeniedAfterRequest(false);
   }, [hasPermission]);
+
+  useEffect(() => {
+    if (resumeCamera === "1" && isScreenFocused && permission.granted) {
+      setIsScanning(true);
+      router.setParams({ resumeCamera: undefined });
+    }
+  }, [isScreenFocused, permission.granted, resumeCamera, router]);
   const { safeSetState, safeAsync } = useSafeAsync();
   const {
     metrics: performanceMetrics,
@@ -128,7 +143,7 @@ const ScanScreen = React.memo(function ScanScreen() {
   });
 
   // WebSocket Integration
-  const { lastMessage } = useWebSocket(sessionId ? String(sessionId) : undefined, isScreenFocused);
+  const { isConnected, subscribe } = useSessionWebSocket(sessionId ? String(sessionId) : undefined);
 
   // State
   const [isScanning, setIsScanning] = useState<boolean>(false);
@@ -151,6 +166,13 @@ const ScanScreen = React.memo(function ScanScreen() {
   });
   const [showCloseSessionModal, setShowCloseSessionModal] = useState<boolean>(false);
   const [isFinishing, setIsFinishing] = useState<boolean>(false);
+  const [duplicateModal, setDuplicateModal] = useState<{
+    visible: boolean;
+    item?: Item;
+    countedQty: number;
+    countedBy: string;
+    countedAt?: string;
+  }>({ visible: false, countedQty: 0, countedBy: "" });
   const hasValidSessionId = typeof sessionId === "string" && sessionId.trim().length > 0;
   const scanVisualV2Enabled = flags.uiVisualSystemV2 && flags.uiScanV2;
   const scanLocationLabel = [currentFloor, currentRack].filter(Boolean).join(" • ");
@@ -163,6 +185,17 @@ const ScanScreen = React.memo(function ScanScreen() {
   // Synchronous in-flight guard for item selection — prevents a double-tap from
   // entering handleSelectLookupItem twice before the async `loading` state lands.
   const selectInFlightRef = useRef(false);
+
+  // ── SQL Verification State & Background Sync ──
+  const [isSqlVerifying, setIsSqlVerifying] = useState<boolean>(false);
+  const [sqlVerifyLastRun, setSqlVerifyLastRun] = useState<string | null>(null);
+  const backgroundVerifyIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recentItemsRef = useRef<Item[]>([]);
+
+  // Keep a ref of recent items for background verification without triggering re-renders
+  useEffect(() => {
+    recentItemsRef.current = recentItems;
+  }, [recentItems]);
 
   const loadRecentItems = useCallback(async () => {
     try {
@@ -226,14 +259,48 @@ const ScanScreen = React.memo(function ScanScreen() {
     safeSetState(setInitialLoading, false);
   }, [loadRecentItems, loadSessionStats, safeSetState]);
 
+  // ── Background SQL Verification Runner ──
+  const runSqlVerification = useCallback(async () => {
+    if (offlineMode || !isAuthenticated || isSqlVerifying) return;
+    const items = recentItemsRef.current;
+    if (!items.length) return;
+
+    safeSetState(setIsSqlVerifying, true);
+    try {
+      const itemCodes = items
+        .map((item) => item.item_code)
+        .filter((code): code is string => Boolean(code))
+        .slice(0, 20); // Limit to 20 items per batch
+
+      if (itemCodes.length === 0) return;
+
+      if (itemCodes.length === 1 && itemCodes[0]) {
+        await verifyItemQuantity(itemCodes[0]);
+      } else {
+        await batchVerifyItemQuantities(itemCodes);
+      }
+      setSqlVerifyLastRun(new Date().toLocaleTimeString());
+    } catch (error) {
+      // Silently fail — background verification is best-effort
+      console.debug("Background SQL verification failed:", error);
+    } finally {
+      safeSetState(setIsSqlVerifying, false);
+    }
+  }, [offlineMode, isAuthenticated, isSqlVerifying, safeSetState]);
+
+  // Enhanced onRefresh: also triggers SQL verification for recent items
   const onRefresh = useCallback(async () => {
     safeSetState(setRefreshing, true);
     if (scannerVibration) {
       void haptics.light();
     }
-    await Promise.all([loadRecentItems(), loadSessionStats()]);
+    await Promise.all([
+      loadRecentItems(),
+      loadSessionStats(),
+      runSqlVerification(),
+    ]);
     safeSetState(setRefreshing, false);
-  }, [loadRecentItems, loadSessionStats, safeSetState, scannerVibration]);
+  }, [loadRecentItems, loadSessionStats, runSqlVerification, safeSetState, scannerVibration]);
 
   // Animated scan line
   useEffect(() => {
@@ -261,9 +328,12 @@ const ScanScreen = React.memo(function ScanScreen() {
 
   // Handle WebSocket Messages
   useEffect(() => {
-    if (lastMessage?.type === "session_update") {
-      const status = String(lastMessage.payload?.status || "").toUpperCase();
-      const reason = lastMessage.payload?.reason;
+    if (!isConnected || !isScreenFocused) return;
+
+    const unsubscribe = subscribe("session_update", (message) => {
+      const payload = (message.payload || {}) as Record<string, any>;
+      const status = String(payload.status || "").toUpperCase();
+      const reason = payload.reason;
 
       if (status === "PAUSED") {
         safeSetState(setIsScanning, false);
@@ -289,8 +359,10 @@ const ScanScreen = React.memo(function ScanScreen() {
 
       // Refresh stats on any update
       loadSessionStats();
-    }
-  }, [isFinishing, lastMessage, loadSessionStats, router, safeSetState]);
+    });
+
+    return unsubscribe;
+  }, [isConnected, isScreenFocused, isFinishing, loadSessionStats, router, safeSetState, subscribe]);
 
   // Start performance monitoring when component mounts
   useEffect(() => {
@@ -311,7 +383,7 @@ const ScanScreen = React.memo(function ScanScreen() {
     }, [safeSetState])
   );
 
-  // Canonical startup path: initial load + periodic stat refresh
+  // Canonical startup path: initial load + periodic stat refresh + background SQL verification
   useFocusEffect(
     useCallback(() => {
       if (!isAuthenticated) {
@@ -319,12 +391,26 @@ const ScanScreen = React.memo(function ScanScreen() {
       }
 
       void loadInitialData();
-      const interval = setInterval(() => {
+
+      // Periodic stat refresh (every 30s)
+      const statsInterval = setInterval(() => {
         void loadSessionStats();
       }, 30000);
 
-      return () => clearInterval(interval);
-    }, [isAuthenticated, loadInitialData, loadSessionStats])
+      // Periodic background SQL verification (every 120s) — re-verify recent items
+      // against SQL Server to catch any changes made in the ERP system.
+      const verifyInterval = setInterval(() => {
+        void runSqlVerification();
+      }, 120000);
+
+      backgroundVerifyIntervalRef.current = verifyInterval;
+
+      return () => {
+        clearInterval(statsInterval);
+        clearInterval(verifyInterval);
+        backgroundVerifyIntervalRef.current = null;
+      };
+    }, [isAuthenticated, loadInitialData, loadSessionStats, runSqlVerification])
   );
 
   // Search effect with proper cleanup
@@ -402,6 +488,17 @@ const ScanScreen = React.memo(function ScanScreen() {
     safeSetState(setScanned, false);
   };
 
+  const isSqlUnavailableError = (error: unknown): boolean => {
+    const message = error instanceof Error ? error.message : "";
+    const responseStatus = (error as { response?: { status?: number } })?.response?.status;
+    return (
+      message.includes("Not connected to database") ||
+      message.includes("SQL connection") ||
+      message.includes("ERP system is temporarily unavailable") ||
+      responseStatus === 503
+    );
+  };
+
   const handleLookup = async (barcode: string) => {
     if (loading) return;
     const lookupValue = barcode.trim();
@@ -464,20 +561,14 @@ const ScanScreen = React.memo(function ScanScreen() {
                 void playScanSound("warning", scannerSound);
                 safeSetState(setLoading, false);
                 safeSetState(setScanned, false);
-                Alert.alert(
-                  "Duplicate Scan",
-                  `Item already counted here by ${duplicateInLocation.counted_by}.\nQty: ${duplicateInLocation.counted_qty}`,
-                  [
-                    {
-                      text: "Cancel",
-                      style: "cancel",
-                    },
-                    {
-                      text: "Verify / Update",
-                      onPress: () => navigateToDetail(item.barcode || validation.value!),
-                    },
-                  ]
-                );
+
+                safeSetState(setDuplicateModal, {
+                  visible: true,
+                  item: item,
+                  countedQty: duplicateInLocation.counted_qty,
+                  countedBy: duplicateInLocation.counted_by,
+                  countedAt: duplicateInLocation.counted_at || undefined,
+                });
                 return;
               } else {
                 toastService.show(`Item found in ${locations.length} other location(s)`, {
@@ -507,12 +598,22 @@ const ScanScreen = React.memo(function ScanScreen() {
       void playScanSound("error", scannerSound);
       const reason =
         error instanceof Error ? error.message : "The lookup request did not finish.";
-      safeSetState(setLookupNotice, {
-        actionLabel: "Retry lookup",
-        message: `${reason} Your scan was not submitted. Retry lookup or rescan the item.`,
-        title: "Lookup failed",
-        type: "error",
-      });
+
+      if (isSqlUnavailableError(error)) {
+        safeSetState(setLookupNotice, {
+          actionLabel: "Retry lookup",
+          message: `ERP is unreachable. Last known quantity is shown. Retry lookup or rescan when the connection is restored.`,
+          title: "ERP unavailable",
+          type: "warning",
+        });
+      } else {
+        safeSetState(setLookupNotice, {
+          actionLabel: "Retry lookup",
+          message: `${reason} Your scan was not submitted. Retry lookup or rescan the item.`,
+          title: "Lookup failed",
+          type: "error",
+        });
+      }
     } finally {
       safeSetState(setLoading, false);
       safeSetState(setScanned, false);
@@ -601,7 +702,7 @@ const ScanScreen = React.memo(function ScanScreen() {
           Alert.alert(
             "Counts Not Yet Uploaded",
             `${remainingPendingCount} count(s) for this session are still waiting to sync. ` +
-              "Finish Rack was cancelled so no data is lost — check connectivity and retry."
+            "Finish Rack was cancelled so no data is lost — check connectivity and retry."
           );
           return;
         }
@@ -701,6 +802,7 @@ const ScanScreen = React.memo(function ScanScreen() {
           </View>
         }
       />
+      <SessionStateBanner />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -708,7 +810,7 @@ const ScanScreen = React.memo(function ScanScreen() {
         keyboardDismissMode="on-drag"
         bounces={true}
         alwaysBounceVertical={true}
-        removeClippedSubviews={lazyLoading}
+        removeClippedSubviews={Platform.OS === "android" ? lazyLoading : false}
         refreshControl={
           <RefreshControl
             testID="scan-refresh-control"
@@ -831,6 +933,28 @@ const ScanScreen = React.memo(function ScanScreen() {
           <Text style={styles.performanceText}>FPS: {performanceMetrics.fps ?? "--"}</Text>
         </View>
       )}
+      <DuplicateScanModal
+        visible={duplicateModal.visible}
+        countedQty={duplicateModal.countedQty}
+        countedBy={duplicateModal.countedBy}
+        countedAt={duplicateModal.countedAt}
+        onContinue={() => {
+          safeSetState(setDuplicateModal, (prev) => ({ ...prev, visible: false }));
+          if (duplicateModal.item) {
+            // Future: could pass a param to automatically increment by 1
+            navigateToDetail(duplicateModal.item.barcode || duplicateModal.item.item_code);
+          }
+        }}
+        onViewRecord={() => {
+          safeSetState(setDuplicateModal, (prev) => ({ ...prev, visible: false }));
+          if (duplicateModal.item) {
+            navigateToDetail(duplicateModal.item.barcode || duplicateModal.item.item_code);
+          }
+        }}
+        onCancel={() => {
+          safeSetState(setDuplicateModal, (prev) => ({ ...prev, visible: false }));
+        }}
+      />
     </SafeAreaView>
   );
 });

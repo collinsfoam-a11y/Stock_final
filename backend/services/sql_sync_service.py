@@ -12,10 +12,67 @@ from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from backend.core.globals import websocket_manager
 from backend.sql_server_connector import SQLServerConnector
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
+ERP_REFRESH_MUTABLE_FIELDS = {
+    "stock_qty",
+    "sql_server_qty",
+    "mrp",
+    "sale_price",
+    "last_purchase_price",
+    "last_purchase_cost",
+    "batch_no",
+    "batch_id",
+    "mfg_date",
+    "expiry_date",
+    "warehouse",
+    "warehouse_id",
+    "floor",
+    "rack",
+    "sql_last_checked_at",
+    "last_synced",
+    "qty_changed_at",
+    "qty_change_delta",
+    "sql_sync_status",
+    "item_name",
+    "uom_code",
+    "uom_name",
+    "category",
+    "subcategory",
+    "hsn_code",
+    "gst_category",
+    "gst_percent",
+    "sgst_percent",
+    "cgst_percent",
+    "igst_percent",
+    "brand_name",
+    "location",
+    "last_purchase_supplier",
+    "purchase_type",
+    "last_purchase_date",
+    "last_purchase_qty",
+}
+
+ERP_REFRESH_FORBIDDEN_FIELDS = {
+    "baseline_qty",
+    "session_baseline",
+    "verified_qty",
+    "counted_qty",
+    "variance",
+    "verified",
+    "verified_by",
+    "verified_at",
+    "session_id",
+    "count_line_id",
+    "approval_status",
+}
+
+class ERPProjectionPolicyError(Exception):
+    pass
 
 # ---------------------------------------------------------------------------
 # Helpers for building item dicts - reduces cyclomatic complexity
@@ -132,6 +189,41 @@ def _apply_field_conversion(value: Any, converter: str) -> Any:
     return value
 
 
+def _compute_erp_projection_hash(item: dict[str, Any]) -> str:
+    """Compute a hash of the ERP projection fields for change detection."""
+    import hashlib
+
+    hash_fields = [
+        "item_code",
+        "item_name",
+        "stock_qty",
+        "mrp",
+        "sale_price",
+        "batch_id",
+        "warehouse",
+        "location",
+        "floor",
+        "rack",
+        "uom",
+        "uom_name",
+        "category",
+        "subcategory",
+        "manufacturer",
+        "expiry_date",
+        "mfg_date",
+        "batch_no",
+        "last_purchase_price",
+        "last_purchase_cost",
+    ]
+    hash_parts = []
+    for field in hash_fields:
+        value = item.get(field)
+        if value is not None and value != "":
+            hash_parts.append(f"{field}={value}")
+    hash_str = "|".join(sorted(hash_parts))
+    return hashlib.sha256(hash_str.encode()).hexdigest()[:16]
+
+
 def _build_new_item_dict(
     sql_item: dict[str, Any], sql_qty: float, now: datetime
 ) -> dict[str, Any]:
@@ -166,6 +258,9 @@ def _build_new_item_dict(
             continue  # Already handled with defaults
         value = sql_item.get(sql_key)
         item[target_key] = _apply_field_conversion(value, converter)
+
+    # Compute ERP projection hash for change detection
+    item["erp_projection_hash"] = _compute_erp_projection_hash(item)
 
     return item
 
@@ -218,10 +313,11 @@ class SQLSyncService:
     Service to sync SQL Server quantity changes to MongoDB
 
     CRITICAL BEHAVIOR:
-    - Only updates stock_qty field from SQL Server
-    - Preserves ALL enriched data (serial numbers, MRP, HSN codes, etc.)
+    - Only updates ERP projection fields from SQL Server
+    - Preserves ALL counting session data (baseline, variance, approvals)
     - Tracks qty changes and timestamps
-    - Never overwrites user-entered enrichment data
+    - Never overwrites user-entered counting data
+    - Broadcasts ERP projection changes to connected WebSocket clients
     """
 
     def __init__(
@@ -231,17 +327,23 @@ class SQLSyncService:
         sync_interval: int = 900,  # 15 minutes default (was 1 hour)
         enabled: bool = True,
         nightly_sync_hour: int = 2,  # Run full sync at 2 AM
+        qty_sync_interval: int = 60,  # Sync quantities every 60 seconds
+        master_sync_interval: int = 1800,  # Sync master data every 30 minutes
     ):
         self.sql_connector = sql_connector
         self.mongo_db = mongo_db
         self.sync_interval = sync_interval
         self.enabled = enabled
         self.nightly_sync_hour = nightly_sync_hour
+        self.qty_sync_interval = qty_sync_interval
+        self.master_sync_interval = master_sync_interval
         self._running = False
         self._task: Optional[asyncio.Task[Any]] = None
         self._last_sync: Optional[datetime] = None
         self._last_new_item_check: Optional[datetime] = None
         self._last_nightly_sync: Optional[datetime] = None
+        self._last_qty_sync: Optional[datetime] = None
+        self._last_master_sync: Optional[datetime] = None
         self._new_item_check_interval: int = (
             1800  # Check for new items every 30 minutes
         )
@@ -252,8 +354,11 @@ class SQLSyncService:
             "failed_syncs": 0,
             "last_sync": None,
             "last_nightly_sync": None,
+            "last_qty_sync": None,
+            "last_master_sync": None,
             "items_synced": 0,
             "qty_changes_detected": 0,
+            "master_changes_detected": 0,
             "new_items_discovered": 0,
         }
 
@@ -282,7 +387,7 @@ class SQLSyncService:
         try:
             # Run synchronous SQL query in thread pool
             sql_item = await asyncio.to_thread(
-                self.sql_connector.get_item_by_barcode, barcode
+                self.sql_connector.get_item_by_barcode_aggregate, barcode
             )
 
             if not sql_item:
@@ -305,6 +410,56 @@ class SQLSyncService:
 
         except Exception as e:
             logger.error(f"Error syncing single item {barcode}: {e}")
+            return None
+
+    async def sync_single_item_by_code(
+        self, item_code: str
+    ) -> Optional[dict[str, Any]]:
+        """
+        Sync a single item from SQL Server to MongoDB by item code.
+        Returns the updated item if found, None otherwise.
+        """
+        try:
+            is_connected = await asyncio.wait_for(
+                asyncio.to_thread(self.sql_connector.test_connection),
+                timeout=3,
+            )
+        except asyncio.TimeoutError:
+            logger.warning(
+                "SQL Server connection check timed out, skipping single item sync"
+            )
+            return None
+
+        if not is_connected:
+            logger.warning("SQL Server not connected, skipping single item sync")
+            return None
+
+        try:
+            # Run synchronous SQL query in thread pool
+            sql_item = await asyncio.to_thread(
+                self.sql_connector.get_item_by_code_aggregate, item_code
+            )
+
+            if not sql_item:
+                return None
+
+            # Use existing logic to update/create item
+            stats = {
+                "items_created": 0,
+                "qty_updated": 0,
+                "qty_changes_detected": 0,
+                "items_checked": 0,
+            }
+            await self._sync_single_item(sql_item, stats)
+
+            # Return the updated item from MongoDB
+            updated_code = sql_item.get("item_code")
+            if updated_code:
+                return await self.mongo_db.erp_items.find_one({"item_code": updated_code})
+            return None
+
+        except Exception as e:
+            logger.error(f"Error syncing single item {item_code}: {e}")
             return None
 
     async def sync_variance_only(self) -> dict[str, Any]:
@@ -467,6 +622,42 @@ class SQLSyncService:
                 logger.error(f"Error creating item {item_code}: {exc}")
                 stats["errors"] += 1
 
+            # Sync batch-level data to erp_item_batches
+            try:
+                await self._sync_item_batches(item_code, sql_item.get("item_id"))
+            except Exception as exc:
+                logger.warning(f"Error syncing batches for new item {item_code}: {exc}")
+
+    async def _sync_item_batches(self, item_code: str, item_id: Any = None) -> None:
+        """Sync batch-level data from SQL Server to erp_item_batches collection."""
+        try:
+            batches = await asyncio.to_thread(
+                self.sql_connector.get_item_batches, item_id or item_code, item_code
+            )
+            if not batches:
+                return
+
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            for batch in batches:
+                batch["item_code"] = item_code
+                batch["synced_at"] = now
+                await self.mongo_db.erp_item_batches.update_one(
+                    {"batch_id": batch.get("batch_id")},
+                    {"$set": batch},
+                    upsert=True,
+                )
+        except Exception as exc:
+            logger.warning(f"Error syncing batches for {item_code}: {exc}")
+
+    def _finish_discovery_stats(
+        self, stats: dict[str, Any], start_time: datetime
+    ) -> None:
+        stats["duration"] = (
+            datetime.now(timezone.utc).replace(tzinfo=None) - start_time
+        ).total_seconds()
+        self._last_new_item_check = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    @staticmethod
     def _finish_discovery_stats(
         self, stats: dict[str, Any], start_time: datetime
     ) -> None:
@@ -510,7 +701,7 @@ class SQLSyncService:
 
             # Step 2: Fetch all items from SQL Server (this is the heavy query)
             # Only run this periodically
-            sql_items = await asyncio.to_thread(self.sql_connector.get_all_items)
+            sql_items = await asyncio.to_thread(self.sql_connector.get_all_items_aggregate)
             stats["items_checked"] = len(sql_items)
 
             # Step 3: Find items that exist in SQL but not in MongoDB
@@ -597,8 +788,7 @@ class SQLSyncService:
             logger.info("🌙 Starting nightly full data verification sync...")
 
             # Fetch ALL items from SQL Server
-            sql_items = await asyncio.to_thread(self.sql_connector.get_all_items)
-            # stats["items_checked"] = len(sql_items) -- Removed to avoid double counting, incremented in _sync_single_item
+            sql_items = await asyncio.to_thread(self.sql_connector.get_all_items_aggregate)
             logger.info(
                 f"Retrieved {len(sql_items)} items from SQL Server for verification"
             )
@@ -674,7 +864,7 @@ class SQLSyncService:
         try:
             # H13 fix: Run synchronous SQL call in thread pool to avoid blocking the event loop
             logger.info("Starting SQL Server quantity sync...")
-            sql_items = await asyncio.to_thread(self.sql_connector.get_all_items)
+            sql_items = await asyncio.to_thread(self.sql_connector.get_all_items_aggregate)
 
             # Pre-fetch MongoDB items to cache (Avoids N+1 queries)
             mongo_items_cursor = self.mongo_db.erp_items.find({})
@@ -746,11 +936,24 @@ class SQLSyncService:
             await self.mongo_db.erp_items.insert_one(new_item)
             stats["items_created"] += 1
             logger.debug(f"Created new item: {item_code}")
+
+            # Broadcast ERP projection change for new item
+            await self._broadcast_erp_change(
+                item_code=item_code,
+                changed_fields=set(new_item.keys()),
+                update_fields=new_item,
+            )
         else:
             # Existing item - update ONLY quantity if changed
             await self._update_existing_item(
                 item_code, sql_item, sql_qty, mongo_item, stats
             )
+
+        # Sync batch-level data to erp_item_batches (fire-and-forget)
+        try:
+            await self._sync_item_batches(item_code, sql_item.get("item_id"))
+        except Exception as exc:
+            logger.debug(f"Batch sync skipped for {item_code}: {exc}")
 
         stats["items_checked"] += 1
 
@@ -802,10 +1005,77 @@ class SQLSyncService:
         if metadata_updates:
             update_fields.update(metadata_updates)
 
+        # GOVERNANCE CHECK
+        forbidden_present = (set(update_fields.keys()) | set(sql_item.keys())) & ERP_REFRESH_FORBIDDEN_FIELDS
+        if forbidden_present:
+            raise ERPProjectionPolicyError(f"Attempted to update forbidden counting fields: {forbidden_present}")
+
+        unexpected = set(update_fields.keys()) - ERP_REFRESH_MUTABLE_FIELDS
+        if "updated_at" in unexpected:
+            unexpected.remove("updated_at")
+
+        if unexpected:
+            raise ERPProjectionPolicyError(f"Attempted to update forbidden or unexpected fields: {unexpected}")
+
+        # Compute new ERP projection hash
+        new_hash = _compute_erp_projection_hash(
+            {**mongo_item, **update_fields, "item_code": item_code}
+        )
+        old_hash = mongo_item.get("erp_projection_hash")
+
+        # Always set the hash (handles items created before this field existed)
+        if old_hash is None:
+            old_hash = ""
+
         await self.mongo_db.erp_items.update_one(
             {"item_code": item_code},
-            {"$set": update_fields},
+            {"$set": {**update_fields, "erp_projection_hash": new_hash}},
         )
+
+        # Broadcast ERP projection change to connected WebSocket clients
+        # Only broadcast if the hash changed (actual data changed)
+        if update_fields and old_hash != new_hash:
+            changed_fields = set(update_fields.keys()) - {
+                "last_synced",
+                "updated_at",
+                "sql_last_checked_at",
+            }
+            if changed_fields:
+                await self._broadcast_erp_change(
+                    item_code=item_code,
+                    changed_fields=changed_fields,
+                    update_fields=update_fields,
+                )
+
+    async def _broadcast_erp_change(
+        self,
+        item_code: str,
+        changed_fields: set[str],
+        update_fields: dict[str, Any],
+    ) -> None:
+        """Broadcast an ERP projection change to all connected WebSocket clients."""
+        if websocket_manager is None:
+            return
+
+        try:
+            message = {
+                "type": "erp_projection_update",
+                "item_code": item_code,
+                "changed_fields": sorted(changed_fields),
+                "updated_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+            }
+            await websocket_manager.broadcast_all(message)
+            logger.debug(
+                "Broadcast ERP projection update for %s: fields=%s",
+                item_code,
+                sorted(changed_fields),
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to broadcast ERP projection update for %s: %s",
+                item_code,
+                sanitize_for_logging(str(e)),
+            )
 
     def _finalize_sync_stats(self, stats: dict[str, Any]) -> None:
         """Update backwards-compatible stats and internal tracking."""
@@ -867,7 +1137,7 @@ class SQLSyncService:
             is_connected = await asyncio.to_thread(self.sql_connector.test_connection)
             if is_connected:
                 sql_item = await asyncio.to_thread(
-                    self.sql_connector.get_item_by_code, item_code
+                    self.sql_connector.get_item_by_code_aggregate, item_code
                 )
                 if sql_item:
                     sql_qty = _coerce_qty(sql_item.get("stock_qty"))
@@ -933,10 +1203,11 @@ class SQLSyncService:
 
     async def _sync_loop(self):
         """
-        Background sync loop with three sync modes:
-        1. Variance-only sync (every 15 min) - minimal SQL load
-        2. New item discovery (every 30 min) - finds new items
-        3. Nightly full sync (at 2 AM) - complete data verification
+        Background sync loop with configurable intervals:
+        1. Quantity sync (every qty_sync_interval seconds) - minimal SQL load
+        2. Master data sync (every master_sync_interval seconds) - full item data
+        3. New item discovery (every 30 min) - finds new items
+        4. Nightly full sync (at nightly_sync_hour) - complete data verification
 
         Uses async lock to prevent concurrent sync operations.
         """
@@ -952,30 +1223,36 @@ class SQLSyncService:
                         )
                         self._sync_stats["failed_syncs"] += 1
                     else:
-                        # Check if it's time for nightly full sync (2 AM)
+                        now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+                        # Check if it's time for nightly full sync
                         if self.should_run_nightly_sync():
-                            logger.info("🌙 Running nightly full data verification...")
+                            logger.info(
+                                "🌙 Running nightly full data verification..."
+                            )
                             await self.nightly_full_sync()
                             self._sync_stats["total_syncs"] += 1
+                            self._last_nightly_sync = now
                         else:
-                            # Regular variance-only sync (minimal SQL load)
+                            # Quantity sync (most frequent - minimal SQL load)
                             await self.sync_variance_only()
                             self._sync_stats["total_syncs"] += 1
+                            self._last_qty_sync = now
 
-                            # Check for new items every 30 minutes
-                            # This runs AFTER variance sync completes (sequential)
+                            # Master data sync (less frequent - full item data)
                             if self.should_check_new_items():
                                 logger.info(
                                     "🔍 Running new item discovery (every 30 min)..."
                                 )
                                 await self.discover_new_items(limit=200)
+                                self._last_master_sync = now
 
                 except Exception as e:
                     logger.error(f"Sync loop error: {str(e)}")
                     self._sync_stats["failed_syncs"] += 1
 
-            # Wait for next sync interval
-            await asyncio.sleep(self.sync_interval)
+            # Wait for next sync interval (use the shortest interval)
+            await asyncio.sleep(self.qty_sync_interval)
 
     async def start(self):
         """Start background sync"""
@@ -1047,6 +1324,12 @@ class SQLSyncService:
             "enabled": self.enabled,
             "sync_interval": self.sync_interval,
             "sync_interval_minutes": round(self.sync_interval / 60, 1),
+            "qty_sync_interval": self.qty_sync_interval,
+            "qty_sync_interval_minutes": round(self.qty_sync_interval / 60, 1),
+            "master_sync_interval": self.master_sync_interval,
+            "master_sync_interval_minutes": round(
+                self.master_sync_interval / 60, 1
+            ),
             "next_sync": (
                 (self._last_sync + timedelta(seconds=self.sync_interval)).isoformat()
                 if self._last_sync
@@ -1055,9 +1338,33 @@ class SQLSyncService:
         }
 
     def set_interval(self, interval: int):
-        """Update sync interval"""
+        """Update sync interval (backward-compatible, sets qty_sync_interval)"""
         self.sync_interval = interval
-        logger.info(f"Sync interval updated to {interval}s ({interval / 60:.1f} min)")
+        self.qty_sync_interval = interval
+        logger.info(
+            f"Sync interval updated to {interval}s ({interval / 60:.1f} min)"
+        )
+
+    def set_intervals(
+        self,
+        qty_sync_interval: Optional[int] = None,
+        master_sync_interval: Optional[int] = None,
+    ):
+        """Update sync intervals for different sync modes."""
+        if qty_sync_interval is not None:
+            self.qty_sync_interval = qty_sync_interval
+            logger.info(
+                "Qty sync interval updated to %ss (%s min)",
+                qty_sync_interval,
+                qty_sync_interval / 60,
+            )
+        if master_sync_interval is not None:
+            self.master_sync_interval = master_sync_interval
+            logger.info(
+                "Master sync interval updated to %ss (%s min)",
+                master_sync_interval,
+                master_sync_interval / 60,
+            )
 
     async def enable(self):
         """Enable sync service"""

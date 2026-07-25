@@ -228,7 +228,7 @@ async def generate_report(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Invalid report parameters") from e
     except Exception as e:
         logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error") from e

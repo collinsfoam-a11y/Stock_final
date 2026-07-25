@@ -3,26 +3,15 @@
  * Export all UI components from a single location
  */
 
+export { AppIcon, IONICON_TO_SF_SYMBOL } from "./AppIcon";
+export type { AppIconProps, IoniconName } from "./AppIcon";
 export { Modal } from "./Modal";
-export { SafeView } from "./SafeView";
 export * from "./Skeleton";
-// @deprecated Use ModernButton directly
-export { AppButton } from "./AppButton";
-export type { AppButtonProps, AppButtonVariant, AppButtonSize } from "./AppButton";
-// @deprecated Use ModernCard directly
-export { AppCard } from "./AppCard";
-export type { AppCardProps, AppCardVariant } from "./AppCard";
-// @deprecated Use ModernInput directly
-export { AppInput } from "./AppInput";
-export type { AppInputProps } from "./AppInput";
-// @deprecated Use ConfirmModal directly
-export { ConfirmDialog } from "./ConfirmDialog";
-export type { ConfirmDialogProps } from "./ConfirmDialog";
 export { SyncIndicator } from "./SyncIndicator";
 export type { SyncIndicatorProps } from "./SyncIndicator";
 export { EmptyState } from "./EmptyState";
 export { LoadingSpinner } from "./LoadingSpinner";
-// Deprecated facades retained for incremental migration. New operational UI must use App*.
+// Canonical operational primitives. Use these directly for all new UI.
 export { ModernCard } from "./ModernCard";
 export { ModernButton } from "./ModernButton";
 export { ModernInput } from "./ModernInput";
@@ -54,7 +43,6 @@ export { AnimatedCounter } from "./AnimatedCounter";
 export { Shimmer, ShimmerPlaceholder } from "./Shimmer";
 export { ParticleField } from "./ParticleField";
 export * from "./SyncStatusPill";
-export { EnhancedBottomSheet } from "./EnhancedBottomSheet";
 
 // Phase 4: Supervisor Dashboard Components
 export { StatsCard } from "./StatsCard";
@@ -63,13 +51,6 @@ export { LiveIndicator } from "./LiveIndicator";
 // ==========================================
 // Unified Design System Components (v3.0)
 // ==========================================
-export {
-  TouchableFeedback,
-  TouchableScale,
-  TouchableHighlight,
-  type TouchableFeedbackProps,
-} from "./TouchableFeedback";
-
 export {
   AnimatedCard as UnifiedAnimatedCard,
   StatsCardPreset,
@@ -100,14 +81,6 @@ export { ThemedScreen, ThemedCard, ThemedText } from "./ThemedScreen";
 // Unified Screen Layout
 export { ScreenContainer } from "./ScreenContainer";
 export type { ScreenContainerProps } from "./ScreenContainer";
-
-// Responsive Typography
-export { ResponsiveText } from "./ResponsiveText";
-export type { ResponsiveTextProps, TextVariant } from "./ResponsiveText";
-
-// Enhanced UI/UX Components (v3.0 - Best Practices Design Kit)
-export { MyPressable, PressablePresets } from "./MyPressable";
-export type { MyPressableProps } from "./MyPressable";
 
 // Missing UI Components (Complete implementations found)
 export { AdminResponsiveGrid } from "./AdminResponsiveGrid";

@@ -198,7 +198,7 @@ async def test_check_item_qty_realtime_sql_unavailable_uses_cache() -> None:
 async def test_check_item_qty_realtime_updates_when_qty_changed() -> None:
     sql_connector = Mock()
     sql_connector.test_connection.return_value = True
-    sql_connector.get_item_by_code.return_value = {"item_code": "ABC", "stock_qty": 9}
+    sql_connector.get_item_by_code_aggregate.return_value = {"item_code": "ABC", "stock_qty": 9}
 
     erp_items = SimpleNamespace(
         find_one=AsyncMock(return_value={"item_code": "ABC", "stock_qty": 7}),

@@ -20,6 +20,7 @@ import ModernCard from "@/components/ui/ModernCard";
 import { getSystemSettings, updateSystemSettings } from "@/services/api";
 import { useSettingsStore } from "@/store/settingsStore";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { touchTargets } from "@/theme/legacyCompat";
 import { safeBackNavigation } from "@/utils/navigation";
 
 type SystemSettings = Record<string, unknown>;
@@ -456,7 +457,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: 6,
-    minHeight: 40,
+    // Apple HIG minimum tap target
+    minHeight: touchTargets.minimum,
     minWidth: 82,
     justifyContent: "center",
     paddingHorizontal: 14,

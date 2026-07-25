@@ -222,7 +222,13 @@ def can_reuse_rejected_count_line(
     if recount_of_id and extract_document_id(existing) != str(recount_of_id):
         return False
 
-    return normalize_count_line_status(existing.get("status")) in BLOCKING_COUNT_LINE_STATUSES
+    if normalize_count_line_status(existing.get("status")) in BLOCKING_COUNT_LINE_STATUSES:
+        return True
+
+    if existing.get("recount_requested_at"):
+        return True
+
+    return False
 
 
 def is_blocking_finalization(count_line: dict[str, Any]) -> bool:

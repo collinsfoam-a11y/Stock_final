@@ -107,7 +107,7 @@ async def get_notifications(
 
     except Exception as e:
         logger.error("Error fetching notifications: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e
 
 
 @router.get("/unread-count")
@@ -126,7 +126,7 @@ async def get_unread_count(
 
     except Exception as e:
         logger.error("Error getting unread count: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e
 
 
 @router.post("/{notification_id}/read")
@@ -154,7 +154,7 @@ async def mark_notification_as_read(
         raise
     except Exception as e:
         logger.error("Error marking notification as read: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e
 
 
 @router.post("/mark-all-read")
@@ -173,7 +173,7 @@ async def mark_all_notifications_as_read(
 
     except Exception as e:
         logger.error("Error marking all as read: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e
 
 
 @router.delete("/{notification_id}")
@@ -201,7 +201,7 @@ async def delete_notification(
         raise
     except Exception as e:
         logger.error("Error deleting notification: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e
 
 
 @router.post("/devices")
@@ -222,7 +222,7 @@ async def register_notification_device(
         return {"success": True, "message": "Notification device registered"}
     except Exception as e:
         logger.error("Error registering notification device: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e
 
 
 @router.post("/devices/unregister")
@@ -242,7 +242,7 @@ async def unregister_notification_device(
         return {"success": True, "message": "Notification device unregistered"}
     except Exception as e:
         logger.error("Error unregistering notification device: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e
 
 
 @router.post("/batch")
@@ -281,4 +281,4 @@ async def send_batch_notifications(
         }
     except Exception as e:
         logger.error("Error sending batch notifications: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e

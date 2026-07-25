@@ -4,7 +4,8 @@
  */
 
 import React, { useCallback } from "react";
-import { View, Text, StyleSheet, ScrollView, Alert, Platform } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Platform } from "react-native";
+import { confirmAction } from "@/services/actionSheet";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -44,40 +45,26 @@ export default function StaffSettingsScreen() {
   const navigateToHelp = () => router.push("/help" as never);
   const navigateToNotifications = () => router.push("/notifications" as never);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
 
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      const confirmed = window.confirm("Are you sure you want to sign out?");
-      if (confirmed) {
-        logout()
-          .then(() => {
-            navigateToWelcome();
-          })
-          .catch(() => {
-            toastService.showError("Failed to sign out. Please try again.");
-          });
-      }
-      return;
-    }
+    const confirmed = await confirmAction({
+      title: "Sign Out",
+      message: "Are you sure you want to sign out?",
+      confirmLabel: "Sign Out",
+      destructive: true,
+    });
 
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await logout();
-            navigateToWelcome();
-          } catch {
-            toastService.showError("Failed to sign out. Please try again.");
-          }
-        },
-      },
-    ]);
+    if (!confirmed) return;
+
+    try {
+      await logout();
+      navigateToWelcome();
+    } catch {
+      toastService.showError("Failed to sign out. Please try again.");
+    }
   }, [logout, router]);
 
   const handleSecurity = useCallback(() => {

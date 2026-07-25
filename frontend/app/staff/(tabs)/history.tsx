@@ -342,11 +342,7 @@ export default function HistoryScreen() {
     );
 
     const AnimatedCard = flags.enableAnimations ? (
-      <Animated.View
-        entering={FadeInUp.delay(index * 50)
-          .springify()
-          .damping(12)}
-      >
+      <Animated.View entering={FadeInUp.springify().damping(12)}>
         {CardContent}
       </Animated.View>
     ) : (
@@ -394,6 +390,7 @@ export default function HistoryScreen() {
           data={countLines}
           renderItem={renderCountLine}
           keyExtractor={(item) => item.id}
+          estimatedItemSize={140}
           contentContainerStyle={styles.list}
           ListHeaderComponent={
             loadWarning ? (

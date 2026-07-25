@@ -1,6 +1,6 @@
 import React from "react";
 import { render } from "@testing-library/react-native";
-import HomeScreen from "../../app/staff/home";
+import HomeScreen from "../../app/staff/(tabs)/home";
 
 jest.mock("../../src/services/connectionManager", () => ({
   __esModule: true,

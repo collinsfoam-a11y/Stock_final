@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { AppInput } from "@/components/ui/AppInput";
+import ModernInput from "@/components/ui/ModernInput";
 import { DEFAULT_FLOOR_OPTIONS } from "@/config/location";
 import { useUiTokens } from "@/hooks/useUiTokens";
 
@@ -125,12 +125,12 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
 
         {/* Rack input */}
         <View style={{ flex: 1 }}>
-          <AppInput
+          <ModernInput
             label="Rack"
             value={rackNo || ""}
             onChangeText={(text) => onChangeRack(text)}
             placeholder="Enter rack"
-            leftIcon="layers-outline"
+            icon="layers-outline"
             testID="input-rack"
           />
 

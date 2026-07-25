@@ -368,3 +368,24 @@ jest.mock("react-native/Libraries/Modal/Modal", () => {
     default: MockModal,
   };
 });
+
+// Mock @noble/ed25519 to avoid ESM resolution errors in Jest
+jest.mock("@noble/ed25519", () => ({
+  verifyAsync: jest.fn(async (sig, msg, pub) => {
+    // Basic mock logic: return true if sig has length, false if it's "invalid"
+    return sig.length > 0;
+  }),
+  getPublicKeyAsync: jest.fn(async (priv) => new Uint8Array(32)),
+  etc: {
+    hexToBytes: jest.fn((hex) => hex === "invalid-signature-string" ? new Uint8Array(0) : new Uint8Array(64)),
+    bytesToHex: jest.fn((bytes) => "dummy-hex"),
+  }
+}));
+// Mock expo-sqlite
+jest.mock("expo-sqlite", () => ({
+  openDatabaseAsync: jest.fn(async () => ({
+    execAsync: jest.fn(),
+    runAsync: jest.fn(),
+    getAllAsync: jest.fn(async () => []),
+  })),
+}));

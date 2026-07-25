@@ -22,7 +22,8 @@ import { Camera, useCameraDevice, useCodeScanner, useCameraPermission } from "@/
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
-import { validateScannedSerial, normalizeSerialValue } from "../../utils/scanUtils";
+import { validateScannedSerial, normalizeSerialValue, isSerialNumberFormat } from "../../utils/scanUtils";
+import { classifyBarcode } from "../../utils/barcodeClassifier";
 import {
   clearRecentScanTimes,
   DEFAULT_SERIAL_RESCAN_WINDOW_MS,
@@ -47,6 +48,8 @@ interface SerialScannerModalProps {
   visible: boolean;
   existingSerials: string[];
   itemName?: string;
+  itemBarcode?: string;
+  itemCode?: string;
   defaultMrp?: number;
   onSerialScanned: (data: {
     serial_number: string;
@@ -80,6 +83,8 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
   visible,
   existingSerials,
   itemName,
+  itemBarcode,
+  itemCode,
   defaultMrp,
   onSerialScanned,
   onClose,
@@ -102,11 +107,21 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
     () => new Set(existingSerials.map(normalizeSerialValue).filter(Boolean)),
     [existingSerials]
   );
-  const { hasPermission, requestPermission: requestVisionPermission } = useCameraPermission();
+  const cameraPermission = useCameraPermission() as {
+    canAskAgain?: boolean;
+    hasPermission: boolean;
+    requestPermission: () => Promise<boolean>;
+    unavailableReason?: string | null;
+  };
+  const { hasPermission, requestPermission: requestVisionPermission } = cameraPermission;
   // A failed vision-camera permission request resolves false without a prompt
   // when permanently denied -> stop asking and show "Open Settings" instead.
   const [deniedAfterRequest, setDeniedAfterRequest] = useState(false);
-  const permission = { granted: hasPermission, canAskAgain: !deniedAfterRequest };
+  const permission = {
+    granted: hasPermission,
+    canAskAgain: cameraPermission.canAskAgain ?? !deniedAfterRequest,
+    unavailableReason: cameraPermission.unavailableReason,
+  };
   const requestPermission = useCallback(async () => {
     const granted = await requestVisionPermission();
     if (!granted) setDeniedAfterRequest(true);
@@ -323,7 +338,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
   useEffect(() => () => clearBurstPauseTimer(), [clearBurstPauseTimer]);
 
   const handleBarcodeScanned = useCallback(
-    (data: { data: string }) => {
+    async (data: { data: string }) => {
       if (isScanLocked({ scanPaused })) {
         return;
       }
@@ -346,58 +361,72 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
       }
       recentScanTimesRef.current.set(scannedValue, now);
 
-      // Validate as serial number (not barcode). The duplicate check is O(1):
-      // existingSerialsSet (derived from the current prop during render) covers
-      // serials already on the item, and acceptedSerialsRef covers ones accepted
-      // optimistically this session — avoiding an O(n) array rebuild + full
-      // re-normalization of every known serial on each scan (PERF), with no
-      // effect-timing race on the existingSerials prop.
-      const isKnownSerial =
-        existingSerialsSet.has(scannedValue) ||
-        acceptedSerialsRef.current.has(scannedValue);
-      const validation = isKnownSerial
-        ? { valid: false as const, error: "This serial number has already been added" }
-        : validateScannedSerial(scannedValue, []);
-      const status: DetectedCodeStatus = validation.valid
-        ? "ready"
-        : validation.error?.includes("already been added")
-          ? "duplicate"
-          : "invalid";
-      const message = validation.valid
-        ? "Tap to add"
-        : getInvalidCandidateMessage(scannedValue, validation.error);
-      upsertDetectedCode({
-        code: scannedValue,
-        status,
-        message,
-      });
+      // 1. Classify scanned barcode using central engine
+      const classification = classifyBarcode(scannedValue, { itemBarcode, itemCode, expectedKind: "serial" });
 
-      if (!validation.valid) {
-        Haptics.notificationAsync(
-          validation.error?.includes("barcode")
-            ? Haptics.NotificationFeedbackType.Warning
-            : Haptics.NotificationFeedbackType.Error
-        );
-        setScanFeedback({
-          type: validation.error?.includes("barcode") ? "warning" : "error",
-          message,
+      if (classification.kind !== "serial") {
+        upsertDetectedCode({
+          code: scannedValue,
+          status: "invalid",
+          message: classification.reason || "Ignored (not a serial)",
         });
-        scheduleBurstPause();
         return;
       }
 
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setScanFeedback({
-        type: "warning",
-        message: "Code detected. Tap it below to add.",
-      });
-      scheduleBurstPause();
+      // 2. Duplicate check
+      const isKnownSerial =
+        existingSerialsSet.has(scannedValue) ||
+        acceptedSerialsRef.current.has(scannedValue);
+
+      if (isKnownSerial) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setScanFeedback({
+          type: "warning",
+          message: `Already added: ${scannedValue}`,
+        });
+        upsertDetectedCode({
+          code: scannedValue,
+          status: "duplicate",
+          message: "Serial already added",
+        });
+        return;
+      }
+
+      // 3. AUTO-ADD VALID SERIAL IMMEDIATELY
+      const wasAdded = await Promise.resolve(
+        onSerialScanned({
+          serial_number: scannedValue,
+          mrp: defaultMrp,
+        })
+      );
+
+      if (wasAdded) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        acceptedSerialsRef.current.add(scannedValue);
+        setScanFeedback({
+          type: "success",
+          message: `Serial auto-added: ${scannedValue}`,
+        });
+        upsertDetectedCode({
+          code: scannedValue,
+          status: "ready",
+          message: "Added automatically",
+        });
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setScanFeedback({
+          type: "warning",
+          message: `Could not add ${scannedValue}`,
+        });
+      }
     },
     [
+      defaultMrp,
       existingSerialsSet,
-      getInvalidCandidateMessage,
+      itemBarcode,
+      itemCode,
+      onSerialScanned,
       scanPaused,
-      scheduleBurstPause,
       upsertDetectedCode,
     ]
   );
@@ -426,7 +455,8 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
   };
 
   const isCameraGranted = permission?.granted === true;
-  const canAskPermission = permission?.canAskAgain !== false;
+  const cameraUnavailableReason = permission?.unavailableReason || "";
+  const canAskPermission = permission?.canAskAgain !== false && !cameraUnavailableReason;
 
   if (!isCameraGranted) {
     return (
@@ -434,9 +464,11 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
         <View style={styles.container}>
           <View style={styles.permissionContainer}>
             <Ionicons name="camera-outline" size={64} color={colors.neutral[300]} />
-            <Text style={styles.permissionTitle}>Camera access is required</Text>
+            <Text style={styles.permissionTitle}>
+              {cameraUnavailableReason ? "Camera unavailable" : "Camera access is required"}
+            </Text>
             <Text style={styles.permissionText}>
-              Enable camera permission to scan serial numbers quickly.
+              {cameraUnavailableReason || "Enable camera permission to scan serial numbers quickly."}
             </Text>
 
             {!permission ? (
@@ -449,7 +481,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
               <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
                 <Text style={styles.permissionButtonText}>Grant Permission</Text>
               </TouchableOpacity>
-            ) : (
+            ) : cameraUnavailableReason ? null : (
               <TouchableOpacity style={styles.permissionButton} onPress={handleOpenSettings}>
                 <Text style={styles.permissionButtonText}>Open Settings</Text>
               </TouchableOpacity>

@@ -20,12 +20,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { VirtualList } from "../common/VirtualList";
-import {
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-} from "../../styles/unifiedSystem";
 import { useUiTokens } from "../../hooks/useUiTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
 import type { ThemeTokens } from "../../theme/themeTokens";
 
 interface SearchableSelectModalProps {
@@ -193,69 +189,70 @@ const createStyles = (uiTokens: ThemeTokens) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: modernSpacing.md,
-      paddingVertical: modernSpacing.sm,
+      paddingHorizontal: gap.md,
+      paddingVertical: gap.sm,
       borderBottomWidth: 1,
       borderBottomColor: uiTokens.colors.border,
     },
     title: {
-      ...modernTypography.h4,
+      fontSize: font.size.xl,
+      fontWeight: font.weight.semibold,
       color: uiTokens.colors.textPrimary,
     },
     closeButton: {
-      padding: modernSpacing.xs,
+      padding: gap.xs,
     },
     searchContainer: {
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: uiTokens.colors.surfaceElevated,
-      borderRadius: modernBorderRadius.md,
-      marginHorizontal: modernSpacing.md,
-      marginVertical: modernSpacing.sm,
-      paddingHorizontal: modernSpacing.sm,
+      borderRadius: radius.md,
+      marginHorizontal: gap.md,
+      marginVertical: gap.sm,
+      paddingHorizontal: gap.sm,
     },
     searchIcon: {
-      marginRight: modernSpacing.xs,
+      marginRight: gap.xs,
     },
     searchInput: {
       flex: 1,
-      ...modernTypography.body.medium,
+      fontSize: font.size.base,
       color: uiTokens.colors.textPrimary,
-      paddingVertical: modernSpacing.sm,
+      paddingVertical: gap.sm,
     },
     clearButton: {
-      padding: modernSpacing.xs,
+      padding: gap.xs,
     },
     list: {
       flex: 1,
     },
     listContent: {
-      paddingHorizontal: modernSpacing.md,
-      paddingBottom: modernSpacing.xl,
+      paddingHorizontal: gap.md,
+      paddingBottom: gap.xl,
     },
     optionItem: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingVertical: modernSpacing.md,
-      paddingHorizontal: modernSpacing.sm,
+      paddingVertical: gap.md,
+      paddingHorizontal: gap.sm,
       borderBottomWidth: 1,
       borderBottomColor: uiTokens.colors.border,
     },
     optionText: {
-      ...modernTypography.body.medium,
+      fontSize: font.size.base,
       color: uiTokens.colors.textPrimary,
     },
     emptyContainer: {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      paddingTop: modernSpacing["2xl"],
+      paddingTop: gap["2xl"],
     },
     emptyText: {
-      ...modernTypography.body.medium,
+      fontSize: font.size.base,
       color: uiTokens.colors.textMuted,
-      marginTop: modernSpacing.sm,
+      marginTop: gap.sm,
     },
   });
 

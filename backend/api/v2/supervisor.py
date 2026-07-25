@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from backend.api.response_models import ApiResponse
 from backend.auth.dependencies import get_current_user_async as get_current_user
+from backend.auth.dependencies import require_role
 from backend.db.runtime import get_db
 from backend.services.ai_variance import ai_variance_service
 
@@ -21,20 +22,17 @@ class RiskPrediction(BaseModel):
 async def get_session_predictions(
     session_id: str = Query(..., description="The ID of the session to analyze"),
     limit: int = Query(10, ge=1, le=50),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_role("supervisor", "admin")),
 ):
     """
     Get AI-calculated risk predictions for items in a session.
     Helps supervisors identify potential variances that need double-checking.
+
+    Restricted to supervisors and admins — risk predictions expose supervisor
+    analytics and must not be reachable by staff users (audit H2).
     """
     try:
         db = get_db()
-
-        # Check if user is supervisor or admin
-        user_role = current_user.get("role", "staff")
-        if user_role not in ["supervisor", "admin"]:
-            # We still allow it for now but in production we would restrict
-            pass
 
         predictions_data = await ai_variance_service.predict_session_risks(db, session_id, limit)
 

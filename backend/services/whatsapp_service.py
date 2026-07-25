@@ -36,10 +36,15 @@ class WhatsAppService:
             "TWILIO_AUTH_TOKEN": os.getenv("TWILIO_AUTH_TOKEN"),
             "TWILIO_WHATSAPP_FROM": os.getenv("TWILIO_WHATSAPP_FROM"),
             "WHATSAPP_TIMEOUT_SECONDS": os.getenv("WHATSAPP_TIMEOUT_SECONDS", "10"),
+            "ENVIRONMENT": os.getenv("ENVIRONMENT", "development"),
         }
         self.config = {**env_config, **(config or {})}
         self.provider = str(self.config.get("WHATSAPP_PROVIDER", "disabled")).lower()
         self.timeout_seconds = float(self.config.get("WHATSAPP_TIMEOUT_SECONDS", 10))
+        self.environment = str(self.config.get("ENVIRONMENT", "development")).lower()
+
+    def _is_production_like(self) -> bool:
+        return self.environment in {"production", "staging"}
 
     def is_delivery_configured(self) -> bool:
         """Return True only when the provider can actually deliver messages."""
@@ -52,6 +57,11 @@ class WhatsAppService:
                 ]
             )
         if self.provider == "mock":
+            if self._is_production_like():
+                logger.error(
+                    "WhatsApp mock provider is not allowed in production/staging environments"
+                )
+                return False
             return True
         return False
 
@@ -70,6 +80,10 @@ class WhatsAppService:
 
     async def _send_message(self, phone_number: str, message: str) -> bool:
         if self.provider == "mock":
+            if self._is_production_like():
+                raise WhatsAppDeliveryError(
+                    "WhatsApp mock provider is not allowed in production/staging environments"
+                )
             logger.warning(
                 "\n--- [WHATSAPP MOCK DELIVERY] ---\n"
                 "TO: %s\nMESSAGE: %s\nTIMESTAMP: %s\n-------------------------------\n",

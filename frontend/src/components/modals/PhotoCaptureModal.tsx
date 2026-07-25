@@ -19,15 +19,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Camera, useCameraDevice, useCameraPermission } from "@/services/device/visionCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import {
-  modernColors,
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-} from "../../styles/unifiedSystem";
 
 import { scrim, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 import { useUiTokens } from "../../hooks/useUiTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
+import type { ThemeTokens } from "@/theme/themeTokens";
+
 interface PhotoCaptureModalProps {
   visible: boolean;
   onClose: () => void;
@@ -44,14 +42,19 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   testID,
 }) => {
   const tokens = useUiTokens();
-  const { hasPermission, requestPermission } = useCameraPermission();
-  // vision-camera's requestPermission resolves false immediately (no prompt)
-  // once the user has permanently denied, so a failed request means further
-  // requests are pointless -> route the UI to "Open Settings".
+  const styles = React.useMemo(() => createStyles(tokens), [tokens]);
+  const cameraPermission = useCameraPermission() as {
+    canAskAgain?: boolean;
+    hasPermission: boolean;
+    requestPermission: () => Promise<boolean>;
+    unavailableReason?: string | null;
+  };
+  const { hasPermission, requestPermission } = cameraPermission;
   const [deniedAfterRequest, setDeniedAfterRequest] = useState(false);
   const permissionState = {
     granted: hasPermission,
-    canAskAgain: !deniedAfterRequest,
+    canAskAgain: cameraPermission.canAskAgain ?? !deniedAfterRequest,
+    unavailableReason: cameraPermission.unavailableReason,
   };
   const device = useCameraDevice('back');
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
@@ -66,7 +69,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   }, [hasPermission]);
 
   const refreshPermissionState = useCallback(async () => {
-    // useCameraPermission re-reads status itself; nothing to refresh manually.
   }, []);
 
   const requestCameraPermission = useCallback(async () => {
@@ -77,9 +79,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     return { granted, canAskAgain: granted };
   }, [requestPermission]);
 
-  // Handle photo capture
   const handleCapture = async () => {
-    // The web Camera stub has no takePhoto; only capture on a real device.
     if (!cameraRef.current || typeof cameraRef.current.takePhoto !== "function") return;
 
     try {
@@ -89,8 +89,12 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         flash: 'off'
       });
 
-      if (photo) {
-        setCapturedPhoto(photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`);
+      if (photo?.path) {
+        const photoPath =
+          photo.path.startsWith("file://") || photo.path.startsWith("data:")
+            ? photo.path
+            : `file://${photo.path}`;
+        setCapturedPhoto(photoPath);
       }
     } catch (error) {
       Alert.alert("Error", "Failed to capture photo. Please try again.");
@@ -100,7 +104,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     }
   };
 
-  // Handle photo confirmation
   const handleConfirm = () => {
     if (capturedPhoto) {
       onCapture(capturedPhoto);
@@ -108,12 +111,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     }
   };
 
-  // Handle retake
   const handleRetake = () => {
     setCapturedPhoto(null);
   };
 
-  // Handle close
   const handleClose = () => {
     setCapturedPhoto(null);
     onClose();
@@ -164,9 +165,9 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     };
   }, [refreshPermissionState, visible]);
 
-  // Render permission request
   if (!permissionState?.granted) {
-    const canAskPermission = permissionState?.canAskAgain !== false;
+    const cameraUnavailableReason = permissionState?.unavailableReason || "";
+    const canAskPermission = permissionState?.canAskAgain !== false && !cameraUnavailableReason;
 
     return (
       <Modal
@@ -191,7 +192,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
           <View style={styles.permissionContainer}>
             <Ionicons name="camera-outline" size={64} color={tokens.colors.textMuted} />
             <Text style={[styles.permissionText, { color: tokens.colors.textSecondary }]}>
-              Camera permission is required to capture photos
+              {cameraUnavailableReason || "Camera permission is required to capture photos"}
             </Text>
             {canAskPermission ? (
               <TouchableOpacity
@@ -204,6 +205,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               >
                 <Text style={styles.permissionButtonText}>Grant Permission</Text>
               </TouchableOpacity>
+            ) : cameraUnavailableReason ? (
+              <Text style={[styles.permissionHelpText, { color: tokens.colors.textSecondary }]}>
+                Use Expo Go/native or open the app through HTTPS to capture evidence photos.
+              </Text>
             ) : (
               <>
                 <Text style={[styles.permissionHelpText, { color: tokens.colors.textSecondary }]}>
@@ -235,7 +240,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       testID={testID}
     >
       <SafeAreaView style={[styles.container, { backgroundColor: tokens.colors.background }]}>
-        {/* Header */}
         <View style={styles.header}>
           <Text style={[styles.title, { color: tokens.colors.textPrimary }]}>{title}</Text>
           <TouchableOpacity
@@ -248,7 +252,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Camera or Preview */}
         <View style={styles.cameraContainer}>
           {capturedPhoto ? (
             <Image source={{ uri: capturedPhoto }} style={styles.preview} resizeMode="cover" />
@@ -272,7 +275,6 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
           )}
         </View>
 
-        {/* Controls */}
         <View style={styles.controls}>
           {capturedPhoto ? (
             <>
@@ -314,117 +316,121 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: modernColors.background.default,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: modernSpacing.md,
-    paddingVertical: modernSpacing.sm,
-  },
-  title: {
-    ...modernTypography.h4,
-    color: modernColors.text.primary,
-  },
-  closeButton: {
-    padding: modernSpacing.xs,
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  permissionContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: modernSpacing.xl,
-  },
-  permissionText: {
-    ...modernTypography.body.medium,
-    color: modernColors.text.secondary,
-    textAlign: "center",
-    marginTop: modernSpacing.md,
-    marginBottom: modernSpacing.xl,
-  },
-  permissionButton: {
-    backgroundColor: modernColors.primary[500],
-    paddingHorizontal: modernSpacing.xl,
-    paddingVertical: modernSpacing.md,
-    borderRadius: modernBorderRadius.md,
-  },
-  permissionButtonText: {
-    ...modernTypography.button.medium,
-    color: uiSemanticColors.text.inverse,
-  },
-  permissionHelpText: {
-    ...modernTypography.body.small,
-    color: modernColors.text.secondary,
-    textAlign: "center",
-    marginBottom: modernSpacing.md,
-  },
-  cameraContainer: {
-    flex: 1,
-    overflow: "hidden",
-    borderRadius: modernBorderRadius.lg,
-    marginHorizontal: modernSpacing.md,
-  },
-  camera: {
-    flex: 1,
-  },
-  preview: {
-    flex: 1,
-  },
-  capturingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: scrim.medium,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  controls: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: modernSpacing.xl,
-    gap: modernSpacing.md,
-  },
-  captureButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: modernColors.background.paper,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 4,
-    borderColor: modernColors.primary[500],
-  },
-  captureButtonInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: modernColors.primary[500],
-  },
-  controlButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: modernSpacing.lg,
-    paddingVertical: modernSpacing.md,
-    borderRadius: modernBorderRadius.md,
-    gap: modernSpacing.xs,
-  },
-  retakeButton: {
-    backgroundColor: modernColors.neutral[600],
-  },
-  confirmButton: {
-    backgroundColor: modernColors.success.main,
-  },
-  controlButtonText: {
-    ...modernTypography.button.medium,
-    color: uiSemanticColors.text.inverse,
-  },
-});
+const createStyles = (tokens: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: tokens.colors.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: gap.md,
+      paddingVertical: gap.sm,
+    },
+    title: {
+      fontSize: font.size.xl,
+      fontWeight: font.weight.semibold,
+      color: tokens.colors.textPrimary,
+    },
+    closeButton: {
+      padding: gap.xs,
+      minWidth: 44,
+      minHeight: 44,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    permissionContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: gap.xl,
+    },
+    permissionText: {
+      fontSize: font.size.base,
+      color: tokens.colors.textSecondary,
+      textAlign: "center",
+      marginTop: gap.md,
+      marginBottom: gap.xl,
+    },
+    permissionButton: {
+      backgroundColor: tokens.colors.accent,
+      paddingHorizontal: gap.xl,
+      paddingVertical: gap.sm,
+      borderRadius: radius.md,
+    },
+    permissionButtonText: {
+      fontSize: font.size.base,
+      fontWeight: font.weight.semibold,
+      color: uiSemanticColors.text.inverse,
+    },
+    permissionHelpText: {
+      fontSize: font.size.sm,
+      color: tokens.colors.textSecondary,
+      textAlign: "center",
+      marginBottom: gap.sm,
+    },
+    cameraContainer: {
+      flex: 1,
+      overflow: "hidden",
+      borderRadius: radius.lg,
+      marginHorizontal: gap.md,
+    },
+    camera: {
+      flex: 1,
+    },
+    preview: {
+      flex: 1,
+    },
+    capturingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: scrim.medium,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    controls: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: gap.xl,
+      gap: gap.md,
+    },
+    captureButton: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colorWithAlpha(tokens.colors.accent, 0.15),
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 4,
+      borderColor: tokens.colors.accent,
+    },
+    captureButtonInner: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      backgroundColor: tokens.colors.accent,
+    },
+    controlButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: gap.lg,
+      paddingVertical: gap.sm,
+      borderRadius: radius.md,
+      gap: gap.xs,
+    },
+    retakeButton: {
+      backgroundColor: "#4B5563",
+    },
+    confirmButton: {
+      backgroundColor: tokens.colors.success,
+    },
+    controlButtonText: {
+      fontSize: font.size.base,
+      fontWeight: font.weight.semibold,
+      color: uiSemanticColors.text.inverse,
+    },
+  });
 
 export type { PhotoCaptureModalProps };

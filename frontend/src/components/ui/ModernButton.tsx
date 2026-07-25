@@ -25,13 +25,13 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { AppIcon } from "./AppIcon";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { modernAnimations } from "../../styles/modernDesignSystem";
 import {
   colors,
   radius,
@@ -43,6 +43,26 @@ import { colorWithAlpha } from "@/theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { getDecorativeIconProps } from "@/utils/accessibility";
 import { haptics } from "@/services/haptics";
+import { maxFontSizeMultiplierFor } from "@/theme/appleTypography";
+
+const ANIMATION_TOKENS = {
+  duration: {
+    fast: 150,
+  },
+  easing: {
+    spring: {
+      damping: 15,
+      stiffness: 300,
+      mass: 1,
+    },
+  },
+  scale: {
+    pressed: 0.95,
+  },
+  opacity: {
+    pressed: 0.8,
+  },
+} as const;
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -118,12 +138,12 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   const handlePressIn = () => {
     if (!disabled && !loading) {
       void haptics.light();
-      scale.value = withSpring(modernAnimations.scale.pressed, {
-        damping: modernAnimations.easing.spring.damping,
-        stiffness: modernAnimations.easing.spring.stiffness,
+      scale.value = withSpring(ANIMATION_TOKENS.scale.pressed, {
+        damping: ANIMATION_TOKENS.easing.spring.damping,
+        stiffness: ANIMATION_TOKENS.easing.spring.stiffness,
       });
-      opacity.value = withTiming(modernAnimations.opacity.pressed, {
-        duration: modernAnimations.duration.fast,
+      opacity.value = withTiming(ANIMATION_TOKENS.opacity.pressed, {
+        duration: ANIMATION_TOKENS.duration.fast,
       });
     }
   };
@@ -131,11 +151,11 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   const handlePressOut = () => {
     if (!disabled && !loading) {
       scale.value = withSpring(1, {
-        damping: modernAnimations.easing.spring.damping,
-        stiffness: modernAnimations.easing.spring.stiffness,
+        damping: ANIMATION_TOKENS.easing.spring.damping,
+        stiffness: ANIMATION_TOKENS.easing.spring.stiffness,
       });
       opacity.value = withTiming(1, {
-        duration: modernAnimations.duration.fast,
+        duration: ANIMATION_TOKENS.duration.fast,
       });
     }
   };
@@ -258,7 +278,7 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     if (!icon || loading) return null;
 
     return (
-      <Ionicons
+      <AppIcon
         {...decorativeIconProps}
         name={icon}
         size={sizeConfig.iconSize}
@@ -285,7 +305,12 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     return (
       <>
         {iconPosition === "left" && renderIcon()}
-        <Text style={[getTextStyles(), textStyle]}>{title}</Text>
+        <Text
+          style={[getTextStyles(), textStyle]}
+          maxFontSizeMultiplier={maxFontSizeMultiplierFor("compact")}
+        >
+          {title}
+        </Text>
         {iconPosition === "right" && renderIcon()}
       </>
     );
@@ -343,13 +368,10 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
               style={[
                 styles.blur,
                 {
-                  backgroundColor:
-                    themedColors?.glass ??
-                    colorWithAlpha(
-                      themedColors?.surfaceElevated ??
-                        (theme?.isDark ? colors.neutral[900] : colors.white),
-                      0.85
-                    ),
+                  backgroundColor: colorWithAlpha(
+                    uiTokens.colors.surfaceElevated,
+                    uiTokens.mode === "dark" ? 0.9 : 0.85
+                  ),
                   borderColor: surfaceBorder,
                 },
               ]}
@@ -359,7 +381,7 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
           ) : (
             <BlurView
               intensity={20}
-              tint={theme?.isDark ? "dark" : "light"}
+              tint={uiTokens.mode === "dark" ? "dark" : "light"}
               style={styles.blur}
             >
               {renderContent()}

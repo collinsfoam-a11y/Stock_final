@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -72,3 +73,243 @@ async def test_item_details_uses_canonical_item_code_for_sql_verification(monkey
     assert body["success"] is True
     verify_item_quantity.assert_awaited_once_with("1")
 
+import pytest
+from datetime import datetime, timezone, timedelta
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
+
+from backend.api.v2 import items
+
+def _build_app(fake_db):
+    app = FastAPI()
+    app.dependency_overrides[items.get_current_user] = lambda: {"username": "tester"}
+    app.include_router(items.router, prefix="/api/v2/items")
+    return app
+
+def _item_doc(**overrides):
+    doc = {
+        "_id": "507f1f77bcf86cd799439011",
+        "item_code": "1",
+        "barcode": "510001",
+        "item_name": "SAGARA WOOD CHATTAKAM W/H 2",
+        "stock_qty": 33.0,
+        "mrp": 12.5,
+    }
+    doc.update(overrides)
+    return doc
+
+@pytest.mark.asyncio
+async def test_item_details_verify_sql_false_returns_cached_qty(monkeypatch):
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    fake_db = SimpleNamespace(erp_items=SimpleNamespace(find_one=AsyncMock(return_value=_item_doc(last_synced=now))))
+    monkeypatch.setattr(items, "get_db", lambda: fake_db)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=_build_app(fake_db)),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/api/v2/items/510001?verify_sql=false")
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["data"]["stock_qty"] == 33.0
+    assert body["data"]["quantity_source"] == "sync_cache"
+    assert body["data"]["sync_stale"] is False
+
+@pytest.mark.asyncio
+async def test_item_details_verify_sql_true_returns_verified_qty(monkeypatch):
+    old_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=14)
+    # The doc has stock_qty=33, but after verification sql_verified_qty=24
+    fake_db = SimpleNamespace(erp_items=SimpleNamespace(
+        find_one=AsyncMock(side_effect=[
+            _item_doc(last_synced=old_time), # first call for canonical lookup
+            _item_doc(last_synced=old_time, sql_verified_qty=24.0) # second call after verification
+        ])
+    ))
+    verify_item_quantity = AsyncMock(return_value={"success": True})
+    
+    monkeypatch.setattr(items, "get_db", lambda: fake_db)
+    monkeypatch.setattr(items.sql_verification_service, "verify_item_quantity", verify_item_quantity)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=_build_app(fake_db)),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/api/v2/items/510001?verify_sql=true")
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["data"]["stock_qty"] == 24.0
+    assert body["data"]["cached_stock_qty"] == 33.0
+    assert body["data"]["quantity_source"] == "sql_verification"
+    assert body["data"]["sync_stale"] is True
+
+@pytest.mark.asyncio
+async def test_item_details_sql_verification_failure_falls_back_to_cached(monkeypatch):
+    old_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=14)
+    fake_db = SimpleNamespace(erp_items=SimpleNamespace(
+        find_one=AsyncMock(return_value=_item_doc(last_synced=old_time))
+    ))
+    # Verification fails, so sql_verified_qty is NOT present or updated
+    verify_item_quantity = AsyncMock(return_value={"success": False})
+    
+    monkeypatch.setattr(items, "get_db", lambda: fake_db)
+    monkeypatch.setattr(items.sql_verification_service, "verify_item_quantity", verify_item_quantity)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=_build_app(fake_db)),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/api/v2/items/510001?verify_sql=true")
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["data"]["stock_qty"] == 33.0
+    assert body["data"]["cached_stock_qty"] == 33.0
+    assert body["data"]["quantity_source"] == "sync_cache"
+
+@pytest.mark.asyncio
+async def test_item_details_cache_invalidation_after_successful_verification(monkeypatch):
+    old_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=14)
+    fake_db = SimpleNamespace(erp_items=SimpleNamespace(
+        find_one=AsyncMock(side_effect=[
+            _item_doc(last_synced=old_time),
+            _item_doc(last_synced=old_time, sql_verified_qty=24.0)
+        ])
+    ))
+    verify_item_quantity = AsyncMock(return_value={"success": True})
+    
+    mock_cache_service = SimpleNamespace(
+        delete=AsyncMock(),
+        clear_pattern=AsyncMock()
+    )
+    
+    monkeypatch.setattr(items, "get_db", lambda: fake_db)
+    monkeypatch.setattr(items.sql_verification_service, "verify_item_quantity", verify_item_quantity)
+    monkeypatch.setattr("backend.api.v2.items.cache_service", mock_cache_service, raising=False)
+    monkeypatch.setattr("backend.core.globals.cache_service", mock_cache_service, raising=False)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=_build_app(fake_db)),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/api/v2/items/510001?verify_sql=true")
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["data"]["sql_available"] is True
+    assert mock_cache_service.delete.await_count >= 1
+    mock_cache_service.clear_pattern.assert_awaited_with("search:*")
+
+@pytest.mark.asyncio
+async def test_item_details_sql_verification_failure_sql_available_false(monkeypatch):
+    old_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=14)
+    fake_db = SimpleNamespace(erp_items=SimpleNamespace(
+        find_one=AsyncMock(return_value=_item_doc(last_synced=old_time))
+    ))
+    # Verification fails, simulating SQL offline
+    verify_item_quantity = AsyncMock(return_value={"success": False})
+    
+    monkeypatch.setattr(items, "get_db", lambda: fake_db)
+    monkeypatch.setattr(items.sql_verification_service, "verify_item_quantity", verify_item_quantity)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=_build_app(fake_db)),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/api/v2/items/510001?verify_sql=true")
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["data"]["sql_available"] is False
+    assert body["data"]["quantity_source"] == "sync_cache"
+
+@pytest.mark.asyncio
+async def test_item_details_cache_headers_on_verify_sql(monkeypatch):
+    old_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=14)
+    fake_db = SimpleNamespace(erp_items=SimpleNamespace(
+        find_one=AsyncMock(side_effect=[
+            _item_doc(last_synced=old_time),
+            _item_doc(last_synced=old_time, sql_verified_qty=24.0)
+        ])
+    ))
+    verify_item_quantity = AsyncMock(return_value={"success": True})
+    
+    mock_cache_service = SimpleNamespace(
+        delete=AsyncMock(),
+        clear_pattern=AsyncMock()
+    )
+    
+    monkeypatch.setattr(items, "get_db", lambda: fake_db)
+    monkeypatch.setattr(items.sql_verification_service, "verify_item_quantity", verify_item_quantity)
+    monkeypatch.setattr("backend.api.v2.items.cache_service", mock_cache_service, raising=False)
+    monkeypatch.setattr("backend.core.globals.cache_service", mock_cache_service, raising=False)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=_build_app(fake_db)),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/api/v2/items/510001?verify_sql=true")
+
+    body = response.json()
+    assert response.status_code == 200
+    assert response.headers.get("Cache-Control") == "no-cache, private"
+    assert response.headers.get("Vary") == "Authorization"
+    assert body["data"]["response_version"] == 2
+
+
+@pytest.mark.asyncio
+async def test_item_details_triggers_background_sql_sync_on_selection(monkeypatch):
+    fake_db = SimpleNamespace(erp_items=SimpleNamespace(find_one=AsyncMock(return_value=_item_doc())))
+    monkeypatch.setattr(items, "get_db", lambda: fake_db)
+
+    mock_sync = AsyncMock()
+    fake_svc = SimpleNamespace(sql_sync_service=SimpleNamespace(sync_single_item_by_code=mock_sync))
+    monkeypatch.setattr(items.item_refresh_service, "sql_sync_service", fake_svc.sql_sync_service, raising=False)
+
+    captured = []
+
+    def _create_task(coro):
+        task = asyncio.get_running_loop().create_task(coro)
+        captured.append(task)
+        return task
+
+    monkeypatch.setattr(asyncio, "create_task", _create_task)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=_build_app(fake_db)),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/api/v2/items/510001")
+
+    assert response.status_code == 200
+    await asyncio.gather(*captured, return_exceptions=True)
+    mock_sync.assert_awaited_once_with("1")
+
+
+@pytest.mark.asyncio
+async def test_item_details_background_sync_skipped_when_sql_unavailable(monkeypatch):
+    fake_db = SimpleNamespace(erp_items=SimpleNamespace(find_one=AsyncMock(return_value=_item_doc())))
+    monkeypatch.setattr(items, "get_db", lambda: fake_db)
+    monkeypatch.setattr(items.item_refresh_service, "sql_sync_service", None, raising=False)
+
+    captured = []
+
+    def _create_task(coro):
+        task = asyncio.get_running_loop().create_task(coro)
+        captured.append(task)
+        return task
+
+    monkeypatch.setattr(asyncio, "create_task", _create_task)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=_build_app(fake_db)),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/api/v2/items/510001")
+
+    assert response.status_code == 200
+    await asyncio.gather(*captured, return_exceptions=True)

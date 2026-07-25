@@ -377,6 +377,39 @@ class InMemoryCollection:
                     modified += 1
         return UpdateResult(matched_count=matched, modified_count=modified)
 
+    async def find_one_and_update(
+        self,
+        filter_query: dict[str, Optional[Any]],
+        update: dict[str, Any],
+        upsert: bool = False,
+        return_document: bool = False,
+        *args,
+        **kwargs,
+    ):
+        for doc in self._documents:
+            if _match_filter(doc, filter_query):
+                _apply_update(doc, update)
+                if return_document:
+                    return copy.deepcopy(doc)
+                return copy.deepcopy(doc)
+
+        if upsert:
+            new_doc: dict[str, Any] = {}
+            if filter_query:
+                for key, value in filter_query.items():
+                    if not key.startswith("$"):
+                        new_doc[key] = value
+            set_on_insert = update.get("$setOnInsert", {})
+            new_doc.update(set_on_insert)
+            _apply_update(new_doc, update)
+            self._ensure_id(new_doc)
+            self._documents.append(new_doc)
+            if return_document:
+                return copy.deepcopy(new_doc)
+            return copy.deepcopy(new_doc)
+
+        return None
+
     async def delete_one(
         self,
         filter_query: dict[str, Optional[Any]],
@@ -459,6 +492,7 @@ class InMemoryDatabase:
         self.unknown_items = InMemoryCollection()
         self.recount_requests = InMemoryCollection()
         self.erp_items = InMemoryCollection()
+        self.erp_item_batches = InMemoryCollection()
         self.erp_sync_metadata = InMemoryCollection()
         self.erp_config = InMemoryCollection()
         self.verification_logs = InMemoryCollection()

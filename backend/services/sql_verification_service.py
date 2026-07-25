@@ -8,7 +8,7 @@ import logging
 import math
 import time
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from backend.sql_server_connector import SQLServerConnector
 from backend.core.database import db
@@ -36,7 +36,36 @@ class SQLVerificationService:
     """Service for verifying item quantities against SQL Server"""
 
     def __init__(self):
-        self.sql_connector = SQLServerConnector()
+        self._sql_connector = None
+
+    @property
+    def sql_connector(self) -> SQLServerConnector:
+        if self._sql_connector is None:
+            from backend.core.lifespan import sql_connector
+            self._sql_connector = sql_connector
+        return self._sql_connector
+
+    async def _broadcast_verification_update(self, item_code: str, result: Dict[str, Any]) -> None:
+        """Broadcast verification update via WebSocket to connected clients."""
+        try:
+            from backend.core.websocket_manager import manager
+
+            message = {
+                "type": "sql_verification_update",
+                "payload": {
+                    "item_code": item_code,
+                    "sql_qty": result.get("sql_qty"),
+                    "mongo_qty": result.get("mongo_qty"),
+                    "variance": result.get("variance"),
+                    "verified_at": result.get("verified_at"),
+                    "mismatch": result.get("mismatch", False),
+                    "seq": result.get("seq"),
+                    "latency_ms": result.get("latency_ms"),
+                },
+            }
+            await manager.broadcast_all(message)
+        except Exception as e:
+            logger.debug("WebSocket broadcast failed for %s: %s", item_code, e)
 
     def _error_response(
         self,
@@ -45,7 +74,7 @@ class SQLVerificationService:
         message: str,
         status_code: int,
         item_code: str,
-        context: Optional[dict[str, Any]] = None,
+        context: Optional[Dict[str, Any]] = None,
         box_status: Optional[str] = None,
         status: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -126,7 +155,7 @@ class SQLVerificationService:
             return
         logger.warning(f"PERFORMANCE: SQL Latency High ({latency_ms:.2f}ms) for {item_code}")
 
-    async def _load_mongo_item_snapshot(self, item_code: str) -> Optional[dict[str, Any]]:
+    async def _load_mongo_item_snapshot(self, item_code: str) -> Optional[Dict[str, Any]]:
         mongo_item = await db.erp_items.find_one(
             {"$or": [{"item_code": item_code}, {"barcode": item_code}]}
         )
@@ -205,9 +234,12 @@ class SQLVerificationService:
         new_seq: int,
         status: str,
     ) -> dict[str, Any]:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         return {
+            "stock_qty": sql_qty,
             "sql_verified_qty": sql_qty,
-            "last_sql_verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            "last_sql_verified_at": now,
+            "updated_at": now,
             "variance": variance,
             "mongo_cached_qty_previous": mongo_qty,
             "sql_qty_mismatch_flag": variance != 0,
@@ -222,7 +254,7 @@ class SQLVerificationService:
         *,
         item_code: str,
         sql_qty: float,
-        mongo_item: dict[str, Any],
+        mongo_item: Dict[str, Any],
         mongo_qty: float,
     ) -> Dict[str, Any]:
         check_item = await db.erp_items.find_one({"_id": mongo_item["_id"]})
@@ -268,7 +300,7 @@ class SQLVerificationService:
         *,
         item_code: str,
         sql_qty: float,
-        mongo_item: dict[str, Any],
+        mongo_item: Dict[str, Any],
         mongo_qty: float,
         variance: float,
         latency_ms: float,
@@ -625,7 +657,11 @@ class SQLVerificationService:
             )
             return error_info
 
-        return await self._verify_item_with_sql_qty(item_code, sql_qty, latency_ms)
+        result = await self._verify_item_with_sql_qty(item_code, sql_qty, latency_ms)
+        # Broadcast verification update via WebSocket for real-time UI sync
+        if result.get("success"):
+            await self._broadcast_verification_update(item_code, result)
+        return result
 
     async def _get_sql_quantity(self, item_code: str) -> float:
         """Get item quantity from SQL Server with strict extraction"""
@@ -712,7 +748,7 @@ class SQLVerificationService:
 
     async def _get_batch_quantities(
         self, item_codes: list[str]
-    ) -> tuple[Optional[Dict[str, float]], Optional[dict[str, Any]], Optional[float]]:
+    ) -> tuple[Optional[Dict[str, float]], Optional[Dict[str, Any]], Optional[float]]:
         from backend.sql_server_connector import (
             DatabaseConnectionError,
             DatabaseQueryError,
@@ -777,9 +813,9 @@ class SQLVerificationService:
 
     def _split_batch_verification_results(
         self, results: list[Any]
-    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-        processed_results: list[dict[str, Any]] = []
-        errors: list[dict[str, Any]] = []
+    ) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
+        processed_results: list[Dict[str, Any]] = []
+        errors: list[Dict[str, Any]] = []
         for result in results:
             if isinstance(result, Exception):
                 errors.append(
@@ -819,7 +855,7 @@ class SQLVerificationService:
                 error_code=batch_failure["error_code"],
                 message=batch_failure["message"],
                 status_code=batch_failure["status_code"],
-                box_status=batch_failure["box_status"],
+                box_status=batch_failure.get("box_status"),
                 start=start,
                 latency_ms=batch_latency_ms,
             )

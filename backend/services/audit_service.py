@@ -12,7 +12,10 @@ logger = logging.getLogger(__name__)
 class AuditService:
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
-        self.collection = db.audit_logs
+
+    @property
+    def collection(self):
+        return self.db.audit_logs
 
     async def log_event(
         self,

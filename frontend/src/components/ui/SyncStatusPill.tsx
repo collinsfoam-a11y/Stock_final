@@ -18,12 +18,11 @@ import {
   subscribeSyncStatus,
   type SyncStatusSnapshot,
 } from "../../services/syncStatusPolling";
-import { modernAnimations, modernBorderRadius } from "../../styles/modernDesignSystem";
-
-import { colors } from "@/theme/legacyCompat";
-import { colorWithAlpha } from "@/theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { colors as legacyColors } from "@/theme/legacyCompat";
+import { radius } from "@/theme/staffUiScale";
 export const SyncStatusPill = () => {
   const uiTokens = useUiTokens();
   const reduceMotion = useReducedMotion();
@@ -45,12 +44,12 @@ export const SyncStatusPill = () => {
     if (!status?.isOnline || isSyncing) return;
 
     setIsSyncing(true);
-    if (!reduceMotion) {
-      rotation.value = withRepeat(
-        withTiming(360, { duration: modernAnimations.duration.slow }),
-        -1
-      );
-    }
+if (!reduceMotion) {
+        rotation.value = withRepeat(
+          withTiming(360, { duration: 700 }),
+          -1
+        );
+      }
 
     try {
       await forceSync();
@@ -76,28 +75,28 @@ export const SyncStatusPill = () => {
   const hasPending = status.queuedOperations > 0;
 
   const isDark = uiTokens.mode === "dark";
-  const successColor = isDark ? uiTokens.colors.success : colors.success[700];
-  const warningColor = isDark ? uiTokens.colors.warning : colors.warning[800];
-  const infoColor = isDark ? uiTokens.colors.accent : colors.primary[700];
+  const successColor = isDark ? uiTokens.colors.success : legacyColors.success[700];
+  const warningColor = isDark ? uiTokens.colors.warning : legacyColors.warning[800];
+  const infoColor = isDark ? uiTokens.colors.accent : legacyColors.primary[700];
 
   let pillColor = successColor;
-  let pillBg = isDark ? colorWithAlpha(uiTokens.colors.success, 0.18) : colors.success[50];
+  let pillBg = isDark ? colorWithAlpha(uiTokens.colors.success, 0.18) : legacyColors.success[50];
   let iconName: keyof typeof Ionicons.glyphMap = "cloud-done";
   let label = "Synced";
 
   if (isOffline) {
     pillColor = warningColor;
-    pillBg = isDark ? colorWithAlpha(uiTokens.colors.warning, 0.18) : colors.warning[50];
+    pillBg = isDark ? colorWithAlpha(uiTokens.colors.warning, 0.18) : legacyColors.warning[50];
     iconName = "cloud-offline";
     label = hasPending ? `Offline (${status.queuedOperations})` : "Offline";
   } else if (isSyncing) {
     pillColor = infoColor;
-    pillBg = isDark ? colorWithAlpha(uiTokens.colors.accent, 0.18) : colors.primary[50];
+    pillBg = isDark ? colorWithAlpha(uiTokens.colors.accent, 0.18) : legacyColors.primary[50];
     iconName = "sync";
     label = "Syncing...";
   } else if (hasPending) {
     pillColor = warningColor;
-    pillBg = isDark ? colorWithAlpha(uiTokens.colors.warning, 0.18) : colors.warning[50];
+    pillBg = isDark ? colorWithAlpha(uiTokens.colors.warning, 0.18) : legacyColors.warning[50];
     iconName = "cloud-upload";
     label = `${status.queuedOperations} Pending`;
   }
@@ -132,7 +131,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: modernBorderRadius.full,
+    borderRadius: radius.full,
     borderWidth: 1,
     gap: 6,
     minHeight: 44,

@@ -5,6 +5,8 @@ import type { useUiTokens } from "@/hooks/useUiTokens";
 
 type UiTokens = ReturnType<typeof useUiTokens>;
 
+const ITEM_SUBMIT_BAR_SCROLL_RESERVE = 112;
+
 /**
  * Styles for the staff item-detail screen. Extracted from the component so the
  * screen file stays focused on behavior. Depends only on theme tokens.
@@ -54,7 +56,7 @@ export function createItemDetailStyles(uiTokens: UiTokens) {
       scrollContent: {
         paddingHorizontal: uiTokens.spacing.md,
         paddingTop: uiTokens.spacing.md,
-        paddingBottom: uiTokens.spacing.xl,
+        paddingBottom: ITEM_SUBMIT_BAR_SCROLL_RESERVE + uiTokens.spacing.xl,
         gap: uiTokens.spacing.md,
         flexGrow: 1,
       },

@@ -53,7 +53,7 @@ async def test_update_item_master_success(setup_mocks):
     assert update_doc["last_updated_by"] == "testuser"
 
     # Verify cache invalidation
-    assert mock_cache.delete_async.call_count >= 1
+    assert mock_cache.delete.call_count >= 1
 
     # Verify audit log
     mock_db.audit_logs.insert_one.assert_called_once()
@@ -113,7 +113,7 @@ async def test_verify_item_success(setup_mocks):
     assert update_doc["verified_floor"] == "New Floor"
 
     # Verify cache invalidation
-    assert mock_cache.delete_async.call_count >= 1
+    assert mock_cache.delete.call_count >= 1
 
     # Verify logs
     mock_db.verification_logs.insert_one.assert_called_once()

@@ -1,9 +1,12 @@
 import React, { useCallback, useMemo } from "react";
-import { Alert, Linking, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Platform, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import * as LocalAuthentication from "expo-local-authentication";
 
 import { useAppVersion } from "../../hooks/useAppVersion";
 import { useVersionCheck } from "../../hooks/useVersionCheck";
 import { useUiTokens } from "../../hooks/useUiTokens";
+import { useAuthStore } from "../../store/authStore";
 import { useSettingsStore } from "../../store/settingsStore";
 import type { Settings } from "../../store/settingsStore";
 import { colorWithAlpha } from "../../theme/themeTokens";
@@ -183,7 +186,9 @@ const openExternalUrl = async (url: string): Promise<boolean> => {
 };
 
 export function UserSettingsSections() {
+  const router = useRouter();
   const uiTokens = useUiTokens();
+  const { getPinForBiometrics, clearPinForBiometrics } = useAuthStore();
   const { settings, setSetting, isSyncing, hasPendingSync, lastSyncError } = useSettingsStore();
   const spacing = uiTokens.spacing;
   const { version, buildVersion } = useAppVersion();
@@ -253,6 +258,51 @@ export function UserSettingsSections() {
 
     Alert.alert("App is Up to Date", `You are using the latest version (v${version}).`);
   }, [checkForUpdates, dismissUpdate, handleUpdateNow, version]);
+
+  const handleBiometricToggle = useCallback(
+    async (value: boolean) => {
+      if (!value) {
+        await clearPinForBiometrics();
+        setSetting("biometricAuth", false);
+        return;
+      }
+
+      if (Platform.OS === "web") {
+        Alert.alert(
+          "Biometric Login Unavailable",
+          "Biometric login is only available on mobile devices."
+        );
+        return;
+      }
+
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+      if (!hasHardware || !isEnrolled) {
+        Alert.alert(
+          "Biometric Login Unavailable",
+          "Set up Face ID or Touch ID on this device before enabling biometric login."
+        );
+        return;
+      }
+
+      const storedPin = await getPinForBiometrics();
+      if (!storedPin) {
+        Alert.alert(
+          "PIN Required",
+          "Open Security & PIN to verify your 4-digit PIN before enabling biometric login.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Security", onPress: () => router.push("/security" as any) },
+          ]
+        );
+        return;
+      }
+
+      setSetting("biometricAuth", true);
+    },
+    [clearPinForBiometrics, getPinForBiometrics, router, setSetting]
+  );
 
   const labels = useMemo(
     () => ({
@@ -685,7 +735,9 @@ export function UserSettingsSections() {
           description="Offer fingerprint or face unlock when supported"
           type="switch"
           value={settings.biometricAuth}
-          onToggle={(value) => setSetting("biometricAuth", value)}
+          onToggle={(value) => {
+            void handleBiometricToggle(value);
+          }}
         />
         <SectionDivider />
         <SettingRow

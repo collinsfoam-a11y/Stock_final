@@ -1,8 +1,8 @@
-"""Compatibility entrypoint for the backend FastAPI app.
+import os
+import sys
 
-Implementation moved to ``backend.app.factory`` to keep this module focused
-on import/export stability for runtime and tests.
-"""
+# Add the backend directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import logging
 from pathlib import Path

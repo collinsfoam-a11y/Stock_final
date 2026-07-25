@@ -12,6 +12,7 @@ import {
   StatusBadge,
 } from "@/components/ui";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { touchTargets } from "@/theme/legacyCompat";
 import {
   createOperationalStyleBridge,
   type OperationalStyleBridge,
@@ -557,7 +558,8 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
   },
   searchInput: {
     flex: 1,
-    minHeight: 40,
+    // Apple HIG minimum tap target
+    minHeight: touchTargets.minimum,
     color: operationalTheme.colors.text.primary,
     fontFamily: operationalTheme.typography.fontFamily.body,
     fontSize: operationalTheme.typography.fontSize.base,

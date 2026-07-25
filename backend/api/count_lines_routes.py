@@ -421,28 +421,26 @@ def _build_dashboard_refresh_message(
     }
 
 
-async def _broadcast_dashboard_refresh(
-    event: str,
-    *,
-    session_id: Optional[str] = None,
-    session_ids: Optional[set[str]] = None,
-    count_line: Optional[dict[str, Any]] = None,
-) -> None:
-    try:
-        await manager.broadcast_to_roles(
-            message=_build_dashboard_refresh_message(
-                event,
-                session_id=session_id,
-                session_ids=session_ids,
-                count_line=count_line,
-            ),
-            roles={"supervisor", "admin"},
-        )
-    except Exception as exc:
-        logger.warning(
-            "Failed to broadcast dashboard refresh event: %s",
-            _safe_log_value(exc, max_length=200),
-        )
+async def _broadcast_item_updated(item_code: str, session_id: str) -> None:
+    """Broadcast item-updated event to supervisors and admins with retries."""
+    max_retries = 2
+    for attempt in range(max_retries):
+        try:
+            await manager.broadcast({
+                "type": "item_updated",
+                "payload": {"item_code": item_code, "session_id": session_id},
+            })
+            return
+        except Exception as e:
+            if attempt == max_retries - 1:
+                logger.warning(
+                    "Failed to broadcast item-updated event for %s after %d attempts: %s",
+                    _safe_log_value(item_code),
+                    max_retries,
+                    _safe_log_value(e, max_length=200),
+                )
+                break
+            await asyncio.sleep(0.1 * (attempt + 1))
 
 
 def _ensure_session_accepts_counts(session: dict[str, Any]) -> None:
@@ -2755,12 +2753,17 @@ async def add_quantity_to_count_line(
             count_line=count_line,
         )
 
-    return {
-        "success": True,
-        "message": "Quantity added successfully",
-        "data": update_data,
-        "financial_impact": update_data.get("financial_impact"),
-    }
+    # Broadcast WebSocket event for real-time updates
+    if session_id:
+        await manager.broadcast(
+            {
+                "type": "item-updated",
+                "itemId": item_code,
+                "sessionId": session_id,
+                "event_id": str(uuid.uuid4()),
+            },
+            room=f"session_{session_id}",
+        )
 
 
 @router.put("/count-lines/{line_id}")

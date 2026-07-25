@@ -11,7 +11,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
@@ -40,6 +40,8 @@ def init_verification_api(
 
 
 verification_router = APIRouter(prefix="/api/v2/erp/items", tags=["Item Verification"])
+
+ERP_LEGACY_REFRESH_SUNSET = "2026-10-01"
 
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
@@ -366,9 +368,9 @@ async def _invalidate_item_cache(
     if not cache_service:
         return
     if actual_barcode:
-        await cache_service.delete_async("items", f"enhanced_{actual_barcode}")
+        await cache_service.delete("items", f"enhanced_{actual_barcode}")
     if actual_item_code:
-        await cache_service.delete_async("items", f"enhanced_{actual_item_code}")
+        await cache_service.delete("items", f"enhanced_{actual_item_code}")
     if clear_search_cache:
         await cache_service.clear_pattern("search:*")
 
@@ -412,19 +414,9 @@ def _build_verification_filter(
     return update_filter
 
 
-async def _fetch_item_with_optional_sql_refresh(barcode: str) -> dict[str, Any]:
-    if sql_sync_service:
-        try:
-            if sql_sync_service.sql_connector.test_connection():
-                refreshed_item = await sql_sync_service.sync_single_item_by_barcode(barcode)
-                if refreshed_item:
-                    return refreshed_item
-        except Exception as e:
-            logger.warning(
-                "Failed to auto-refresh item %s from SQL: %s",
-                sanitize_for_logging(barcode),
-                sanitize_for_logging(str(e)),
-            )
+async def _fetch_item_without_sql_refresh(barcode: str) -> dict[str, Any]:
+    # We no longer automatically refresh from SQL during verification.
+    # Refreshes must be explicitly invoked via POST /api/v2/erp/items/{identifier}/refresh
     return await _find_item_by_barcode_or_code(barcode)
 
 
@@ -459,13 +451,16 @@ async def _create_conflict_fork_response(
         _safe_log_value(barcode),
         _safe_log_value(fork.fork_id),
     )
-    return {
-        "success": True,
-        "item": serialize_item_document(item),
-        "variance": item.get("variance"),
-        "message": f"Conflict detected! Original verification preserved. Fork ID: {fork.fork_id}",
-        "fork_id": fork.fork_id,
-    }
+    # Return 409 Conflict instead of 200 OK for consistency with client expectations
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "success": False,
+            "message": f"Conflict detected! Original verification preserved. Fork ID: {fork.fork_id}",
+            "fork_id": fork.fork_id,
+            "variance": item.get("variance"),
+        }
+    )
 
 
 async def _fetch_updated_item(
@@ -521,67 +516,46 @@ async def update_item_master(
             _safe_log_value(barcode),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e
 
 
 @verification_router.post("/{barcode}/refresh-sql-qty")
 async def refresh_item_qty_from_sql(
     barcode: str,
+    request: Request,
+    response: Response,
     current_user: dict = Depends(get_current_user),
 ):
     """
+    DEPRECATED: Forwards to the canonical refresh endpoint.
     Manually refresh item quantity from SQL Server.
-    Updates MongoDB if there's a difference.
     """
-    if not sql_sync_service:
-        raise HTTPException(
-            status_code=503,
-            detail="SQL Sync Service not available (SQL Server might be disabled or offline)",
-        )
+    from backend.services.item_refresh_service import item_refresh_service
+    import uuid
 
-    try:
-        # Check if SQL is connected (wrapped to avoid blocking event loop)
-        is_connected = await asyncio.to_thread(sql_sync_service.sql_connector.test_connection)
-        if not is_connected:
-            raise HTTPException(status_code=503, detail="SQL Server is currently unreachable")
+    request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
 
-        # Attempt to sync single item
-        # Try finding by barcode first, as the param suggests
-        updated_item = await sql_sync_service.sync_single_item_by_barcode(barcode)
+    refresh_response = await item_refresh_service.refresh_single_item_by_identifier(
+        identifier=barcode,
+        actor=current_user,
+        request_id=request_id,
+    )
 
-        if not updated_item:
-            # If not found by barcode, try as item_code (legacy support)
-            # This requires looking up the item code first or trusting the caller
-            # For now, we assume barcode is barcode.
-            # If we want to support item_code, we might need a separate service method
-            # or try to interpret the barcode.
-            pass
+    response.headers["Deprecation"] = "true"
+    response.headers["Sunset"] = ERP_LEGACY_REFRESH_SUNSET
+    response.headers["Link"] = (
+        f'</api/v2/erp/items/{refresh_response.item_code}/refresh>; rel="successor-version"'
+    )
 
-        if not updated_item:
-            raise HTTPException(
-                status_code=404, detail=f"Item with barcode {barcode} not found in SQL Server"
-            )
-
+    updated_item = await db.erp_items.find_one({"item_code": refresh_response.item_code})
+    if updated_item:
         updated_item["_id"] = str(updated_item["_id"])
 
-        # Invalidate cache
-        if cache_service:
-            if updated_item.get("barcode"):
-                await cache_service.delete_async("items", f"enhanced_{updated_item['barcode']}")
-            if updated_item.get("item_code"):
-                await cache_service.delete_async("items", f"enhanced_{updated_item['item_code']}")
-
-        return {
-            "success": True,
-            "message": "Quantity refreshed from SQL Server",
-            "item": serialize_item_document(updated_item),
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Error refreshing SQL qty for %s", _safe_log_value(barcode))
-        raise HTTPException(status_code=500, detail=f"Refresh failed: {str(e)}") from e
+    return {
+        "success": True,
+        "message": "Quantity refreshed from SQL Server",
+        "item": serialize_item_document(updated_item) if updated_item else None,
+    }
 
 
 def _calculate_variance(request: VerificationRequest, system_qty: float) -> Optional[float]:
@@ -622,7 +596,7 @@ async def _enforce_variance_governance(
     variance_data = await variance_service.calculate_variance(
         item_code=item_code,
         counted_qty=float(request.verified_qty or 0.0),
-        expected_qty=float(item.get("stock_qty", 0.0)),
+        expected_qty=float(item.get("session_baseline") if getattr(request, "session_id", None) and item.get("session_baseline") is not None else item.get("baseline_qty") if getattr(request, "session_id", None) and item.get("baseline_qty") is not None else item.get("stock_qty", 0.0)),
         unit_price=_resolve_unit_price(item),
     )
     requires_approval, violated_thresholds = await variance_service.check_thresholds(
@@ -807,9 +781,22 @@ async def verify_item(
                 ),
             )
 
-        item = await _fetch_item_with_optional_sql_refresh(barcode)
+        item = await _fetch_item_without_sql_refresh(barcode)
         actual_barcode, actual_item_code, base_filter = _resolve_item_identity(item, barcode)
-        expected_stock_qty = item.get("stock_qty")
+
+        # Enforce baseline logic
+        if getattr(request, "session_id", None) or getattr(request, "count_line_id", None):
+            expected_stock_qty = item.get("session_baseline")
+            if expected_stock_qty is None:
+                expected_stock_qty = item.get("baseline_qty")
+            if expected_stock_qty is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Session-linked verification requires a baseline quantity, but none is set."
+                )
+        else:
+            expected_stock_qty = item.get("stock_qty", 0.0)
+
         update_filter = _build_verification_filter(
             actual_barcode=actual_barcode,
             actual_item_code=actual_item_code,
@@ -821,7 +808,7 @@ async def verify_item(
                 item=item, request=request, current_user=current_user, barcode=barcode
             )
 
-        variance = _calculate_variance(request, item.get("stock_qty", 0.0))
+        variance = _calculate_variance(request, expected_stock_qty)
         await _enforce_variance_governance(
             request=request,
             item=item,
@@ -1458,3 +1445,26 @@ async def get_live_verifications(
         raise HTTPException(
             status_code=500, detail=f"Failed to get live verifications: {str(e)}"
         ) from e
+
+
+@verification_router.post("/{identifier}/refresh")
+async def refresh_erp_item(
+    identifier: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Explicitly refresh an item's quantity from SQL Server.
+    Used to handle manual refresh requests from the UI.
+    """
+    from backend.services.item_refresh_service import item_refresh_service
+    import uuid
+
+    request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
+
+    return await item_refresh_service.refresh_single_item_by_identifier(
+        identifier=identifier,
+        actor=current_user,
+        request_id=request_id
+    )
+

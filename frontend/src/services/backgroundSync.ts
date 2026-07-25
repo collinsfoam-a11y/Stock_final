@@ -24,7 +24,7 @@ if (Platform.OS !== "web" && TaskManager?.defineTask) {
 
       return BackgroundTask.BackgroundTaskResult.Success;
     } catch (error) {
-      console.error("Background sync task failed:", error);
+      console.warn("Background sync task failed:", error);
       return BackgroundTask.BackgroundTaskResult.Failed;
     }
   });
@@ -76,8 +76,12 @@ export const registerBackgroundSync = async () => {
     });
 
     logInfo("Background sync task registered");
-  } catch (error) {
-    console.error("Failed to register background sync task:", error);
+  } catch (error: any) {
+    if (error?.message?.includes("Info.plist")) {
+      logInfo("Background sync task skipped (requires Info.plist configuration in standalone build)");
+    } else {
+      console.warn("Failed to register background sync task:", error);
+    }
   }
 };
 
@@ -91,6 +95,6 @@ export const unregisterBackgroundSync = async () => {
     await BackgroundTask.unregisterTaskAsync(BACKGROUND_SYNC_TASK);
     logInfo("Background sync task unregistered");
   } catch (error) {
-    console.error("Failed to unregister background sync task:", error);
+    console.warn("Failed to unregister background sync task:", error);
   }
 };

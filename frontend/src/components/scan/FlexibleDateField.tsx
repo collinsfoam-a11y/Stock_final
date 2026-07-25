@@ -3,6 +3,7 @@ import { StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { DateFormatType } from "@/types/scan";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import ModernCard from "@/components/ui/ModernCard";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import {
   getAccessibleButtonProps,
@@ -179,7 +180,7 @@ export const FlexibleDateField: React.FC<FlexibleDateFieldProps> = ({
 
   return (
     <View>
-      <View style={styles.toggleRow}>
+      <ModernCard style={{ padding: uiTokens.spacing.md, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <View style={styles.toggleLabelContainer}>
           <Ionicons
             {...decorativeIconProps}
@@ -201,7 +202,7 @@ export const FlexibleDateField: React.FC<FlexibleDateFieldProps> = ({
           }}
           thumbColor={enabled ? uiTokens.colors.surfaceElevated : uiTokens.colors.surface}
         />
-      </View>
+      </ModernCard>
 
       {enabled && (
         <View style={styles.section}>

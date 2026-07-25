@@ -130,3 +130,91 @@ async def test_get_item_batches_empty(async_client: AsyncClient, authenticated_h
     data = response.json()
     assert data["batches"] == []
     assert data["source"] == "mongodb_offline_fallback"
+
+
+@pytest.mark.asyncio
+async def test_create_manual_batches_assigns_barcodes_from_500001(
+    async_client: AsyncClient, authenticated_headers, test_db
+):
+    item_code = "MANUAL001"
+    await test_db.erp_items.delete_many({"item_code": item_code})
+
+    payload = {
+        "item_code": item_code,
+        "batches": [
+            {"quantity": 5, "mrp": 100, "batch_no": "BATCH-A"},
+            {"quantity": 3, "mfg_date": "2026-01-01", "expiry_date": "2027-01-01"},
+        ],
+    }
+
+    response = await async_client.post(
+        "/api/item-batches/manual", json=payload, headers=authenticated_headers
+    )
+
+    assert response.status_code == 200, f"Response: {response.text}"
+    data = response.json()
+    assert data["item_code"] == item_code
+    assert len(data["batches"]) == 2
+    assert data["next_barcode"] == 500003
+
+    first = data["batches"][0]
+    assert first["barcode"] == "500001"
+    assert first["batch_no"] == "BATCH-A"
+    assert first["stock_qty"] == 5
+    assert first["mrp"] == 100
+    assert first["synced_from_sql"] is False
+
+    second = data["batches"][1]
+    assert second["barcode"] == "500002"
+    assert second["batch_no"] == "MANUAL-500002"
+    assert second["stock_qty"] == 3
+    assert second["manufacturing_date"] == "2026-01-01"
+    assert second["expiry_date"] == "2027-01-01"
+    assert second["synced_from_sql"] is False
+
+    stored = await test_db.erp_items.find({"item_code": item_code}).to_list(length=10)
+    assert len(stored) == 2
+    assert {doc["barcode"] for doc in stored} == {"500001", "500002"}
+
+
+@pytest.mark.asyncio
+async def test_create_manual_batches_continues_from_existing_500_barcodes(
+    async_client: AsyncClient, authenticated_headers, test_db
+):
+    item_code = "MANUAL002"
+    await test_db.erp_items.delete_many({"item_code": item_code})
+    await test_db.erp_items.insert_many(
+        [
+            {"item_code": item_code, "barcode": "500010", "batch_no": "EXISTING"},
+            {"item_code": item_code, "barcode": "500008", "batch_no": "EXISTING-2"},
+        ]
+    )
+
+    payload = {
+        "item_code": item_code,
+        "batches": [{"quantity": 1}],
+    }
+
+    response = await async_client.post(
+        "/api/item-batches/manual", json=payload, headers=authenticated_headers
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["batches"][0]["barcode"] == "500011"
+    assert data["next_barcode"] == 500012
+
+
+@pytest.mark.asyncio
+async def test_create_manual_batches_requires_item_code_and_batches(
+    async_client: AsyncClient, authenticated_headers
+):
+    response = await async_client.post(
+        "/api/item-batches/manual", json={"batches": [{"quantity": 1}]}, headers=authenticated_headers
+    )
+    assert response.status_code == 400
+
+    response = await async_client.post(
+        "/api/item-batches/manual", json={"item_code": "X"}, headers=authenticated_headers
+    )
+    assert response.status_code == 400

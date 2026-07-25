@@ -18,15 +18,10 @@ import Animated, {
   withSpring,
   FadeInDown,
 } from "react-native-reanimated";
-import {
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-  modernShadows,
-} from "../../styles/unifiedSystem";
 import { StatusBadge } from "./StatusBadge";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
@@ -119,9 +114,9 @@ export const SessionCard: React.FC<SessionCardProps> = ({
   };
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 50).springify()} style={[animatedStyle]}>
+    <Animated.View entering={FadeInDown.delay(index * 50).springify()}>
       <AnimatedTouchableOpacity
-        style={[styles.container, style]}
+        style={[styles.container, style, animatedStyle]}
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -203,29 +198,28 @@ export const SessionCard: React.FC<SessionCardProps> = ({
 const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   container: {
     backgroundColor: tokens.colors.surface,
-    borderRadius: modernBorderRadius.lg,
-    padding: modernSpacing.md,
+    borderRadius: radius.lg,
+    padding: gap.md,
     borderWidth: 1,
     borderColor: tokens.colors.border,
-    ...modernShadows.sm,
   },
   header: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    marginBottom: modernSpacing.md,
+    marginBottom: gap.md,
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    gap: modernSpacing.sm,
-    marginRight: modernSpacing.sm,
+    gap: gap.sm,
+    marginRight: gap.sm,
   },
   iconContainer: {
     width: 40,
     height: 40,
-    borderRadius: modernBorderRadius.md,
+    borderRadius: radius.md,
     backgroundColor: colorWithAlpha(tokens.colors.accent, 0.12),
     justifyContent: "center",
     alignItems: "center",
@@ -237,7 +231,7 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
     gap: 2,
   },
   name: {
-    ...modernTypography.body.medium,
+    fontSize: font.size.base,
     fontWeight: "600",
     color: tokens.colors.textPrimary,
   },
@@ -247,11 +241,11 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
     gap: 4,
   },
   location: {
-    ...modernTypography.label.small,
+    fontSize: font.size.sm,
     color: tokens.colors.textMuted,
   },
   progressContainer: {
-    marginBottom: modernSpacing.md,
+    marginBottom: gap.md,
   },
   progressTrack: {
     height: 4,
@@ -265,7 +259,7 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
     borderRadius: 2,
   },
   progressText: {
-    ...modernTypography.label.small,
+    fontSize: font.size.sm,
     color: tokens.colors.textMuted,
     textAlign: "right",
   },
@@ -273,14 +267,14 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: modernSpacing.sm,
+    paddingTop: gap.sm,
     borderTopWidth: 1,
     borderTopColor: colorWithAlpha(tokens.colors.border, 0.6),
   },
   footerInfo: {
     flexDirection: "row",
     alignItems: "center",
-    gap: modernSpacing.md,
+    gap: gap.md,
   },
   infoItem: {
     flexDirection: "row",
@@ -288,45 +282,44 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
     gap: 4,
   },
   infoText: {
-    ...modernTypography.label.small,
+    fontSize: font.size.sm,
     color: tokens.colors.textMuted,
   },
   resumeButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: modernSpacing.sm,
+    paddingHorizontal: gap.sm,
     paddingVertical: 6,
-    borderRadius: modernBorderRadius.sm,
+    borderRadius: radius.sm,
     backgroundColor: tokens.colors.accent,
     minHeight: 44,
   },
   resumeText: {
-    ...modernTypography.label.small,
+    fontSize: font.size.sm,
     color: uiSemanticColors.text.inverse,
     fontWeight: "600",
   },
   countBadge: {
     position: "absolute",
     top: -8,
-    right: modernSpacing.md,
+    right: gap.md,
     backgroundColor: tokens.colors.accent,
-    paddingHorizontal: modernSpacing.sm,
+    paddingHorizontal: gap.sm,
     paddingVertical: 4,
-    borderRadius: modernBorderRadius.full,
+    borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
     gap: 3,
-    ...modernShadows.sm,
   },
   countText: {
-    ...modernTypography.label.medium,
+    fontSize: font.size.base,
     fontWeight: "700",
     color: uiSemanticColors.text.inverse,
   },
   countLabel: {
-    ...modernTypography.label.small,
+    fontSize: font.size.sm,
     color: colorWithAlpha(uiSemanticColors.text.inverse, 0.8),
   },
 });

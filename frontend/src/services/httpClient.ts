@@ -11,6 +11,47 @@ import { isPublicHealthRequestUrl, stripHealthRequestHeaders } from "./healthReq
 
 const log = createLogger("httpClient");
 
+const SENSITIVE_KEYS = new Set([
+  "authorization",
+  "token",
+  "access_token",
+  "refresh_token",
+  "password",
+  "pin",
+  "cookie",
+  "sec-websocket-protocol",
+]);
+
+export function sanitizeTelemetry(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sanitizeTelemetry);
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        SENSITIVE_KEYS.has(key.toLowerCase())
+          ? "[REDACTED]"
+          : sanitizeTelemetry(entry),
+      ])
+    );
+  }
+  return value;
+}
+
+export function shouldReportHttpError(status?: number, errorCode?: string): boolean {
+  if (typeof status === "number" && status >= 500) {
+    return true;
+  }
+  if (status === 401 && errorCode === "AUTH_REFRESH_FAILED") {
+    return true;
+  }
+  if (status === 422 && errorCode === "CLIENT_SCHEMA_MISMATCH") {
+    return true;
+  }
+  return false;
+}
+
 // Dynamic base URL that gets updated by ConnectionManager
 export let API_BASE_URL: string = BACKEND_URL;
 
@@ -444,7 +485,11 @@ const logResponseError = (error: any, fullUrl: string, status: number | undefine
   }
 
   if (status) {
-    log.error("API error response", responseSummary);
+    if (status >= 400 && status < 500) {
+      log.warn("API client error response", responseSummary);
+    } else {
+      log.error("API error response", responseSummary);
+    }
     return;
   }
 

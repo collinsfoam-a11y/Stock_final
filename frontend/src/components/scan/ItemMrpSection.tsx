@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 
 import ModernInput from "@/components/ui/ModernInput";
+import ModernCard from "@/components/ui/ModernCard";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 
@@ -97,8 +98,8 @@ export function ItemMrpSection({
 
   return (
     <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>MRP</Text>
+      <ModernCard style={{ padding: uiTokens.spacing.md, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: mrpVariants.length > 0 || mrpEditable ? uiTokens.spacing.sm : 0 }}>
+        <Text style={styles.sectionTitle}>Price Validation (MRP)</Text>
         <Switch
           value={mrpEditable}
           onValueChange={onToggleMrpEditable}
@@ -111,7 +112,7 @@ export function ItemMrpSection({
           }}
           thumbColor={mrpEditable ? uiTokens.colors.surfaceElevated : uiTokens.colors.surface}
         />
-      </View>
+      </ModernCard>
 
       {mrpVariants.length > 0 ? (
         <ScrollView

@@ -63,15 +63,16 @@ export function EvidenceNotesSection({
           borderRadius: uiTokens.radius.md,
           borderStyle: "dashed",
           borderWidth: 2,
-          height: 100,
+          height: 80,
           justifyContent: "center",
-          width: 100,
+          width: "100%",
+          flexDirection: "row",
+          gap: uiTokens.spacing.sm,
         },
         addPhotoSubtext: {
           color: uiTokens.colors.accentStrong,
-          fontSize: 12,
+          fontSize: 14,
           fontWeight: "600",
-          marginTop: 4,
         },
         damageContainer: {
           backgroundColor: colorWithAlpha(
@@ -227,7 +228,7 @@ export function EvidenceNotesSection({
   return (
     <>
       <View style={styles.section}>
-        <View style={styles.toggleRow}>
+        <ModernCard style={{ padding: uiTokens.spacing.md, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={styles.toggleLabelContainer}>
             <Ionicons
               {...decorativeIconProps}
@@ -249,7 +250,7 @@ export function EvidenceNotesSection({
             }}
             thumbColor={isDamageEnabled ? uiTokens.colors.surfaceElevated : uiTokens.colors.surface}
           />
-        </View>
+        </ModernCard>
 
         {isDamageEnabled && (
           <View style={styles.damageContainer}>
@@ -350,45 +351,50 @@ export function EvidenceNotesSection({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Item Photos (Optional)</Text>
 
-        <View style={styles.itemPhotosRow}>
-          {itemPhotos.map((uri, index) => (
-            <View key={`${uri}-${index}`} style={styles.itemPhotoWrapper}>
-              <ModernCard style={styles.itemPhotoCard}>
-                <Ionicons
-                  {...decorativeIconProps}
-                  name="image"
-                  size={32}
-                  color={colorWithAlpha(uiTokens.colors.accent, 0.45)}
-                />
-                <TouchableOpacity
-                  style={styles.removePhotoBadge}
-                  onPress={() => onRemoveItemPhoto(index)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove item photo ${index + 1}`}
-                >
+        {itemPhotos.length < 3 && (
+          <TouchableOpacity 
+            style={[styles.addPhotoCard, { marginBottom: itemPhotos.length > 0 ? uiTokens.spacing.md : 0 }]} 
+            onPress={onAddItemPhoto}
+          >
+            <Ionicons
+              {...decorativeIconProps}
+              name="image-outline"
+              size={24}
+              color={uiTokens.colors.accent}
+            />
+            <Text style={styles.addPhotoSubtext}>Add Photo</Text>
+          </TouchableOpacity>
+        )}
+
+        {itemPhotos.length > 0 && (
+          <View style={styles.itemPhotosRow}>
+            {itemPhotos.map((uri, index) => (
+              <View key={`${uri}-${index}`} style={styles.itemPhotoWrapper}>
+                <ModernCard style={styles.itemPhotoCard}>
                   <Ionicons
                     {...decorativeIconProps}
-                    name="close-circle"
-                    size={20}
-                    color={uiTokens.colors.error}
+                    name="image"
+                    size={32}
+                    color={colorWithAlpha(uiTokens.colors.accent, 0.45)}
                   />
-                </TouchableOpacity>
-              </ModernCard>
-            </View>
-          ))}
-
-          {itemPhotos.length < 3 && (
-            <TouchableOpacity style={styles.addPhotoCard} onPress={onAddItemPhoto}>
-              <Ionicons
-                {...decorativeIconProps}
-                name="add-circle-outline"
-                size={32}
-                color={uiTokens.colors.accent}
-              />
-              <Text style={styles.addPhotoSubtext}>Add Photo</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+                  <TouchableOpacity
+                    style={styles.removePhotoBadge}
+                    onPress={() => onRemoveItemPhoto(index)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove item photo ${index + 1}`}
+                  >
+                    <Ionicons
+                      {...decorativeIconProps}
+                      name="close-circle"
+                      size={20}
+                      color={uiTokens.colors.error}
+                    />
+                  </TouchableOpacity>
+                </ModernCard>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
 
       <View style={styles.section}>

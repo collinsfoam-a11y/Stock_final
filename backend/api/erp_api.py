@@ -4,7 +4,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, Body
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from backend.api.schemas import ERPItem
@@ -16,6 +16,8 @@ from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+ERP_LEGACY_REFRESH_SUNSET = "2026-10-01"
 
 _db: Optional[AsyncIOMotorDatabase[Any]] = None
 _cache_service: Optional[CacheService] = None
@@ -182,6 +184,13 @@ async def get_item_by_barcode(barcode: str, current_user: dict = Depends(get_cur
             },
         )
 
+    if _sql_connector is not None:
+        from backend.services.item_refresh_service import item_refresh_service
+        if item_refresh_service.sql_sync_service is not None:
+            asyncio.create_task(
+                item_refresh_service.sql_sync_service.sync_single_item_by_barcode(normalized_barcode)
+            )
+
     # Cache for 1 hour
     await _cache_service.set("items", normalized_barcode, item, ttl=3600)
     logger.debug("Item fetched from MongoDB: barcode=%s", sanitize_for_logging(normalized_barcode))
@@ -191,37 +200,40 @@ async def get_item_by_barcode(barcode: str, current_user: dict = Depends(get_cur
 
 @router.post("/erp/items/{item_code}/refresh-stock")
 async def refresh_item_stock(
-    request: Request, item_code: str, current_user: dict = Depends(get_current_user)
+    request: Request,
+    response: Response,
+    item_code: str,
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Refresh item stock from ERP and update MongoDB
-    (Now just returns the data from MongoDB as ERP is disabled)
+    (DEPRECATED: Forwards to canonical refresh endpoint)
     """
+    from backend.services.item_refresh_service import item_refresh_service
+    import uuid
+
     if _db is None or _cache_service is None:
         raise HTTPException(status_code=503, detail="Service not initialized")
 
-    # For refresh-stock we accept both numeric barcodes and item codes
-    # We disable strict numeric checks because item codes might be numeric but not follow barcode rules
-    normalized_code = _normalize_barcode_input(item_code, strict_numeric=False)
+    request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
 
-    regex_match = {"$regex": f"^{re.escape(normalized_code)}$", "$options": "i"}
-    item = await _db.erp_items.find_one(
-        {
-            "$or": [
-                {"item_code": normalized_code},
-                {"item_code": regex_match},
-                {"barcode": normalized_code},
-                {"manual_barcode": normalized_code},
-            ]
-        }
+    refresh_response = await item_refresh_service.refresh_single_item_by_identifier(
+        identifier=item_code,
+        actor=current_user,
+        request_id=request_id,
     )
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
 
+    response.headers["Deprecation"] = "true"
+    response.headers["Sunset"] = ERP_LEGACY_REFRESH_SUNSET
+    response.headers["Link"] = (
+        f'</api/v2/erp/items/{refresh_response.item_code}/refresh>; rel="successor-version"'
+    )
+
+    item = await _db.erp_items.find_one({"item_code": refresh_response.item_code})
     return {
         "success": True,
-        "item": ERPItem(**item),
-        "message": "Stock from MongoDB (ERP connection is disabled)",
+        "item": ERPItem(**item) if item else None,
+        "message": "Stock refreshed from SQL" if refresh_response.changed else "Stock refreshed from SQL (No change)",
     }
 
 
@@ -485,3 +497,76 @@ async def search_items_compatibility(
         page=page,
         page_size=page_size,
     )
+
+
+@router.post("/item-batches/manual")
+async def create_manual_batches(
+    payload: dict[str, Any] = Body(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Create manual batch documents in MongoDB only.
+    SQL is read-only; this endpoint never writes to SQL.
+    Auto-assigns barcodes starting from 500001 and incrementing.
+    """
+    if _db is None:
+        raise HTTPException(status_code=500, detail="Database not initialized")
+
+    item_code = str(payload.get("item_code") or "").strip()
+    batches = payload.get("batches") or []
+    if not item_code:
+        raise HTTPException(status_code=400, detail="item_code is required")
+    if not batches:
+        raise HTTPException(status_code=400, detail="batches is required")
+
+    counter = await _db.counters.find_one_and_update(
+        {"_id": "manual_batch_barcode"},
+        {"$inc": {"seq": len(batches)}},
+        upsert=True,
+        return_document=True,
+    )
+    current_seq = int(counter.get("seq", 500000)) if counter else 500000
+
+    cursor = _db.erp_items.find(
+        {"barcode": {"$regex": r"^500\d{3}$"}}, {"barcode": 1}
+    ).sort("barcode", -1).limit(1)
+    max_existing = 500000
+    async for doc in cursor:
+        try:
+            max_existing = int(str(doc.get("barcode", "500000")))
+        except (TypeError, ValueError):
+            max_existing = 500000
+        break
+
+    next_barcode = max(max_existing, current_seq - len(batches)) + 1
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    created: list[dict[str, Any]] = []
+
+    for batch in batches:
+        barcode = str(batch.get("barcode") or "").strip()
+        if not barcode:
+            barcode = str(next_barcode)
+            next_barcode += 1
+
+        doc: dict[str, Any] = {
+            "item_code": item_code,
+            "barcode": barcode,
+            "batch_no": batch.get("batch_no") or f"MANUAL-{barcode}",
+            "stock_qty": float(batch.get("quantity") or 0),
+            "mrp": batch.get("mrp"),
+            "manufacturing_date": batch.get("mfg_date") or batch.get("manufacturing_date"),
+            "expiry_date": batch.get("expiry_date"),
+            "item_name": batch.get("item_name"),
+            "warehouse": batch.get("warehouse") or "Main",
+            "synced_from_sql": False,
+            "created_at": now,
+            "updated_at": now,
+        }
+        await _db.erp_items.insert_one(doc)
+        created.append(doc)
+
+    return {
+        "item_code": item_code,
+        "batches": created,
+        "next_barcode": next_barcode,
+    }

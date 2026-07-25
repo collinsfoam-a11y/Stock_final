@@ -8,7 +8,13 @@ let cachedDeviceId: string | null = null;
 
 const createDeviceId = (): string => {
   if (typeof Crypto.randomUUID === "function") {
-    return Crypto.randomUUID();
+    try {
+      return Crypto.randomUUID();
+    } catch (error) {
+      log.debug("Crypto randomUUID unavailable, using generated device ID fallback", {
+        error: getErrorMessage(error),
+      });
+    }
   }
 
   return `device_${Date.now()}_${Math.random().toString(36).slice(2)}`;

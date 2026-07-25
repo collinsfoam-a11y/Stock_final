@@ -134,7 +134,7 @@ async def create_field_definition(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Invalid field definition") from e
     except Exception as e:
         logger.error("Error creating field definition: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error") from e
@@ -257,7 +257,7 @@ async def set_field_value(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Invalid field definition") from e
     except Exception as e:
         logger.error("Error setting field value: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=500, detail="Internal server error") from e

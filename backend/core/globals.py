@@ -18,7 +18,17 @@ ENTERPRISE_AVAILABLE = False
 
 # Core Services
 db: Optional[Any] = None
+
+
+def set_db(value: Any) -> None: ...
+
+
 cache_service: Optional[Any] = None
+
+
+def set_cache_service(value: Any) -> None: ...
+
+
 rate_limiter: Optional[Any] = None
 concurrent_handler: Optional[Any] = None
 activity_log_service: Optional[Any] = None

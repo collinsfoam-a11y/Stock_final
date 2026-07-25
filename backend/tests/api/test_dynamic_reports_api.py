@@ -413,9 +413,9 @@ class TestGenerateReportEndpoint:
                     "/api/dynamic-reports/generate",
                     json={},  # No template
                 )
-                # ValueError is caught and returns 400
+                # ValueError is caught and returns 400 with a safe user message
                 assert response.status_code == 400
-                assert "template" in response.json()["detail"].lower()
+                assert response.json()["detail"] == "Invalid report parameters"
         finally:
             app.dependency_overrides.clear()
 

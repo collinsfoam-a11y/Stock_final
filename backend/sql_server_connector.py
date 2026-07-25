@@ -622,11 +622,12 @@ class SQLServerConnector:
         if not self.connection:
             return False
         try:
-            cursor = self.connection.cursor()
-            self._execute_readonly(cursor, "SELECT 1")
-            cursor.fetchone()
-            cursor.close()
-            return True
+            with self._query_lock:
+                cursor = self.connection.cursor()
+                self._execute_readonly(cursor, "SELECT 1")
+                cursor.fetchone()
+                cursor.close()
+                return True
         except Exception:
             return False
 
@@ -682,26 +683,27 @@ class SQLServerConnector:
             raise DatabaseConnectionError(DB_NOT_CONNECTED_MSG)
 
         try:
-            cursor = self.connection.cursor()
+            with self._query_lock:
+                cursor = self.connection.cursor()
 
-            # Use the predefined query template with optional metadata
-            query = self._get_formatted_query("get_item_by_barcode")
+                # Use the predefined query template with optional metadata
+                query = self._get_formatted_query("get_item_by_barcode")
 
-            logger.info(f"Searching for barcode: {barcode}")
+                logger.info(f"Searching for barcode: {barcode}")
 
-            # Execute with barcode - query template has single %s placeholder
-            self._execute_readonly(cursor, query, (barcode,))
-            row = cursor.fetchone()
+                # Execute with barcode - query template has single %s placeholder
+                self._execute_readonly(cursor, query, (barcode,))
+                row = cursor.fetchone()
 
-            if row:
-                result = self._cursor_to_dict(cursor, row)
-                cursor.close()
-                logger.info(f"Found item: {result.get('item_name')}")
-                return result
-            else:
-                cursor.close()
-                logger.warning(f"No item found for barcode: {barcode}")
-                return None
+                if row:
+                    result = self._cursor_to_dict(cursor, row)
+                    cursor.close()
+                    logger.info(f"Found item: {result.get('item_name')}")
+                    return result
+                else:
+                    cursor.close()
+                    logger.warning(f"No item found for barcode: {barcode}")
+                    return None
 
         except Exception as e:
             logger.error(f"Error fetching item by barcode: {str(e)}")
@@ -735,6 +737,33 @@ class SQLServerConnector:
             logger.error(f"Error fetching all items: {str(e)}")
             raise DatabaseQueryError(f"Failed to fetch all items: {str(e)}") from e
 
+    def get_all_items_aggregate(self) -> list[dict[str, Any]]:
+        """
+        Fetch all active items from ERP aggregated at item level (one row per ProductCode).
+        Uses SUM(PB.Stock) to get total stock across all batches.
+        This is the correct query for full syncs and quantity checks.
+        """
+        if not self.connection:
+            raise DatabaseConnectionError(DB_NOT_CONNECTED_MSG)
+
+        try:
+            with self._query_lock:
+                cursor = self.connection.cursor()
+                query = self._get_formatted_query("get_all_items_aggregate")
+
+                self._execute_readonly(cursor, query)
+                rows = cursor.fetchall()
+
+                results = [self._cursor_to_dict(cursor, row) for row in rows]
+                cursor.close()
+
+            logger.info(f"Retrieved {len(results)} aggregated items from ERP")
+            return results
+
+        except Exception as e:
+            logger.error(f"Error fetching aggregated items: {str(e)}")
+            raise DatabaseQueryError(f"Failed to fetch aggregated items: {str(e)}") from e
+
     def search_items(self, search_term: str) -> list[dict[str, Any]]:
         """
         Search items by name, code, or alias
@@ -744,39 +773,40 @@ class SQLServerConnector:
             raise DatabaseConnectionError(DB_NOT_CONNECTED_MSG)
 
         try:
-            cursor = self.connection.cursor()
+            with self._query_lock:
+                cursor = self.connection.cursor()
 
-            # Get the query template
-            query = self._get_formatted_query("search_items")
-            search_pattern = f"%{search_term}%"
+                # Get the query template
+                query = self._get_formatted_query("search_items")
+                search_pattern = f"%{search_term}%"
 
-            # Execute with all 10 parameters:
-            # - 7 for WHERE clause
-            # - 3 for ORDER BY CASE expressions
-            self._execute_readonly(
-                cursor,
-                query,
-                (
-                    search_pattern,  # WHERE: ProductName LIKE
-                    search_pattern,  # WHERE: ProductCode LIKE
-                    search_pattern,  # WHERE: ItemAlias LIKE
-                    search_pattern,  # WHERE: MannualBarcode LIKE
-                    search_pattern,  # WHERE: PBC.Barcode LIKE
-                    search_pattern,  # WHERE: AutoBarcode LIKE
-                    search_pattern,  # WHERE: GroupName LIKE
-                    search_pattern,  # ORDER BY: ProductName LIKE
-                    search_pattern,  # ORDER BY: ProductCode LIKE
-                    search_pattern,  # ORDER BY: ItemAlias LIKE
-                ),
-            )
-            rows = cursor.fetchall()
+                # Execute with all 10 parameters:
+                # - 7 for WHERE clause
+                # - 3 for ORDER BY CASE expressions
+                self._execute_readonly(
+                    cursor,
+                    query,
+                    (
+                        search_pattern,  # WHERE: ProductName LIKE
+                        search_pattern,  # WHERE: ProductCode LIKE
+                        search_pattern,  # WHERE: ItemAlias LIKE
+                        search_pattern,  # WHERE: MannualBarcode LIKE
+                        search_pattern,  # WHERE: PBC.Barcode LIKE
+                        search_pattern,  # WHERE: AutoBarcode LIKE
+                        search_pattern,  # WHERE: GroupName LIKE
+                        search_pattern,  # ORDER BY: ProductName LIKE
+                        search_pattern,  # ORDER BY: ProductCode LIKE
+                        search_pattern,  # ORDER BY: ItemAlias LIKE
+                    ),
+                )
+                rows = cursor.fetchall()
 
-            # Convert rows to dictionaries (before closing cursor)
-            results = [self._cursor_to_dict(cursor, row) for row in rows]
-            cursor.close()
+                # Convert rows to dictionaries (before closing cursor)
+                results = [self._cursor_to_dict(cursor, row) for row in rows]
+                cursor.close()
 
-            logger.info(f"Found {len(results)} items matching '{search_term}'")
-            return results
+                logger.info(f"Found {len(results)} items matching '{search_term}'")
+                return results
 
         except Exception as e:
             logger.error(f"Error searching items: {str(e)}")
@@ -791,18 +821,19 @@ class SQLServerConnector:
             raise DatabaseConnectionError(DB_NOT_CONNECTED_MSG)
 
         try:
-            cursor = self.connection.cursor()
-            query = self._get_formatted_query("get_item_batches")
+            with self._query_lock:
+                cursor = self.connection.cursor()
+                query = self._get_formatted_query("get_item_batches")
 
-            self._execute_readonly(cursor, query, (item_identifier, item_identifier))
-            rows = cursor.fetchall()
+                self._execute_readonly(cursor, query, (item_identifier, item_identifier))
+                rows = cursor.fetchall()
 
-            # Convert rows to dictionaries (before closing cursor)
-            results = [self._cursor_to_dict(cursor, row) for row in rows]
-            cursor.close()
+                # Convert rows to dictionaries (before closing cursor)
+                results = [self._cursor_to_dict(cursor, row) for row in rows]
+                cursor.close()
 
-            logger.info(f"Found {len(results)} batches for item '{item_identifier}'")
-            return results
+                logger.info(f"Found {len(results)} batches for item '{item_identifier}'")
+                return results
 
         except Exception as e:
             logger.error(f"Error fetching item batches: {str(e)}")
@@ -816,29 +847,84 @@ class SQLServerConnector:
             raise DatabaseConnectionError(DB_NOT_CONNECTED_MSG)
 
         try:
-            cursor = self.connection.cursor()
+            with self._query_lock:
+                cursor = self.connection.cursor()
 
-            # Use the predefined query template
-            query = self._get_formatted_query("get_item_by_code")
+                # Use the predefined query template
+                query = self._get_formatted_query("get_item_by_code")
 
-            logger.info(f"Searching for item code: {item_code}")
+                logger.info(f"Searching for item code: {item_code}")
 
-            self._execute_readonly(cursor, query, (item_code,))
-            row = cursor.fetchone()
+                self._execute_readonly(cursor, query, (item_code,))
+                row = cursor.fetchone()
 
-            if row:
-                result = self._cursor_to_dict(cursor, row)
-                cursor.close()
-                logger.info(f"Found item: {result.get('item_name')}")
-                return result
-            else:
-                cursor.close()
-                logger.warning(f"No item found for item code: {item_code}")
-                return None
+                if row:
+                    result = self._cursor_to_dict(cursor, row)
+                    cursor.close()
+                    logger.info(f"Found item: {result.get('item_name')}")
+                    return result
+                else:
+                    cursor.close()
+                    logger.warning(f"No item found for item code: {item_code}")
+                    return None
 
         except Exception as e:
             logger.error(f"Error fetching item by code: {str(e)}")
             raise DatabaseQueryError(f"Failed to fetch item by code: {str(e)}") from e
+
+    def get_item_by_code_aggregate(self, item_code: str) -> Optional[dict[str, Optional[Any]]]:
+        """
+        Fetch item by item code aggregated at item level (SUM of all batch stocks).
+        Returns one row per ProductCode with total stock_qty across all batches.
+        """
+        if not self.connection:
+            raise DatabaseConnectionError(DB_NOT_CONNECTED_MSG)
+
+        try:
+            with self._query_lock:
+                cursor = self.connection.cursor()
+                query = self._get_formatted_query("get_item_by_code_aggregate")
+                self._execute_readonly(cursor, query, (item_code,))
+                row = cursor.fetchone()
+
+                if row:
+                    result = self._cursor_to_dict(cursor, row)
+                    cursor.close()
+                    return result
+                else:
+                    cursor.close()
+                    return None
+
+        except Exception as e:
+            logger.error(f"Error fetching aggregated item by code: {str(e)}")
+            raise DatabaseQueryError(f"Failed to fetch aggregated item by code: {str(e)}") from e
+
+    def get_item_by_barcode_aggregate(self, barcode: str) -> Optional[dict[str, Optional[Any]]]:
+        """
+        Fetch item by barcode aggregated at item level (SUM of all batch stocks).
+        Returns one row per barcode with total stock_qty across all batches.
+        """
+        if not self.connection:
+            raise DatabaseConnectionError(DB_NOT_CONNECTED_MSG)
+
+        try:
+            with self._query_lock:
+                cursor = self.connection.cursor()
+                query = self._get_formatted_query("get_item_by_barcode_aggregate")
+                self._execute_readonly(cursor, query, (barcode,))
+                row = cursor.fetchone()
+
+                if row:
+                    result = self._cursor_to_dict(cursor, row)
+                    cursor.close()
+                    return result
+                else:
+                    cursor.close()
+                    return None
+
+        except Exception as e:
+            logger.error(f"Error fetching aggregated item by barcode: {str(e)}")
+            raise DatabaseQueryError(f"Failed to fetch aggregated item by barcode: {str(e)}") from e
 
     def get_all_warehouses(self) -> list[dict[str, Any]]:
         """Fetch all warehouses from ERP"""
@@ -846,13 +932,14 @@ class SQLServerConnector:
             raise DatabaseConnectionError(DB_NOT_CONNECTED_MSG)
 
         try:
-            cursor = self.connection.cursor()
-            query = self._get_formatted_query("get_all_warehouses")
-            self._execute_readonly(cursor, query)
-            rows = cursor.fetchall()
-            results = [self._cursor_to_dict(cursor, row) for row in rows]
-            cursor.close()
-            return results
+            with self._query_lock:
+                cursor = self.connection.cursor()
+                query = self._get_formatted_query("get_all_warehouses")
+                self._execute_readonly(cursor, query)
+                rows = cursor.fetchall()
+                results = [self._cursor_to_dict(cursor, row) for row in rows]
+                cursor.close()
+                return results
         except Exception as e:
             logger.error(f"Error fetching warehouses: {str(e)}")
             raise DatabaseQueryError(f"Failed to fetch warehouses: {str(e)}") from e
@@ -863,13 +950,14 @@ class SQLServerConnector:
             raise DatabaseConnectionError(DB_NOT_CONNECTED_MSG)
 
         try:
-            cursor = self.connection.cursor()
-            query = self._get_formatted_query("get_all_zones")
-            self._execute_readonly(cursor, query)
-            rows = cursor.fetchall()
-            results = [self._cursor_to_dict(cursor, row) for row in rows]
-            cursor.close()
-            return results
+            with self._query_lock:
+                cursor = self.connection.cursor()
+                query = self._get_formatted_query("get_all_zones")
+                self._execute_readonly(cursor, query)
+                rows = cursor.fetchall()
+                results = [self._cursor_to_dict(cursor, row) for row in rows]
+                cursor.close()
+                return results
         except Exception as e:
             logger.error(f"Error fetching zones: {str(e)}")
             raise DatabaseQueryError(f"Failed to fetch zones: {str(e)}") from e
@@ -895,37 +983,38 @@ class SQLServerConnector:
         item_codes = item_codes[:500]
 
         try:
-            cursor = self.connection.cursor()
-            mapping = self.mapping
-            schema = mapping["query_options"].get("schema_name", "dbo")
-            table_name = mapping["tables"]["items"]
-            joins = "\n".join(mapping["query_options"].get("join_tables", []))
-            additional_where = mapping["query_options"].get("where_clause_additions", "")
-            code_column = mapping["items_columns"]["item_code"]
-            columns = self._build_column_list()
+            with self._query_lock:
+                cursor = self.connection.cursor()
+                mapping = self.mapping
+                schema = mapping["query_options"].get("schema_name", "dbo")
+                table_name = mapping["tables"]["items"]
+                joins = "\n".join(mapping["query_options"].get("join_tables", []))
+                additional_where = mapping["query_options"].get("where_clause_additions", "")
+                code_column = mapping["items_columns"]["item_code"]
+                columns = self._build_column_list()
 
-            # Build IN clause with parameterized placeholders
-            placeholders = ", ".join("?" for _ in item_codes)
+                # Build IN clause with parameterized placeholders
+                placeholders = ", ".join("?" for _ in item_codes)
 
-            # Build query with IN clause using safe parameterization
-            # Note: schema, table_name, and column names are validated internally
-            query = f"""
-                SELECT {columns}
-                    {self.optional_columns_clause}
-                FROM [{schema}].[{table_name}] I
-                {joins}
-                {self.optional_joins_clause}
-                WHERE {code_column} IN ({placeholders})
-                {additional_where}
-            """
+                # Build query with IN clause using safe parameterization
+                # Note: schema, table_name, and column names are validated internally
+                query = f"""
+                    SELECT {columns}
+                        {self.optional_columns_clause}
+                    FROM [{schema}].[{table_name}] I
+                    {joins}
+                    {self.optional_joins_clause}
+                    WHERE {code_column} IN ({placeholders})
+                    {additional_where}
+                """
 
-            self._execute_readonly(cursor, query, item_codes)
-            rows = cursor.fetchall()
-            results = [self._cursor_to_dict(cursor, row) for row in rows]
-            cursor.close()
+                self._execute_readonly(cursor, query, item_codes)
+                rows = cursor.fetchall()
+                results = [self._cursor_to_dict(cursor, row) for row in rows]
+                cursor.close()
 
-            logger.info(f"Retrieved {len(results)} items by codes (requested: {len(item_codes)})")
-            return results
+                logger.info(f"Retrieved {len(results)} items by codes (requested: {len(item_codes)})")
+                return results
 
         except Exception as e:
             logger.error(f"Error fetching items by codes: {str(e)}")

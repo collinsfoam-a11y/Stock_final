@@ -54,6 +54,11 @@ export const SwipeableRow: React.FC<Props> = ({
       renderRightActions={onRightAction && rightLabel ? renderRight : undefined}
       overshootLeft={false}
       overshootRight={false}
+      friction={1}
+      leftThreshold={30}
+      rightThreshold={30}
+      activeOffsetX={[-20, 20]}
+      failOffsetY={[-20, 20]}
     >
       {children}
     </Swipeable>

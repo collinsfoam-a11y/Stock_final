@@ -126,19 +126,17 @@ export function CountQuantitySection({
         },
         qtyButton: {
           alignItems: "center",
-          borderRadius: uiTokens.radius.lg,
+          borderRadius: 100,
           height: 56,
           justifyContent: "center",
           width: 56,
         },
         qtyDisplay: {
           alignItems: "center",
-          borderRadius: uiTokens.radius.lg,
-          borderWidth: 2,
           flex: 1,
           height: 56,
           justifyContent: "center",
-          marginHorizontal: uiTokens.spacing.sm,
+          marginHorizontal: uiTokens.spacing.xs,
         },
         qtyText: {
           fontSize: 28,
@@ -152,6 +150,11 @@ export function CountQuantitySection({
           flexDirection: "row",
           marginTop: uiTokens.spacing.md,
           marginBottom: uiTokens.spacing.md,
+          backgroundColor: uiTokens.colors.surface,
+          borderRadius: 100,
+          borderWidth: 1,
+          borderColor: uiTokens.colors.border,
+          padding: 4,
         },
         removeButton: {
           ...getMinimumTouchTargetStyle(),
@@ -290,10 +293,9 @@ export function CountQuantitySection({
             styles.qtyButton,
             {
               backgroundColor: isSplitMode
-                ? uiTokens.colors.surface
-                : uiTokens.colors.surfaceElevated,
-              borderWidth: 1,
-              borderColor: uiTokens.colors.border,
+                ? "transparent"
+                : colorWithAlpha(uiTokens.colors.surfaceElevated, uiTokens.mode === "dark" ? 0.2 : 0.6),
+              borderWidth: 0,
             },
           ]}
           onPress={onDecrement}
@@ -312,8 +314,8 @@ export function CountQuantitySection({
           style={[
             styles.qtyDisplay,
             {
-              backgroundColor: uiTokens.colors.surface,
-              borderColor: colorWithAlpha(uiTokens.colors.accent, 0.4),
+              backgroundColor: "transparent",
+              borderColor: "transparent",
             },
           ]}
         >
@@ -346,9 +348,8 @@ export function CountQuantitySection({
           style={[
             styles.qtyButton,
             {
-              backgroundColor: isSplitMode ? uiTokens.colors.surface : uiTokens.colors.accent,
-              borderWidth: 1,
-              borderColor: isSplitMode ? uiTokens.colors.border : uiTokens.colors.accent,
+              backgroundColor: "transparent",
+              borderWidth: 0,
             },
           ]}
           onPress={onIncrement}

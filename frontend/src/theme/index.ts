@@ -77,6 +77,7 @@ export { lightSemanticColors, darkSemanticColors } from "./enhancedColors";
 
 // Typography
 export * from "./typography";
+export * from "./appleTypography";
 
 // Existing theme files
 export * from "./themes";

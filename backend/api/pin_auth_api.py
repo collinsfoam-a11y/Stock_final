@@ -36,15 +36,19 @@ class PinLoginRequest(BaseModel):
 
 
 @router.post("/auth/pin/change")
-async def change_pin(
+async def change_pin_legacy(
     request: PinChangeRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    """Change the current user's PIN."""
+    """Change the current user's PIN using current password verification.
+
+    DEPRECATED: Use POST /api/auth/change-pin instead, which only requires
+    a new PIN and relies on JWT authentication. This legacy endpoint may be
+    removed in a future release.
+    """
     pin_service = PINAuthService(db)
 
-    # Verify current password before allowing PIN change
     hashed_password = current_user.get("hashed_password")
     if not hashed_password or not verify_password(request.current_password, hashed_password):
         raise HTTPException(

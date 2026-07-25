@@ -3,15 +3,20 @@ API v2 Items Endpoints
 Upgraded item endpoints with standardized responses
 """
 
+import asyncio
 import io
 import logging
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 from typing import cast
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Query, UploadFile, Response
+from backend.services.observability import request_id_ctx
+from backend.core.globals import auto_sync_manager
+import time
 from pydantic import BaseModel
 
 from backend.api.response_models import ApiResponse, PaginatedResponse
@@ -19,6 +24,7 @@ from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
 from backend.services.ai_search import ai_search_service
 from backend.services.sql_verification_service import sql_verification_service
+from backend.services.item_refresh_service import item_refresh_service
 from backend.utils.erp_utils import _get_barcode_variations
 
 # Add project root to path for direct execution (debugging)
@@ -32,6 +38,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
+ITEM_RESPONSE_SCHEMA_VERSION = 2
 
 class ItemResponse(BaseModel):
     """Item response model"""
@@ -53,6 +61,33 @@ class ItemResponse(BaseModel):
     mongo_cached_qty_previous: Optional[float] = None
     sql_qty_mismatch_flag: Optional[bool] = None
     sql_verification_status: Optional[str] = None
+    # Source indicators
+    quantity_source: Optional[str] = None
+    cached_stock_qty: Optional[float] = None
+    verified_at: Optional[str] = None
+    last_sync_at: Optional[str] = None
+    sync_age_seconds: Optional[int] = None
+    sync_stale: Optional[bool] = None
+    sql_available: Optional[bool] = None
+    mrp_variants: Optional[list[Any]] = None
+    components: Optional[list[Any]] = None
+    
+    # Versioning & Monitoring
+    request_id: Optional[str] = None
+    response_version: Optional[int] = None
+    background_sync_running: Optional[bool] = None
+    sync_state: Optional[str] = None
+
+
+async def _background_sync_selected_item(item_code: str) -> None:
+    """Fire-and-forget background sync for item-selection lifecycle events."""
+    try:
+        svc = item_refresh_service.sql_sync_service
+        if svc is None:
+            return
+        await svc.sync_single_item_by_code(item_code)
+    except Exception as exc:
+        logger.debug("Background item sync failed for %s: %s", item_code, exc)
 
 
 async def _resolve_item_document(db: Any, item_identifier: str) -> Optional[dict[str, Any]]:
@@ -476,6 +511,7 @@ async def identify_item(
 @router.get("/{item_code}", response_model=ApiResponse[ItemResponse])
 async def get_item_details(
     item_code: str,
+    response: Response,
     verify_sql: bool = Query(False, description="Verify against SQL Server"),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> ApiResponse[ItemResponse]:
@@ -497,6 +533,10 @@ async def get_item_details(
         item_doc = cast(dict[str, Any], item)
         canonical_item_code = str(item_doc.get("item_code") or item_code)
 
+        asyncio.create_task(_background_sync_selected_item(canonical_item_code))
+
+        sql_available: Optional[bool] = None
+
         # Trigger SQL verification if requested
         if verify_sql:
             try:
@@ -504,44 +544,128 @@ async def get_item_details(
                     canonical_item_code
                 )
                 if verification_result["success"]:
+                    sql_available = True
+                    # Invalidate caches
+                    from backend.core.globals import cache_service
+                    if cache_service:
+                        barcode_to_clear = item_doc.get("barcode")
+                        if barcode_to_clear:
+                            await cache_service.delete("items", f"enhanced_{barcode_to_clear}")
+                        await cache_service.delete("items", f"enhanced_{canonical_item_code}")
+                        await cache_service.clear_pattern("search:*")
+                        logger.info(f"Successfully invalidated cache for {canonical_item_code}")
+                    else:
+                        logger.warning("Cache service not available for invalidation")
+                        
                     # Refresh item data after verification
                     refreshed_item = await db.erp_items.find_one({"item_code": canonical_item_code})
                     if refreshed_item:
                         item = refreshed_item
                         item_doc = cast(dict[str, Any], item)
+                else:
+                    sql_available = False
             except Exception as e:
+                sql_available = False
                 # Log error but don't fail the request
-                import logging
                 from backend.utils.api_utils import sanitize_for_logging
 
-                logger = logging.getLogger(__name__)
                 logger.warning(
                     f"SQL verification failed for {sanitize_for_logging(canonical_item_code)}: {sanitize_for_logging(str(e))}"
                 )
 
         last_sql_verified_at = item_doc.get("last_sql_verified_at")
+        last_synced_at = item_doc.get("last_synced")
         if last_sql_verified_at is not None and not hasattr(last_sql_verified_at, "isoformat"):
             last_sql_verified_at = None
+        if last_synced_at is not None and not hasattr(last_synced_at, "isoformat"):
+            last_synced_at = None
+
+        # Determine effective quantities and freshness
+        sql_verified_qty = item_doc.get("sql_verified_qty")
+        cached_stock_qty = item_doc.get("stock_qty", 0.0)
+        
+        effective_stock_qty = cached_stock_qty
+        quantity_source = "sync_cache"
+        
+        if verify_sql and sql_verified_qty is not None:
+            effective_stock_qty = sql_verified_qty
+            quantity_source = "sql_verification"
+            
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        sync_age_seconds = None
+        sync_stale = False
+        
+        if last_synced_at:
+            sync_age_seconds = int((now - last_synced_at).total_seconds())
+            if sync_age_seconds > 3600:
+                sync_stale = True
+        else:
+            sync_stale = True
 
         # Convert to response
+        
+        sync_status = {}
+        if auto_sync_manager:
+            sync_status = auto_sync_manager.get_status()
+            
+        sync_running = sync_status.get("running")
+        sync_state = "healthy" if sync_running else "stopped"
+        if not sync_status.get("sql_available"):
+            sync_state = "sql_offline"
+            
+        request_id = request_id_ctx.get()
+
         item_response = ItemResponse(
             id=str(item_doc["_id"]),
             name=item_doc.get("item_name", ""),
             item_code=item_doc.get("item_code"),
             barcode=item_doc.get("barcode"),
-            stock_qty=item_doc.get("stock_qty", 0.0),
+            stock_qty=effective_stock_qty,
+            quantity_source=quantity_source,
+            cached_stock_qty=cached_stock_qty,
+            verified_at=last_sql_verified_at.isoformat() if last_sql_verified_at else None,
+            last_sync_at=last_synced_at.isoformat() if last_synced_at else None,
+            sync_age_seconds=sync_age_seconds,
+            sync_stale=sync_stale,
             mrp=item_doc.get("mrp"),
             category=item_doc.get("category"),
             subcategory=item_doc.get("subcategory"),
             warehouse=item_doc.get("warehouse"),
             uom_name=item_doc.get("uom_name"),
-            sql_verified_qty=item_doc.get("sql_verified_qty"),
+            sql_verified_qty=sql_verified_qty,
             last_sql_verified_at=last_sql_verified_at.isoformat() if last_sql_verified_at else None,
             variance=item_doc.get("variance"),
             mongo_cached_qty_previous=item_doc.get("mongo_cached_qty_previous"),
             sql_qty_mismatch_flag=item_doc.get("sql_qty_mismatch_flag"),
             sql_verification_status=item_doc.get("sql_verification_status"),
+            sql_available=sql_available,
+            mrp_variants=item_doc.get("mrp_variants"),
+            components=item_doc.get("components"),
+            request_id=request_id,
+            response_version=ITEM_RESPONSE_SCHEMA_VERSION,
+            background_sync_running=sync_running,
+            sync_state=sync_state
         )
+
+        if verify_sql:
+            response.headers["Cache-Control"] = "no-cache, private"
+            response.headers["Vary"] = "Authorization"
+            
+            # Audit log
+            logger.info(
+                "sql_refresh",
+                extra={
+                    "event": "sql_refresh",
+                    "status": "success" if sql_available else "fallback",
+                    "item_code": canonical_item_code,
+                    "sql_available": sql_available,
+                    "quantity_source": quantity_source,
+                    "sql_verified_qty": sql_verified_qty,
+                    "cached_stock_qty": cached_stock_qty,
+                    "returned_qty": effective_stock_qty,
+                    "request_id": request_id,
+                }
+            )
 
         return ApiResponse.success_response(
             data=item_response,

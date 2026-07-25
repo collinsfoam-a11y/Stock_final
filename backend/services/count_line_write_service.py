@@ -1263,8 +1263,14 @@ class CountLineWriteService:
         variance_reason: Optional[str] = None,
         correction_reason: Optional[Any] = None,
         location: Optional[str] = None,
+        require_correction_reason_for_variance: Optional[bool] = None,
     ) -> CountLineGovernanceDecision:
         await self.assert_session_integrity(session=session)
+        if require_correction_reason_for_variance is None:
+            require_correction_reason_for_variance = bool(
+                session.get("require_correction_reason_for_variance")
+                or (session.get("settings") or {}).get("require_correction_reason_for_variance", False)
+            )
         return await self.evaluate_policy(
             item_code=item_code,
             counted_qty=counted_qty,
@@ -1273,7 +1279,7 @@ class CountLineWriteService:
             location=location,
             variance_reason=variance_reason,
             correction_reason=correction_reason,
-            require_correction_reason_for_variance=True,
+            require_correction_reason_for_variance=require_correction_reason_for_variance,
         )
 
     async def evaluate_existing_count_line(

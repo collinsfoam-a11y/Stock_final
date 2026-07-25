@@ -2,11 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- If you use universal links, replace example.com and enable Associated Domains in Signing & Capabilities -->
-	<key>com.apple.developer.associated-domains</key>
-	<array>
-		<string>applinks:example.com</string>
-	</array>
+	<!-- Associated Domains requires a paid Apple Developer team. Personal/free teams
+	     cannot create a provisioning profile with it, so it is intentionally omitted.
+	     To use universal links, add applinks:your.domain here and enable Associated
+	     Domains in Signing & Capabilities under a paid team. -->
 	<!-- If you use push notifications, set APS environment via Signing & Capabilities or add below in CI-generated entitlements -->
 	<!-- <key>aps-environment</key>
 	<string>development</string> -->

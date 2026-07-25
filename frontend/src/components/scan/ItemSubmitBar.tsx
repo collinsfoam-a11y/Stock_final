@@ -10,7 +10,9 @@ interface ItemSubmitBarProps {
   submitting: boolean;
   submitCountdown: number | null;
   onCancelSubmit: () => void;
-  onSubmit: () => void;
+  onSubmitAndScanNext?: () => void;
+  onSubmitAndStay?: () => void;
+  onSubmit?: () => void;
 }
 
 export function ItemSubmitBar({
@@ -18,6 +20,8 @@ export function ItemSubmitBar({
   submitting,
   submitCountdown,
   onCancelSubmit,
+  onSubmitAndScanNext,
+  onSubmitAndStay,
   onSubmit,
 }: ItemSubmitBarProps) {
   const insets = useSafeAreaInsets();
@@ -33,9 +37,44 @@ export function ItemSubmitBar({
           borderTopColor: uiTokens.colors.border,
           backgroundColor: uiTokens.colors.surface,
         },
+        buttonRow: {
+          flexDirection: "row",
+          gap: uiTokens.spacing.sm,
+          alignItems: "center",
+        },
+        flexPrimary: {
+          flex: 2,
+        },
+        flexSecondary: {
+          flex: 1,
+        },
       }),
     [uiTokens]
   );
+
+  if (isUndoState) {
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            paddingBottom: Math.max(uiTokens.spacing.md, insets.bottom + uiTokens.spacing.sm),
+          },
+        ]}
+      >
+        <ModernButton
+          title={`Undo (${submitCountdown}s)`}
+          onPress={onCancelSubmit}
+          variant="danger"
+          icon="close-circle"
+          fullWidth
+          accessibilityHint="Cancels the pending item verification"
+        />
+      </View>
+    );
+  }
+
+  const hasDualActions = Boolean(onSubmitAndScanNext && onSubmitAndStay);
 
   return (
     <View
@@ -46,22 +85,47 @@ export function ItemSubmitBar({
         },
       ]}
     >
-      <ModernButton
-        title={isUndoState ? `Undo (${submitCountdown}s)` : canSubmit ? "Save & Verify" : "Enter Count to Verify"}
-        onPress={isUndoState ? onCancelSubmit : onSubmit}
-        disabled={!isUndoState && !canSubmit}
-        loading={submitting}
-        variant={isUndoState ? "danger" : "primary"}
-        icon={isUndoState ? "close-circle" : "checkmark-circle"}
-        fullWidth
-        accessibilityHint={
-          isUndoState
-            ? "Cancels the pending item verification"
-            : canSubmit
+      {hasDualActions ? (
+        <View style={styles.buttonRow}>
+          <View style={styles.flexSecondary}>
+            <ModernButton
+              title="Save & Stay"
+              onPress={onSubmitAndStay!}
+              disabled={!canSubmit || submitting}
+              loading={submitting}
+              variant="secondary"
+              icon="save-outline"
+              accessibilityHint="Saves the count line and remains on the item detail screen"
+            />
+          </View>
+          <View style={styles.flexPrimary}>
+            <ModernButton
+              title="Save & Scan Next"
+              onPress={onSubmitAndScanNext!}
+              disabled={!canSubmit || submitting}
+              loading={submitting}
+              variant="primary"
+              icon="camera-outline"
+              accessibilityHint="Saves count line and immediately opens scanner for next item"
+            />
+          </View>
+        </View>
+      ) : (
+        <ModernButton
+          title={canSubmit ? "Save & Verify" : "Enter Count to Verify"}
+          onPress={onSubmit || (() => {})}
+          disabled={!canSubmit}
+          loading={submitting}
+          variant="primary"
+          icon="checkmark-circle"
+          fullWidth
+          accessibilityHint={
+            canSubmit
               ? "Starts the save countdown for this counted item"
               : "Enter a quantity greater than zero before saving"
-        }
-      />
+          }
+        />
+      )}
     </View>
   );
 }

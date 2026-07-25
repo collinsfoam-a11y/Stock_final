@@ -1,5 +1,5 @@
 import { act, fireEvent, render } from "@testing-library/react-native";
-import { AppState } from "react-native";
+import { AppState, Linking } from "react-native";
 
 import { PhotoCaptureModal } from "../PhotoCaptureModal";
 
@@ -18,6 +18,7 @@ describe("PhotoCaptureModal permission handling", () => {
     jest.clearAllMocks();
     mockRequestPermission.mockResolvedValue(true);
     mockAppStateAddEventListener.mockReturnValue({ remove: jest.fn() });
+    jest.spyOn(Linking, "openSettings").mockResolvedValue(undefined);
     jest
       .spyOn(AppState, "addEventListener")
       .mockImplementation(mockAppStateAddEventListener);
@@ -64,5 +65,50 @@ describe("PhotoCaptureModal permission handling", () => {
     expect(queryByText("Grant Permission")).toBeNull();
     expect(getByTestId("photo-capture-capture")).toBeTruthy();
     expect(mockRequestPermission).not.toHaveBeenCalled();
+  });
+
+  it("opens system settings when photo permission cannot be requested again", () => {
+    mockUseCameraPermission.mockReturnValue({
+      hasPermission: false,
+      canAskAgain: false,
+      requestPermission: mockRequestPermission,
+    });
+
+    const { getByText, queryByText } = render(
+      <PhotoCaptureModal
+        visible
+        onClose={jest.fn()}
+        onCapture={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(getByText("Open Settings"));
+
+    expect(Linking.openSettings).toHaveBeenCalledTimes(1);
+    expect(mockRequestPermission).not.toHaveBeenCalled();
+    expect(queryByText("Grant Permission")).toBeNull();
+  });
+
+  it("does not request permission or open settings when camera requires HTTPS", () => {
+    mockUseCameraPermission.mockReturnValue({
+      hasPermission: false,
+      canAskAgain: false,
+      unavailableReason: "Camera needs HTTPS in a mobile browser.",
+      requestPermission: mockRequestPermission,
+    });
+
+    const { getByText, queryByText } = render(
+      <PhotoCaptureModal
+        visible
+        onClose={jest.fn()}
+        onCapture={jest.fn()}
+      />,
+    );
+
+    expect(getByText("Camera needs HTTPS in a mobile browser.")).toBeTruthy();
+    expect(getByText("Use Expo Go/native or open the app through HTTPS to capture evidence photos.")).toBeTruthy();
+    expect(mockRequestPermission).not.toHaveBeenCalled();
+    expect(queryByText("Grant Permission")).toBeNull();
+    expect(queryByText("Open Settings")).toBeNull();
   });
 });

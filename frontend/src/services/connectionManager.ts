@@ -10,6 +10,7 @@ import { createLogger } from "./logging";
 import { isValidBackendHealthResponse } from "./healthRequest";
 import { shouldMonitorConnectionHealth } from "./connectionMonitoring";
 import { useNetworkStore } from "../store/networkStore";
+import NetInfo from "@react-native-community/netinfo";
 
 const log = createLogger("ConnectionManager");
 
@@ -176,13 +177,15 @@ class ConnectionManager {
     }
 
     // 4. Configured development port
-    const detectedIp = this.getDeviceIp();
+    const detectedIps = await this.getDeviceIps();
 
-    for (const port of candidatePorts) {
-      candidates.push({
-        url: `http://${detectedIp}:${port}`,
-        priority: port === primaryPort ? 7 : 6,
-      });
+    for (const detectedIp of detectedIps) {
+      for (const port of candidatePorts) {
+        candidates.push({
+          url: `http://${detectedIp}:${port}`,
+          priority: port === primaryPort ? 7 : 6,
+        });
+      }
     }
 
     // 5. Localhost fallback (safe for web/simulators; poor on real devices)
@@ -224,16 +227,31 @@ class ConnectionManager {
   }
 
   /**
-   * Get device IP for network detection
+   * Get device IPs for network detection
    */
-  private getDeviceIp(): string {
+  private async getDeviceIps(): Promise<string[]> {
+    const ips: string[] = [];
     const hostUri = Constants.expoConfig?.hostUri;
     const expoHost = hostUri?.split(":")[0];
-    if (expoHost) return expoHost;
+    if (expoHost) ips.push(expoHost);
 
-    if (Platform.OS === "android") return "10.0.2.2";
-    if (Platform.OS === "web") return "localhost";
-    return "127.0.0.1";
+    try {
+      const state = await NetInfo.fetch();
+      if (state.type === "wifi" || state.type === "ethernet") {
+        const details = state.details as any;
+        if (details?.ipAddress) {
+          ips.push(details.ipAddress);
+        }
+      }
+    } catch (e) {
+      log.warn("Failed to fetch device IP from NetInfo", e);
+    }
+
+    if (Platform.OS === "android") ips.push("10.0.2.2");
+    if (Platform.OS === "web") ips.push("localhost");
+    ips.push("127.0.0.1");
+
+    return Array.from(new Set(ips));
   }
 
   private getCurrentOrigin(): string | null {

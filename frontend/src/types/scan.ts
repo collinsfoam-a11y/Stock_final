@@ -42,6 +42,29 @@ export interface Item {
    */
   is_serialized?: boolean;
   /**
+   * Source & Freshness Metadata
+   */
+  quantity_source?: "sync_cache" | "sql_live" | "sql_verification";
+  cached_stock_qty?: number;
+  sql_verified_qty?: number;
+  verified_at?: string;
+  last_sync_at?: string;
+  sync_age_seconds?: number;
+  sync_stale?: boolean;
+  sql_available?: boolean;
+  /**
+   * Session baseline quantities for variance calculation
+   */
+  session_baseline?: number;
+  baseline_qty?: number;
+  
+  // Monitoring & Sync state
+  request_id?: string;
+  response_version?: number;
+  background_sync_running?: boolean;
+  sync_state?: string;
+  
+  /**
    * Metadata flags used throughout API/cache flows
    */
   _source?: string;

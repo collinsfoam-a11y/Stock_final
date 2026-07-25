@@ -30,7 +30,10 @@ class ResourceLockedError(LockError):
 class LockService:
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
-        self.collection = db.locks
+
+    @property
+    def collection(self):
+        return self.db.locks
 
     async def initialize(self):
         """

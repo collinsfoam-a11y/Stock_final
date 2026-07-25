@@ -1,8 +1,23 @@
-import { Link, Stack } from "expo-router";
+import React from "react";
+import { Link, Stack, usePathname, useRouter } from "expo-router";
 import { StyleSheet, View, Text } from "react-native";
 
 import { semanticColors, colors } from "@/theme/legacyCompat";
 export default function NotFoundScreen() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const isEmptyStartupLink = !pathname || /^\/+$/.test(pathname);
+
+  React.useEffect(() => {
+    if (isEmptyStartupLink) {
+      router.replace("/");
+    }
+  }, [isEmptyStartupLink, router]);
+
+  if (isEmptyStartupLink) {
+    return null;
+  }
+
   return (
     <>
       <Stack.Screen options={{ title: "Oops!" }} />

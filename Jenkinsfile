@@ -19,6 +19,8 @@ pipeline {
 
   environment {
     REGISTRY = 'ghcr.io'
+    JWT_SECRET = credentials('jwt-secret')
+    JWT_REFRESH_SECRET = credentials('jwt-refresh-secret')
   }
 
   stages {
@@ -56,8 +58,8 @@ pipeline {
         sh '''
           docker build --no-cache -f backend/Dockerfile -t stock-verify-backend-import-smoke ./backend
           docker run --rm \
-            -e JWT_SECRET=ci-import-guard-jwt-secret-32-chars \
-            -e JWT_REFRESH_SECRET=ci-import-guard-refresh-secret-32 \
+            -e JWT_SECRET=${JWT_SECRET} \
+            -e JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET} \
             -e ENVIRONMENT=production \
             stock-verify-backend-import-smoke \
             python -c "import backend.server"

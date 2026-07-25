@@ -1,24 +1,14 @@
 /**
  * Simple Pie Chart - View-based implementation (no SVG required)
- * Fully functional pie chart using React Native Views with conic gradients simulation
- *
  * Text/surface colors resolve at runtime from useUiTokens (dark-mode aware).
- * Explicit per-segment colors from consumers always win; segments without a
- * color get a deterministic semantic-token sequence (not lightness-only, so
- * it stays distinguishable in dark mode). modernTypography/Spacing/Radius are
- * retained for metrics only.
  */
 
 import React from "react";
 import { View, Text, StyleSheet, Platform } from "react-native";
 
-import {
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-} from "../../styles/unifiedSystem";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import type { ThemeTokens } from "../../theme/themeTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
 
 const CHART_SIZE = 200;
 const RADIUS = 80;
@@ -35,9 +25,6 @@ interface SimplePieChartProps {
   showLegend?: boolean;
 }
 
-// Deterministic theme-aware fallback sequence for segments without an
-// explicit color. Distinct semantic hues (not lightness steps) so adjacent
-// segments remain distinguishable in both light and dark mode.
 const buildSeriesSequence = (uiTokens: ThemeTokens): string[] => [
   uiTokens.colors.accent,
   uiTokens.colors.success,
@@ -79,7 +66,6 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
 
     return {
       ...item,
-      // Explicit consumer color wins; deterministic semantic fallback otherwise.
       color: item.color || seriesSequence[index % seriesSequence.length],
       percentage: percentage * 100,
       startAngle,
@@ -88,10 +74,8 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
     };
   });
 
-  // For web, we can use CSS conic-gradient, for native we'll use a different approach
   const renderPieChart = () => {
     if (Platform.OS === "web") {
-      // Web: Use CSS conic-gradient
       const gradientStops = segments
         .map((seg, i) => {
           const startPercent =
@@ -107,14 +91,12 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
           style={[
             styles.pieChart,
             {
-              // @ts-ignore - CSS conic-gradient for web
-              background: `conic-gradient(${gradientStops})`,
+              backgroundColor: `conic-gradient(${gradientStops})`,
             },
           ]}
         />
       );
     } else {
-      // Native: Use overlapping circles with masks (simplified)
       return (
         <View style={styles.pieChartContainer}>
           {segments.map((seg, index) => {
@@ -133,7 +115,6 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
                   },
                 ]}
               >
-                {/* This is a simplified version - for full pie chart, would need proper masking */}
                 <View
                   style={[
                     styles.segmentMask,
@@ -156,7 +137,6 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
       <View style={styles.chartWrapper}>
         <View style={styles.pieContainer}>
           {renderPieChart()}
-          {/* Center label with total */}
           <View style={styles.centerLabel}>
             <Text style={styles.centerValue}>{total}</Text>
             <Text style={styles.centerText}>Total</Text>
@@ -188,19 +168,20 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
 const createStyles = (uiTokens: ThemeTokens) =>
   StyleSheet.create({
     container: {
-      marginVertical: modernSpacing.md,
+      marginVertical: gap.md,
     },
     title: {
-      ...modernTypography.h5,
+      fontSize: font.size.xl,
+      fontWeight: font.weight.semibold,
       color: uiTokens.colors.textPrimary,
-      marginBottom: modernSpacing.sm,
+      marginBottom: gap.sm,
     },
     chartWrapper: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       flexWrap: "wrap",
-      gap: modernSpacing.lg,
+      gap: gap.lg,
     },
     pieContainer: {
       width: CHART_SIZE,
@@ -237,40 +218,39 @@ const createStyles = (uiTokens: ThemeTokens) =>
       justifyContent: "center",
     },
     centerValue: {
-      ...modernTypography.h3,
+      fontSize: font.size.xl,
       color: uiTokens.colors.textPrimary,
-      fontWeight: "700",
+      fontWeight: font.weight.bold,
     },
     centerText: {
-      ...modernTypography.body.small,
+      fontSize: font.size.sm,
       color: uiTokens.colors.textSecondary,
     },
     legend: {
-      gap: modernSpacing.sm,
+      gap: gap.sm,
       minWidth: 200,
     },
     legendItem: {
       flexDirection: "row",
       alignItems: "center",
-      gap: modernSpacing.sm,
+      gap: gap.sm,
     },
     legendColor: {
       width: 16,
       height: 16,
-      borderRadius: modernBorderRadius.xs,
+      borderRadius: radius.xs,
     },
     legendContent: {
       flex: 1,
     },
     legendLabel: {
-      ...modernTypography.body.small,
+      fontSize: font.size.sm,
       color: uiTokens.colors.textPrimary,
-      fontWeight: "500",
+      fontWeight: font.weight.medium,
     },
     legendValue: {
-      ...modernTypography.body.small,
+      fontSize: font.size.sm,
       color: uiTokens.colors.textSecondary,
-      fontSize: 11,
     },
     emptyState: {
       height: CHART_SIZE,
@@ -280,7 +260,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
       borderRadius: 8,
     },
     emptyText: {
-      ...modernTypography.body.medium,
+      fontSize: font.size.base,
       color: uiTokens.colors.textSecondary,
     },
   });

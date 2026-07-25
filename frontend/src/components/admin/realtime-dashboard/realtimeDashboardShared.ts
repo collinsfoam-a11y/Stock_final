@@ -32,6 +32,9 @@ export interface DashboardItem {
   session_id: string;
   notes?: string;
   status?: string;
+  quantity_source?: string;
+  sync_stale?: boolean;
+  sql_available?: boolean;
 }
 
 export interface DashboardStats {

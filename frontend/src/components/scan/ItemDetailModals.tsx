@@ -15,6 +15,8 @@ interface ItemDetailModalsProps {
   existingSerials: string[];
   expiryDateField: PickerFieldControls;
   itemName?: string;
+  itemBarcode?: string;
+  itemCode?: string;
   mfgDateField: PickerFieldControls;
   onCloseSerialScanner: () => void;
   onSerialScanned: (data: {
@@ -30,6 +32,8 @@ export function ItemDetailModals({
   existingSerials,
   expiryDateField,
   itemName,
+  itemBarcode,
+  itemCode,
   mfgDateField,
   onCloseSerialScanner,
   onSerialScanned,
@@ -57,6 +61,8 @@ export function ItemDetailModals({
         visible={serialScannerVisible}
         existingSerials={existingSerials}
         itemName={itemName}
+        itemBarcode={itemBarcode}
+        itemCode={itemCode}
         defaultMrp={defaultMrp}
         onSerialScanned={onSerialScanned}
         onClose={onCloseSerialScanner}

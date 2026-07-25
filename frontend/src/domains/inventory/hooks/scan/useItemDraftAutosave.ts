@@ -2,7 +2,11 @@ import { useEffect } from "react";
 import { useDebounce } from "use-debounce";
 
 import { saveDraft } from "@/services/api/api";
+import { createLogger } from "@/services/logging";
 import { CreateCountLinePayload, Item } from "@/types/scan";
+import { useSessionWebSocket } from "@/hooks/useSessionWebSocket";
+
+const log = createLogger("useItemDraftAutosave");
 
 interface UseItemDraftAutosaveParams {
   currentFloor?: string | null;
@@ -25,28 +29,35 @@ export const useItemDraftAutosave = ({
   sessionId,
   submitting,
 }: UseItemDraftAutosaveParams) => {
-  const [debouncedFormData] = useDebounce(
-    {
-      quantity,
-      mrp,
-      remark,
-    },
-    2000,
-  );
+  const [debouncedQuantity] = useDebounce(quantity, 2000);
+  const [debouncedMrp] = useDebounce(mrp, 2000);
+  const [debouncedRemark] = useDebounce(remark, 2000);
+  const { isConnected } = useSessionWebSocket(sessionId);
+
+  const itemCode = item?.item_code ?? null;
+  const itemName = item?.item_name || item?.name || item?.item_code || null;
+  const itemMrp = item?.mrp ?? null;
 
   useEffect(() => {
-    if (!item || !sessionId || quantity === "0" || submitting) {
+    if (!itemCode || !sessionId || submitting || isConnected) {
+      if (isConnected) {
+        log.debug("Skipping HTTP autosave (WebSocket connected)");
+      }
+      return;
+    }
+
+    if (debouncedQuantity === "0" && !debouncedMrp && !debouncedRemark) {
       return;
     }
 
     const performAutosave = async () => {
       const payload: CreateCountLinePayload = {
         session_id: sessionId,
-        item_code: item.item_code,
-        item_name: item.item_name || item.name || item.item_code,
-        counted_qty: parseFloat(quantity) || 0,
-        mrp_counted: parseFloat(mrp) || item.mrp,
-        remark,
+        item_code: itemCode,
+        item_name: itemName || itemCode,
+        counted_qty: parseFloat(debouncedQuantity) || 0,
+        mrp_counted: parseFloat(debouncedMrp) || itemMrp || 0,
+        remark: debouncedRemark,
         floor_no: currentFloor || null,
         rack_no: currentRack || null,
       };
@@ -54,16 +65,20 @@ export const useItemDraftAutosave = ({
       await saveDraft(payload);
     };
 
-    performAutosave();
+    void performAutosave().catch((error) => {
+      log.warn("Draft autosave failed", { error: String(error) });
+    });
   }, [
     currentFloor,
     currentRack,
-    debouncedFormData,
-    item,
-    mrp,
-    quantity,
-    remark,
+    debouncedMrp,
+    debouncedQuantity,
+    debouncedRemark,
+    itemCode,
+    itemMrp,
+    itemName,
     sessionId,
     submitting,
+    isConnected,
   ]);
 };

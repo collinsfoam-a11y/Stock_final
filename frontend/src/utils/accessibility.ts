@@ -1,7 +1,13 @@
-import type { AccessibilityState, Insets } from "react-native";
+import { Platform, type AccessibilityState, type Insets } from "react-native";
 
-export const MIN_TOUCH_TARGET = 44;
-export const COMFORTABLE_TOUCH_TARGET = 48;
+export const TOUCH_TARGET_TOKENS = {
+  compact: Platform.OS === "ios" ? 44 : 48,
+  standard: Platform.OS === "ios" ? 48 : 52,
+  large: 56,
+} as const;
+
+export const MIN_TOUCH_TARGET = TOUCH_TARGET_TOKENS.compact;
+export const COMFORTABLE_TOUCH_TARGET = TOUCH_TARGET_TOKENS.standard;
 
 export const OPERATIONAL_HIT_SLOP = {
   compact: { top: 6, bottom: 6, left: 6, right: 6 },

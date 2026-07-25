@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "react-native";
 import * as Crypto from "expo-crypto";
 
@@ -18,7 +18,18 @@ interface UseSerialEntryManagerParams {
   onQuantityChange: (value: string) => void;
 }
 
-const createSerialEntryId = () => `serial_${Crypto.randomUUID()}`;
+const createSerialEntryId = () => {
+  try {
+    if (typeof Crypto.randomUUID === "function") {
+      return `serial_${Crypto.randomUUID()}`;
+    }
+  } catch {
+    // Expo Crypto can expose randomUUID on web but still fail in insecure
+    // browser contexts. Serial row IDs are local UI keys.
+  }
+
+  return `serial_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+};
 
 const getDefaultMrp = (mrp: string, item: Item | null) => {
   const parsedMrp = parseFloat(mrp);
@@ -36,26 +47,40 @@ export const useSerialEntryManager = ({
   const [isSerializedItem, setIsSerializedItem] = useState(false);
   const [serialValidationErrors, setSerialValidationErrors] = useState<string[]>([]);
   const [showSerialScanner, setShowSerialScanner] = useState(false);
+  const serialEntriesRef = useRef<SerialEntryData[]>([]);
+  const reservedSerialsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    serialEntriesRef.current = serialEntries;
+  }, [serialEntries]);
 
   const serialNumbers = useMemo(
     () => serialEntries.map((entry) => entry.serial_number),
     [serialEntries]
   );
 
+  const filledSerialCount = useMemo(
+    () => serialNumbers.filter((serial) => serial.trim().length > 0).length,
+    [serialNumbers]
+  );
+
   useEffect(() => {
-    if (isSerializedItem && serialEntries.length > 0) {
-      onQuantityChange(String(serialEntries.length));
+    if (isSerializedItem && filledSerialCount > 0) {
+      onQuantityChange(String(filledSerialCount));
     }
-  }, [isSerializedItem, onQuantityChange, serialEntries.length]);
+  }, [filledSerialCount, isSerializedItem, onQuantityChange]);
 
   const handleSerialChange = useCallback(
     (index: number, field: keyof SerialEntryData, value: string | number) => {
       setSerialEntries((previous) => {
         const updated = [...previous];
         if (updated[index]) {
+          if (field === "serial_number") {
+            reservedSerialsRef.current.delete(normalizeSerialValue(updated[index].serial_number));
+          }
           updated[index] = {
             ...updated[index],
-            [field]: value,
+            [field]: field === "serial_number" ? String(value).toUpperCase() : value,
           };
         }
         return updated;
@@ -70,9 +95,11 @@ export const useSerialEntryManager = ({
       setSerialEntries((previous) => {
         const updated = [...previous];
         if (updated[index] && typeof updated[index].serial_number === "string") {
+          const normalized = normalizeSerialValue(updated[index].serial_number);
           updated[index] = {
             ...updated[index],
-            serial_number: updated[index].serial_number.toUpperCase(),
+            serial_number: normalized,
+            is_valid: normalized.length > 0,
           };
         }
         return updated;
@@ -84,18 +111,26 @@ export const useSerialEntryManager = ({
   const handleSerialScanned = useCallback(
     async (data: { serial_number: string; mrp?: number; manufacturing_date?: string }) => {
       const normalized = normalizeSerialValue(data.serial_number);
+      if (!normalized) {
+        return false;
+      }
 
-      const isLocalDuplicate = serialEntries.some(
-        (entry) => entry.serial_number.toUpperCase() === normalized
-      );
+      const isLocalDuplicate =
+        reservedSerialsRef.current.has(normalized) ||
+        serialEntriesRef.current.some(
+          (entry) => normalizeSerialValue(entry.serial_number) === normalized
+        );
       if (isLocalDuplicate) {
         Alert.alert("Duplicate Serial", "This serial number is already in your list.");
         return false;
       }
 
+      reservedSerialsRef.current.add(normalized);
+
       if (sessionId) {
         const result = await checkSerialUniqueness(sessionId, normalized, item?.item_code);
         if (result.status === "UNAVAILABLE") {
+          reservedSerialsRef.current.delete(normalized);
           Alert.alert(
             "Serial Validation Unavailable",
             "We could not verify this serial number right now. Please try again when the connection is stable."
@@ -103,6 +138,7 @@ export const useSerialEntryManager = ({
           return false;
         }
         if (result.exists) {
+          reservedSerialsRef.current.delete(normalized);
           Alert.alert(
             "Serial Already Counted",
             `Serial ${normalized} was already counted in this session.\n\n` +
@@ -124,10 +160,19 @@ export const useSerialEntryManager = ({
         is_valid: true,
       };
 
-      setSerialEntries((previous) => [...previous, newEntry]);
+      setSerialEntries((previous) => {
+        const currentIndex = previous.findIndex(
+          (entry) => normalizeSerialValue(entry.serial_number) === normalized
+        );
+        if (currentIndex >= 0) {
+          return previous;
+        }
+
+        return [...previous, newEntry];
+      });
       return true;
     },
-    [item, mrp, serialEntries, sessionId]
+    [item, mrp, sessionId]
   );
 
   const handleAddSerial = useCallback(() => {
@@ -144,6 +189,11 @@ export const useSerialEntryManager = ({
   const handleRemoveSerial = useCallback(
     (index: number) => {
       setSerialEntries((previous) => {
+        const removedSerial = previous[index]?.serial_number;
+        if (removedSerial) {
+          reservedSerialsRef.current.delete(normalizeSerialValue(removedSerial));
+        }
+
         if (previous.length <= 1) {
           return [
             {
@@ -162,9 +212,10 @@ export const useSerialEntryManager = ({
 
   const serialValidationMessages = useMemo(
     () =>
-      serialEntries.map((entry) =>
-        entry.serial_number.trim() ? validateSerialNumber(entry.serial_number) : null
-      ),
+      serialEntries.reduce<Record<string, string | null>>((acc, entry) => {
+        acc[entry.id] = entry.serial_number.trim() ? validateSerialNumber(entry.serial_number) : null;
+        return acc;
+      }, {}),
     [serialEntries]
   );
 
@@ -187,6 +238,8 @@ export const useSerialEntryManager = ({
   const resetSerialState = useCallback(() => {
     setIsSerializedItem(false);
     setSerialEntries([]);
+    serialEntriesRef.current = [];
+    reservedSerialsRef.current.clear();
     setSerialValidationErrors([]);
     setShowSerialScanner(false);
   }, []);

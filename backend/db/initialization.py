@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime, timezone
 
 from backend.services.pin_auth_service import PINAuthService
@@ -13,7 +14,7 @@ async def init_default_users(db):
         from backend.utils.crypto_utils import get_pin_lookup_hash
 
         # Default PIN for all users
-        default_pin = "1234"
+        default_pin = os.environ["DEFAULT_PIN"]
         pin_hash = get_pin_hash(default_pin)
         pin_lookup_hash = get_pin_lookup_hash(default_pin)
 
@@ -23,7 +24,7 @@ async def init_default_users(db):
             result = await db.users.insert_one(
                 {
                     "username": "staff1",
-                    "hashed_password": get_password_hash("staff123"),
+                    "hashed_password": get_password_hash(os.environ["DEFAULT_STAFF_PASSWORD"]),
                     "pin_hash": pin_hash,
                     "pin_lookup_hash": pin_lookup_hash,
                     "full_name": "Staff Member",
@@ -51,7 +52,7 @@ async def init_default_users(db):
             result = await db.users.insert_one(
                 {
                     "username": "supervisor",
-                    "hashed_password": get_password_hash("super123"),
+                    "hashed_password": get_password_hash(os.environ["DEFAULT_SUPERVISOR_PASSWORD"]),
                     "pin_hash": pin_hash,
                     "pin_lookup_hash": pin_lookup_hash,
                     "full_name": "Supervisor",
@@ -79,7 +80,7 @@ async def init_default_users(db):
             result = await db.users.insert_one(
                 {
                     "username": "admin",
-                    "hashed_password": get_password_hash("admin123"),
+                    "hashed_password": get_password_hash(os.environ["DEFAULT_ADMIN_PASSWORD"]),
                     "pin_hash": pin_hash,
                     "pin_lookup_hash": pin_lookup_hash,
                     "full_name": "Administrator",

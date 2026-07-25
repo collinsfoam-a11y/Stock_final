@@ -286,10 +286,13 @@ const fetchInventoryItemFromApi = async (
 
 const fetchInventoryItemByIdentifierFromApi = async (
   identifier: string,
-  retryCount: number
+  retryCount: number,
+  verifySql: boolean = false
 ) => {
   const response = await retryWithBackoff(
-    () => api.get(`/api/v2/items/${encodeURIComponent(identifier)}`),
+    () => api.get(`/api/v2/items/${encodeURIComponent(identifier)}`, {
+      params: verifySql ? { verify_sql: true } : undefined,
+    }),
     {
       retries: retryCount,
       backoffMs: 1000,
@@ -401,7 +404,8 @@ export const getItemByBarcode = async (
  */
 export const getItemByIdentifier = async (
   identifier: string,
-  retryCount: number = 3
+  retryCount: number = 3,
+  verifySql: boolean = false
 ): Promise<InventoryItemResult> => {
   const trimmedIdentifier = String(identifier || "").trim();
   if (!trimmedIdentifier) {
@@ -427,7 +431,8 @@ export const getItemByIdentifier = async (
   try {
     const normalizedItem = await fetchInventoryItemByIdentifierFromApi(
       trimmedIdentifier,
-      retryCount
+      retryCount,
+      verifySql
     );
     await tryCacheResolvedItem(normalizedItem);
     return normalizedItem;
@@ -996,10 +1001,18 @@ export const createCountLine = async (
     };
   } catch (error: any) {
     if (error.response) {
-      log.error("Server returned error, NOT falling back to offline", {
-        status: error.response.status,
-        data: error.response.data,
-      });
+      const status = error.response.status;
+      if (status >= 400 && status < 500) {
+        log.warn("Server returned client error, NOT falling back to offline", {
+          status: status,
+          data: error.response.data,
+        });
+      } else {
+        log.error("Server returned error, NOT falling back to offline", {
+          status: status,
+          data: error.response.data,
+        });
+      }
       throw error;
     }
 
@@ -1264,6 +1277,42 @@ export const refreshItemStock = async (itemCode: string) => {
 };
 
 /**
+ * Triggers SQL verification for a single item item_code.
+ * Fetches authoritative quantity from SQL Server, updates MongoDB, and returns the result.
+ */
+export const verifyItemQuantity = async (itemCode: string) => {
+  try {
+    const response = await api.post(
+      `/api/v2/verification/items/${encodeURIComponent(itemCode)}/verify-qty`,
+      {},
+      { timeout: 15000 }
+    );
+    return response.data;
+  } catch (error: unknown) {
+    __DEV__ && log.warn("Verify item quantity error:", error);
+    throw error;
+  }
+};
+
+/**
+ * Batch SQL verification for multiple item codes.
+ * Verifies quantities from SQL Server and updates MongoDB for each item in parallel.
+ */
+export const batchVerifyItemQuantities = async (itemCodes: string[]) => {
+  try {
+    const response = await api.post(
+      "/api/v2/verification/items/batch-verify-qty",
+      { item_codes: itemCodes },
+      { timeout: 30000 }
+    );
+    return response.data;
+  } catch (error: unknown) {
+    __DEV__ && log.warn("Batch verify items error:", error);
+    throw error;
+  }
+};
+
+/**
  * Deletes a count line by identifier.
  */
 export const deleteCountLine = async (lineId: string) => {
@@ -1288,4 +1337,31 @@ export const verifyStock = async (countLineId: string) => {
  */
 export const unverifyStock = async (countLineId: string) => {
   return unverifyStockCommand(countLineId);
+};
+
+export type ManualBatchInput = {
+  quantity?: number | string;
+  mrp?: number | string;
+  mfg_date?: string;
+  expiry_date?: string;
+  batch_no?: string;
+  item_name?: string;
+  warehouse?: string;
+};
+
+/**
+ * Creates manual batch documents in MongoDB.
+ */
+export const createManualBatches = async (
+  itemCode: string,
+  batches: ManualBatchInput[]
+): Promise<Array<{ barcode: string; batch_no: string }>> => {
+  const response = await api.post("/api/item-batches/manual", {
+    item_code: itemCode,
+    batches,
+  });
+  return (response.data?.batches || []).map((doc: any) => ({
+    barcode: String(doc.barcode || ""),
+    batch_no: String(doc.batch_no || ""),
+  }));
 };

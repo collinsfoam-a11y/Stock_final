@@ -421,19 +421,22 @@ export default function LoginScreen() {
                       style={styles.pinDisplay}
                       accessibilityLabel={`Enter your 4-digit PIN, ${pin.length} of 4 digits entered`}
                       accessibilityRole="text"
-                      accessibilityState={{ value: pin }}
+                      accessibilityValue={{ text: pin }}
                     >
                       {[0, 1, 2, 3].map((index) => (
                         <SafeAnimatedView
                           key={index}
                           entering={FadeInDown.delay(index * 50).duration(300)}
-                          style={[
-                            styles.pinDot,
-                            pin.length > index ? styles.pinDotFilled : styles.pinDotEmpty,
-                            pin.length === index && styles.pinDotActive,
-                          ]}
                         >
-                          {pin.length > index && <View style={styles.pinDotInner} />}
+                          <View
+                            style={[
+                              styles.pinDot,
+                              pin.length > index ? styles.pinDotFilled : styles.pinDotEmpty,
+                              pin.length === index && styles.pinDotActive,
+                            ]}
+                          >
+                            {pin.length > index && <View style={styles.pinDotInner} />}
+                          </View>
                         </SafeAnimatedView>
                       ))}
                     </TouchableOpacity>

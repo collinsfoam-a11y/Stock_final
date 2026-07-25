@@ -1368,7 +1368,7 @@ async def get_sessions_analytics(
         return {"success": True, "data": await _build_sessions_analytics_payload(db)}
     except Exception as e:
         logger.error("Analytics error: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e
 
 
 @router.get("/{session_id}", response_model=SessionDetail)
@@ -1383,8 +1383,11 @@ async def get_session_detail(
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
-    # Check access
-    if current_user["role"] != "supervisor" and _session_owner(session) != current_user["username"]:
+    # Check access — admin and supervisor can read any session (audit H3).
+    if (
+        current_user["role"] not in ("supervisor", "admin")
+        and _session_owner(session) != current_user["username"]
+    ):
         raise HTTPException(status_code=403, detail="Access denied")
 
     line_summary = await _get_session_line_summary(db, session_id)
@@ -1414,8 +1417,11 @@ async def get_session_stats(
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
-    # Check access
-    if current_user["role"] != "supervisor" and _session_owner(session) != current_user["username"]:
+    # Check access — admin and supervisor can read any session (audit H3).
+    if (
+        current_user["role"] not in ("supervisor", "admin")
+        and _session_owner(session) != current_user["username"]
+    ):
         raise HTTPException(status_code=403, detail="Access denied")
 
     line_summary = await _get_session_line_summary(db, session_id)

@@ -30,14 +30,24 @@ export default function HistoryStateView({
     // Show loading skeleton
     return (
       <View style={styles.loadingContainer}>
-        <View style={styles.skeletonItem}>
-          <View style={[styles.skeletonBox, styles.skeletonLine]} />
-          <View style={[styles.skeletonBox, styles.skeletonText]} />
-        </View>
-        <View style={styles.skeletonItem}>
-          <View style={[styles.skeletonBox, styles.skeletonLine]} />
-          <View style={[styles.skeletonBox, styles.skeletonText]} />
-        </View>
+        {[0, 1].map((row) => (
+          <View key={row} style={styles.skeletonItem}>
+            <View
+              style={[
+                styles.skeletonBox,
+                styles.skeletonLine,
+                { backgroundColor: uiTokens.colors.surfaceElevated },
+              ]}
+            />
+            <View
+              style={[
+                styles.skeletonBox,
+                styles.skeletonText,
+                { backgroundColor: uiTokens.colors.surfaceElevated },
+              ]}
+            />
+          </View>
+        ))}
       </View>
     );
   }
@@ -125,7 +135,6 @@ const styles = StyleSheet.create({
     marginBottom: gap.md,
   },
   skeletonBox: {
-    backgroundColor: "#e0e0e0",
     borderRadius: radius.sm,
   },
   skeletonLine: { width: 48, height: 32 },

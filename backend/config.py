@@ -414,7 +414,7 @@ class Settings(PydanticBaseSettings):
     # the fallback path and keeps running regardless of this flag).
     ERP_EVENT_SYNC_ENABLED: bool = False
     ERP_SYNC_ENABLED: bool = True
-    ERP_SYNC_INTERVAL: int = Field(3600, ge=60)  # 1 hour
+    ERP_SYNC_INTERVAL: int = Field(900, ge=60)  # 15 minutes
     AUTO_SYNC_ENABLED: bool = False
     AUTO_SYNC_INTERVAL: int = Field(3600, ge=60)  # 1 hour
     CHANGE_DETECTION_SYNC_ENABLED: bool = True
@@ -666,7 +666,7 @@ except Exception as e:
                 os.getenv("ERP_EVENT_SYNC_ENABLED", "false").lower() == "true"
             )
             self.ERP_SYNC_ENABLED = os.getenv("ERP_SYNC_ENABLED", "true").lower() == "true"
-            self.ERP_SYNC_INTERVAL = int(os.getenv("ERP_SYNC_INTERVAL", 3600))
+            self.ERP_SYNC_INTERVAL = int(os.getenv("ERP_SYNC_INTERVAL", 900))
             self.AUTO_SYNC_ENABLED = _parse_bool(os.getenv("AUTO_SYNC_ENABLED"), default=False)
             # Mirror the >=60s guard enforced by the primary Settings validator so
             # a sub-minute value can't turn the sync loop into a busy-loop.

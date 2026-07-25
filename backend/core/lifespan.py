@@ -277,17 +277,19 @@ database_health_service = DatabaseHealthService(
 
 # ERP sync service (full sync)
 erp_sync_service = None
-if getattr(settings, "ERP_SYNC_ENABLED", True):
-    try:
-        erp_sync_service = SQLSyncService(
-            sql_connector=sql_connector,
-            mongo_db=db,
-            sync_interval=getattr(settings, "ERP_SYNC_INTERVAL", 3600),
-            enabled=True,
-        )
-        set_erp_sync_service(erp_sync_service)
-    except Exception as e:
-        logger.warning("ERP sync service initialization failed: %s", str(e))
+try:
+    erp_sync_service = SQLSyncService(
+        sql_connector=sql_connector,
+        mongo_db=db,
+        sync_interval=getattr(settings, "ERP_SYNC_INTERVAL", 3600),
+        enabled=getattr(settings, "ERP_SYNC_ENABLED", True),
+    )
+    set_erp_sync_service(erp_sync_service)
+    from backend.services import item_refresh_service
+
+    item_refresh_service.sql_sync_service = erp_sync_service
+except Exception as e:
+    logger.warning("ERP sync service initialization failed: %s", str(e))
 
 # Change detection sync service (syncs item_name, manual_barcode, MRP changes)
 change_detection_sync = None

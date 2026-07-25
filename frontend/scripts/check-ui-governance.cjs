@@ -161,7 +161,7 @@ const RULES = {
     severity: "P1",
     title: "Legacy visual component family import",
     guidance:
-      "Use approved primitives: AppButton, AppCard, AppInput, AppHeader, StatusBadge, ScreenContainer, LoadingState, ErrorState, EmptyState, SyncIndicator, or ConfirmDialog.",
+      "Use approved primitives: ModernButton, ModernCard, ModernInput, ModernHeader, StatusBadge, ScreenContainer, LoadingState, ErrorState, EmptyState, SyncIndicator, or ConfirmModal.",
   },
   DECORATIVE_BACKGROUND_PROP: {
     id: "UI011",
@@ -217,7 +217,7 @@ const RULES = {
     severity: "P2",
     title: "Direct touchable lacks explicit accessibility props",
     guidance:
-      "Use AppButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
+      "Use ModernButton/approved primitives or provide accessibilityRole, accessibilityLabel, disabled/loading state, hitSlop, and a 44x44 target.",
   },
   MODERN_DESIGN_SYSTEM_IMPORT: {
     id: "UI019",

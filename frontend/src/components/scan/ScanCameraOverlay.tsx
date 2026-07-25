@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Camera, useCameraDevice, useCodeScanner } from "@/services/device/visionCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated from "react-native-reanimated";
@@ -14,7 +14,7 @@ interface ScanCameraOverlayProps {
   animatedScanLine: any;
   onBarcodeScanned: (payload: { data: string }) => void;
   onClose: () => void;
-  permission?: { granted?: boolean } | null;
+  permission?: { canAskAgain?: boolean; granted?: boolean; unavailableReason?: string | null } | null;
   requestPermission: () => unknown | Promise<unknown>;
   scanned: boolean;
   timeoutSeconds?: number;
@@ -77,15 +77,33 @@ export function ScanCameraOverlay({
   }
 
   if (!permission.granted) {
+    const canAskPermission = permission.canAskAgain !== false && !permission.unavailableReason;
+    const canOpenSettings = permission.canAskAgain === false && !permission.unavailableReason;
+    const handleOpenSettings = async () => {
+      try {
+        await Linking.openSettings();
+      } catch {
+        Alert.alert(
+          "Settings Unavailable",
+          "Unable to open app settings. Please enable camera permission manually."
+        );
+      }
+    };
+
     return (
       <View style={[styles.permissionContainer, { backgroundColor: tokens.colors.background }]}>
         <Text style={[styles.permissionText, { color: tokens.colors.textSecondary }]}>
-          We need your permission to show the camera
+          {permission.unavailableReason || "We need your permission to show the camera"}
         </Text>
-        <ModernButton onPress={requestPermission} title="Grant Permission" />
+        {canAskPermission ? (
+          <ModernButton onPress={requestPermission} title="Grant Permission" />
+        ) : null}
+        {canOpenSettings ? (
+          <ModernButton onPress={handleOpenSettings} title="Open Settings" />
+        ) : null}
         <ModernButton
           onPress={onClose}
-          title="Cancel"
+          title={canAskPermission ? "Cancel" : "Use Manual Entry"}
           variant="outline"
           style={{ marginTop: spacing.md }}
         />

@@ -28,17 +28,28 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { modernSpacing, modernAnimations } from "../../styles/modernDesignSystem";
 import {
   semanticColors,
   radius as unifiedRadius,
   spacing as unifiedSpacing,
   textStyles,
+  shadows as unifiedShadows,
 } from "@/theme/legacyCompat";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { useThemeContextSafe } from "../../context/ThemeContext";
+import { gap, radius } from "@/theme/staffUiScale";
 
-import { shadows as unifiedShadows } from "@/theme/legacyCompat";
+const ANIMATION_TOKENS = {
+  easing: {
+    spring: {
+      damping: 15,
+      stiffness: 300,
+    },
+  },
+  duration: {
+    fast: 150,
+  },
+} as const;
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 const AnimatedView = Animated.createAnimatedComponent(View);
 
@@ -115,7 +126,7 @@ export const ModernCard: React.FC<ModernCardProps> = ({
   const accentColor = themeColors?.accent ?? semanticColors.interactive.default;
 
   const actualPadding =
-    padding !== undefined ? padding : theme ? theme.spacing.md : modernSpacing.cardPadding;
+    padding !== undefined ? padding : theme ? theme.spacing.md : 20;
 
   // Animation values
   const scale = useSharedValue(1);
@@ -133,11 +144,11 @@ export const ModernCard: React.FC<ModernCardProps> = ({
   const handlePressIn = () => {
     if (onPress) {
       scale.value = withSpring(0.98, {
-        damping: modernAnimations.easing.spring.damping,
-        stiffness: modernAnimations.easing.spring.stiffness,
+        damping: ANIMATION_TOKENS.easing.spring.damping,
+        stiffness: ANIMATION_TOKENS.easing.spring.stiffness,
       });
       opacity.value = withTiming(0.9, {
-        duration: modernAnimations.duration.fast,
+        duration: ANIMATION_TOKENS.duration.fast,
       });
     }
   };
@@ -145,11 +156,11 @@ export const ModernCard: React.FC<ModernCardProps> = ({
   const handlePressOut = () => {
     if (onPress) {
       scale.value = withSpring(1, {
-        damping: modernAnimations.easing.spring.damping,
-        stiffness: modernAnimations.easing.spring.stiffness,
+        damping: ANIMATION_TOKENS.easing.spring.damping,
+        stiffness: ANIMATION_TOKENS.easing.spring.stiffness,
       });
       opacity.value = withTiming(1, {
-        duration: modernAnimations.duration.fast,
+        duration: ANIMATION_TOKENS.duration.fast,
       });
     }
   };

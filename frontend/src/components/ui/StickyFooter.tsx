@@ -1,6 +1,6 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
-import { AppButton } from "@/components/ui/AppButton";
+import ModernButton from "@/components/ui/ModernButton";
 import { useThemeContext } from "../../context/ThemeContext";
 
 interface Props {
@@ -26,7 +26,7 @@ function StickyFooter({ title, disabled, loading, onPress, testID }: Props) {
       ]}
     >
       <View style={[styles.inner, { borderRadius: theme.borderRadius.lg }]}>
-        <AppButton
+        <ModernButton
           title={title}
           onPress={onPress}
           disabled={!!disabled}

@@ -1,20 +1,16 @@
 /**
  * Simple Line Chart - View-based implementation (no SVG required)
- * Fully functional line chart using React Native Views
- *
- * Colors resolve at runtime from useUiTokens (dark-mode aware); explicit
- * color props from consumers always win. modernTypography/modernSpacing are
- * retained for metrics only (no color usage).
+ * Colors resolve at runtime from useUiTokens (dark-mode aware).
  */
 
 import React from "react";
 import { View, Text, StyleSheet, Dimensions, Platform } from "react-native";
-import { modernTypography, modernSpacing } from "../../styles/modernDesignSystem";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { colorWithAlpha, type ThemeTokens } from "../../theme/themeTokens";
+import { font, gap } from "@/theme/staffUiScale";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const CHART_WIDTH = SCREEN_WIDTH - modernSpacing.lg * 2 - 80;
+const CHART_WIDTH = SCREEN_WIDTH - gap.lg * 2 - 80;
 const CHART_HEIGHT = 200;
 const PADDING = 40;
 
@@ -55,7 +51,6 @@ export const SimpleLineChart: React.FC<
   const uiTokens = useUiTokens();
   const styles = React.useMemo(() => createStyles(uiTokens), [uiTokens]);
 
-  // Explicit consumer props win; semantic theme tokens are the defaults.
   const seriesColor = color ?? uiTokens.colors.accent;
   const resolvedGridColor = gridColor ?? colorWithAlpha(uiTokens.colors.border, 0.6);
   const resolvedTextColor = textColor ?? uiTokens.colors.textSecondary;
@@ -90,7 +85,6 @@ export const SimpleLineChart: React.FC<
     return { x, y, value: point.y, label: point.label || String(point.x) };
   });
 
-  // Generate grid lines
   const gridLines = [];
   const gridSteps = 5;
   for (let i = 0; i <= gridSteps; i++) {
@@ -99,7 +93,6 @@ export const SimpleLineChart: React.FC<
     gridLines.push({ y, value });
   }
 
-  // Generate x-axis labels
   const xLabels = data
     .filter((_, i) => i % Math.ceil(data.length / 5) === 0 || i === data.length - 1)
     .map((point) => ({
@@ -114,7 +107,6 @@ export const SimpleLineChart: React.FC<
         <Text style={[styles.yAxisLabel, { color: resolvedTextColor }]}>{yAxisLabel}</Text>
       )}
       <View style={styles.chartContainer}>
-        {/* Y-axis labels */}
         <View style={styles.yAxis}>
           {gridLines.map((line, i) => (
             <View key={i} style={[styles.yAxisLabelContainer, { top: line.y }]}>
@@ -125,9 +117,7 @@ export const SimpleLineChart: React.FC<
           ))}
         </View>
 
-        {/* Chart area */}
         <View style={styles.chartArea}>
-          {/* Grid lines */}
           {showGrid &&
             gridLines.map((line, i) => (
               <View
@@ -144,7 +134,6 @@ export const SimpleLineChart: React.FC<
               />
             ))}
 
-          {/* X-axis line */}
           <View
             style={[
               styles.axisLine,
@@ -155,8 +144,6 @@ export const SimpleLineChart: React.FC<
               },
             ]}
           />
-
-          {/* Y-axis line */}
           <View
             style={[
               styles.axisLine,
@@ -169,7 +156,6 @@ export const SimpleLineChart: React.FC<
             ]}
           />
 
-          {/* Line segments */}
           {points.map((point, index) => {
             if (index === 0) return null;
             const prevPoint = points[index - 1];
@@ -196,7 +182,6 @@ export const SimpleLineChart: React.FC<
             );
           })}
 
-          {/* Data points */}
           {showPoints &&
             points.map((point, index) => (
               <View
@@ -218,7 +203,6 @@ export const SimpleLineChart: React.FC<
               </View>
             ))}
 
-          {/* X-axis labels */}
           <View style={styles.xAxis}>
             {xLabels.map((label, i) => (
               <View key={i} style={[styles.xAxisLabel, { left: label.x }]}>
@@ -238,17 +222,19 @@ export const SimpleLineChart: React.FC<
 const createStyles = (uiTokens: ThemeTokens) =>
   StyleSheet.create({
     container: {
-      marginVertical: modernSpacing.md,
+      marginVertical: gap.md,
     },
     title: {
-      ...modernTypography.h5,
+      fontSize: font.size.xl,
+      fontWeight: font.weight.semibold,
       color: uiTokens.colors.textPrimary,
-      marginBottom: modernSpacing.sm,
+      marginBottom: gap.sm,
     },
     yAxisLabel: {
-      ...modernTypography.body.small,
+      fontSize: font.size.sm,
+      fontWeight: font.weight.regular,
       color: uiTokens.colors.textSecondary,
-      marginBottom: modernSpacing.xs,
+      marginBottom: gap.xs,
     },
     chartContainer: {
       flexDirection: "row",
@@ -260,12 +246,11 @@ const createStyles = (uiTokens: ThemeTokens) =>
     },
     yAxisLabelContainer: {
       position: "absolute",
-      right: modernSpacing.xs,
+      right: gap.xs,
       transform: [{ translateY: -8 }],
     },
     yAxisText: {
-      ...modernTypography.body.small,
-      fontSize: 10,
+      fontSize: font.size.sm,
       color: uiTokens.colors.textSecondary,
     },
     chartArea: {
@@ -300,7 +285,6 @@ const createStyles = (uiTokens: ThemeTokens) =>
       height: 8,
       borderRadius: 4,
       borderWidth: 2,
-      // Point outline contrasts against the chart surface in both modes.
       borderColor: uiTokens.colors.surfaceElevated,
     },
     tooltip: {
@@ -308,7 +292,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
       bottom: 12,
       left: -20,
       backgroundColor: uiTokens.colors.surfaceElevated,
-      paddingHorizontal: modernSpacing.xs,
+      paddingHorizontal: gap.xs,
       paddingVertical: 2,
       borderRadius: 4,
       borderWidth: 1,
@@ -317,10 +301,9 @@ const createStyles = (uiTokens: ThemeTokens) =>
       alignItems: "center",
     },
     tooltipText: {
-      ...modernTypography.body.small,
-      fontSize: 10,
+      fontSize: font.size.sm,
+      fontWeight: font.weight.semibold,
       color: uiTokens.colors.textPrimary,
-      fontWeight: "600",
     },
     xAxis: {
       position: "absolute",
@@ -333,16 +316,15 @@ const createStyles = (uiTokens: ThemeTokens) =>
       transform: [{ translateX: -20 }],
     },
     xAxisText: {
-      ...modernTypography.body.small,
-      fontSize: 10,
+      fontSize: font.size.sm,
       color: uiTokens.colors.textSecondary,
       textAlign: "center",
     },
     xAxisLabelText: {
-      ...modernTypography.body.small,
+      fontSize: font.size.sm,
       color: uiTokens.colors.textSecondary,
       textAlign: "center",
-      marginTop: modernSpacing.md,
+      marginTop: gap.md,
     },
     emptyState: {
       height: CHART_HEIGHT,
@@ -352,7 +334,8 @@ const createStyles = (uiTokens: ThemeTokens) =>
       borderRadius: 8,
     },
     emptyText: {
-      ...modernTypography.body.medium,
+      fontSize: font.size.base,
+      fontWeight: font.weight.regular,
       color: uiTokens.colors.textSecondary,
     },
   });

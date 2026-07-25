@@ -1,16 +1,17 @@
-import { act, renderHook } from "@testing-library/react-native";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 import { useSerialEntryManager } from "../useSerialEntryManager";
 
 const mockCheckSerialUniqueness = jest.fn();
+const mockRandomUUID = jest.fn();
 
 jest.mock("@/services/api/api", () => ({
   checkSerialUniqueness: (...args: unknown[]) => mockCheckSerialUniqueness(...args),
 }));
 
 jest.mock("expo-crypto", () => ({
-  randomUUID: () => `uuid-${Math.random().toString(36).slice(2)}`,
+  randomUUID: () => mockRandomUUID(),
 }));
 
 const ITEM = {
@@ -39,6 +40,7 @@ describe("useSerialEntryManager", () => {
     jest.clearAllMocks();
     jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
     mockCheckSerialUniqueness.mockResolvedValue({ exists: false, scope: "item" });
+    mockRandomUUID.mockImplementation(() => `uuid-${Math.random().toString(36).slice(2)}`);
   });
 
   it("passes item_code so the uniqueness precheck is item-scoped", async () => {
@@ -56,6 +58,57 @@ describe("useSerialEntryManager", () => {
       expect(ok).toBe(true);
     });
     expect(result.current.serialNumbers).toEqual(["SN-001"]);
+  });
+
+  it("does not update quantity for a blank manual serial row", async () => {
+    const onQuantityChange = jest.fn();
+    const { result } = setup({ onQuantityChange, quantity: "5", sessionId: undefined });
+
+    act(() => {
+      result.current.setIsSerializedItem(true);
+      result.current.handleAddSerial();
+    });
+
+    expect(onQuantityChange).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.handleSerialChange(0, "serial_number", "SN-MANUAL");
+    });
+
+    await waitFor(() => {
+      expect(onQuantityChange).toHaveBeenCalledWith("1");
+    });
+  });
+
+  it("prevents same-tick duplicate scanned additions before state re-renders", async () => {
+    const { result } = setup();
+
+    let firstAdded = false;
+    let secondAdded = true;
+    await act(async () => {
+      [firstAdded, secondAdded] = await Promise.all([
+        result.current.handleSerialScanned({ serial_number: "SN-RACE" }),
+        result.current.handleSerialScanned({ serial_number: "sn-race" }),
+      ]);
+    });
+
+    expect(firstAdded).toBe(true);
+    expect(secondAdded).toBe(false);
+    expect(result.current.serialNumbers).toEqual(["SN-RACE"]);
+    expect(mockCheckSerialUniqueness).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back when crypto randomUUID is unavailable on web", async () => {
+    mockRandomUUID.mockImplementation(() => {
+      throw new Error("unsupported");
+    });
+    const { result } = setup({ sessionId: undefined });
+
+    await act(async () => {
+      await result.current.handleSerialScanned({ serial_number: "SN-FALLBACK" });
+    });
+
+    expect(result.current.serialEntries[0]?.id).toMatch(/^serial_\d+_/);
   });
 
   it("rejects a local duplicate without calling the backend", async () => {

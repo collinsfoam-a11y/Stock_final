@@ -1123,15 +1123,10 @@ async def change_pin(
 ) -> dict[str, Any]:
     """
     Change user PIN.
-    Validates current PIN or current password before allowing change.
+    JWT-authenticated endpoint; does not require current PIN or password.
     """
     body = await request.json()
-    current_pin = body.get("current_pin")
-    current_password = body.get("current_password")
     new_pin = _validate_new_pin_value(body.get("new_pin"))
-
-    user = await _load_user_for_pin_change(current_user["username"])
-    _validate_pin_change_identity(user, current_pin, current_password)
     await _persist_user_pin(current_user["username"], new_pin)
 
     logger.info("PIN changed for user: %s", sanitize_for_logging(current_user["username"]))

@@ -38,10 +38,19 @@ async def test_whatsapp_service_disabled_by_default():
 
 @pytest.mark.asyncio
 async def test_whatsapp_service_mock_provider_returns_success():
-    service = WhatsAppService(config={"WHATSAPP_PROVIDER": "mock"})
+    service = WhatsAppService(config={"WHATSAPP_PROVIDER": "mock", "ENVIRONMENT": "development"})
 
     assert service.is_delivery_configured() is True
     assert await service.send_otp("+919999999999", "123456") is True
+
+
+@pytest.mark.asyncio
+async def test_whatsapp_service_mock_provider_blocked_in_production():
+    service = WhatsAppService(config={"WHATSAPP_PROVIDER": "mock", "ENVIRONMENT": "production"})
+
+    assert service.is_delivery_configured() is False
+    with pytest.raises(WhatsAppDeliveryError, match="mock provider is not allowed in production"):
+        await service.send_otp("+919999999999", "123456")
 
 
 @pytest.mark.asyncio

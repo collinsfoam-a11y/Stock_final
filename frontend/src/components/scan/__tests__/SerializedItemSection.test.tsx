@@ -7,7 +7,7 @@ import type { SerialEntryData } from "@/types/scan";
 const baseProps = {
   enabled: true,
   serialValidationErrors: [] as string[],
-  serialValidationMessages: [] as (string | null)[],
+  serialValidationMessages: {} as Record<string, string | null>,
   onAddSerial: jest.fn(),
   onOpenScanner: jest.fn(),
   onRemoveSerial: jest.fn(),
@@ -60,7 +60,7 @@ describe("SerializedItemSection manual serial entry", () => {
         onSerialChange={onSerialChange}
         isSerializedItem
         serialEntries={[entry("s1"), entry("s2")]}
-        serialValidationMessages={[null, null]}
+        serialValidationMessages={{ s1: null, s2: null }}
       />,
     );
     const inputs = getAllByPlaceholderText("Serial number");

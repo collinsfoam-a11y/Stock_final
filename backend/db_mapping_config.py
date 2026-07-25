@@ -198,6 +198,126 @@ SQL_TEMPLATES = {
           AND PB.AutoBarcode IS NOT NULL
           AND LEN(CAST(PB.AutoBarcode AS VARCHAR(50))) = 6
     """,
+    "get_item_by_code_aggregate": LAST_PURCHASE_CTE  # nosec
+    + """
+        SELECT
+            P.ProductID as item_id,
+            P.ProductCode as item_code,
+            P.ProductName as item_name,
+            CAST(MAX(PB.AutoBarcode) AS VARCHAR(50)) as barcode,
+            SUM(PB.Stock) as stock_qty,
+            P.BasicUnitID as uom_id,
+            UOM.UnitCode as uom_code,
+            UOM.UnitName as uom_name,
+            PG.GroupName as category,
+            PC.ProductCategoryName as subcategory,
+            P.HSNCode as hsn_code,
+            GST.GSTCategoryName as gst_category,
+            (COALESCE(GST.Sales_SGSTPerc, 0) +
+             COALESCE(GST.Sales_CGSTPerc, 0)) as gst_percent,
+            GST.Sales_SGSTPerc as sgst_percent,
+            GST.Sales_CGSTPerc as cgst_percent,
+            GST.Sales_IGSTPerc as igst_percent,
+            B.BrandName as brand_name,
+            LP.last_purchase_supplier,
+            LP.last_purchase_type as purchase_type,
+            LP.last_purchase_date,
+            LP.last_purchase_qty,
+            S.ShelfName as rack,
+            Z.ZoneName as floor,
+            W.WarehouseID as warehouse_id,
+            W.WarehouseName as location
+        FROM dbo.Products P
+        LEFT JOIN dbo.ProductBatches PB ON P.ProductID = PB.ProductID
+        LEFT JOIN dbo.UnitOfMeasures UOM ON P.BasicUnitID = UOM.UnitID
+            LEFT JOIN dbo.ProductGroups PG
+                ON P.ProductGroupID = PG.ProductGroupID
+            LEFT JOIN dbo.ProductCategory PC
+                ON P.ProductCategoryID = PC.ProductCategoryID
+            LEFT JOIN dbo.GSTCategory GST
+                ON P.GSTTaxCategoryID = GST.GSTTaxCategoryID
+            LEFT JOIN dbo.Brands B ON PB.BrandID = B.BrandID
+            LEFT JOIN dbo.Shelfs S ON PB.ShelfID = S.ShelfID
+            LEFT JOIN dbo.Zone Z ON S.ZoneID = Z.ZoneID
+            LEFT JOIN dbo.Warehouses W ON PB.WarehouseID = W.WarehouseID
+            LEFT JOIN LastPurchase LP
+                ON PB.ProductBatchID = LP.ProductBatchID AND LP.rn = 1
+        WHERE P.ProductCode = ?
+          AND PB.AutoBarcode IS NOT NULL
+          AND LEN(CAST(PB.AutoBarcode AS VARCHAR(50))) = 6
+          AND ISNUMERIC(CAST(PB.AutoBarcode AS VARCHAR(50))) = 1
+        GROUP BY
+            P.ProductID, P.ProductCode, P.ProductName,
+            P.BasicUnitID, UOM.UnitCode, UOM.UnitName,
+            PG.GroupName, PC.ProductCategoryName,
+            P.HSNCode, GST.GSTCategoryName,
+            GST.Sales_SGSTPerc, GST.Sales_CGSTPerc, GST.Sales_IGSTPerc,
+            B.BrandName,
+            LP.last_purchase_supplier, LP.last_purchase_type,
+            LP.last_purchase_date, LP.last_purchase_qty,
+            S.ShelfName, Z.ZoneName,
+            W.WarehouseID, W.WarehouseName
+    """,
+    "get_item_by_barcode_aggregate": LAST_PURCHASE_CTE  # nosec
+    + """
+        SELECT
+            P.ProductID as item_id,
+            P.ProductCode as item_code,
+            P.ProductName as item_name,
+            CAST(MAX(PB.AutoBarcode) AS VARCHAR(50)) as barcode,
+            SUM(PB.Stock) as stock_qty,
+            P.BasicUnitID as uom_id,
+            UOM.UnitCode as uom_code,
+            UOM.UnitName as uom_name,
+            PG.GroupName as category,
+            PC.ProductCategoryName as subcategory,
+            P.HSNCode as hsn_code,
+            GST.GSTCategoryName as gst_category,
+            (COALESCE(GST.Sales_SGSTPerc, 0) +
+             COALESCE(GST.Sales_CGSTPerc, 0)) as gst_percent,
+            GST.Sales_SGSTPerc as sgst_percent,
+            GST.Sales_CGSTPerc as cgst_percent,
+            GST.Sales_IGSTPerc as igst_percent,
+            B.BrandName as brand_name,
+            LP.last_purchase_supplier,
+            LP.last_purchase_type as purchase_type,
+            LP.last_purchase_date,
+            LP.last_purchase_qty,
+            S.ShelfName as rack,
+            Z.ZoneName as floor,
+            W.WarehouseID as warehouse_id,
+            W.WarehouseName as location
+        FROM dbo.Products P
+        LEFT JOIN dbo.ProductBatches PB ON P.ProductID = PB.ProductID
+        LEFT JOIN dbo.UnitOfMeasures UOM ON P.BasicUnitID = UOM.UnitID
+            LEFT JOIN dbo.ProductGroups PG
+                ON P.ProductGroupID = PG.ProductGroupID
+            LEFT JOIN dbo.ProductCategory PC
+                ON P.ProductCategoryID = PC.ProductCategoryID
+            LEFT JOIN dbo.GSTCategory GST
+                ON P.GSTTaxCategoryID = GST.GSTTaxCategoryID
+            LEFT JOIN dbo.Brands B ON PB.BrandID = B.BrandID
+            LEFT JOIN dbo.Shelfs S ON PB.ShelfID = S.ShelfID
+            LEFT JOIN dbo.Zone Z ON S.ZoneID = Z.ZoneID
+            LEFT JOIN dbo.Warehouses W ON PB.WarehouseID = W.WarehouseID
+            LEFT JOIN LastPurchase LP
+                ON PB.ProductBatchID = LP.ProductBatchID AND LP.rn = 1
+        WHERE CAST(PB.AutoBarcode AS VARCHAR(50)) = ?
+          AND PB.AutoBarcode IS NOT NULL
+          AND LEN(CAST(PB.AutoBarcode AS VARCHAR(50))) = 6
+          AND ISNUMERIC(CAST(PB.AutoBarcode AS VARCHAR(50))) = 1
+        GROUP BY
+            P.ProductID, P.ProductCode, P.ProductName,
+            P.BasicUnitID, UOM.UnitCode, UOM.UnitName,
+            PG.GroupName, PC.ProductCategoryName,
+            P.HSNCode, GST.GSTCategoryName,
+            GST.Sales_SGSTPerc, GST.Sales_CGSTPerc, GST.Sales_IGSTPerc,
+            B.BrandName,
+            LP.last_purchase_supplier, LP.last_purchase_type,
+            LP.last_purchase_date, LP.last_purchase_qty,
+            S.ShelfName, Z.ZoneName,
+            W.WarehouseID, W.WarehouseName
+    """,
     "get_all_items": LAST_PURCHASE_CTE  # nosec
     + """
         SELECT DISTINCT TOP 50000
@@ -323,7 +443,7 @@ SQL_TEMPLATES = {
         SELECT
             PB.ProductBatchID as batch_id,
             PB.BatchNo as batch_no,
-            PB.ManualBarcode as barcode,
+            CAST(PB.AutoBarcode AS VARCHAR(50)) as barcode,
             PB.AutoBarcode as auto_barcode,
             PB.MfgDate as mfg_date,
             PB.ExpiryDate as expiry_date,
@@ -342,6 +462,67 @@ SQL_TEMPLATES = {
         LEFT JOIN dbo.Shelfs S ON PB.ShelfID = S.ShelfID
         WHERE P.ProductID = ? OR P.ProductCode = ?
         ORDER BY PB.ExpiryDate, PB.BatchNo
+    """,
+    "get_all_items_aggregate": LAST_PURCHASE_CTE  # nosec
+    + """
+        SELECT
+            P.ProductID as item_id,
+            P.ProductCode as item_code,
+            P.ProductName as item_name,
+            CAST(MAX(PB.AutoBarcode) AS VARCHAR(50)) as barcode,
+            SUM(PB.Stock) as stock_qty,
+            P.BasicUnitID as uom_id,
+            UOM.UnitCode as uom_code,
+            UOM.UnitName as uom_name,
+            PG.GroupName as category,
+            PC.ProductCategoryName as subcategory,
+            P.HSNCode as hsn_code,
+            GST.GSTCategoryName as gst_category,
+            (COALESCE(GST.Sales_SGSTPerc, 0) +
+             COALESCE(GST.Sales_CGSTPerc, 0)) as gst_percent,
+            GST.Sales_SGSTPerc as sgst_percent,
+            GST.Sales_CGSTPerc as cgst_percent,
+            GST.Sales_IGSTPerc as igst_percent,
+            B.BrandName as brand_name,
+            LP.last_purchase_supplier,
+            LP.last_purchase_type as purchase_type,
+            LP.last_purchase_date,
+            LP.last_purchase_qty,
+            S.ShelfName as rack,
+            Z.ZoneName as floor,
+            W.WarehouseID as warehouse_id,
+            W.WarehouseName as location
+        FROM dbo.Products P
+        LEFT JOIN dbo.ProductBatches PB ON P.ProductID = PB.ProductID
+        LEFT JOIN dbo.UnitOfMeasures UOM ON P.BasicUnitID = UOM.UnitID
+            LEFT JOIN dbo.ProductGroups PG
+                ON P.ProductGroupID = PG.ProductGroupID
+            LEFT JOIN dbo.ProductCategory PC
+                ON P.ProductCategoryID = PC.ProductCategoryID
+            LEFT JOIN dbo.GSTCategory GST
+                ON P.GSTTaxCategoryID = GST.GSTTaxCategoryID
+            LEFT JOIN dbo.Brands B ON PB.BrandID = B.BrandID
+            LEFT JOIN dbo.Shelfs S ON PB.ShelfID = S.ShelfID
+            LEFT JOIN dbo.Zone Z ON S.ZoneID = Z.ZoneID
+            LEFT JOIN dbo.Warehouses W ON PB.WarehouseID = W.WarehouseID
+            LEFT JOIN LastPurchase LP
+                ON PB.ProductBatchID = LP.ProductBatchID AND LP.rn = 1
+        WHERE P.IsActive = 1
+          AND PB.AutoBarcode IS NOT NULL
+          AND LEN(CAST(PB.AutoBarcode AS VARCHAR(50))) = 6
+          AND ISNUMERIC(CAST(PB.AutoBarcode AS VARCHAR(50))) = 1
+        GROUP BY
+            P.ProductID, P.ProductCode, P.ProductName,
+            P.BasicUnitID, UOM.UnitCode, UOM.UnitName,
+            PG.GroupName, PC.ProductCategoryName,
+            P.HSNCode, GST.GSTCategoryName,
+            GST.Sales_SGSTPerc, GST.Sales_CGSTPerc, GST.Sales_IGSTPerc,
+            B.BrandName,
+            LP.last_purchase_supplier, LP.last_purchase_type,
+            LP.last_purchase_date, LP.last_purchase_qty,
+            S.ShelfName, Z.ZoneName,
+            W.WarehouseID, W.WarehouseName
+        ORDER BY P.ProductName
     """,
     # Full sync query for MongoDB - includes ALL fields
     "sync_all_items": LAST_PURCHASE_CTE  # nosec

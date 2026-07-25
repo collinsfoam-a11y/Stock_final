@@ -5,6 +5,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import type { SerialEntryData } from "@/types/scan";
 import { SerialEntriesSection } from "@/components/scan/SerialEntriesSection";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import ModernCard from "@/components/ui/ModernCard";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getDecorativeIconProps } from "@/utils/accessibility";
 
@@ -13,7 +14,7 @@ interface SerializedItemSectionProps {
   isSerializedItem: boolean;
   serialEntries: SerialEntryData[];
   serialValidationErrors: string[];
-  serialValidationMessages: (string | null)[];
+  serialValidationMessages: Record<string, string | null>;
   onAddSerial: () => void;
   onOpenScanner: () => void;
   onRemoveSerial: (index: number) => void;
@@ -75,7 +76,7 @@ export function SerializedItemSection({
   return (
     <>
       <View style={styles.section}>
-        <View style={styles.toggleRow}>
+        <ModernCard style={{ padding: uiTokens.spacing.md, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={styles.toggleLabelContainer}>
             <Ionicons
               {...decorativeIconProps}
@@ -99,7 +100,7 @@ export function SerializedItemSection({
               isSerializedItem ? uiTokens.colors.surfaceElevated : uiTokens.colors.surface
             }
           />
-        </View>
+        </ModernCard>
         <Text style={styles.toggleHint}>
           {isSerializedItem
             ? "Capture each unit with a unique serial number before saving."

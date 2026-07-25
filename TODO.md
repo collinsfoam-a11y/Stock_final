@@ -15,28 +15,34 @@ Status: Ready pending deploy verification
 ## Verified (most recent full local run)
 
 ### 1. Frontend Typecheck
+
 - `npm run typecheck`
 - Result: passed
 
 ### 2. Frontend Lint
+
 - `npm run lint`
 - Result: passed
 
 ### 3. Frontend Tests
+
 - `npm test -- --runInBand`
 - Result: `55/55` suites passed, `199/199` tests passed
   (network-status utility tests added on top of this baseline)
 
 ### 4. Backend Tests
+
 - `python -m pytest backend/tests/ -q`
 - Result: `787 passed`, `11 skipped`, `1 deselected`
   (user-permission modifier tests added on top of this baseline)
 
 ### 5. Validation Scripts
+
 - `bash ./scripts/python.sh scripts/health_check_summary.py` — passed
 - `bash ./scripts/final_system_validation.sh` — passed
 
 ### 6. Android Release Build
+
 - Release APK rebuilt from the latest frontend state
 - Output: `frontend/android/app/build/outputs/apk/release/app-release.apk`
 

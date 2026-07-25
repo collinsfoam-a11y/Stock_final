@@ -20,9 +20,9 @@ import {
   TouchableOpacity,
   Platform,
   ViewStyle,
-  Alert,
   LayoutChangeEvent,
 } from "react-native";
+import { confirmAction } from "@/services/actionSheet";
 import { BlurView } from "expo-blur";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
@@ -198,24 +198,16 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
       return;
     }
 
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      const confirmed = window.confirm(logoutConfirmMessage);
-      if (confirmed) {
-        await logout();
-      }
-      return;
-    }
+    const confirmed = await confirmAction({
+      title: "Logout",
+      message: logoutConfirmMessage,
+      confirmLabel: "Logout",
+      destructive: true,
+    });
 
-    Alert.alert("Logout", logoutConfirmMessage, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          await logout();
-        },
-      },
-    ]);
+    if (confirmed) {
+      await logout();
+    }
   }, [logout, logoutConfirmMessage]);
 
   const handleRightAction = useCallback(() => {

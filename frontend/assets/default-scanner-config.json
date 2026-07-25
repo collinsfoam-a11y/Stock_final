@@ -1,0 +1,96 @@
+{
+  "metadata": {
+    "version": 1,
+    "schemaVersion": 1,
+    "checksum": "8d3e2f1a9b0c7d5e",
+    "minimumAppVersion": "2.6.0",
+    "updatedAt": "2026-07-23T12:00:00Z"
+  },
+  "configuration": {
+    "profiles": {
+      "serial_only": {
+        "symbologies": ["code-128", "code-39"],
+        "roiRatio": { "width": 0.8, "height": 0.3 },
+        "description": "Ultra-fast throughput for Code128/Code39 serials",
+        "camera": {
+          "fps": 60,
+          "resolution": "1080p",
+          "autoFocus": "continuous",
+          "zoom": 1.0
+        }
+      },
+      "retail_barcode": {
+        "symbologies": ["ean-13", "ean-8", "upc-a", "itf"],
+        "roiRatio": { "width": 0.85, "height": 0.4 },
+        "description": "Optimized for product EAN-13, UPC-A, and EAN-8",
+        "camera": {
+          "fps": 60,
+          "resolution": "1080p",
+          "autoFocus": "continuous",
+          "zoom": 1.0
+        }
+      },
+      "dense_2d": {
+        "symbologies": ["qr", "data-matrix", "pdf417", "aztec"],
+        "roiRatio": { "width": 0.6, "height": 0.6 },
+        "description": "High-precision decoder for QR and GS1 DataMatrix",
+        "camera": {
+          "fps": 30,
+          "resolution": "1080p",
+          "autoFocus": "macro",
+          "zoom": 1.2
+        }
+      },
+      "warehouse_mixed": {
+        "symbologies": ["code-128", "code-39", "qr", "data-matrix", "pdf417", "ean-13"],
+        "roiRatio": { "width": 0.75, "height": 0.5 },
+        "description": "Adaptive mode supporting all warehouse symbologies",
+        "camera": {
+          "fps": 60,
+          "resolution": "1080p",
+          "autoFocus": "continuous",
+          "zoom": 1.0
+        }
+      },
+      "long_distance": {
+        "symbologies": ["code-128", "qr", "data-matrix"],
+        "roiRatio": { "width": 0.5, "height": 0.5 },
+        "description": "High-zoom mode for top rack labels",
+        "camera": {
+          "fps": 60,
+          "resolution": "1080p",
+          "autoFocus": "continuous",
+          "zoom": 2.0
+        }
+      }
+    },
+    "rankingPolicies": {
+      "default": {
+        "workflowWeight": 40,
+        "confidenceWeight": 30,
+        "roiWeight": 20,
+        "areaWeight": 10
+      }
+    },
+    "featureFlags": {
+      "adaptiveROI": true,
+      "adaptiveLearning": true,
+      "aiQualityAnalyzer": true,
+      "gs1ParserV2": true,
+      "experimentalAutofocus": false,
+      "advancedRanking": true,
+      "telemetryEnabled": true
+    },
+    "telemetry": {
+      "analyticsEnabled": true,
+      "errorReportingEnabled": true
+    },
+    "rollout": {
+      "percentage": 100
+    },
+    "constraints": {
+      "minOsVersion": "12.0",
+      "requireHighPerformance": false
+    }
+  }
+}

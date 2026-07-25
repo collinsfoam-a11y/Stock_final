@@ -11,14 +11,14 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { AppInput } from "@/components/ui/AppInput";
+import ModernInput from "@/components/ui/ModernInput";
 import {
   WarehouseOption,
   ZoneOption,
 } from "@/components/supervisor/dashboard/supervisorDashboardShared";
-import { theme } from "@/styles/unifiedSystem";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface CreateSessionModalProps {
@@ -186,11 +186,11 @@ export function CreateSessionModal({
                   <Text style={[styles.stepLabel, { color: uiTokens.colors.textPrimary }]}>
                     3. Rack / Shelf Identifier
                   </Text>
-                  <AppInput
+                  <ModernInput
                     value={rackName}
                     onChangeText={onChangeRackName}
                     placeholder="e.g. RACK-A1"
-                    leftIcon="grid-outline"
+                    icon="grid-outline"
                     autoCapitalize="characters"
                   />
                 </View>
@@ -241,62 +241,62 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    borderTopLeftRadius: theme.borderRadius.xl,
-    borderTopRightRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: gap.lg,
     maxHeight: "80%",
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.lg,
+    marginBottom: gap.lg,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: font.size.xl,
+    fontWeight: font.weight.bold,
   },
   modalCloseButton: {
-    padding: theme.spacing.xs,
+    padding: gap.xs,
   },
   stepContainer: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: gap.lg,
   },
   stepLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: theme.spacing.sm,
+    fontSize: font.size.lg,
+    fontWeight: font.weight.semibold,
+    marginBottom: gap.sm,
   },
   optionsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: theme.spacing.sm,
+    gap: gap.sm,
   },
   optionButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: gap.md,
+    paddingVertical: gap.sm,
+    borderRadius: radius.md,
     borderWidth: 1,
   },
   optionText: {
-    fontWeight: "500",
+    fontWeight: font.weight.medium,
   },
   optionTextSelected: {
-    fontWeight: "700",
+    fontWeight: font.weight.bold,
   },
   createButton: {
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
+    padding: gap.md,
+    borderRadius: radius.lg,
     alignItems: "center",
-    marginTop: theme.spacing.md,
+    marginTop: gap.md,
   },
   createButtonDisabled: {
     opacity: 0.5,
   },
   createButtonText: {
     color: uiSemanticColors.text.inverse,
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: font.size.lg,
+    fontWeight: font.weight.bold,
   },
   bottomSpacer: {
     height: 40,

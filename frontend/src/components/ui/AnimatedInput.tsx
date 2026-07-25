@@ -1,7 +1,6 @@
 /**
  * AnimatedInput Component
  * Input field with smooth focus animations and haptic feedback
- * Inspired by rnx-ui input patterns
  */
 
 import React, { useState, useRef, useCallback } from "react";
@@ -16,9 +15,9 @@ import {
   TextStyle,
 } from "react-native";
 import * as Haptics from "expo-haptics";
-import { modernBorderRadius } from "../../styles/modernDesignSystem";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import type { ThemeTokens } from "@/theme/themeTokens";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
 
 import { shadows as uiShadows } from "@/theme/legacyCompat";
 interface AnimatedInputProps extends TextInputProps {
@@ -46,7 +45,6 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
   const styles = React.useMemo(() => createStyles(tokens), [tokens]);
   const [isFocused, setIsFocused] = useState(false);
 
-  // Animation values
   const borderColor = useRef(new Animated.Value(0)).current;
   const labelPosition = useRef(new Animated.Value(value ? 1 : 0)).current;
   const labelScale = useRef(new Animated.Value(value ? 0.85 : 1)).current;
@@ -56,12 +54,10 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
     (e: any) => {
       setIsFocused(true);
 
-      // Haptic feedback on focus
       if (hapticOnFocus) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
 
-      // Animate border and label
       Animated.parallel([
         Animated.timing(borderColor, {
           toValue: 1,
@@ -94,7 +90,6 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
     (e: any) => {
       setIsFocused(false);
 
-      // Animate back if no value
       Animated.parallel([
         Animated.timing(borderColor, {
           toValue: 0,
@@ -145,7 +140,7 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
             : tokens.colors.surfaceElevated,
           borderWidth: 0,
           borderBottomWidth: 2,
-          borderRadius: modernBorderRadius.md,
+          borderRadius: radius.md,
           borderBottomLeftRadius: 0,
           borderBottomRightRadius: 0,
         };
@@ -154,7 +149,7 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
         return {
           backgroundColor: tokens.colors.surface,
           borderWidth: 1.5,
-          borderRadius: modernBorderRadius.md,
+          borderRadius: radius.md,
         };
     }
   };
@@ -196,7 +191,7 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
           value={value}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          style={[styles.input, props.style, { paddingTop: label ? 20 : 12 }]}
+          style={[styles.input, props.style, { paddingTop: label ? 20 : gap.sm }]}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -206,38 +201,39 @@ export const AnimatedInput: React.FC<AnimatedInputProps> = ({
   );
 };
 
-const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
-  container: {
-    marginBottom: 16,
-  },
-  inputContainer: {
-    position: "relative",
-    ...uiShadows.md,
-    elevation: 4,
-  },
-  label: {
-    position: "absolute",
-    left: 16,
-    top: 0,
-    backgroundColor: tokens.colors.surface,
-    paddingHorizontal: 4,
-    fontSize: 14,
-    fontWeight: "500",
-    zIndex: 1,
-  },
-  input: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    fontSize: 16,
-    color: tokens.colors.textPrimary,
-    minHeight: 52,
-  },
-  errorText: {
-    marginTop: 4,
-    marginLeft: 4,
-    fontSize: 12,
-    color: tokens.colors.error,
-  },
-});
+const createStyles = (tokens: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      marginBottom: gap.md,
+    },
+    inputContainer: {
+      position: "relative",
+      ...uiShadows.md,
+      elevation: 4,
+    },
+    label: {
+      position: "absolute",
+      left: gap.md,
+      top: 0,
+      backgroundColor: tokens.colors.surface,
+      paddingHorizontal: gap.xs,
+      fontSize: font.size.base,
+      fontWeight: font.weight.medium,
+      zIndex: 1,
+    },
+    input: {
+      paddingHorizontal: gap.md,
+      paddingBottom: gap.sm,
+      fontSize: font.size.lg,
+      color: tokens.colors.textPrimary,
+      minHeight: 52,
+    },
+    errorText: {
+      marginTop: gap.xs,
+      marginLeft: gap.xs,
+      fontSize: font.size.sm,
+      color: tokens.colors.error,
+    },
+  });
 
 export default AnimatedInput;

@@ -1,4 +1,5 @@
-from unittest.mock import AsyncMock, MagicMock
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
@@ -16,11 +17,91 @@ from backend.api.erp_api import (
 @pytest.fixture(autouse=True)
 def setup_mocks():
     mock_db = AsyncMock()
-    # Fix: find() is synchronous and returns a cursor, so it shouldn't be an AsyncMock
     mock_db.erp_items.find = MagicMock()
     mock_cache = AsyncMock()
     init_erp_api(mock_db, mock_cache)
     return mock_db, mock_cache
+
+
+@pytest.mark.asyncio
+async def test_get_item_by_barcode_db_hit_triggers_background_sql_sync(setup_mocks):
+    mock_db, mock_cache = setup_mocks
+
+    mock_cache.get.return_value = None
+
+    db_item = {
+        "item_code": "CODE123",
+        "barcode": "510001",
+        "item_name": "Test Item",
+        "stock_qty": 10.0,
+        "selling_price": 100.0,
+    }
+    mock_db.erp_items.find_one.return_value = db_item
+
+    mock_background_sync = AsyncMock()
+
+    fake_refresh_svc = MagicMock()
+    fake_refresh_svc.sql_sync_service = MagicMock()
+    fake_refresh_svc.sql_sync_service.sync_single_item_by_barcode = mock_background_sync
+
+    import backend.api.erp_api as erp_api_module
+    erp_api_module._sql_connector = MagicMock()
+
+    captured = []
+
+    def _create_task(coro):
+        task = asyncio.get_running_loop().create_task(coro)
+        captured.append(task)
+        return task
+
+    with patch.object(erp_api_module.asyncio, "create_task", _create_task), patch(
+        "backend.services.item_refresh_service.item_refresh_service", fake_refresh_svc
+    ):
+        current_user = {"username": "testuser"}
+        response = await get_item_by_barcode(barcode="510001", current_user=current_user)
+
+    assert response.item_code == "CODE123"
+    await asyncio.gather(*captured, return_exceptions=True)
+    mock_background_sync.assert_awaited_once_with("510001")
+
+
+@pytest.mark.asyncio
+async def test_get_item_by_barcode_db_hit_skips_background_sync_when_sql_unavailable(setup_mocks):
+    mock_db, mock_cache = setup_mocks
+
+    mock_cache.get.return_value = None
+
+    db_item = {
+        "item_code": "CODE123",
+        "barcode": "510001",
+        "item_name": "Test Item",
+        "stock_qty": 10.0,
+        "selling_price": 100.0,
+    }
+    mock_db.erp_items.find_one.return_value = db_item
+
+    import backend.api.erp_api as erp_api_module
+    erp_api_module._sql_connector = None
+
+    fake_refresh_svc = MagicMock()
+    fake_refresh_svc.sql_sync_service = None
+
+    captured = []
+
+    def _create_task(coro):
+        task = asyncio.get_running_loop().create_task(coro)
+        captured.append(task)
+        return task
+
+    with patch.object(erp_api_module.asyncio, "create_task", _create_task), patch(
+        "backend.services.item_refresh_service.item_refresh_service", fake_refresh_svc
+    ):
+        current_user = {"username": "testuser"}
+        response = await get_item_by_barcode(barcode="510001", current_user=current_user)
+
+    assert response.item_code == "CODE123"
+    await asyncio.gather(*captured, return_exceptions=True)
+    assert fake_refresh_svc.sql_sync_service is None
 
 
 @pytest.mark.asyncio
@@ -122,14 +203,20 @@ async def test_refresh_item_stock(setup_mocks):
     mock_db.erp_items.find_one.return_value = db_item
 
     request = MagicMock()
+    response = MagicMock()
     current_user = {"username": "testuser"}
 
-    response = await refresh_item_stock(
-        request=request, item_code="CODE123", current_user=current_user
-    )
+    fake_refresh_response = MagicMock()
+    fake_refresh_response.item_code = "CODE123"
+    fake_refresh_response.changed = False
 
-    assert response["success"] is True
-    assert response["item"].item_code == "CODE123"
+    with patch("backend.services.item_refresh_service.item_refresh_service.refresh_single_item_by_identifier", new=AsyncMock(return_value=fake_refresh_response)):
+        response_val = await refresh_item_stock(
+            request=request, response=response, item_code="CODE123", current_user=current_user
+        )
+
+    assert response_val["success"] is True
+    assert response_val["item"].item_code == "CODE123"
 
 
 @pytest.mark.asyncio

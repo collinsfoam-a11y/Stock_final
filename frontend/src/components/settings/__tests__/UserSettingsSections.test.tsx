@@ -7,6 +7,9 @@ import { UserSettingsSections } from "../UserSettingsSections";
 const mockCheckForUpdates = jest.fn();
 const mockDismissUpdate = jest.fn();
 const mockSetSetting = jest.fn();
+const mockGetPinForBiometrics = jest.fn();
+const mockClearPinForBiometrics = jest.fn();
+const mockPush = jest.fn();
 
 const baseSettings = {
   notificationsEnabled: true,
@@ -96,6 +99,23 @@ jest.mock("../../../store/settingsStore", () => ({
   }),
 }));
 
+jest.mock("../../../store/authStore", () => ({
+  useAuthStore: () => ({
+    getPinForBiometrics: mockGetPinForBiometrics,
+    clearPinForBiometrics: mockClearPinForBiometrics,
+  }),
+}));
+
+jest.mock("expo-router", () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+}));
+
+jest.mock("expo-local-authentication", () => ({
+  hasHardwareAsync: jest.fn(async () => true),
+  isEnrolledAsync: jest.fn(async () => true),
+}));
 
 jest.mock("../../ui/AnimatedPressable", () => ({
   AnimatedPressable: ({
@@ -128,6 +148,8 @@ jest.mock("expo-haptics", () => ({
 describe("UserSettingsSections", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetPinForBiometrics.mockResolvedValue(null);
+    mockClearPinForBiometrics.mockResolvedValue(undefined);
     mockVersionInfo = null;
     mockIsDismissed = false;
   });
@@ -219,5 +241,34 @@ describe("UserSettingsSections", () => {
     fireEvent(getByLabelText("Sync Failure Alerts"), "valueChange", false);
 
     expect(mockSetSetting).toHaveBeenCalledWith("notificationSyncFailureAlerts", false);
+  });
+
+  it("enables biometric login only when a local biometric PIN is stored", async () => {
+    mockGetPinForBiometrics.mockResolvedValue("1234");
+
+    const { getByLabelText } = render(<UserSettingsSections />);
+
+    fireEvent(getByLabelText("Biometric Login"), "valueChange", true);
+
+    await waitFor(() => {
+      expect(mockSetSetting).toHaveBeenCalledWith("biometricAuth", true);
+    });
+  });
+
+  it("prompts for Security & PIN setup instead of enabling biometrics without a stored PIN", async () => {
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+
+    const { getByLabelText } = render(<UserSettingsSections />);
+
+    fireEvent(getByLabelText("Biometric Login"), "valueChange", true);
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(
+        "PIN Required",
+        "Open Security & PIN to verify your 4-digit PIN before enabling biometric login.",
+        expect.any(Array)
+      );
+    });
+    expect(mockSetSetting).not.toHaveBeenCalledWith("biometricAuth", true);
   });
 });

@@ -124,7 +124,7 @@ export const Modal: React.FC<ModalProps> = ({
   }, []);
 
   useEffect(() => {
-    if (Platform.OS !== "web") return;
+    if (Platform.OS !== "web") return undefined;
 
     if (visible) {
       previousFocusRef.current = document.activeElement as HTMLElement;
@@ -138,7 +138,7 @@ export const Modal: React.FC<ModalProps> = ({
         const el = host.closest?.('[class]') ?? host;
         const focusable = getFocusableElements(el as HTMLElement);
         if (focusable.length > 0) {
-          focusable[0].focus();
+          focusable[0]?.focus();
         } else {
           (el as HTMLElement).setAttribute("tabindex", "-1");
           (el as HTMLElement).focus();
@@ -174,6 +174,8 @@ export const Modal: React.FC<ModalProps> = ({
         previousFocusRef.current?.focus();
       };
     }
+
+    return undefined;
   }, [visible, getFocusableElements]);
 
   // Animated backdrop style
@@ -237,8 +239,8 @@ export const Modal: React.FC<ModalProps> = ({
                   borderColor: uiTokens.colors.border,
                 },
                 modalAnimatedStyle,
-                Platform.OS === "web" ? { "aria-modal": true as any } : undefined,
               ]}
+              aria-modal={Platform.OS === "web" ? true : undefined}
             >
               {(title || showCloseButton) && (
                 <View style={[styles.header, { borderBottomColor: uiTokens.colors.border }]}>

@@ -1,15 +1,42 @@
-"""Middleware registration for FastAPI app composition."""
-
-from __future__ import annotations
-
 import os
+import time
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.gzip import GZipMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.responses import Response
 from starlette.types import ASGIApp, Receive, Send
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+API_VERSION = "2.1.0"
+
+
+class PerformanceMiddleware(BaseHTTPMiddleware):
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        start_time = time.time()
+        response = await call_next(request)
+        process_time = (time.time() - start_time) * 1000  # ms
+        response.headers["X-Process-Time"] = f"{process_time:.2f}"
+        logger.debug(
+            "API Performance",
+            extra={
+                "http": {
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status_code": response.status_code,
+                    "response_time_ms": process_time,
+                }
+            },
+        )
+        return response
 
 API_VERSION = "2.1.0"
 
@@ -161,6 +188,10 @@ def register_middleware(
     allowed_hosts = _resolve_allowed_hosts(settings, env)
     allowed_origins = _resolve_allowed_origins(settings, env, logger)
     cors_origin_regex = _resolve_cors_origin_regex(env)
+
+    # Performance Middleware (Phase 3)
+    app.add_middleware(PerformanceMiddleware)
+    logger.info("Performance middleware enabled")
 
     _register_trusted_host_middleware(app, allowed_hosts=allowed_hosts, env=env, logger=logger)
     _register_security_headers(app, security_headers_middleware, logger)

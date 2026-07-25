@@ -593,6 +593,7 @@ class TestCreateCountLine:
             "id": "session123",
             "session_id": "session123",
             "status": "ACTIVE",
+            "require_correction_reason_for_variance": True,
         }
         mock_db.erp_items.find_one.return_value = erp_item
 

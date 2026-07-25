@@ -186,7 +186,7 @@ def _encrypt_erp_password(password: str) -> str:
     except Exception as exc:
         raise HTTPException(
             status_code=500,
-            detail=f"Password encryption is unavailable (missing cryptography): {exc}",
+            detail="Password encryption is unavailable (missing cryptography)",
         ) from exc
 
     secret = str(settings.JWT_SECRET or "")
@@ -226,7 +226,7 @@ async def get_tables(
         raise
     except Exception as e:
         logger.exception("Error fetching tables")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e
 
 
 @router.post("/columns")
@@ -267,7 +267,7 @@ async def get_columns(
         raise
     except Exception as e:
         logger.exception("Error fetching columns")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e
 
 
 @router.post("/preview")
@@ -326,7 +326,7 @@ async def preview_mapping(
         raise
     except Exception as e:
         logger.exception("Error testing mapping")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e
 
 
 @router.post("/save")
@@ -390,7 +390,7 @@ async def save_mapping(
         raise
     except Exception as e:
         logger.exception("Error saving mapping")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e
 
 
 @router.get("/current")
@@ -418,4 +418,4 @@ async def get_current_mapping(
         return result
     except Exception as e:
         logger.exception("Error fetching current mapping")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e

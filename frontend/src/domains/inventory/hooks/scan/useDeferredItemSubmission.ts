@@ -2,14 +2,28 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
 import { haptics } from "@/services/haptics";
 
-import { createCountLine } from "@/services/api/api";
+import { createCountLine, createManualBatches } from "@/services/api/api";
 import { toastService } from "@/services/toastService";
-import { CreateCountLinePayload, DateFormatType, Item, SerialEntryData } from "@/types/scan";
+import { CreateCountLinePayload, CountLineBatch, DateFormatType, Item, SerialEntryData } from "@/types/scan";
 import { normalizeSerialValue } from "@/utils/scanUtils";
 import { toBackendPhotoProofs } from "./submissionPayload";
 import { getReadableInventoryErrorMessage } from "./errorMessages";
 
 type DamageType = "returnable" | "nonreturnable";
+
+export type SubmissionResult =
+  | {
+      success: true;
+      countLineId: string;
+      countedQty: number;
+      expectedQty: number | null;
+      variance: number | null;
+    }
+  | {
+      success: false;
+      error: Error;
+      retryable: boolean;
+    };
 
 interface UseDeferredItemSubmissionParams {
   barcode?: string;
@@ -43,6 +57,9 @@ interface UseDeferredItemSubmissionParams {
   recountBlockedReason?: string | null;
   onSuccess: () => void;
   countdownSeconds?: number;
+  isBatchMode?: boolean;
+  batches?: CountLineBatch[];
+  batchQuantities?: Record<string, string>;
 }
 
 export { toBackendPhotoProofs } from "./submissionPayload";
@@ -122,6 +139,9 @@ type SubmissionPayloadContext = {
   itemPhotos: string[];
   damagePhoto: string | null;
   recountTargetId?: string | null;
+  isBatchMode?: boolean;
+  batches?: CountLineBatch[];
+  batchQuantities?: Record<string, string>;
 };
 
 const resolveItemCode = (item: Item, barcode?: string) => {
@@ -198,6 +218,7 @@ const buildCountLinePayload = (context: SubmissionPayloadContext): CreateCountLi
     item_code: resolveItemCode(item, barcode),
     item_name: resolveItemName(item, barcode),
     counted_qty: parseFloat(quantity),
+    batches: context.isBatchMode && context.batches && context.batches.length > 0 ? context.batches : undefined,
     floor_no: resolveLocationValue(currentFloor),
     rack_no: resolveLocationValue(currentRack),
     item_condition: condition,
@@ -269,6 +290,9 @@ export const useDeferredItemSubmission = ({
   recountBlockedReason,
   onSuccess,
   countdownSeconds = 5,
+  isBatchMode,
+  batches,
+  batchQuantities,
 }: UseDeferredItemSubmissionParams) => {
   const [submitting, setSubmitting] = useState(false);
   const [submitCountdown, setSubmitCountdown] = useState<number | null>(null);
@@ -340,14 +364,47 @@ export const useDeferredItemSubmission = ({
     validateSerials,
   ]);
 
-  const executeSubmit = useCallback(async (options?: { silent?: boolean }) => {
-    if (!item || !sessionId) return;
+  const executeSubmit = useCallback(async (options?: { silent?: boolean }): Promise<SubmissionResult | null> => {
+    if (!item || !sessionId) return null;
 
     pendingCountdownRef.current = false;
     setSubmitCountdown(null);
     setSubmitting(true);
 
     try {
+      let resolvedBatches = batches;
+      if (isBatchMode && batches && batches.length > 0 && item?.item_code) {
+        const manualBatches = batches.filter((batch) => !batch.barcode);
+        if (manualBatches.length > 0) {
+          const createdManualBatches = await createManualBatches(
+            item.item_code,
+            manualBatches.map((manualBatch) => ({
+              quantity: manualBatch.quantity,
+              mrp: manualBatch.mrp,
+              manufacturing_date: manualBatch.manufacturing_date,
+              expiry_date: manualBatch.expiry_date,
+              batch_no: manualBatch.batch_number,
+              item_name: item.item_name || item.name,
+              warehouse: (item as any).warehouse,
+            }))
+          );
+          const manualBarcodeMap = new Map<string, string>();
+          manualBatches.forEach((manualBatch, index) => {
+            const barcode = createdManualBatches[index]?.barcode;
+            if (barcode) {
+              manualBarcodeMap.set(manualBatch.batch_number || String(index), barcode);
+            }
+          });
+          resolvedBatches =
+            batches?.map((batch) => {
+              const key = batch.batch_number || "";
+              const assignedBarcode = manualBarcodeMap.get(key);
+              if (!assignedBarcode) return batch;
+              return { ...batch, barcode: assignedBarcode };
+            }) || batches;
+        }
+      }
+
       const payload = buildCountLinePayload({
         barcode,
         sessionId,
@@ -374,6 +431,9 @@ export const useDeferredItemSubmission = ({
         itemPhotos,
         damagePhoto,
         recountTargetId,
+        isBatchMode,
+        batches: resolvedBatches,
+        batchQuantities,
       });
       const result = await createCountLine(payload);
       if (options?.silent) {
@@ -384,18 +444,40 @@ export const useDeferredItemSubmission = ({
         } else {
           toastService.show("Item verified successfully", { type: "success" });
         }
-        return;
+        return {
+          success: true,
+          countLineId: String(result.id || result.count_line_id || ""),
+          countedQty: parseFloat(quantity),
+          expectedQty: typeof result.expected_qty === "number" ? result.expected_qty : null,
+          variance: typeof result.variance === "number" ? result.variance : null,
+        };
       }
       await haptics.success();
       await handleSubmissionResult(result, onSuccess);
+      return {
+        success: true,
+        countLineId: String(result.id || result.count_line_id || ""),
+        countedQty: parseFloat(quantity),
+        expectedQty: typeof result.expected_qty === "number" ? result.expected_qty : null,
+        variance: typeof result.variance === "number" ? result.variance : null,
+      };
     } catch (error: any) {
       if (options?.silent) {
         toastService.show("Could not save the pending count. Please recount the item.", {
           type: "error",
         });
-        return;
+        return {
+          success: false,
+          error: error instanceof Error ? error : new Error(String(error)),
+          retryable: true,
+        };
       }
       showSubmissionError(error);
+      return {
+        success: false,
+        error: error instanceof Error ? error : new Error(String(error)),
+        retryable: error?.response?.status !== 400 && error?.response?.status !== 422,
+      };
     } finally {
       setSubmitting(false);
     }
@@ -426,6 +508,9 @@ export const useDeferredItemSubmission = ({
     serialNumbers,
     sessionId,
     varianceRemark,
+    isBatchMode,
+    batches,
+    batchQuantities,
   ]);
 
   useEffect(() => {
@@ -481,5 +566,7 @@ export const useDeferredItemSubmission = ({
     submitCountdown,
     handleSubmitPress,
     cancelSubmit,
+    executeSubmit,
+    validateBeforeSubmit,
   };
 };

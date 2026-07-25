@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Platform } from "react-native";
+import { useSessionWebSocket } from "@/hooks/useSessionWebSocket";
 
 import {
   checkItemCounted,
   checkItemScanStatus,
   getItemByIdentifier,
   searchItems,
+  verifyItemQuantity,
 } from "@/services/api/api";
 import { localDb } from "@/db/localDb";
 import apiClient from "@/services/httpClient";
@@ -13,6 +15,7 @@ import { RecentItemsService } from "@/services/enhancedFeatures";
 import { useAuthStore } from "@/store/authStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { toastService } from "@/services/toastService";
+import { createLogger } from "@/services/logging";
 import { Item } from "@/types/scan";
 import { getStockQty, sortItemsByStockDesc } from "@/utils/itemBatchUtils";
 import { getReadableInventoryErrorMessage } from "./errorMessages";
@@ -47,6 +50,17 @@ interface UseItemDetailDataParams {
   onQuantityChange: (value: string) => void;
 }
 
+const isSqlUnavailableError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : "";
+  const responseStatus = (error as { response?: { status?: number } })?.response?.status;
+  return (
+    message.includes("Not connected to database") ||
+    message.includes("SQL connection") ||
+    message.includes("ERP system is temporarily unavailable") ||
+    responseStatus === 503
+  );
+};
+
 export const useItemDetailData = ({
   barcode,
   sessionId,
@@ -70,6 +84,89 @@ export const useItemDetailData = ({
   const [recountTargetId, setRecountTargetId] = useState<string | null>(null);
   const [blindRecountRequired, setBlindRecountRequired] = useState(false);
   const [recountBlockedReason, setRecountBlockedReason] = useState<string | null>(null);
+  const lastRefreshRequestRef = useRef<number>(0);
+  const [lastErpRefresh, setLastErpRefresh] = useState<{
+    checkedAt: string;
+    source: string;
+    scope?: string;
+  } | null>(null);
+  const [refreshStatus, setRefreshStatus] = useState<'idle' | 'loading' | 'success'>('idle');
+  const refreshSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const log = createLogger("useItemDetailData");
+
+  // WebSocket for real-time SQL verification updates
+  const { isConnected, subscribe } = useSessionWebSocket(sessionId);
+  const itemCodeRef = useRef<string | null>(null);
+
+  // Keep item_code in a ref so the WS effect can compare without re-registering
+  useEffect(() => {
+    itemCodeRef.current = item?.item_code || null;
+  }, [item?.item_code]);
+
+  // Handle incoming SQL verification updates via WebSocket
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const unsubscribe = subscribe("sql_verification_update", (message) => {
+      const payload = (message.payload || {}) as Record<string, any>;
+      const verifiedItemCode = String(payload.item_code || "");
+
+      // Only act if this update is for the currently viewed item
+      if (!verifiedItemCode || verifiedItemCode !== itemCodeRef.current) return;
+
+      // Toast the stock change if a mismatch was detected
+      if (payload.mismatch) {
+        toastService.show(
+          `SQL stock updated: ${payload.sql_qty} (was ${payload.mongo_qty})`,
+          { type: "info" }
+        );
+      }
+
+      log.debug("WebSocket sql_verification_update received", {
+        ts: Date.now(),
+        item_code: verifiedItemCode,
+        mismatch: payload.mismatch,
+        sql_qty: payload.sql_qty,
+        mongo_qty: payload.mongo_qty,
+      });
+
+      // Update stock_qty directly in the item state to reflect the change immediately
+      if (item && payload.sql_qty !== undefined && payload.sql_qty !== null) {
+        setItem((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            stock_qty: payload.sql_qty,
+          } as ItemDetailItem;
+        });
+      }
+
+      setLastErpRefresh({
+        checkedAt: payload.verified_at || new Date().toISOString(),
+        source: "sql_server",
+        scope: "item",
+      });
+      setRefreshStatus("success");
+      if (refreshSuccessTimeoutRef.current) {
+        clearTimeout(refreshSuccessTimeoutRef.current);
+      }
+      refreshSuccessTimeoutRef.current = setTimeout(() => {
+        setRefreshStatus("idle");
+        refreshSuccessTimeoutRef.current = null;
+      }, 2000);
+    });
+
+    return unsubscribe;
+  }, [isConnected, item, subscribe, log]);
+
+  useEffect(() => {
+    return () => {
+      if (refreshSuccessTimeoutRef.current) {
+        clearTimeout(refreshSuccessTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const applyInitialMrpState = useCallback(
     (nextItem: ItemDetailItem) => {
@@ -143,7 +240,9 @@ export const useItemDetailData = ({
         }
         if (!itemData) {
           // 1 retry keeps max wait to ~31 s instead of ~93 s with 3 retries.
-          itemData = (await getItemByIdentifier(barcode, 1)) as ItemDetailItem | null;
+          // verifySql=true triggers SQL verification on item selection, fetching
+          // the authoritative quantity from SQL Server and updating MongoDB.
+          itemData = (await getItemByIdentifier(barcode, 1, true)) as ItemDetailItem | null;
         }
       }
 
@@ -206,6 +305,15 @@ export const useItemDetailData = ({
 
       await RecentItemsService.addRecent(itemData.item_code || barcode, itemData);
 
+      // Auto-trigger SQL verification when item is selected/loaded.
+      // This checks if SQL quantity has changed since last cache and updates
+      // MongoDB in the background. The item-detail UI shows the latest projection.
+      if (!offlineMode && itemData.item_code) {
+        verifyItemQuantity(itemData.item_code).catch(() => {
+          // Best-effort — verification failure is non-blocking to the user flow.
+        });
+      }
+
       if (offlineMode) {
         toastService.show("Offline mode enabled: showing cached item data", {
           type: "info",
@@ -236,34 +344,83 @@ export const useItemDetailData = ({
       return;
     }
 
-    setIsRefreshing(true);
+    const requestTimestamp = Date.now();
+    lastRefreshRequestRef.current = requestTimestamp;
+
+    if (refreshSuccessTimeoutRef.current) {
+      clearTimeout(refreshSuccessTimeoutRef.current);
+      refreshSuccessTimeoutRef.current = null;
+    }
+    setRefreshStatus("loading");
+
     try {
-      const targetIdentifier = item?.item_code || item?.barcode || barcode;
+      const targetIdentifier = item?.item_code || item?.barcode || barcode || "";
       const response = await apiClient.get(`/api/v2/items/${targetIdentifier}?verify_sql=true`);
 
-      if (response.data.success && response.data.data) {
-        setItem((previous) => ({
-          ...previous,
-          ...response.data.data,
-          _source: "sql",
-        }));
-        toastService.show("Stock refreshed from SQL", { type: "success" });
+      if (lastRefreshRequestRef.current !== requestTimestamp) {
+        return;
       }
-    } catch (error: any) {
-      if (error.response?.status === 503) {
-        toastService.show(
-          "Live stock is unavailable right now. Showing the last known item details.",
-          { type: "warning" }
-        );
+
+      if (response.data.success && response.data.data) {
+        const responseItem = response.data.data;
+        const newItem = {
+          ...responseItem,
+          _source: responseItem.sql_available === false ? "cache" : "sql",
+        } as ItemDetailItem;
+
+        setItem(newItem);
+
+        await RecentItemsService.addRecent(targetIdentifier, newItem);
+
+        if (responseItem.sql_available === false) {
+          toastService.show(
+            "Unable to reach SQL Server. Displaying the last synchronized ERP quantity. Physical counting can continue.",
+            { type: "warning" }
+          );
+        } else {
+          toastService.show("Stock refreshed from SQL", { type: "success" });
+        }
+
+        const checkedAt =
+          (responseItem as Record<string, any>).last_sql_verified_at ||
+          (responseItem as Record<string, any>).last_sync_at ||
+          new Date().toISOString();
+        const source =
+          (responseItem as Record<string, any>).sql_available === false
+            ? "cached"
+            : (responseItem as Record<string, any>).quantity_source === "sql_verification"
+              ? "sql_server"
+              : "cache";
+        const scope = (responseItem as Record<string, any>).quantity_scope || "batch";
+        setLastErpRefresh({ checkedAt, source, scope });
+
+        setRefreshStatus("success");
+        refreshSuccessTimeoutRef.current = setTimeout(() => {
+          setRefreshStatus("idle");
+          refreshSuccessTimeoutRef.current = null;
+        }, 2000);
       } else {
-        toastService.show(getReadableInventoryErrorMessage(error, "refresh-stock"), {
-          type: "error",
-        });
+        toastService.show("Failed to refresh stock", { type: "error" });
+        setRefreshStatus("idle");
+      }
+    } catch (error) {
+      if (lastRefreshRequestRef.current === requestTimestamp) {
+        if (isSqlUnavailableError(error)) {
+          toastService.show(
+            "SQL unreachable. Last synced quantity shown. Counting continues.",
+            { type: "warning" }
+          );
+        } else {
+          toastService.show("Failed to refresh stock", { type: "error" });
+        }
+        setRefreshStatus("idle");
       }
     } finally {
-      setIsRefreshing(false);
+      if (lastRefreshRequestRef.current === requestTimestamp) {
+        setIsRefreshing(false);
+      }
     }
-  }, [barcode, item, offlineMode]);
+  }, [item?.item_code, item?.barcode, barcode, offlineMode]);
 
   useEffect(() => {
     void loadItem();
@@ -340,9 +497,11 @@ export const useItemDetailData = ({
     handleSelectMrpVariant,
     isRefreshing,
     item,
+    lastErpRefresh,
     loading,
     mrpVariants,
     rawVariantsCount: rawVariants.length,
+    refreshStatus,
     recountBlockedReason,
     recountTargetId,
     sameNameVariants,

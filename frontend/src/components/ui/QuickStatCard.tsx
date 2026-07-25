@@ -26,14 +26,9 @@ import Animated, {
   runOnJS,
   FadeInUp,
 } from "react-native-reanimated";
-import {
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-  modernShadows,
-} from "../../styles/unifiedSystem";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
 
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
@@ -220,9 +215,9 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
     return (
       <Animated.View
         entering={FadeInUp.delay(index * 75).springify()}
-        style={animatedStyle}
       >
         <AnimatedTouchableOpacity
+          style={animatedStyle}
           onPress={onPress}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
@@ -244,11 +239,10 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
 const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   container: {
     backgroundColor: tokens.colors.surface,
-    borderRadius: modernBorderRadius.lg,
-    padding: modernSpacing.md,
+    borderRadius: radius.lg,
+    padding: gap.md,
     borderWidth: 1,
     borderColor: tokens.colors.border,
-    ...modernShadows.sm,
   },
   gradientContainer: {
     borderWidth: 0,
@@ -261,12 +255,12 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   content: {
     flexDirection: "row",
     alignItems: "center",
-    gap: modernSpacing.md,
+    gap: gap.md,
   },
   iconContainer: {
     width: 48,
     height: 48,
-    borderRadius: modernBorderRadius.md,
+    borderRadius: radius.md,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -275,11 +269,12 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
     gap: 4,
   },
   title: {
-    ...modernTypography.label.medium,
+    fontSize: font.size.sm,
+    fontWeight: font.weight.medium,
     color: tokens.colors.textSecondary,
   },
   subtitle: {
-    ...modernTypography.label.small,
+    fontSize: font.size.label,
     color: tokens.colors.textMuted,
     marginTop: 2,
   },
@@ -289,9 +284,9 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
     gap: 4,
   },
   value: {
-    ...modernTypography.h3,
+    fontSize: font.size.xl,
+    fontWeight: font.weight.bold,
     color: tokens.colors.textPrimary,
-    fontWeight: "700",
   },
   trendContainer: {
     flexDirection: "row",
@@ -300,15 +295,15 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: modernBorderRadius.full,
+    borderRadius: radius.full,
     marginTop: 4,
   },
-  trendValue: {
-    ...modernTypography.label.small,
+trendValue: {
+    fontSize: font.size.caption,
     fontWeight: "600",
   },
   trendLabel: {
-    ...modernTypography.label.small,
+    fontSize: font.size.sm,
     color: tokens.colors.textMuted,
   },
 });

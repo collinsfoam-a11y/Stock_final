@@ -13,6 +13,9 @@ interface BatchVariantsSectionProps {
   showZeroStock: boolean;
   onToggleShowZeroStock: (value: boolean) => void;
   onSelectVariant: (barcode: string) => void;
+  isBatchMode?: boolean;
+  batchQuantities?: Record<string, string>;
+  onBatchQuantityChange?: (variantKey: string, value: string) => void;
 }
 
 export const BatchVariantsSection: React.FC<BatchVariantsSectionProps> = ({

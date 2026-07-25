@@ -1,12 +1,8 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import {
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-} from "../../styles/unifiedSystem";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
 
 interface RackProgressCardProps {
   rack: string;
@@ -72,9 +68,9 @@ export const RackProgressCard: React.FC<RackProgressCardProps> = ({
 const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   container: {
     backgroundColor: tokens.colors.surface,
-    borderRadius: modernBorderRadius.md,
-    padding: modernSpacing.md,
-    marginBottom: modernSpacing.sm,
+    borderRadius: radius.md,
+    padding: gap.md,
+    marginBottom: gap.sm,
     borderWidth: 1,
     borderColor: tokens.colors.border,
   },
@@ -86,34 +82,34 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: modernSpacing.sm,
+    marginBottom: gap.sm,
   },
   rackName: {
-    ...modernTypography.h6, // Fixed: lead -> h6
-    fontWeight: "600",
+    fontSize: font.size.lg,
+    fontWeight: font.weight.semibold,
     color: tokens.colors.textPrimary,
   },
   percentage: {
-    ...modernTypography.body.medium, // Fixed: body -> body.medium
-    fontWeight: "bold",
+    fontSize: font.size.base,
+    fontWeight: font.weight.bold,
   },
   progressBarBg: {
     height: 6,
     backgroundColor: colorWithAlpha(tokens.colors.textMuted, 0.18),
     borderRadius: 3,
     overflow: "hidden",
-    marginBottom: modernSpacing.xs,
+    marginBottom: gap.xs,
   },
   progressBarFill: {
     height: "100%",
     borderRadius: 3,
   },
   stats: {
-    ...modernTypography.label.medium, // Fixed: caption -> label.medium
+    fontSize: font.size.sm,
+    fontWeight: font.weight.medium,
     color: tokens.colors.textSecondary,
     textAlign: "right",
   },
   selectedText: {
-    // optional text style for selected state
   },
 });

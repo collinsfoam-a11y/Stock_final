@@ -16,6 +16,23 @@ try:
 except ImportError:
     pass
 
+# F-012 FIX: Validate environment before app creation in all server paths.
+# This ensures PIN_SALT, JWT_SECRET, etc. are checked whether the app starts
+# via `python server.py` (run_server_main), gunicorn, uvicorn, or directly
+# importing the module. Validation only raises in staging/production; dev
+# environments are permitted to start with partial config (dev-mode defaults).
+_env = str(os.getenv("ENVIRONMENT", "development").lower())
+if _env in {"staging", "production"}:
+    try:
+        from backend.utils.env_validation import validate_environment
+
+        validate_environment()
+    except ImportError:
+        logger.warning("Environment validation module not found, skipping")
+    except ValueError as exc:
+        logger.error("Environment validation failed: %s", exc)
+        raise SystemExit(1)
+
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
@@ -637,7 +654,7 @@ async def bulk_export_sessions(
             "Bulk export sessions error: %s",
             sanitize_for_logging(str(e), 200),
         )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @api_router.get("/legacy/sessions/analytics")
@@ -737,7 +754,7 @@ async def get_sessions_analytics(current_user: dict = Depends(get_current_user))
         }
     except Exception as e:
         logger.error("Analytics error: %s", sanitize_for_logging(str(e), 200))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 # Legacy route retained under explicit namespace to avoid duplicate /api/sessions/{session_id}.
@@ -775,7 +792,7 @@ async def get_session_by_id(
             sanitize_for_logging(session_id),
             sanitize_for_logging(str(e), 200),
         )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 def _get_db_client(db_override=None):

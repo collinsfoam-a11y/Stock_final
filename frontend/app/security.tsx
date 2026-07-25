@@ -4,6 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
+import * as LocalAuthentication from "expo-local-authentication";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { useAuthStore } from "@/store/authStore";
@@ -40,12 +41,23 @@ const MotionBlock = ({
 
 export default function SecuritySettingsScreen() {
   const router = useRouter();
-  const { pinSetup, isLoading } = useAuthStore();
+  const {
+    user,
+    pinSetup,
+    changePin,
+    isLoading,
+    savePinForBiometrics,
+    getPinForBiometrics,
+    clearPinForBiometrics,
+  } = useAuthStore();
   const { settings, setSetting } = useSettingsStore();
   const uiTokens = useUiTokens();
+  const hasPin = !!user?.has_pin;
 
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
+  const [currentPin, setCurrentPin] = useState("");
+  const [isBiometricToggleLoading, setIsBiometricToggleLoading] = useState(false);
 
   const handleSavePin = useCallback(async () => {
     if (pin.length !== 4 || !/^\d+$/.test(pin)) {
@@ -58,7 +70,17 @@ export default function SecuritySettingsScreen() {
       return;
     }
 
-    const result = await pinSetup(pin, confirmPin);
+    let result;
+    if (hasPin) {
+      if (!currentPin) {
+        toastService.showError("Please enter your current PIN.");
+        return;
+      }
+      result = await changePin(currentPin, pin);
+    } else {
+      result = await pinSetup(pin, confirmPin);
+    }
+
     if (result.success) {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -66,20 +88,85 @@ export default function SecuritySettingsScreen() {
       toastService.showSuccess("Security PIN updated successfully.");
       setPin("");
       setConfirmPin("");
+      setCurrentPin("");
     } else {
       toastService.showError(result.message || "Failed to update PIN.");
     }
-  }, [pin, confirmPin, pinSetup]);
+  }, [pin, confirmPin, currentPin, hasPin, pinSetup, changePin]);
 
   const toggleBiometrics = useCallback(
-    (val: boolean) => {
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    async (val: boolean) => {
+      if (isBiometricToggleLoading) {
+        return;
       }
-      setSetting("biometricAuth", val);
-      toastService.showInfo(val ? "Biometric login enabled." : "Biometric login disabled.");
+
+      if (Platform.OS !== "web") {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+
+      if (!val) {
+        setIsBiometricToggleLoading(true);
+        try {
+          await clearPinForBiometrics();
+          setSetting("biometricAuth", false);
+          toastService.showInfo("Biometric login disabled.");
+        } finally {
+          setIsBiometricToggleLoading(false);
+        }
+        return;
+      }
+
+      if (Platform.OS === "web") {
+        toastService.showError("Biometric login is only available on mobile devices.");
+        return;
+      }
+
+      setIsBiometricToggleLoading(true);
+      try {
+        const hasHardware = await LocalAuthentication.hasHardwareAsync();
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+        if (!hasHardware || !isEnrolled) {
+          toastService.showError("Set up Face ID or Touch ID on this device before enabling.");
+          return;
+        }
+
+        const storedPin = await getPinForBiometrics();
+        if (!storedPin) {
+          if (pin.length !== 4 || !/^\d+$/.test(pin) || pin !== confirmPin) {
+            toastService.showError("Enter and confirm your 4-digit PIN before enabling biometrics.");
+            return;
+          }
+
+          const result = hasPin ? await changePin(pin, pin) : await pinSetup(pin, confirmPin);
+          if (!result.success) {
+            toastService.showError(result.message || "Failed to verify PIN for biometric login.");
+            return;
+          }
+
+          await savePinForBiometrics(pin);
+          setPin("");
+          setConfirmPin("");
+        }
+
+        setSetting("biometricAuth", true);
+        toastService.showSuccess("Biometric login enabled.");
+      } catch (_error) {
+        toastService.showError("Unable to enable biometric login on this device.");
+      } finally {
+        setIsBiometricToggleLoading(false);
+      }
     },
-    [setSetting]
+    [
+      clearPinForBiometrics,
+      confirmPin,
+      getPinForBiometrics,
+      isBiometricToggleLoading,
+      pin,
+      pinSetup,
+      savePinForBiometrics,
+      setSetting,
+    ]
   );
 
   const renderSectionHeader = (title: string) => (
@@ -103,6 +190,23 @@ export default function SecuritySettingsScreen() {
             <Text style={[styles.description, { color: uiTokens.colors.textSecondary }]}>
               Set a 4-digit PIN for quick and secure login to this device.
             </Text>
+
+            {hasPin && (
+              <>
+                <ModernInput
+                  label="Current PIN"
+                  placeholder="4 Digits"
+                  value={currentPin}
+                  onChangeText={setCurrentPin}
+                  keyboardType="numeric"
+                  maxLength={4}
+                  secureTextEntry
+                  icon="key"
+                />
+
+                <View style={{ height: spacing.md }} />
+              </>
+            )}
 
             <ModernInput
               label="New PIN"
@@ -168,6 +272,7 @@ export default function SecuritySettingsScreen() {
               <Switch
                 value={settings.biometricAuth}
                 onValueChange={toggleBiometrics}
+                disabled={isLoading || isBiometricToggleLoading}
                 trackColor={{
                   false: uiTokens.colors.border,
                   true: uiTokens.colors.accent,

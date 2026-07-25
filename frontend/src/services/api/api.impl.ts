@@ -573,6 +573,7 @@ export const sessionsApi = {
 
 export const countLineApi = {
   createCountLine: inventoryWorkflowApi.createCountLine,
+  createManualBatches: inventoryWorkflowApi.createManualBatches,
   getCountLines: inventoryWorkflowApi.getCountLines,
   checkItemCounted: inventoryWorkflowApi.checkItemCounted,
   addQuantityToCountLine: inventoryWorkflowApi.addQuantityToCountLine,

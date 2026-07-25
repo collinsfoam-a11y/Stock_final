@@ -1,5 +1,5 @@
 #!/bin/bash
-# Restart Expo in LAN mode with correct IP (en0)
+# Restart Expo development build in LAN mode with correct IP (en0)
 # Fixes "Stuck on opening project" and 502 Tunnel errors
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,14 +26,14 @@ echo "🔄 Updating frontend configuration..."
 # This runs the updated update-ip.js which now prioritizes en0
 node "$PROJECT_ROOT/frontend/scripts/update-ip.js"
 
-echo "🚀 Restarting Expo (LAN Mode)..."
+echo "🚀 Restarting Expo (Development Build LAN Mode)..."
 
 osascript <<APPLESCRIPT
 tell application "Terminal"
     activate
-    do script "cd '$PROJECT_ROOT/frontend' && export REACT_NATIVE_PACKAGER_HOSTNAME='$WIFI_IP' && echo '🚀 Expo LAN Mode on $WIFI_IP' && npx expo start --lan --clear"
+    do script "cd '$PROJECT_ROOT/frontend' && export REACT_NATIVE_PACKAGER_HOSTNAME='$WIFI_IP' && echo '🚀 Expo Development Build LAN Mode on $WIFI_IP' && npx expo start --dev-client --lan --clear"
 end tell
 APPLESCRIPT
 
-echo "✅ Expo LAN session started."
-echo "📱 Please scan the NEW QR code in the opened window."
+echo "✅ Expo development build LAN session started."
+echo "📱 Use the installed Lavanya Mart development build to open the NEW QR code."

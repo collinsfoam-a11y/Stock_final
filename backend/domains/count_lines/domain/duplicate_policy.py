@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Optional, Any
 
 from .value_objects import SemanticIdentity
 
@@ -58,6 +58,7 @@ class CandidateLine:
     id: str
     status: str = "pending"
     batch_id: Optional[str] = None
+    recount_requested_at: Optional[Any] = None
 
 
 class DuplicateDetectionPolicy:
@@ -106,13 +107,13 @@ class DuplicateDetectionPolicy:
                 and same_location_line.batch_id != candidate.batch_id
             )
             if not batches_explicitly_differ:
-                if same_location_line.status == "rejected":
+                if same_location_line.status == "rejected" or getattr(same_location_line, "recount_requested_at", None):
                     return DuplicateVerdict(
                         is_duplicate=True,
                         reason_code=DuplicateReasonCode.RECOUNT_ALLOWED,
                         severity="INFO",
                         message=(
-                            "Existing count line at this location was rejected; "
+                            "Existing count line at this location was flagged for recount; "
                             "recount allowed."
                         ),
                         existing_line_id=same_location_line.id,

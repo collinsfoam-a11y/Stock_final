@@ -75,7 +75,6 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
   const handleSubmit = useCallback(async () => {
     setError(null);
 
-    // Local validation
     const currentPinError = validateLocalPin(currentPin);
     if (currentPinError) {
       setError(currentPinError);
@@ -90,11 +89,6 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
 
     if (newPin !== confirmPin) {
       setError("New PIN and confirmation do not match");
-      return;
-    }
-
-    if (currentPin === newPin) {
-      setError("New PIN must be different from current PIN");
       return;
     }
 

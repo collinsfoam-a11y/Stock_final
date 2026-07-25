@@ -7,6 +7,7 @@
 
 import React, { useCallback, useState } from "react";
 import { Alert, Platform, StyleSheet, View } from "react-native";
+import { confirmAction } from "@/services/actionSheet";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
@@ -36,7 +37,7 @@ export default function SettingsScreen() {
     safeBackNavigation(router, { userRole: "supervisor" });
   }, [router]);
 
-  const handleReset = useCallback(() => {
+  const handleReset = useCallback(async () => {
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
@@ -46,23 +47,16 @@ export default function SettingsScreen() {
       Alert.alert("Settings Reset", "Your app preferences were reset to their defaults.");
     };
 
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      if (window.confirm("Reset your app settings to default values?")) {
-        void runReset();
-      }
-      return;
-    }
+    const confirmed = await confirmAction({
+      title: "Reset Settings",
+      message: "Reset your app settings to default values?",
+      confirmLabel: "Reset",
+      destructive: true,
+    });
 
-    Alert.alert("Reset Settings", "Reset your app settings to default values?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Reset",
-        style: "destructive",
-        onPress: () => {
-          void runReset();
-        },
-      },
-    ]);
+    if (confirmed) {
+      await runReset();
+    }
   }, [resetSettings]);
 
   return (

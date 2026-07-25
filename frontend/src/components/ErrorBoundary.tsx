@@ -1,18 +1,18 @@
 /**
  * Error Boundary Component
  * Catches and handles React component errors
- * Enhanced with modern design system support
  */
 
-import React, { ReactNode } from "react";
+import React, { ReactNode, useMemo, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary";
 import { errorReporter } from "../services/errorRecovery";
-import { modernTypography, modernSpacing } from "../styles/modernDesignSystem";
-import { AppButton } from "./ui/AppButton";
+import { ModernButton } from "./ui/ModernButton";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import { colorWithAlpha } from "@/theme/themeTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
+import type { ThemeTokens } from "@/theme/themeTokens";
 
 interface Props {
   children: ReactNode;
@@ -27,9 +27,9 @@ const ErrorFallback = ({
   resetErrorBoundary: () => void;
 }) => {
   const tokens = useUiTokens();
-  const styles = React.useMemo(() => createStyles(tokens), [tokens]);
-  // Report error when component mounts
-  React.useEffect(() => {
+  const styles = useMemo(() => createStyles(tokens), [tokens]);
+
+  useEffect(() => {
     try {
       if (errorReporter && typeof errorReporter.report === "function") {
         errorReporter.report(error, "ErrorBoundary");
@@ -61,7 +61,7 @@ const ErrorFallback = ({
         )}
 
         <View style={styles.buttonContainer}>
-          <AppButton
+          <ModernButton
             title="Try Again"
             onPress={resetErrorBoundary}
             variant="primary"
@@ -88,58 +88,63 @@ export const ErrorBoundary = ({ children, fallback }: Props) => {
   );
 };
 
-const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: tokens.colors.background,
-  },
-  content: {
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: modernSpacing.xl,
-  },
-  iconContainer: {
-    marginBottom: modernSpacing.lg,
-    padding: modernSpacing.lg,
-    backgroundColor: colorWithAlpha(tokens.colors.error, 0.1),
-    borderRadius: 50,
-  },
-  title: {
-    ...modernTypography.h2,
-    color: tokens.colors.textPrimary,
-    marginBottom: modernSpacing.md,
-    textAlign: "center",
-  },
-  message: {
-    ...modernTypography.body.large,
-    color: tokens.colors.textSecondary,
-    textAlign: "center",
-    marginBottom: modernSpacing.xl,
-    paddingHorizontal: modernSpacing.md,
-  },
-  details: {
-    width: "100%",
-    padding: modernSpacing.md,
-    backgroundColor: tokens.colors.surface,
-    borderRadius: 12,
-    marginBottom: modernSpacing.xl,
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
-  },
-  detailsTitle: {
-    ...modernTypography.h4,
-    color: tokens.colors.textPrimary,
-    marginBottom: modernSpacing.sm,
-  },
-  detailsText: {
-    ...modernTypography.body.small,
-    color: tokens.colors.textSecondary,
-    fontFamily: "monospace",
-    marginBottom: modernSpacing.xs,
-  },
-  buttonContainer: {
-    width: "100%",
-    maxWidth: 300,
-  },
-});
+const createStyles = (tokens: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: tokens.colors.background,
+    },
+    content: {
+      flexGrow: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: gap["2xl"],
+    },
+    iconContainer: {
+      marginBottom: gap.lg,
+      padding: gap.lg,
+      backgroundColor: colorWithAlpha(tokens.colors.error, 0.1),
+      borderRadius: 50,
+    },
+    title: {
+      fontSize: font.size.xl,
+      fontWeight: font.weight.bold,
+      color: tokens.colors.textPrimary,
+      marginBottom: gap.sm,
+      textAlign: "center",
+    },
+    message: {
+      fontSize: font.size.lg,
+      fontWeight: font.weight.regular,
+      color: tokens.colors.textSecondary,
+      textAlign: "center",
+      marginBottom: gap.xl,
+      paddingHorizontal: gap.md,
+    },
+    details: {
+      width: "100%",
+      padding: gap.md,
+      backgroundColor: tokens.colors.surface,
+      borderRadius: radius.lg,
+      marginBottom: gap.xl,
+      borderWidth: 1,
+      borderColor: tokens.colors.border,
+    },
+    detailsTitle: {
+      fontSize: font.size.base,
+      fontWeight: font.weight.bold,
+      color: tokens.colors.textPrimary,
+      marginBottom: gap.xs,
+    },
+    detailsText: {
+      fontSize: font.size.sm,
+      fontWeight: font.weight.regular,
+      color: tokens.colors.textSecondary,
+      fontFamily: "monospace",
+      marginBottom: gap.xs,
+    },
+    buttonContainer: {
+      width: "100%",
+      maxWidth: 300,
+    },
+  });

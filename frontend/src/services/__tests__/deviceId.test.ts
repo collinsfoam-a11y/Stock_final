@@ -59,6 +59,21 @@ describe("getDeviceId", () => {
     expect(mockInfo).toHaveBeenCalledWith("Generated new Device ID");
   });
 
+  it("falls back when crypto randomUUID is present but unavailable", async () => {
+    mockGetItem.mockReturnValue(null);
+    mockRandomUUID.mockImplementation(() => {
+      throw new Error("unsupported");
+    });
+
+    await expect(getDeviceId()).resolves.toMatch(/^device_\d+_/);
+
+    expect(mockSetItem).toHaveBeenCalledWith("device_id", expect.stringMatching(/^device_\d+_/));
+    expect(mockDebug).toHaveBeenCalledWith(
+      "Crypto randomUUID unavailable, using generated device ID fallback",
+      { error: "unsupported" },
+    );
+  });
+
   it("uses a temporary cached device id when storage access fails", async () => {
     mockGetItem.mockImplementation(() => {
       throw new Error("storage unavailable");

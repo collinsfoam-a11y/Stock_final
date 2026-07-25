@@ -122,11 +122,13 @@ export interface AuthState {
   }>;
   savePinForBiometrics: (pin: string) => Promise<void>;
   getPinForBiometrics: () => Promise<string | null>;
+  clearPinForBiometrics: () => Promise<void>;
   establishSession: (payload: AuthSessionPayload) => Promise<void>;
   setUser: (user: User) => void;
   logout: () => Promise<void>;
   logoutAll: (username?: string) => Promise<AuthResult>;
   pinSetup: (pin: string, confirmPin: string) => Promise<AuthResult>;
+  changePin: (currentPin: string, newPin: string) => Promise<AuthResult>;
   setLoading: (loading: boolean) => void;
   loadStoredAuth: () => Promise<void>;
   lastLoggedUser: LastLoggedUser | null;
@@ -657,6 +659,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return await secureStorage.getItem(BIOMETRIC_PIN_KEY);
   },
 
+  clearPinForBiometrics: async () => {
+    await secureStorage.removeItem(BIOMETRIC_PIN_KEY);
+  },
+
   setUser: (user: User) => {
     secureStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
     setUserPreferenceScope(user.id);
@@ -854,9 +860,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (_error: any) {
       set({ isLoading: false });
       const detail = _error?.response?.data?.detail;
+      const message = typeof detail === "string" ? detail : detail?.message;
       return {
         success: false,
-        message: detail?.message || "Server error during PIN setup",
+        message: message || "Server error during PIN setup",
+      };
+    }
+  },
+
+  changePin: async (currentPin: string, newPin: string): Promise<AuthResult> => {
+    set({ isLoading: true });
+    try {
+      const apiClient = await getApiClient();
+      const response = await apiClient.post("/api/auth/change-pin", {
+        current_pin: currentPin,
+        new_pin: newPin,
+      });
+      set({ isLoading: false });
+      if (response.data.success) {
+        // Keep the locally stored biometric PIN in sync with the server-side PIN.
+        const settings = useSettingsStore.getState().settings;
+        if (settings.biometricAuth) {
+          await secureStorage.setItem(BIOMETRIC_PIN_KEY, newPin);
+        }
+        return { success: true, message: "PIN updated" };
+      }
+      return {
+        success: false,
+        message: response.data.message || "PIN change failed",
+      };
+    } catch (_error: any) {
+      set({ isLoading: false });
+      const detail = _error?.response?.data?.detail;
+      const message = typeof detail === "string" ? detail : detail?.message;
+      return {
+        success: false,
+        message: message || "Server error during PIN change",
       };
     }
   },

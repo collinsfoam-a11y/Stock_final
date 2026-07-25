@@ -1,24 +1,15 @@
 /**
  * Simple Bar Chart - View-based implementation (no SVG required)
- * Fully functional bar chart using React Native Views
- *
- * Colors resolve at runtime from useUiTokens (dark-mode aware); explicit
- * per-bar `color` values from consumers always win. modernTypography /
- * modernSpacing / modernBorderRadius are retained for metrics only.
  */
 
 import React from "react";
 import { View, Text, StyleSheet, Dimensions } from "react-native";
-import {
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-} from "../../styles/unifiedSystem";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { colorWithAlpha, type ThemeTokens } from "../../theme/themeTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const CHART_WIDTH = SCREEN_WIDTH - modernSpacing.lg * 2 - 80;
+const CHART_WIDTH = SCREEN_WIDTH - gap.lg * 2 - 80;
 const CHART_HEIGHT = 200;
 const PADDING = 40;
 const BAR_SPACING = 8;
@@ -62,7 +53,6 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
 
   const barWidth = (chartWidth - (data.length - 1) * BAR_SPACING) / data.length;
 
-  // Generate grid lines
   const gridLines = [];
   const gridSteps = 5;
   for (let i = 0; i <= gridSteps; i++) {
@@ -75,7 +65,6 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
     <View style={styles.container}>
       {!!title && <Text style={styles.title}>{title}</Text>}
       <View style={styles.chartContainer}>
-        {/* Y-axis labels */}
         <View style={styles.yAxis}>
           {gridLines.map((line, i) => (
             <View key={i} style={[styles.yAxisLabel, { top: line.y - 8 }]}>
@@ -84,9 +73,7 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
           ))}
         </View>
 
-        {/* Chart area */}
         <View style={styles.chartArea}>
-          {/* Grid lines */}
           {gridLines.map((line, i) => (
             <View
               key={i}
@@ -100,7 +87,6 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
             />
           ))}
 
-          {/* X-axis */}
           <View
             style={[
               styles.axisLine,
@@ -110,8 +96,6 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
               },
             ]}
           />
-
-          {/* Y-axis */}
           <View
             style={[
               styles.axisLine,
@@ -123,12 +107,10 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
             ]}
           />
 
-          {/* Bars */}
           {data.map((item, index) => {
             const barHeight = item.value * scale;
             const x = index * (barWidth + BAR_SPACING);
 
-            // Explicit consumer color wins; semantic accent is the default.
             const color = item.color || uiTokens.colors.accent;
 
             return (
@@ -183,12 +165,13 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
 const createStyles = (uiTokens: ThemeTokens) =>
   StyleSheet.create({
     container: {
-      marginVertical: modernSpacing.md,
+      marginVertical: gap.md,
     },
     title: {
-      ...modernTypography.h5,
+      fontSize: font.size.xl,
+      fontWeight: font.weight.semibold,
       color: uiTokens.colors.textPrimary,
-      marginBottom: modernSpacing.sm,
+      marginBottom: gap.sm,
     },
     chartContainer: {
       flexDirection: "row",
@@ -200,11 +183,10 @@ const createStyles = (uiTokens: ThemeTokens) =>
     },
     yAxisLabel: {
       position: "absolute",
-      right: modernSpacing.xs,
+      right: gap.xs,
     },
     yAxisText: {
-      ...modernTypography.body.small,
-      fontSize: 10,
+      fontSize: font.size.sm,
       color: uiTokens.colors.textSecondary,
     },
     chartArea: {
@@ -229,17 +211,16 @@ const createStyles = (uiTokens: ThemeTokens) =>
     },
     bar: {
       position: "absolute",
-      borderRadius: modernBorderRadius.xs,
+      borderRadius: radius.xs,
     },
     valueLabel: {
       position: "absolute",
       transform: [{ translateX: -20 }],
     },
     valueText: {
-      ...modernTypography.body.small,
-      fontSize: 10,
+      fontSize: font.size.sm,
       color: uiTokens.colors.textPrimary,
-      fontWeight: "600",
+      fontWeight: font.weight.semibold,
       textAlign: "center",
     },
     xLabel: {
@@ -248,8 +229,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
       width: 60,
     },
     xLabelText: {
-      ...modernTypography.body.small,
-      fontSize: 10,
+      fontSize: font.size.sm,
       color: uiTokens.colors.textSecondary,
       textAlign: "center",
     },
@@ -261,7 +241,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
       borderRadius: 8,
     },
     emptyText: {
-      ...modernTypography.body.medium,
+      fontSize: font.size.base,
       color: uiTokens.colors.textSecondary,
     },
   });

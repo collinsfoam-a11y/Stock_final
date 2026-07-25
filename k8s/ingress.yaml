@@ -2,40 +2,25 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: stock-verify-ingress
-  namespace: stock-verify
   annotations:
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/hsts: "true"
+    nginx.ingress.kubernetes.io/hsts-max-age: "31536000"
+    nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
-  ingressClassName: nginx
   tls:
     - hosts:
-        - yourdomain.com
+        - ${PRODUCTION_DOMAIN}  # Must be overridden by deployment script
       secretName: stock-verify-tls
   rules:
-    - host: yourdomain.com
+    - host: ${PRODUCTION_DOMAIN}
       http:
         paths:
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: stock-verify-backend
-                port:
-                  number: 8001
-          - path: /ws
-            pathType: Prefix
-            backend:
-              service:
-                name: stock-verify-backend
-                port:
-                  number: 8001
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: stock-verify-frontend
+                name: stock-verify-backend
                 port:
-                  number: 80
+                  number: 8001

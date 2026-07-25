@@ -8,7 +8,7 @@ import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from backend.api.pin_auth_api import PinChangeRequest, PinLoginRequest, change_pin, login_with_pin
+from backend.api.pin_auth_api import PinChangeRequest, PinLoginRequest, change_pin_legacy, login_with_pin
 
 
 class OkResult:
@@ -42,7 +42,7 @@ async def test_change_pin_success():
         mock_instance = MockService.return_value
         mock_instance.set_pin = AsyncMock(return_value=True)
 
-        response = await change_pin(request, mock_user, mock_db)
+        response = await change_pin_legacy(request, mock_user, mock_db)
 
         assert response == {"message": "PIN changed successfully"}
         mock_instance.set_pin.assert_called_once_with("user123", "1234")
@@ -157,7 +157,7 @@ async def test_change_pin_service_failure():
         mock_instance.set_pin = AsyncMock(return_value=False)
 
         with pytest.raises(HTTPException) as exc:
-            await change_pin(request, mock_user, mock_db)
+            await change_pin_legacy(request, mock_user, mock_db)
 
         assert exc.value.status_code == 500
         assert exc.value.detail == "Failed to set PIN"

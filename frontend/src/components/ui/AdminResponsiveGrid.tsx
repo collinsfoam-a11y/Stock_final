@@ -1,6 +1,6 @@
 import React from "react";
 import { View, useWindowDimensions, StyleSheet, ViewStyle } from "react-native";
-import { modernSpacing } from "../../styles/unifiedSystem";
+import { gap } from "@/theme/staffUiScale";
 
 interface AdminResponsiveGridProps {
   children: React.ReactNode[] | React.ReactNode;
@@ -10,12 +10,11 @@ interface AdminResponsiveGridProps {
 
 const AdminResponsiveGrid: React.FC<AdminResponsiveGridProps> = ({
   children,
-  gap = modernSpacing.md,
+  gap: gridGap = gap.md,
   style,
 }) => {
   const { width } = useWindowDimensions();
 
-  // Simple breakpoint system
   let columns = 1;
   if (width >= 1200) columns = 4;
   else if (width >= 992) columns = 3;
@@ -31,8 +30,8 @@ const AdminResponsiveGrid: React.FC<AdminResponsiveGridProps> = ({
           key={index}
           style={{
             width: `${100 / columns}%`,
-            paddingHorizontal: gap / 2,
-            marginBottom: gap,
+            paddingHorizontal: gridGap / 2,
+            marginBottom: gridGap,
           }}
         >
           {child}
@@ -46,7 +45,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginHorizontal: -(modernSpacing.md / 2),
+    marginHorizontal: -(gap.md / 2),
   },
 });
 

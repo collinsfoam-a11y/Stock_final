@@ -19,7 +19,7 @@ def _parse_subprotocols(header_value: Optional[str]) -> list[str]:
 
 
 def _extract_jwt_from_websocket(
-    websocket: WebSocket, token_query: Optional[str]
+    websocket: WebSocket
 ) -> tuple[Optional[str], Optional[str]]:
     """Extract JWT token from Authorization header, subprotocol, or legacy query param.
 
@@ -47,17 +47,12 @@ def _extract_jwt_from_websocket(
     if cookie_token:
         return cookie_token, None
 
-    # Legacy support (avoid in production; URLs may be logged by intermediaries)
-    if token_query:
-        return token_query, None
-
     return None, None
 
 
 @router.websocket("/ws/updates")
 async def websocket_endpoint(
     websocket: WebSocket,
-    token: Optional[str] = Query(None),
     session_id: Optional[str] = Query(None),
 ):
     """WebSocket endpoint for real-time updates.
@@ -69,7 +64,7 @@ async def websocket_endpoint(
     - HttpOnly access-token cookie (browser session restore)
     - Legacy query param ?token=... (discouraged)
     """
-    jwt_token, accept_subprotocol = _extract_jwt_from_websocket(websocket, token)
+    jwt_token, accept_subprotocol = _extract_jwt_from_websocket(websocket)
 
     if not jwt_token:
         await websocket.accept()
@@ -97,12 +92,11 @@ async def websocket_endpoint(
         await websocket.close(code=1008)
         return
 
-    # T076: Restrict WebSocket updates to Supervisors and Staff (User)
+    # T076: Restrict WebSocket updates to Supervisors, Admins, and Staff
     role = payload.get("role", "").lower()
-    # "user" is the default role for staff in our system (SessionCreate uses "staff", but auth might use "user" or "staff" depending on registration)
-    if role not in ["supervisor", "staff", "user", "admin"]:
+    if role not in ["staff", "supervisor", "admin"]:
         logger.warning(
-            f"WebSocket connection rejected for user {user_id}: Role '{role}' is not 'supervisor'"
+            f"WebSocket connection rejected for user {user_id}: Role '{role}' is not allowed"
         )
         await websocket.accept()
         await websocket.close(code=1008)

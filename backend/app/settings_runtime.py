@@ -62,7 +62,11 @@ def run_server_main(
         )
         return
 
-    logger.warning("⚠️  No SSL certificates found. Starting server with HTTP (Unencrypted)...")
+    environment = os.getenv("ENVIRONMENT", "development").lower()
+    if environment in {"production", "staging"}:
+        logger.error("TLS certificates are required in %s. Shutting down.", environment)
+        raise SystemExit(1)
+    logger.warning("⚠️  No SSL certificates found. Starting with HTTP (development only).")
     logger.info(f"Starting server on port {port}...")
     uvicorn.run(
         app_import_path,
