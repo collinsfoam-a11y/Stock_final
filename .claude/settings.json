@@ -1,0 +1,82 @@
+{
+  "env": {
+    "DEBUG": "true",
+    "NODE_ENV": "development",
+    "LOG_LEVEL": "info",
+    "POSTGRES_HOST": "localhost",
+    "POSTGRES_PORT": "5432",
+    "POSTGRES_DB": "stock_verification",
+    "JWT_SECRET": "dev-secret-key",
+    "EXPO_PUBLIC_API_URL": "http://localhost:8001"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(node *)",
+      "Bash(npm *)",
+      "Bash(pnpm *)",
+      "Bash(expo *)",
+      "Bash(yarn *)",
+      "Edit(.claude/settings.json)",
+      "Write(.claude/settings.json)",
+      "Read"
+    ],
+    "deny": [],
+    "ask": [],
+    "defaultMode": "acceptEdits"
+  },
+  "model": {
+    "provider": "anthropic",
+    "modelName": "opus-4-8",
+    "alwaysThinkingEnabled": true
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npm run lint || true",
+            "timeout": 30,
+            "statusMessage": "Running lint"
+          },
+          {
+            "type": "command",
+            "command": "npm test || true",
+            "timeout": 60,
+            "statusMessage": "Running tests"
+          }
+        ]
+      }
+    ]
+  },
+  "ui": {
+    "theme": "dark",
+    "verbose": true,
+    "spinnerVerbs": [
+      "Running {phase}...",
+      "Done!"
+    ],
+    "spinnerTipsOverride": {
+      "excludeDefault": true,
+      "tips": [
+        "AI dev mode active"
+      ]
+    }
+  },
+  "autoMemoryEnabled": true,
+  "autoMemoryDirectory": "~/.claude/projects/$(basename $(pwd))/memory",
+  "language": "en",
+  "editorMode": "normal",
+  "disableSideloadFlags": false,
+  "worktree": {
+    "symlinkDirectories": [
+      "node_modules",
+      ".cache"
+    ],
+    "sparsePaths": [],
+    "baseRef": "fresh",
+    "bgIsolation": "worktree"
+  }
+}
