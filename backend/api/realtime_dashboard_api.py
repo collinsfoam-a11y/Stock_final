@@ -8,7 +8,7 @@ import json
 import logging
 from backend.utils.api_utils import sanitize_for_logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
@@ -49,12 +49,12 @@ class DashboardColumnPreference(BaseModel):
 class DashboardConfig(BaseModel):
     """Dashboard configuration from frontend."""
 
-    columns: Optional[list[DashboardColumnPreference]] = None
+    columns: list[DashboardColumnPreference] | None = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=50, ge=10, le=200)
-    sort_by: Optional[str] = None
+    sort_by: str | None = None
     sort_order: str = "desc"
-    filters: Optional[dict[str, Any]] = None
+    filters: dict[str, Any] | None = None
     auto_refresh: bool = True
     refresh_interval_seconds: int = Field(default=10, ge=5, le=300)
 
@@ -65,25 +65,25 @@ class ItemDetails(BaseModel):
     id: str
     item_code: str
     item_name: str
-    barcode: Optional[str]
-    category: Optional[str]
-    warehouse: Optional[str]
-    floor: Optional[str]
-    rack_id: Optional[str]
+    barcode: str | None
+    category: str | None
+    warehouse: str | None
+    floor: str | None
+    rack_id: str | None
     stock_qty: float
     counted_qty: float
     variance: float
     variance_percentage: float
     mrp: float
     verified: bool
-    verified_by: Optional[str]
-    verified_at: Optional[datetime]
+    verified_by: str | None
+    verified_at: datetime | None
     counted_by: str
     counted_at: datetime
     session_id: str
-    notes: Optional[str]
-    correction_reason: Optional[dict]
-    photo_proofs: Optional[list[dict]]
+    notes: str | None
+    correction_reason: dict | None
+    photo_proofs: list[dict] | None
     audit_trail: list[dict] = []
 
 
@@ -131,7 +131,7 @@ class ConnectionManager:
     def set_config(self, user_id: str, config: DashboardConfig):
         self.user_configs[user_id] = config
 
-    def get_config(self, user_id: str) -> Optional[DashboardConfig]:
+    def get_config(self, user_id: str) -> DashboardConfig | None:
         return self.user_configs.get(user_id)
 
 
@@ -143,7 +143,7 @@ manager = ConnectionManager()
 # ==========================================
 
 
-def parse_filters(filters: Optional[dict[str, Any]]) -> ReportFilters:
+def parse_filters(filters: dict[str, Any] | None) -> ReportFilters:
     """Parse frontend filters to ReportFilters."""
     if not filters:
         return ReportFilters()
@@ -279,102 +279,78 @@ async def get_dashboard_stats(
         return await projection_reads.get_dashboard_stats()
 
     with trace_span("calculate_dashboard_stats"):
-        # Run aggregations in parallel
-        stats_pipeline = [
+        today_start = (
+            datetime.now(timezone.utc).replace(tzinfo=None).replace(hour=0, minute=0, second=0)
+        )
+
+        variance_pipeline: list[dict[str, Any]] = [
             {
-                "$facet": {
-                    "total": [{"$count": "count"}],
-                    "verified": [
-                        {"$match": {"verified": True}},
-                        {"$count": "count"},
-                    ],
-                    "pending": [
-                        {"$match": {"verified": False}},
-                        {"$count": "count"},
-                    ],
-                    "variance_stats": [
-                        {
-                            "$group": {
-                                "_id": None,
-                                "total_variance": {"$sum": "$variance"},
-                                "positive": {
-                                    "$sum": {
-                                        "$cond": [
-                                            {"$gt": ["$variance", 0]},
-                                            "$variance",
-                                            0,
-                                        ]
-                                    }
-                                },
-                                "negative": {
-                                    "$sum": {
-                                        "$cond": [
-                                            {"$lt": ["$variance", 0]},
-                                            "$variance",
-                                            0,
-                                        ]
-                                    }
-                                },
-                                "avg_variance": {"$avg": "$variance"},
-                            }
-                        }
-                    ],
-                    "today_activity": [
-                        {
-                            "$match": {
-                                "counted_at": {
-                                    "$gte": datetime.now(timezone.utc)
-                                    .replace(tzinfo=None)
-                                    .replace(hour=0, minute=0, second=0)
-                                }
-                            }
-                        },
-                        {"$count": "count"},
-                    ],
-                    "by_warehouse": [
-                        {"$group": {"_id": "$warehouse", "count": {"$sum": 1}}},
-                        {"$sort": {"count": -1}},
-                        {"$limit": 10},
-                    ],
-                    "by_status": [
-                        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
-                    ],
+                "$group": {
+                    "_id": None,
+                    "total_variance": {"$sum": "$variance"},
+                    "positive": {
+                        "$sum": {"$cond": [{"$gt": ["$variance", 0]}, "$variance", 0]}
+                    },
+                    "negative": {
+                        "$sum": {"$cond": [{"$lt": ["$variance", 0]}, "$variance", 0]}
+                    },
+                    "avg_variance": {"$avg": "$variance"},
                 }
             }
         ]
 
-        result = await db.count_lines.aggregate(stats_pipeline).to_list(1)
+        warehouse_pipeline: list[dict[str, Any]] = [
+            {"$group": {"_id": "$warehouse", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 10},
+        ]
 
-    stats = result[0] if result else {}
+        status_pipeline: list[dict[str, Any]] = [
+            {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+        ]
 
-    def get_count(key: str) -> int:
-        data = stats.get(key, [])
-        return data[0]["count"] if data else 0
+        (
+            total_count,
+            verified_count,
+            pending_count,
+            today_count,
+            variance_result,
+            warehouse_result,
+            status_result,
+        ) = await asyncio.gather(
+            db.count_lines.count_documents({}),
+            db.count_lines.count_documents({"verified": True}),
+            db.count_lines.count_documents({"verified": False}),
+            db.count_lines.count_documents({"counted_at": {"$gte": today_start}}),
+            db.count_lines.aggregate(variance_pipeline).to_list(1),
+            db.count_lines.aggregate(warehouse_pipeline).to_list(10),
+            db.count_lines.aggregate(status_pipeline).to_list(100),
+        )
 
-    variance_stats = stats.get("variance_stats", [{}])[0] if stats.get("variance_stats") else {}
+    variance_stats = variance_result[0] if variance_result else {}
 
     return {
         "success": True,
         "stats": {
-            "total_items": get_count("total"),
-            "verified_items": get_count("verified"),
-            "pending_items": get_count("pending"),
-            "today_activity": get_count("today_activity"),
+            "total_items": total_count,
+            "verified_items": verified_count,
+            "pending_items": pending_count,
+            "today_activity": today_count,
             "total_variance": variance_stats.get("total_variance", 0),
             "positive_variance": variance_stats.get("positive", 0),
             "negative_variance": variance_stats.get("negative", 0),
             "avg_variance": variance_stats.get("avg_variance", 0),
             "verification_rate": (
-                (get_count("verified") / get_count("total") * 100) if get_count("total") > 0 else 0
+                (verified_count / total_count * 100) if total_count > 0 else 0
             ),
         },
         "by_warehouse": [
             {"warehouse": item["_id"] or "Unknown", "count": item["count"]}
-            for item in stats.get("by_warehouse", [])
+            for item in warehouse_result
         ],
         "by_status": [
             {"status": item["_id"] or "Unknown", "count": item["count"]}
-            for item in stats.get("by_status", [])
+            for item in status_result
         ],
         "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
     }
@@ -633,7 +609,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 
 @realtime_dashboard_router.websocket("/ws")
 async def websocket_endpoint_no_path_token(
-    websocket: WebSocket, token: Optional[str] = Query(None)
+    websocket: WebSocket, token: str | None = Query(None)
 ):
     """WebSocket endpoint for bidirectional real-time communication."""
     jwt_token, _accept_subprotocol = _extract_jwt_from_websocket(websocket, token)
