@@ -340,6 +340,7 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-recount-smoke-jwt-secret-placeholder' }}
           JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET || 'ci-recount-smoke-jwt-refresh-place' }}
           PIN_SALT: ci-recount-smoke-pin-salt-abcdefghijklmnopqr
+          DEFAULT_PIN: "1234"
           ENVIRONMENT: test
           APP_ENV: test
           AUTO_SEED_DEFAULT_USERS: "true"

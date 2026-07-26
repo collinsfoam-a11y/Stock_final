@@ -120,6 +120,7 @@ from backend.core.lifespan import (
 )
 from backend.exceptions import (
     AuthenticationError,
+    StockVerifyException,
     ValidationError,
 )
 from backend.services.canonical_inventory import build_session_lookup
@@ -305,6 +306,24 @@ async def _governance_violation_handler(request: Request, exc: GovernanceViolati
     except Exception as audit_exc:
         logger.warning("GovernanceViolation audit logging failed: %s", audit_exc)
     return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(StockVerifyException)
+async def _stock_verify_exception_handler(request: Request, exc: StockVerifyException):
+    logger.warning(
+        "StockVerifyException on %s %s: [%s] %s",
+        request.method, request.url.path, exc.error_code, exc.message,
+    )
+    headers = {}
+    if hasattr(exc, "retry_after") and exc.retry_after:
+        headers["Retry-After"] = str(exc.retry_after)
+    body = exc.to_dict()
+    body["detail"] = {"error_code": exc.error_code, **exc.details}
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=body,
+        headers=headers or None,
+    )
 
 
 @app.exception_handler(Exception)

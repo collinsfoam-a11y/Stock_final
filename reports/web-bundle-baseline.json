@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-06-10T00:00:00.000Z",
+  "updatedAt": "2026-07-26T16:19:31.786Z",
   "ceilings": {
-    "bundleCount": 68,
-    "totalJsKb": 4110.0,
-    "mainBundleKb": 1972.0,
-    "commonBundleKb": 1522.0,
-    "routeChunkTotalKb": 700.0,
-    "largestRouteChunkKb": 120.0
+    "bundleCount": 63,
+    "totalJsKb": 4123.35,
+    "mainBundleKb": 49.13,
+    "commonBundleKb": 2239.31,
+    "routeChunkTotalKb": 1702.87,
+    "largestRouteChunkKb": 1017.1
   }
 }

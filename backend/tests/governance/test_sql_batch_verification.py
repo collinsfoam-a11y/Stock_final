@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import AsyncMock
 
 import pytest
 from backend.tests.utils.in_memory_db import setup_server_with_in_memory_db
@@ -20,8 +20,8 @@ async def test_batch_verification_rejects_incomplete_quantity_results(monkeypatc
 
     monkeypatch.setattr(
         sql_verification_service.sql_connector,
-        "get_item_quantities_only",
-        Mock(return_value={"ITEM-BATCH-1": 12.0}),
+        "get_item_quantities_only_async",
+        AsyncMock(return_value={"ITEM-BATCH-1": 12.0}),
     )
 
     response = await sql_verification_service.batch_verify_items(["ITEM-BATCH-1", "ITEM-BATCH-2"])
