@@ -341,6 +341,9 @@ jobs:
           JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET || 'ci-recount-smoke-jwt-refresh-place' }}
           PIN_SALT: ci-recount-smoke-pin-salt-abcdefghijklmnopqr
           DEFAULT_PIN: "1234"
+          DEFAULT_STAFF_PASSWORD: "staff123"
+          DEFAULT_SUPERVISOR_PASSWORD: "super123"
+          DEFAULT_ADMIN_PASSWORD: "admin123"
           ENVIRONMENT: test
           APP_ENV: test
           AUTO_SEED_DEFAULT_USERS: "true"

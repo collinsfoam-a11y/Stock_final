@@ -10,8 +10,7 @@ from fastapi.testclient import TestClient
 SUPERVISOR_USER = "supervisor_ws"
 STAFF_USER = "staff_ws"
 
-# Use the same secret key that the test fixture uses
-TEST_JWT_SECRET = os.getenv("JWT_SECRET", "test-jwt-secret-key-for-testing-only")
+TEST_JWT_SECRET = "test-jwt-secret-key-for-testing-only"
 
 
 @pytest.fixture

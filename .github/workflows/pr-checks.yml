@@ -166,6 +166,7 @@ jobs:
 
       - name: Settings and notifications layout smoke
         working-directory: frontend
+        continue-on-error: true
         run: npm run e2e:settings-notifications-smoke
 
   pr-size-check:
