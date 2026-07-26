@@ -1,13 +1,14 @@
 {
-  "updatedAt": "2026-07-23T11:15:12.498Z",
+  "updatedAt": "2026-07-26T15:59:14.370Z",
   "ceilings": {
-    "dependencyCount": 48,
+    "dependencyCount": 49,
     "devDependencyCount": 29,
-    "totalCount": 77
+    "totalCount": 78
   },
   "knownDependencies": [
     "@expo-google-fonts/inter",
     "@expo/vector-icons",
+    "@noble/ed25519",
     "@react-native-async-storage/async-storage",
     "@react-native-community/datetimepicker",
     "@react-native-community/netinfo",
