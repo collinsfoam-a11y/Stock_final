@@ -180,8 +180,9 @@ async def validate_record(
             existing = await validation_service.find_serial_conflict(
                 serial,
                 item_code=record.item_code,
+                current_line_id=record.client_record_id,
             )
-            if existing and existing.get("client_record_id") != record.client_record_id:
+            if existing:
                 conflict_id = None
                 if sync_service and user_id:
                     # Convert ObjectIds in existing to strings for comparison
@@ -364,13 +365,16 @@ async def sync_single_record(
 
     except GovernanceViolation as e:
         logger.error(
-            "Governance violation syncing record {record.client_record_id}: %s",
+            "Governance violation syncing record %s: %s",
+            record.client_record_id,
             sanitize_for_logging(str(e)),
         )
         return False, str(e)
     except Exception as e:
         logger.error(
-            "Error syncing record {record.client_record_id}: %s", sanitize_for_logging(str(e))
+            "Error syncing record %s: %s",
+            record.client_record_id,
+            sanitize_for_logging(str(e))
         )
         return False, str(e)
 
