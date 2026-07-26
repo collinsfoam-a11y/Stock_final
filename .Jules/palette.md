@@ -12,3 +12,7 @@
 ## 2026-06-03 - Adding Accessible Props to Icon-only Close Button
 **Learning:** The custom `getAccessibleButtonProps` utility from `@/utils/accessibility` was used to provide the missing `accessibilityRole` and `accessibilityLabel` properties to a `TouchableOpacity` component representing an icon-only close button. The icon itself (`Ionicons`) received `getDecorativeIconProps()` so that screen readers hide the decorative visual element.
 **Action:** Always verify custom utility imports using terminal commands before modifying files. Add screen reader labels to icon-only buttons to improve UI accessibility.
+
+## 2026-06-03 - Verification of Hidden Decorative Icons in Jest Tests
+**Learning:** Checking that decorative icons are hidden from screen readers can be tested in React Native using `@testing-library/react-native` by resolving the components (e.g., `Ionicons` via `UNSAFE_getAllByType`) and verifying properties like `accessibilityElementsHidden: true`, `importantForAccessibility: "no"`, and `"aria-hidden": true`.
+**Action:** Include dedicated assertions on icon components in unit tests when applying `getDecorativeIconProps` to guarantee they are completely hidden from accessibility trees.
