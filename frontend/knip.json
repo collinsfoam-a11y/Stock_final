@@ -1,0 +1,27 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "app/**/*.{ts,tsx}",
+    "scripts/**/*.{cjs,js}",
+    "*.config.{js,ts,cjs}",
+    "src/**/*.stories.{ts,tsx}",
+    "e2e/**/*.{ts,tsx}"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "app/**/*.{ts,tsx}"],
+  "ignore": [
+    "**/*.d.ts",
+    "src/**/__tests__/**",
+    "src/**/__mocks__/**",
+    "app/**/__tests__/**",
+    "**/*.test.{ts,tsx}"
+  ],
+  "ignoreDependencies": [
+    "@testing-library/jest-dom",
+    "jest-environment-jsdom",
+    "lint-staged",
+    "postinstall-postinstall",
+    "@storybook/addon-essentials",
+    "@tootallnate/once"
+  ],
+  "ignoreExportsUsedInFile": true
+}

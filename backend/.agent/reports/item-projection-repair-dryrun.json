@@ -1,0 +1,104 @@
+{
+  "mode": "dry-run",
+  "count_lines_scanned": 55,
+  "active_count_lines": 55,
+  "missing_verified_items": 6,
+  "missing_variance_items": 6,
+  "missing_batch_rows": 6,
+  "missing_financial_rows": 6,
+  "inserted_verified_items": 0,
+  "inserted_variance_items": 0,
+  "inserted_batch_rows": 0,
+  "inserted_financial_rows": 0,
+  "skipped_superseded": 0,
+  "skipped_missing_id": 0,
+  "errors": 0,
+  "candidate_lines": [
+    {
+      "count_line_id": "c15f96e7-6755-4e4b-8d99-40380ed91e33",
+      "session_id": "3d8032f7-7171-4a14-811a-5475e35e0695",
+      "item_code": "7846",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "80bac55c-41e3-453c-899d-af9bdcda8be0",
+      "session_id": "191005d6-7a96-4f4a-a7b2-b821da1ce5f8",
+      "item_code": "7846",
+      "variance": 10.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "194266a0-6865-413e-a655-f672f5b3d0ef",
+      "session_id": "2725d4b5-d330-4207-aeaf-85cca62231dc",
+      "item_code": "7846",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "4ad78780-daf8-49af-9b84-848709599c31",
+      "session_id": "0fba715c-ebbe-4cde-b6dc-9892a691833c",
+      "item_code": "7846",
+      "variance": 10.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "0f421fdc-19dd-44ed-8327-a06a76d35438",
+      "session_id": "364f54c5-6d86-4b4c-b01e-6bc73f21d75a",
+      "item_code": "7846",
+      "variance": 1.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    },
+    {
+      "count_line_id": "fb614a25-18f2-4613-8478-4d60c15fa0af",
+      "session_id": "6547bcbb-33e9-461b-b142-c9ba84c4cbd7",
+      "item_code": "7846",
+      "variance": 10.0,
+      "missing_verified": true,
+      "missing_variance": true,
+      "missing_batch_rows": 1
+    }
+  ],
+  "candidate_financial_sessions": [
+    {
+      "session_id": "3d8032f7-7171-4a14-811a-5475e35e0695",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "191005d6-7a96-4f4a-a7b2-b821da1ce5f8",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "2725d4b5-d330-4207-aeaf-85cca62231dc",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "0fba715c-ebbe-4cde-b6dc-9892a691833c",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "364f54c5-6d86-4b4c-b01e-6bc73f21d75a",
+      "line_count": 1,
+      "financial_total": 0.0
+    },
+    {
+      "session_id": "6547bcbb-33e9-461b-b142-c9ba84c4cbd7",
+      "line_count": 1,
+      "financial_total": 0.0
+    }
+  ]
+}

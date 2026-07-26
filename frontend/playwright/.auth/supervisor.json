@@ -1,0 +1,59 @@
+{
+  "cookies": [
+    {
+      "name": "sv_access_token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdXBlcnZpc29yIiwicm9sZSI6InN1cGVydmlzb3IiLCJleHAiOjE3NzcyNzQ0MDQsInR5cGUiOiJhY2Nlc3MifQ.ZCvJQOxd_YJNkmxFtILbSD_fqyoT4sJfeHfcXvczzWA",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1777274404.484611,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "sv_refresh_token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdXBlcnZpc29yIiwicm9sZSI6InN1cGVydmlzb3IiLCJleHAiOjE3Nzk4NjU1MDQsInR5cGUiOiJyZWZyZXNoIiwianRpIjoiYzU1NDM2YzctNmE5Yy00M2MwLThjNGEtYjk4ODI2MmM1NmQwIn0.-OLZqgt3sB5nQC1rBEHQgzNeqvfksgMvs5raE9q6nXc",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1779865504.484655,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:8083",
+      "localStorage": [
+        {
+          "name": "notification-store",
+          "value": "{\"state\":{\"notifications\":[]},\"version\":0}"
+        },
+        {
+          "name": "sessions_cache",
+          "value": "{\"key\":\"sessions_cache\",\"value\":{\"f658999a-f89e-4ad2-8cd4-e58efe10745d\":{\"id\":\"f658999a-f89e-4ad2-8cd4-e58efe10745d\",\"warehouse\":\"stale-auth-1777272910900\",\"status\":\"OPEN\",\"type\":\"STANDARD\",\"staff_user\":\"staff1\",\"staff_name\":\"Staff Member\",\"started_at\":\"2026-04-27T06:55:10.907000\",\"closed_at\":null,\"reconciled_at\":null,\"total_items\":0,\"total_variance\":0,\"notes\":null,\"cached_at\":\"2026-04-27T07:05:06.361Z\"},\"f8b318d1-4d7b-4672-9c15-5f88431c24b9\":{\"id\":\"f8b318d1-4d7b-4672-9c15-5f88431c24b9\",\"warehouse\":\"stale-auth-1777272047052\",\"status\":\"CLOSED\",\"type\":\"STANDARD\",\"staff_user\":\"staff1\",\"staff_name\":\"Staff Member\",\"started_at\":\"2026-04-27T06:40:47.061000\",\"closed_at\":null,\"reconciled_at\":null,\"total_items\":0,\"total_variance\":0,\"notes\":null,\"cached_at\":\"2026-04-27T07:05:06.361Z\"},\"1e7c305a-d777-4790-b844-e4aaf4d66747\":{\"id\":\"1e7c305a-d777-4790-b844-e4aaf4d66747\",\"warehouse\":\"stale-auth-1777271986810\",\"status\":\"CLOSED\",\"type\":\"STANDARD\",\"staff_user\":\"staff1\",\"staff_name\":\"Staff Member\",\"started_at\":\"2026-04-27T06:39:46.823000\",\"closed_at\":null,\"reconciled_at\":null,\"total_items\":0,\"total_variance\":0,\"notes\":null,\"cached_at\":\"2026-04-27T07:05:06.361Z\"},\"75060e76-75c8-4abd-8c0e-72afab696bf6\":{\"id\":\"75060e76-75c8-4abd-8c0e-72afab696bf6\",\"warehouse\":\"Main\",\"status\":\"OPEN\",\"type\":\"STANDARD\",\"staff_user\":\"ui_owner_desktopchrom_mogskbwp_0\",\"staff_name\":\"UI Owner desktopchrom_mogskbwp_0\",\"started_at\":\"2026-04-27T06:03:43.084000\",\"closed_at\":null,\"reconciled_at\":null,\"total_items\":1,\"total_variance\":1,\"notes\":null,\"cached_at\":\"2026-04-27T07:05:06.361Z\"},\"3b63e451-b416-4a4b-848e-e1e9a421291b\":{\"id\":\"3b63e451-b416-4a4b-848e-e1e9a421291b\",\"warehouse\":\"stale-auth-1777269792338\",\"status\":\"CLOSED\",\"type\":\"STANDARD\",\"staff_user\":\"staff1\",\"staff_name\":\"Staff Member\",\"started_at\":\"2026-04-27T06:03:12.342000\",\"closed_at\":null,\"reconciled_at\":null,\"total_items\":0,\"total_variance\":0,\"notes\":null,\"cached_at\":\"2026-04-27T07:05:06.361Z\"},\"c96ca410-62ee-4162-96d0-e5189d4c61e7\":{\"id\":\"c96ca410-62ee-4162-96d0-e5189d4c61e7\",\"warehouse\":\"Showroom\",\"status\":\"CLOSED\",\"type\":\"STANDARD\",\"staff_user\":\"staff1\",\"staff_name\":\"Staff Member\",\"started_at\":\"2026-04-27T06:01:01.833000\",\"closed_at\":null,\"reconciled_at\":null,\"total_items\":0,\"total_variance\":0,\"notes\":null,\"cached_at\":\"2026-04-27T07:05:06.361Z\"},\"6adb4900-ff7e-49b6-bfe8-01aac70e9964\":{\"id\":\"6adb4900-ff7e-49b6-bfe8-01aac70e9964\",\"warehouse\":\"WH1\",\"status\":\"OPEN\",\"type\":\"STANDARD\",\"staff_user\":\"admin\",\"staff_name\":\"Administrator\",\"started_at\":\"2026-01-01T06:21:39.412000\",\"closed_at\":null,\"reconciled_at\":null,\"total_items\":1,\"total_variance\":10,\"notes\":null,\"cached_at\":\"2026-04-27T07:05:06.361Z\"},\"80b40ab7-3041-41cc-84ba-940e0cc8fe0e\":{\"id\":\"80b40ab7-3041-41cc-84ba-940e0cc8fe0e\",\"warehouse\":\"Main Warehouse\",\"status\":\"OPEN\",\"type\":\"STANDARD\",\"staff_user\":\"admin\",\"staff_name\":\"Administrator\",\"started_at\":\"2026-01-01T06:15:16.559000\",\"closed_at\":null,\"reconciled_at\":null,\"total_items\":0,\"total_variance\":0,\"notes\":null,\"cached_at\":\"2026-04-27T07:05:06.361Z\"}},\"timestamp\":1777273506361}"
+        },
+        {
+          "name": "connection_info",
+          "value": "{\"backendUrl\":\"http://localhost:8001\",\"backendPort\":8001,\"backendIp\":\"localhost\",\"lastChecked\":\"2026-04-27T07:05:05.908Z\",\"isHealthy\":true}"
+        },
+        {
+          "name": "last_logged_user",
+          "value": "{\"username\":\"supervisor\",\"full_name\":\"Supervisor\",\"has_pin\":false}"
+        },
+        {
+          "name": "filter-store:69561005ba8d11da7f6bb8df",
+          "value": "{\"state\":{\"presets\":[]},\"version\":0}"
+        },
+        {
+          "name": "app_settings:69561005ba8d11da7f6bb8df",
+          "value": "{\"darkMode\":false,\"theme\":\"light\",\"notificationsEnabled\":true,\"notificationSound\":true,\"notificationBadge\":true,\"autoSyncEnabled\":true,\"autoSyncInterval\":15,\"syncOnReconnect\":true,\"offlineMode\":false,\"cacheExpiration\":24,\"maxQueueSize\":1000,\"scannerVibration\":true,\"scannerSound\":true,\"scannerAutoSubmit\":true,\"scannerTimeout\":30,\"fontSize\":\"medium\",\"fontSizeValue\":16,\"fontStyle\":\"system\",\"showItemImages\":true,\"showItemPrices\":true,\"showItemStock\":true,\"exportFormat\":\"csv\",\"backupFrequency\":\"weekly\",\"requireAuth\":true,\"sessionTimeout\":30,\"biometricAuth\":false,\"operationalMode\":\"routine\",\"imageCache\":true,\"lazyLoading\":true,\"debounceDelay\":300,\"columnVisibility\":{\"mfgDate\":true,\"expiryDate\":true,\"serialNumber\":true,\"mrp\":true}}"
+        },
+        {
+          "name": "device_id",
+          "value": "180e6e1f-7074-41a0-82f9-caa54265bb38"
+        }
+      ]
+    }
+  ]
+}

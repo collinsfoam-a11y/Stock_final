@@ -1,0 +1,184 @@
+"""
+Metrics API
+Prometheus-compatible metrics endpoint
+"""
+
+from fastapi import APIRouter, Depends, Response
+
+from backend.auth.dependencies import require_admin
+from backend.db.runtime import get_db
+
+metrics_router = APIRouter(
+    prefix="/metrics",
+    tags=["metrics"],
+    dependencies=[Depends(require_admin)],
+)
+
+# Global monitoring service reference (will be set from server.py)
+_monitoring_service = None
+
+
+def set_monitoring_service(service):
+    """Set the monitoring service instance"""
+    global _monitoring_service
+    _monitoring_service = service
+
+
+@metrics_router.get("", response_model=None)
+async def get_prometheus_metrics():
+    """
+    Get metrics in Prometheus text format
+    This endpoint can be scraped by Prometheus for monitoring
+    """
+    if _monitoring_service is None:
+        # No monitoring service available
+        return Response(
+            content="# No monitoring service available\n",
+            media_type="text/plain; version=0.0.4",
+        )
+
+    metrics_text = await _monitoring_service.get_prometheus_metrics()
+
+    return Response(content=metrics_text, media_type="text/plain; version=0.0.4")
+
+
+@metrics_router.get("/json")
+async def get_metrics_json():
+    """Get metrics in JSON format for dashboards"""
+    if _monitoring_service is None:
+        return {
+            "success": False,
+            "error": {
+                "message": "Monitoring service not available",
+                "code": "SERVICE_UNAVAILABLE",
+            },
+        }
+
+    metrics = await _monitoring_service.get_metrics()
+
+    return {"success": True, "data": metrics}
+
+
+@metrics_router.get("/health")
+async def get_health_metrics():
+    """Get health status metrics with database status"""
+    from backend.core.globals import database_health_service
+
+    health_data = {
+        "status": "healthy",
+        "uptime": 0,
+        "mongodb": {"status": "unknown"},
+        "dependencies": {"sql_server": {"status": "unknown"}},
+    }
+
+    # Get monitoring service health if available
+    if _monitoring_service is not None:
+        monitoring_health = await _monitoring_service.get_health()
+        health_data.update(monitoring_health)
+
+    # Get database health if available
+    if database_health_service:
+        db_status = database_health_service.get_status()
+
+        # Update MongoDB status
+        mongo_info = db_status.get("mongo", {})
+        health_data["mongodb"] = {
+            "status": "connected" if mongo_info.get("status") == "healthy" else "disconnected",
+            "response_time": mongo_info.get("response_time"),
+            "error": mongo_info.get("error"),
+        }
+
+        # Update SQL Server status in dependencies
+        sql_info = db_status.get("sql_server", {})
+        health_data["dependencies"]["sql_server"] = sql_info
+
+        # Update overall status if DB is unhealthy
+        if db_status.get("overall") != "healthy":
+            health_data["status"] = db_status.get("overall")
+
+    return {"success": True, "data": health_data}
+
+
+@metrics_router.get("/stats")
+async def get_metrics_stats():
+    """Get system statistics and metrics"""
+    import time
+
+    import psutil
+
+    db = get_db()
+
+    stats = {
+        "timestamp": time.time(),
+        "system": {
+            "cpu_percent": psutil.cpu_percent(interval=1),
+            "memory_percent": psutil.virtual_memory().percent,
+            "disk_percent": psutil.disk_usage("/").percent,
+        },
+        "mongodb": {"status": "unknown"},
+        "sql_server": {"status": "disabled"},
+        "services": {},
+    }
+
+    # Check MongoDB
+    try:
+        await db.command("ping")
+        stats["mongodb"] = {"status": "connected", "database": db.name}
+    except Exception as e:
+        stats["mongodb"] = {"status": "disconnected", "error": str(e)}
+
+    # Get monitoring service stats if available
+    if _monitoring_service is not None:
+        try:
+            monitoring_stats = await _monitoring_service.get_metrics()
+            stats["services"] = monitoring_stats
+        except Exception as e:
+            stats["services"] = {"error": str(e)}
+
+    return {"success": True, "data": stats}
+
+
+@metrics_router.get("/staff-performance")
+async def get_staff_performance():
+    """Get staff performance metrics"""
+    db = get_db()
+
+    # Aggregate items scanned per user
+    pipeline = [
+        {
+            "$group": {
+                "_id": "$scanned_by",
+                "items_scanned": {"$sum": 1},
+                "last_scan": {"$max": "$timestamp"},
+            }
+        },
+        {"$sort": {"items_scanned": -1}},
+    ]
+
+    items_stats = await db.items.aggregate(pipeline).to_list(length=100)
+
+    # Aggregate variances found per user
+    variance_pipeline = [
+        {"$match": {"variance": {"$nin": [0, None]}}},
+        {"$group": {"_id": "$counted_by", "variances_found": {"$sum": 1}}},
+    ]
+    variance_stats = await db.count_lines.aggregate(variance_pipeline).to_list(length=100)
+    variance_map = {v["_id"]: v["variances_found"] for v in variance_stats}
+
+    # Combine data
+    performance_data = []
+    for stat in items_stats:
+        user_id = stat["_id"]
+        if not user_id:
+            continue
+
+        performance_data.append(
+            {
+                "user": user_id,
+                "items_scanned": stat["items_scanned"],
+                "variances_found": variance_map.get(user_id, 0),
+                "last_active": stat["last_scan"],
+            }
+        )
+
+    return {"success": True, "data": performance_data}

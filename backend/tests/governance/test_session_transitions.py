@@ -1,0 +1,105 @@
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from backend.server import app
+
+
+@pytest.mark.asyncio
+@pytest.mark.governance
+async def test_update_session_status_rejects_invalid_transition():
+    session = {
+        "id": "sess_123",
+        "session_id": "sess_123",
+        "warehouse": "WH001",
+        "staff_user": "staff1",
+        "staff_name": "Staff User",
+        "status": "OPEN",
+        "type": "STANDARD",
+        "started_at": datetime.now(timezone.utc).replace(tzinfo=None),
+        "last_heartbeat": datetime.now(timezone.utc).replace(tzinfo=None),
+    }
+
+    mock_db = MagicMock()
+    mock_db.sessions = MagicMock()
+    mock_db.sessions.find_one = AsyncMock(return_value=session)
+    mock_db.sessions.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+    mock_db.verification_sessions = MagicMock()
+    mock_db.verification_sessions.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+
+    async def override_get_db():
+        return mock_db
+
+    async def override_get_current_user():
+        return {"username": "staff1", "role": "staff", "full_name": "Staff User"}
+
+    from backend.auth.dependencies import get_current_user_async
+    from backend.db.runtime import get_db
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user_async] = override_get_current_user
+
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://localhost",
+        ) as client:
+            response = await client.put("/api/sessions/sess_123/status?status=COMPLETED")
+            assert response.status_code == 409
+            detail = response.json()["detail"]
+            assert "Invalid session transition" in detail or "finalize endpoint" in detail
+        mock_db.verification_sessions.update_one.assert_not_called()
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+@pytest.mark.governance
+async def test_update_session_status_rejects_paused_instead_of_silently_coercing():
+    """BSR Part E: no session-level pause feature exists. status=PAUSED must
+    be explicitly rejected (400), not silently coerced to a no-op ACTIVE
+    heartbeat update that would return 200 as if pausing succeeded."""
+    session = {
+        "id": "sess_456",
+        "session_id": "sess_456",
+        "warehouse": "WH001",
+        "staff_user": "staff1",
+        "staff_name": "Staff User",
+        "status": "ACTIVE",
+        "type": "STANDARD",
+        "started_at": datetime.now(timezone.utc).replace(tzinfo=None),
+        "last_heartbeat": datetime.now(timezone.utc).replace(tzinfo=None),
+    }
+
+    mock_db = MagicMock()
+    mock_db.sessions = MagicMock()
+    mock_db.sessions.find_one = AsyncMock(return_value=session)
+    mock_db.sessions.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+    mock_db.verification_sessions = MagicMock()
+    mock_db.verification_sessions.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+
+    async def override_get_db():
+        return mock_db
+
+    async def override_get_current_user():
+        return {"username": "staff1", "role": "staff", "full_name": "Staff User"}
+
+    from backend.auth.dependencies import get_current_user_async
+    from backend.db.runtime import get_db
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user_async] = override_get_current_user
+
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://localhost",
+        ) as client:
+            response = await client.put("/api/sessions/sess_456/status?status=PAUSED")
+            assert response.status_code == 400
+            assert "Unsupported session status" in response.json()["detail"]
+        mock_db.sessions.update_one.assert_not_called()
+    finally:
+        app.dependency_overrides.clear()

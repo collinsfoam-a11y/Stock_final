@@ -1,0 +1,772 @@
+/**
+ * Variance List Screen
+ * Displays all items with variances (verified qty != system qty)
+ * Refactored to use Aurora Design System
+ */
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
+  Platform,
+} from "react-native";
+import { FlashList } from "@shopify/flash-list";
+import { useRouter } from "expo-router";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { StatusBar } from "expo-status-bar";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+
+import {
+  ItemVerificationAPI,
+  VarianceItem,
+} from "@/domains/inventory/services/itemVerificationApi";
+import { ItemFilters, FilterValues } from "@/domains/inventory/components/ItemFilters";
+import { ScreenContainer, ModernCard, AnimatedPressable } from "@/components/ui";
+import { useSettingsStore } from "@/store/settingsStore";
+import { theme } from "@/styles/modernDesignSystem";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { toastService } from "@/services/toastService";
+import { saveArrayBufferExport } from "@/utils/fileExport";
+import { safeBackNavigation } from "@/utils/navigation";
+
+export default function VariancesScreen() {
+  const router = useRouter();
+  const uiTokens = useUiTokens();
+  const offlineMode = useSettingsStore((state) => state.settings.offlineMode);
+  const [variances, setVariances] = useState<VarianceItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [filters, setFilters] = useState<FilterValues>({});
+  const [pagination, setPagination] = useState({
+    total: 0,
+    limit: 50,
+    skip: 0,
+  });
+
+  // Bulk Selection State
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const isSelectionMode = selectedIds.size > 0;
+
+  const toggleSelection = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
+    if (Platform.OS !== "web") Haptics.selectionAsync();
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === variances.length) {
+      setSelectedIds(new Set());
+    } else {
+      const allIds = variances.map((v) => v.count_line_id).filter((id): id is string => !!id);
+      setSelectedIds(new Set(allIds));
+    }
+    if (Platform.OS !== "web") Haptics.selectionAsync();
+  };
+
+  const handleBulkAction = async (action: "approve" | "reject") => {
+    if (selectedIds.size === 0) return;
+
+    Alert.alert(
+      `Confirm ${action === "approve" ? "Approval" : "Rejection"}`,
+      `Are you sure you want to ${action} ${selectedIds.size} items?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Confirm",
+          style: action === "reject" ? "destructive" : "default",
+          onPress: async () => {
+            if (offlineMode) {
+              Alert.alert("Offline Mode", "Bulk variance actions require a live connection.");
+              return;
+            }
+            try {
+              setLoading(true);
+              const ids = Array.from(selectedIds);
+              let result;
+
+              if (action === "approve") {
+                result = await ItemVerificationAPI.bulkApproveVariances(ids);
+              } else {
+                result = await ItemVerificationAPI.bulkRejectVariances(ids);
+              }
+
+              toastService.showSuccess(`Successfully ${action}d ${result.modified_count} items`);
+              setSelectedIds(new Set());
+              loadVariances(true);
+            } catch (error: any) {
+              Alert.alert("Error", error.message || "Bulk action failed");
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const loadVariances = React.useCallback(
+    async (reset = false) => {
+      try {
+        if (reset) {
+          setLoading(true);
+          setPagination((prev) => ({ ...prev, skip: 0 }));
+        }
+
+        if (offlineMode) {
+          setVariances([]);
+          setPagination((prev) => ({
+            ...prev,
+            total: 0,
+            skip: 0,
+          }));
+          return;
+        }
+
+        const skip = reset ? 0 : pagination.skip;
+        const response = await ItemVerificationAPI.getVariances({
+          category: filters.category,
+          floor: filters.floor,
+          rack: filters.rack,
+          warehouse: filters.warehouse,
+          limit: pagination.limit,
+          skip,
+        });
+
+        if (reset) {
+          setVariances(response.variances);
+        } else {
+          setVariances((prev) => [...prev, ...response.variances]);
+        }
+
+        setPagination(response.pagination);
+      } catch (error: any) {
+        Alert.alert("Error", error.message || "Failed to load variances");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [filters, offlineMode, pagination.limit, pagination.skip]
+  );
+
+  useEffect(() => {
+    loadVariances(true);
+  }, [loadVariances]);
+
+  const handleRefresh = () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setRefreshing(true);
+    loadVariances(true);
+  };
+
+  const handleLoadMore = () => {
+    if (offlineMode) {
+      return;
+    }
+
+    if (!loading && pagination.skip + pagination.limit < pagination.total) {
+      setPagination((prev) => ({
+        ...prev,
+        skip: prev.skip + prev.limit,
+      }));
+      loadVariances(false);
+    }
+  };
+
+  const handleExport = async (format: "csv" | "xlsx") => {
+    try {
+      if (offlineMode) {
+        Alert.alert("Offline Mode", "Variance exports require a live connection.");
+        return;
+      }
+
+      if (variances.length === 0) {
+        Alert.alert("No Data", "There are no variances to export");
+        return;
+      }
+
+      if (Platform.OS !== "web")
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const fileData = await ItemVerificationAPI.exportVariancesToERPNext(
+        {
+          category: filters.category,
+          floor: filters.floor,
+          rack: filters.rack,
+          warehouse: filters.warehouse,
+        },
+        format
+      );
+      const filename = `variances_erpnext_import_${new Date().toISOString().split("T")[0]}.${format}`;
+
+      await saveArrayBufferExport(
+        fileData,
+        filename,
+        format === "csv"
+          ? "text/csv"
+          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+    } catch (error: any) {
+      Alert.alert("Error", error.message || `Failed to export ${format.toUpperCase()}`);
+    }
+  };
+
+  const renderVarianceItem = ({ item }: { item: VarianceItem }) => {
+    // Determine status color based on variance
+    const isPositive = item.variance > 0;
+    const statusColor = isPositive ? uiTokens.colors.success : uiTokens.colors.error;
+
+    const varianceSign = isPositive ? "+" : "";
+
+    const isSelected = item.count_line_id ? selectedIds.has(item.count_line_id) : false;
+
+    return (
+      <AnimatedPressable
+        onLongPress={() => {
+          if (item.count_line_id) {
+            toggleSelection(item.count_line_id);
+            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          }
+        }}
+        onPress={() => {
+          if (isSelectionMode && item.count_line_id) {
+            toggleSelection(item.count_line_id);
+          } else {
+            if (Platform.OS !== "web") Haptics.selectionAsync();
+            router.push({
+              pathname: "/supervisor/variance-details",
+              params: {
+                itemCode: item.item_code,
+                sessionId: item.session_id || "current",
+              },
+            });
+          }
+        }}
+        style={{ marginBottom: theme.spacing.md }}
+      >
+        <ModernCard
+          variant="outlined"
+          elevation="none"
+          padding={theme.spacing.md}
+          style={{
+            borderColor: isSelected ? uiTokens.colors.accent : `${statusColor}40`,
+            borderWidth: isSelected ? 2 : 1,
+            backgroundColor: isSelected ? "rgba(79, 70, 229, 0.1)" : undefined,
+          }}
+        >
+          <View style={styles.varianceHeader}>
+            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+              {/* Selection Circle */}
+              {isSelectionMode && (
+                <View
+                  style={{
+                    marginRight: 12,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    borderColor: isSelected
+                      ? uiTokens.colors.accent
+                      : uiTokens.colors.textMuted,
+                    backgroundColor: isSelected ? uiTokens.colors.accent : "transparent",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {isSelected && <Ionicons name="checkmark" size={16} color="white" />}
+                </View>
+              )}
+              <View style={styles.varianceHeaderLeft}>
+                <Text style={[styles.itemName, { color: uiTokens.colors.textPrimary }]}>
+                  {item.item_name}
+                </Text>
+                <Text style={[styles.itemCode, { color: uiTokens.colors.textMuted }]}>
+                  {item.item_code}
+                </Text>
+              </View>
+            </View>
+            <View
+              style={[
+                styles.varianceBadge,
+                { backgroundColor: `${statusColor}20` }, // Low opacity background
+              ]}
+            >
+              <Text style={[styles.varianceBadgeText, { color: statusColor }]}>
+                {varianceSign}
+                {(item.variance ?? 0).toFixed(2)}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.qtyRow, { backgroundColor: uiTokens.colors.surface }]}>
+            <View style={styles.qtyItem}>
+              <Text style={[styles.qtyLabel, { color: uiTokens.colors.textMuted }]}>
+                System Qty
+              </Text>
+              <Text style={[styles.qtyValue, { color: uiTokens.colors.textSecondary }]}>
+                {(item.system_qty ?? 0).toFixed(2)}
+              </Text>
+            </View>
+            <View style={[styles.divider, { backgroundColor: uiTokens.colors.border }]} />
+            <View style={styles.qtyItem}>
+              <Text style={[styles.qtyLabel, { color: uiTokens.colors.textMuted }]}>
+                Verified Qty
+              </Text>
+              <Text style={[styles.qtyValue, { color: uiTokens.colors.textPrimary }]}>
+                {(item.verified_qty ?? 0).toFixed(2)}
+              </Text>
+            </View>
+          </View>
+
+          {item.floor || item.rack ? (
+            <View style={styles.locationRow}>
+              <Ionicons name="location-outline" size={14} color={uiTokens.colors.textMuted} />
+              <Text style={[styles.locationText, { color: uiTokens.colors.textSecondary }]}>
+                {[item.floor, item.rack].filter(Boolean).join(" / ")}
+              </Text>
+            </View>
+          ) : null}
+
+          {item.category ? (
+            <Text style={[styles.categoryText, { color: uiTokens.colors.textMuted }]}>
+              {item.category}
+              {item.subcategory ? ` • ${item.subcategory}` : ""}
+            </Text>
+          ) : null}
+
+          <View style={[styles.verificationInfo, { borderTopColor: uiTokens.colors.border }]}>
+            <Ionicons name="person-outline" size={12} color={uiTokens.colors.textMuted} />
+            <Text style={[styles.verificationInfoText, { color: uiTokens.colors.textMuted }]}>
+              Verified by {item.verified_by}
+              {item.verified_at ? ` • ${new Date(item.verified_at).toLocaleDateString()}` : ""}
+            </Text>
+          </View>
+        </ModernCard>
+      </AnimatedPressable>
+    );
+  };
+
+  return (
+    <ScreenContainer>
+      <StatusBar style="light" />
+      <View style={styles.container}>
+        {/* Header */}
+        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
+          <View style={styles.headerLeft}>
+            {isSelectionMode ? (
+              <AnimatedPressable
+                onPress={() => setSelectedIds(new Set())}
+                style={[
+                  styles.backButton,
+                  { backgroundColor: uiTokens.colors.surface, borderColor: uiTokens.colors.border },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Clear selection"
+              >
+                <Ionicons name="close" size={24} color={uiTokens.colors.textPrimary} />
+              </AnimatedPressable>
+            ) : (
+              <AnimatedPressable
+                onPress={() => safeBackNavigation(router, { userRole: "supervisor" })}
+                style={[
+                  styles.backButton,
+                  { backgroundColor: uiTokens.colors.surface, borderColor: uiTokens.colors.border },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+              >
+                <Ionicons name="arrow-back" size={24} color={uiTokens.colors.textPrimary} />
+              </AnimatedPressable>
+            )}
+            <View>
+              <Text style={[styles.pageTitle, { color: uiTokens.colors.textPrimary }]}>
+                {isSelectionMode ? `${selectedIds.size} Selected` : "Variances"}
+              </Text>
+              <Text style={[styles.pageSubtitle, { color: uiTokens.colors.textSecondary }]}>
+                {isSelectionMode
+                  ? "Select items to approve/reject"
+                  : `${pagination.total} discrepancies found`}
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {isSelectionMode && (
+              <AnimatedPressable
+                style={styles.exportButton}
+                onPress={handleSelectAll}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  selectedIds.size === variances.length ? "Deselect all" : "Select all"
+                }
+              >
+                <ModernCard variant="outlined" elevation="none" padding={8}>
+                  <Ionicons
+                    name={
+                      selectedIds.size === variances.length
+                        ? "checkmark-done-circle"
+                        : "checkmark-circle-outline"
+                    }
+                    size={20}
+                    color={uiTokens.colors.textPrimary}
+                  />
+                </ModernCard>
+              </AnimatedPressable>
+            )}
+
+            <View style={styles.exportActions}>
+              <AnimatedPressable
+                style={[styles.exportFormatButton, variances.length === 0 && { opacity: 0.5 }]}
+                onPress={() => void handleExport("csv")}
+                disabled={variances.length === 0}
+              >
+                <ModernCard variant="outlined" elevation="none" padding={8}>
+                  <Text style={[styles.exportFormatLabel, { color: uiTokens.colors.textPrimary }]}>
+                    CSV
+                  </Text>
+                </ModernCard>
+              </AnimatedPressable>
+              <AnimatedPressable
+                style={[styles.exportFormatButton, variances.length === 0 && { opacity: 0.5 }]}
+                onPress={() => void handleExport("xlsx")}
+                disabled={variances.length === 0}
+              >
+                <ModernCard variant="outlined" elevation="none" padding={8}>
+                  <Text style={[styles.exportFormatLabel, { color: uiTokens.colors.textPrimary }]}>
+                    XLSX
+                  </Text>
+                </ModernCard>
+              </AnimatedPressable>
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* Filters */}
+        <Animated.View entering={FadeInDown.delay(200).springify()}>
+          <ModernCard
+            variant="outlined"
+            elevation="none"
+            padding={theme.spacing.sm}
+            style={{ marginBottom: theme.spacing.md }}
+          >
+            <ItemFilters
+              onFilterChange={setFilters}
+              showVerifiedFilter={false} // Verified filter irrelevant here as all are filtered by variance
+              showSearch={false}
+            />
+          </ModernCard>
+        </Animated.View>
+
+        {offlineMode && (
+          <ModernCard
+            variant="outlined"
+            elevation="none"
+            padding={theme.spacing.sm}
+            style={{ marginBottom: theme.spacing.md }}
+          >
+            <Text style={[styles.offlineNoticeTitle, { color: uiTokens.colors.textPrimary }]}>
+              Offline mode enabled
+            </Text>
+            <Text style={[styles.offlineNoticeBody, { color: uiTokens.colors.textSecondary }]}>
+              Variance review, bulk approve/reject, and exports require a live connection because
+              discrepancy data is not cached locally.
+            </Text>
+          </ModernCard>
+        )}
+
+        {!offlineMode && (
+          <ModernCard
+            variant="outlined"
+            elevation="none"
+            padding={theme.spacing.sm}
+            style={{ marginBottom: theme.spacing.md }}
+          >
+            <Text style={[styles.exportHintTitle, { color: uiTokens.colors.textPrimary }]}>
+              ERPNext import format
+            </Text>
+            <Text style={[styles.exportHintBody, { color: uiTokens.colors.textSecondary }]}>
+              Blank ID inserts new rows. Keep ID to update existing ERPNext records.
+            </Text>
+          </ModernCard>
+        )}
+
+        {variances.length === 0 && !loading ? (
+          <View style={styles.centered}>
+            <Ionicons
+              name={offlineMode ? "cloud-offline-outline" : "checkmark-done-circle-outline"}
+              size={64}
+              color={offlineMode ? uiTokens.colors.textMuted : uiTokens.colors.success}
+            />
+            <Text style={[styles.emptyText, { color: uiTokens.colors.textSecondary }]}>
+              {offlineMode ? "Variance list unavailable offline" : "No variances found"}
+            </Text>
+            <Text style={[styles.emptySubtext, { color: uiTokens.colors.textMuted }]}>
+              {offlineMode
+                ? "Reconnect to review discrepancies and approve or reject them."
+                : "All items match system quantities"}
+            </Text>
+          </View>
+        ) : (
+          <View style={{ flex: 1 }}>
+            <FlashList
+              data={variances}
+              renderItem={renderVarianceItem}
+              // @ts-ignore
+              estimatedItemSize={180}
+              keyExtractor={(item, index) => `${item.item_code}-${item.verified_at}-${index}`}
+              contentContainerStyle={styles.listContent}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={uiTokens.colors.accent}
+                  colors={[uiTokens.colors.accent]}
+                />
+              }
+              onEndReached={handleLoadMore}
+              onEndReachedThreshold={0.5}
+              ListFooterComponent={
+                loading && variances.length > 0 ? (
+                  <View style={{ paddingVertical: 20 }}>
+                    <ActivityIndicator size="small" color={uiTokens.colors.accent} />
+                  </View>
+                ) : (
+                  <View style={{ height: 20 }} />
+                )
+              }
+            />
+          </View>
+        )}
+      </View>
+
+      {/* Bulk Action Bar */}
+      {isSelectionMode && (
+        <Animated.View entering={FadeInDown.duration(300)} style={styles.bulkActionBar}>
+          <ModernCard
+            variant="outlined"
+            elevation="none"
+            padding={16}
+            style={{ flexDirection: "row", gap: 12, width: "100%" }}
+          >
+            <AnimatedPressable
+              style={[styles.bulkButton, { backgroundColor: uiTokens.colors.error }]}
+              onPress={() => handleBulkAction("reject")}
+            >
+              <Ionicons name="close-circle" size={20} color="white" />
+              <Text style={styles.bulkButtonText}>Reject ({selectedIds.size})</Text>
+            </AnimatedPressable>
+
+            <AnimatedPressable
+              style={[styles.bulkButton, { backgroundColor: uiTokens.colors.success }]}
+              onPress={() => handleBulkAction("approve")}
+            >
+              <Ionicons name="checkmark-circle" size={20} color="white" />
+              <Text style={styles.bulkButtonText}>Approve ({selectedIds.size})</Text>
+            </AnimatedPressable>
+          </ModernCard>
+        </Animated.View>
+      )}
+    </ScreenContainer>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 60,
+    paddingHorizontal: theme.spacing.md,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingBottom: 100,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: theme.spacing.md,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.md,
+  },
+  backButton: {
+    padding: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+  },
+  pageTitle: {
+    fontSize: 32,
+    fontWeight: "700",
+  },
+  pageSubtitle: {
+    fontSize: 14,
+  },
+  exportButton: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  exportActions: {
+    flexDirection: "row",
+    gap: theme.spacing.xs,
+  },
+  exportFormatButton: {
+    minWidth: 52,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  exportFormatLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  listContent: {
+    paddingBottom: theme.spacing.xl,
+  },
+  varianceHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: theme.spacing.md,
+  },
+  varianceHeaderLeft: {
+    flex: 1,
+  },
+  itemName: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  itemCode: {
+    fontSize: 14,
+  },
+  varianceBadge: {
+    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+    minWidth: 60,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  varianceBadgeText: {
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  qtyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
+  },
+  qtyItem: {
+    flex: 1,
+  },
+  divider: {
+    width: 1,
+    height: "80%",
+  },
+  qtyLabel: {
+    fontSize: 12,
+    marginBottom: 2,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  qtyValue: {
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs,
+    marginBottom: 4,
+  },
+  locationText: {
+    fontSize: 12,
+  },
+  categoryText: {
+    fontSize: 12,
+    fontStyle: "italic",
+    marginBottom: theme.spacing.xs,
+    marginTop: 2,
+  },
+  verificationInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.xs,
+    paddingTop: theme.spacing.xs,
+    borderTopWidth: 1,
+  },
+  verificationInfoText: {
+    fontSize: 12,
+  },
+  loadingText: {
+    marginTop: theme.spacing.md,
+    fontSize: 16,
+  },
+  emptyText: {
+    fontSize: 20,
+    fontWeight: "500",
+    marginTop: theme.spacing.md,
+  },
+  emptySubtext: {
+    fontSize: 16,
+    marginTop: theme.spacing.xs,
+  },
+  bulkActionBar: {
+    position: "absolute",
+    bottom: 30,
+    left: 20,
+    right: 20,
+    alignItems: "center",
+  },
+  bulkButton: {
+    flex: 1,
+    height: 50,
+    borderRadius: theme.borderRadius.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    elevation: 8,
+  },
+  bulkButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  offlineNoticeTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  offlineNoticeBody: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  exportHintTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  exportHintBody: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+});

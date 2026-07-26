@@ -1,0 +1,45 @@
+# Development and test requirements
+# Use: pip install -r requirements.dev.txt
+#
+# This file extends the production runtime set with local-only packages used by:
+# - pytest and local validation
+# - optional feature modules that are safe to exclude from the production image
+# - developer tooling and load-test scripts
+
+-r requirements.production.txt
+
+# Test dependencies
+pytest>=9.0.3
+pytest-asyncio>=1.3.0
+pytest-cov==7.0.0
+requests>=2.33.0,<3
+respx>=0.22.0
+
+# Developer tooling
+pymssql>=2.2.0  # Used by scripts/discover_tables.py (dev-only SQL Server explorer)
+PyYAML>=6.0  # Used by scripts/generate_api_docs.py (transitive dep but should be explicit)
+black>=26.3.1
+isort>=5.13.2
+flake8>=7.1.1
+mypy>=1.13.0
+bandit>=1.8.6
+pip-audit>=2.9.0
+ruff>=0.8.0
+locust>=2.34.0
+aiohttp>=3.13.4
+memory-profiler>=0.61.0
+
+# Optional local feature packages
+numpy>=2.0.2
+Pillow>=12.2.0
+sentence-transformers>=2.2.2
+redis[hiredis]>=7.3.0
+
+# Optional observability extras
+opentelemetry-api>=1.25.0
+opentelemetry-sdk>=1.25.0
+opentelemetry-exporter-otlp-proto-http>=1.25.0
+opentelemetry-instrumentation-fastapi>=0.46b0
+opentelemetry-instrumentation-requests>=0.46b0
+opentelemetry-instrumentation-logging>=0.46b0
+opentelemetry-instrumentation-pymongo>=0.46b0

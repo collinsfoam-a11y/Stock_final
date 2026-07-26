@@ -1,0 +1,59 @@
+{
+  "cookies": [
+    {
+      "name": "sv_access_token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdGFmZjEiLCJyb2xlIjoic3RhZmYiLCJleHAiOjE3NzcyNzQzOTcsInR5cGUiOiJhY2Nlc3MifQ.4MrtQh1ZDe7mX4fkigcXuT2uvgWqwSu0vVKKxp3PyzY",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1777274397.58126,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "sv_refresh_token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdGFmZjEiLCJyb2xlIjoic3RhZmYiLCJleHAiOjE3Nzk4NjU0OTcsInR5cGUiOiJyZWZyZXNoIiwianRpIjoiM2UyNzhmZDgtZDczYS00Mjk0LThjZDItNTBjMmQyNGFhZGViIn0.Ekya5bQYCxhqTMyq1OZI_9_FjijR0ieCf4z9sy6QyTg",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1779865497.581375,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:8083",
+      "localStorage": [
+        {
+          "name": "filter-store:69561005ba8d11da7f6bb8de",
+          "value": "{\"state\":{\"presets\":[]},\"version\":0}"
+        },
+        {
+          "name": "notification-store",
+          "value": "{\"state\":{\"notifications\":[]},\"version\":0}"
+        },
+        {
+          "name": "sessions_cache",
+          "value": "{\"key\":\"sessions_cache\",\"value\":{\"f658999a-f89e-4ad2-8cd4-e58efe10745d\":{\"id\":\"f658999a-f89e-4ad2-8cd4-e58efe10745d\",\"warehouse\":\"stale-auth-1777272910900\",\"status\":\"OPEN\",\"type\":\"STANDARD\",\"staff_user\":\"staff1\",\"staff_name\":\"Staff Member\",\"started_at\":\"2026-04-27T06:55:10.907000\",\"closed_at\":null,\"reconciled_at\":null,\"total_items\":0,\"total_variance\":0,\"notes\":null,\"cached_at\":\"2026-04-27T07:05:00.286Z\"},\"f8b318d1-4d7b-4672-9c15-5f88431c24b9\":{\"id\":\"f8b318d1-4d7b-4672-9c15-5f88431c24b9\",\"warehouse\":\"stale-auth-1777272047052\",\"status\":\"CLOSED\",\"type\":\"STANDARD\",\"staff_user\":\"staff1\",\"staff_name\":\"Staff Member\",\"started_at\":\"2026-04-27T06:40:47.061000\",\"closed_at\":null,\"reconciled_at\":null,\"total_items\":0,\"total_variance\":0,\"notes\":null,\"cached_at\":\"2026-04-27T07:05:00.286Z\"},\"1e7c305a-d777-4790-b844-e4aaf4d66747\":{\"id\":\"1e7c305a-d777-4790-b844-e4aaf4d66747\",\"warehouse\":\"stale-auth-1777271986810\",\"status\":\"CLOSED\",\"type\":\"STANDARD\",\"staff_user\":\"staff1\",\"staff_name\":\"Staff Member\",\"started_at\":\"2026-04-27T06:39:46.823000\",\"closed_at\":null,\"reconciled_at\":null,\"total_items\":0,\"total_variance\":0,\"notes\":null,\"cached_at\":\"2026-04-27T07:05:00.286Z\"},\"3b63e451-b416-4a4b-848e-e1e9a421291b\":{\"id\":\"3b63e451-b416-4a4b-848e-e1e9a421291b\",\"warehouse\":\"stale-auth-1777269792338\",\"status\":\"CLOSED\",\"type\":\"STANDARD\",\"staff_user\":\"staff1\",\"staff_name\":\"Staff Member\",\"started_at\":\"2026-04-27T06:03:12.342000\",\"closed_at\":null,\"reconciled_at\":null,\"total_items\":0,\"total_variance\":0,\"notes\":null,\"cached_at\":\"2026-04-27T07:05:00.286Z\"},\"c96ca410-62ee-4162-96d0-e5189d4c61e7\":{\"id\":\"c96ca410-62ee-4162-96d0-e5189d4c61e7\",\"warehouse\":\"Showroom\",\"status\":\"CLOSED\",\"type\":\"STANDARD\",\"staff_user\":\"staff1\",\"staff_name\":\"Staff Member\",\"started_at\":\"2026-04-27T06:01:01.833000\",\"closed_at\":null,\"reconciled_at\":null,\"total_items\":0,\"total_variance\":0,\"notes\":null,\"cached_at\":\"2026-04-27T07:05:00.286Z\"}},\"timestamp\":1777273500286}"
+        },
+        {
+          "name": "connection_info",
+          "value": "{\"backendUrl\":\"http://localhost:8001\",\"backendPort\":8001,\"backendIp\":\"localhost\",\"lastChecked\":\"2026-04-27T07:05:01.817Z\",\"isHealthy\":true}"
+        },
+        {
+          "name": "last_logged_user",
+          "value": "{\"username\":\"staff1\",\"full_name\":\"Staff Member\",\"has_pin\":false}"
+        },
+        {
+          "name": "app_settings:69561005ba8d11da7f6bb8de",
+          "value": "{\"darkMode\":false,\"theme\":\"light\",\"notificationsEnabled\":true,\"notificationSound\":true,\"notificationBadge\":true,\"autoSyncEnabled\":true,\"autoSyncInterval\":15,\"syncOnReconnect\":true,\"offlineMode\":false,\"cacheExpiration\":24,\"maxQueueSize\":1000,\"scannerVibration\":true,\"scannerSound\":true,\"scannerAutoSubmit\":true,\"scannerTimeout\":30,\"fontSize\":\"medium\",\"fontSizeValue\":16,\"fontStyle\":\"system\",\"showItemImages\":true,\"showItemPrices\":true,\"showItemStock\":true,\"exportFormat\":\"csv\",\"backupFrequency\":\"weekly\",\"requireAuth\":true,\"sessionTimeout\":30,\"biometricAuth\":false,\"operationalMode\":\"routine\",\"imageCache\":true,\"lazyLoading\":true,\"debounceDelay\":300,\"columnVisibility\":{\"mfgDate\":true,\"expiryDate\":true,\"serialNumber\":true,\"mrp\":true}}"
+        },
+        {
+          "name": "device_id",
+          "value": "357948df-374c-4eea-83e5-b79e0bea2e05"
+        }
+      ]
+    }
+  ]
+}

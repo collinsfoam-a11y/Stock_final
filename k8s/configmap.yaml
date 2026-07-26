@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stock-verify-config
+  namespace: stock-verify
+data:
+  ENVIRONMENT: "production"
+  APP_NAME: "Stock Verify API"
+  APP_VERSION: "2.1.0"
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "json"
+  LOG_FILE: "/tmp/app.log"
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONUNBUFFERED: "1"
+  PORT: "8001"
+  WORKERS: "4"
+  CORS_ALLOW_ORIGINS: "https://yourdomain.com"
+  FORCE_HTTPS: "true"
+  RATE_LIMIT_ENABLED: "true"
+  RATE_LIMIT_PER_MINUTE: "60"
+  RATE_LIMIT_BURST: "10"
+  MAX_CONCURRENT: "100"
+  METRICS_ENABLED: "true"
+  ENABLE_AUDIT_LOG: "true"
+  API_URL: "http://stock-verify-backend:8001"

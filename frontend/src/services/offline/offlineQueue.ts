@@ -1,0 +1,322 @@
+import type { AxiosInstance, AxiosRequestConfig, AxiosError } from "axios";
+// import apiClient from './httpClient';
+import { storage } from "../storage/asyncStorageService";
+import { useNetworkStore } from "../../store/networkStore";
+import { flags } from "../../constants/flags";
+import { toastService } from "../toastService";
+import { createLogger } from "../logging";
+import { onlineManager } from "@tanstack/react-query";
+
+// NOTE: This module is entirely gated by flags.enableOfflineQueue
+// It safely no-ops when the flag is false.
+
+const STORAGE_KEY = "offlineQueue:v1";
+const CONFLICTS_KEY = "offlineQueue:conflicts:v1";
+const log = createLogger("OfflineQueue");
+
+export type QueueMethod = "post" | "put" | "patch" | "delete";
+
+export interface QueuedMutation {
+  id: string;
+  method: QueueMethod;
+  url: string; // relative to api base (config.baseURL set by interceptor)
+  data?: any;
+  params?: any;
+  headers?: Record<string, string>;
+  createdAt: number;
+  retries: number;
+}
+
+function generateId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+async function loadQueue(): Promise<QueuedMutation[]> {
+  const list = await storage.get<QueuedMutation[]>(STORAGE_KEY, {
+    defaultValue: [],
+    silent: true,
+  });
+  return Array.isArray(list) ? list : [];
+}
+
+async function saveQueue(queue: QueuedMutation[]): Promise<void> {
+  await storage.set(STORAGE_KEY, queue, { silent: true });
+}
+
+async function addConflict(item: QueuedMutation, detail?: any): Promise<void> {
+  const existing = (await storage.get<any[]>(CONFLICTS_KEY, { defaultValue: [] })) || [];
+  const record = { ...item, detail, resolved: false, timestamp: Date.now() };
+  existing.push(record);
+  await storage.set(CONFLICTS_KEY, existing, { silent: true });
+}
+
+function isMutatingMethod(method?: string): method is QueueMethod {
+  if (!method) return false;
+  const m = method.toLowerCase();
+  return m === "post" || m === "put" || m === "patch" || m === "delete";
+}
+
+export async function enqueueMutation(config: AxiosRequestConfig): Promise<QueuedMutation> {
+  const queue = await loadQueue();
+  const item: QueuedMutation = {
+    id: generateId(),
+    method: (config.method || "post").toLowerCase() as QueueMethod,
+    url: config.url || "/",
+    data: config.data,
+    params: config.params,
+    headers: config.headers as Record<string, string> | undefined,
+    createdAt: Date.now(),
+    retries: 0,
+  };
+  queue.push(item);
+  await saveQueue(queue);
+  return item;
+}
+
+// M15 fix: Use a promise-based lock to avoid async gap race in the boolean guard.
+let flushPromise: Promise<{ processed: number; remaining: number }> | null = null;
+
+export async function flushOfflineQueue(
+  client: AxiosInstance
+): Promise<{ processed: number; remaining: number }> {
+  if (!flags.enableOfflineQueue) return { processed: 0, remaining: 0 };
+  // If already flushing, wait for the existing flush to complete
+  if (flushPromise) return flushPromise;
+
+  const { isOnline, isInternetReachable, isRestrictedMode } = useNetworkStore.getState();
+  const online = !isRestrictedMode && isOnline && (isInternetReachable ?? true);
+  onlineManager.setOnline(online);
+  if (!online) return { processed: 0, remaining: (await loadQueue()).length };
+
+  flushPromise = _doFlush(client);
+  return flushPromise;
+}
+
+async function _doFlush(
+  client: AxiosInstance
+): Promise<{ processed: number; remaining: number }> {
+  try {
+    let queue = await loadQueue();
+    let processed = 0;
+
+    while (queue.length > 0) {
+      const item = queue[0]!;
+
+      // Safety check: Drop auth requests that might have been queued
+      // This prevents infinite loops if a login request got stuck in the queue
+      if (item.url && item.url.includes("/auth/")) {
+        log.warn("Dropping queued auth request", { url: item.url, id: item.id });
+        queue = queue.slice(1);
+        await saveQueue(queue);
+        continue;
+      }
+
+      try {
+        await client.request({
+          method: item.method,
+          url: item.url,
+          data: item.data,
+          params: item.params,
+          headers: item.headers,
+        });
+        processed += 1;
+      } catch (err) {
+        const error = err as AxiosError;
+        const status = error.response?.status;
+        // Network still down or server unreachable: stop processing, keep remaining
+        if (!error.response) {
+          break;
+        }
+        // SYNC-04: 401 means the access token expired. Pause the queue and
+        // PRESERVE the payload (leave it at the head) so it flushes after
+        // re-authentication. Never drop or conflict a valid pending mutation
+        // just because auth lapsed.
+        if (status === 401) {
+          log.warn("Auth required during queue flush - pausing; payload preserved", {
+            id: item.id,
+            url: item.url,
+          });
+          break;
+        }
+        // Conflict, validation error, or forbidden: record and drop this item, continue
+        if (
+          status &&
+          (status === 409 || status === 422 || status === 400 || status === 403)
+        ) {
+          await addConflict(item, error.response?.data);
+          processed += 1; // we consider it handled (moved to conflicts)
+        } else {
+          // C6 fix: On 5xx server errors, increment retry counter instead of silently dropping.
+          // If max retries exceeded, move to conflicts; otherwise leave in queue for later.
+          item.retries = (item.retries || 0) + 1;
+          if (item.retries >= 5) {
+            await addConflict(item, {
+              error: "Max retries exceeded",
+              lastStatus: status,
+              lastResponse: error.response?.data,
+            });
+            processed += 1;
+          } else {
+            // Update item in queue with incremented retry count and stop processing
+            queue[0] = item;
+            await saveQueue(queue);
+            break;
+          }
+        }
+      }
+      // Remove the head item we just processed
+      queue = queue.slice(1);
+      await saveQueue(queue);
+    }
+
+    return { processed, remaining: queue.length };
+  } finally {
+    flushPromise = null;
+  }
+}
+
+let unsubscribeNetwork: (() => void) | null = null;
+let interceptorsAttached = false;
+
+export function startOfflineQueue(client: AxiosInstance): void {
+  if (!flags.enableOfflineQueue) return;
+
+  // Sync initial online status with React Query
+  const { isOnline, isInternetReachable, isRestrictedMode } = useNetworkStore.getState();
+  onlineManager.setOnline(!isRestrictedMode && isOnline && (isInternetReachable ?? true));
+
+  // Subscribe to network changes to auto-flush
+  if (!unsubscribeNetwork) {
+    unsubscribeNetwork = useNetworkStore.subscribe((state: any, _prev: any) => {
+      const online =
+        !state.isRestrictedMode && state.isOnline && (state.isInternetReachable ?? true);
+      onlineManager.setOnline(online);
+      if (online && !flushPromise) {
+        flushOfflineQueue(client)
+          .then((res) => {
+            if (__DEV__ && (res.processed > 0 || res.remaining >= 0)) {
+              log.debug("Flushed queued mutations", {
+                processed: res.processed,
+                remaining: res.remaining,
+              });
+            }
+            if (res.processed > 0) {
+              try {
+                toastService.showSuccess(`Synced ${res.processed} queued change(s)`);
+              } catch {}
+            }
+          })
+          .catch(() => {});
+      }
+    });
+  }
+
+  // Attach axios interceptors once
+  if (!interceptorsAttached) {
+    attachOfflineQueueInterceptors(client);
+    interceptorsAttached = true;
+  }
+
+  // Try initial flush
+  flushOfflineQueue(client).catch(() => {});
+}
+
+export function stopOfflineQueue(): void {
+  if (unsubscribeNetwork) {
+    try {
+      unsubscribeNetwork();
+    } catch {}
+    unsubscribeNetwork = null;
+  }
+}
+
+export function attachOfflineQueueInterceptors(client: AxiosInstance): void {
+  if (!flags.enableOfflineQueue) return;
+
+  client.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+      const cfg: AxiosRequestConfig = error.config || {};
+      const method = (cfg.method || "").toLowerCase();
+
+      // Only handle mutating requests
+      if (!isMutatingMethod(method)) {
+        return Promise.reject(error);
+      }
+
+      // Exclude auth endpoints from offline queue
+      // It is dangerous to queue login/auth requests as they can cause loops or security issues
+      if (cfg.url && cfg.url.includes("/auth/")) {
+        return Promise.reject(error);
+      }
+
+      // If backend rejects due to LAN policy, treat like offline and queue mutations.
+      const status = error.response?.status;
+      const errorCode = (error.response?.data as { code?: string } | undefined)?.code;
+      if (status === 403 && errorCode === "NETWORK_NOT_ALLOWED") {
+        try {
+          useNetworkStore.getState().setRestrictedMode(true);
+        } catch {}
+        const item = await enqueueMutation(cfg);
+        log.warn("Queued mutation due to restricted mode", {
+          id: item.id,
+          method: item.method,
+          url: item.url,
+        });
+        try {
+          toastService.showInfo("Restricted network. Saved offline for later sync.");
+        } catch {}
+        return Promise.reject(error);
+      }
+
+      const { isOnline, isInternetReachable, isRestrictedMode } = useNetworkStore.getState();
+      const online = !isRestrictedMode && isOnline && (isInternetReachable ?? true);
+
+      // If offline or network error with no response, queue it
+      const isNetworkError = !error.response;
+      if (!online || isNetworkError) {
+        const item = await enqueueMutation(cfg);
+        log.warn("Queued mutation", {
+          id: item.id,
+          method: item.method,
+          url: item.url,
+          isNetworkError,
+        });
+        try {
+          toastService.showInfo("Saved offline. Will sync when online.");
+        } catch {}
+        // Resolve with a synthetic response to unblock UI if desired, otherwise reject
+        // Here we reject so callers can decide how to reflect queued state
+        return Promise.reject(error);
+      }
+
+      return Promise.reject(error);
+    }
+  );
+}
+
+// --- Helpers for UI ---
+export async function getQueueCount(): Promise<number> {
+  const q = await loadQueue();
+  return q.length;
+}
+
+export async function listQueue(): Promise<QueuedMutation[]> {
+  return loadQueue();
+}
+
+export async function getConflicts(): Promise<any[]> {
+  return (await storage.get<any[]>(CONFLICTS_KEY, { defaultValue: [] })) || [];
+}
+
+export async function getConflictsCount(): Promise<number> {
+  const c = await getConflicts();
+  return c.length;
+}
+
+export async function resolveConflict(id: string): Promise<boolean> {
+  const list = await getConflicts();
+  const next = list.filter((c) => c.id !== id);
+  await storage.set(CONFLICTS_KEY, next, { silent: true });
+  return next.length !== list.length;
+}
