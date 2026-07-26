@@ -166,7 +166,7 @@ export const FlexibleDateField: React.FC<FlexibleDateFieldProps> = ({
   }) => (
     <TouchableOpacity
       style={[styles.smallPicker, fullWidth && styles.smallPickerFull]}
-       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={onPress}
+      onPress={onPress}
       {...getAccessibleButtonProps({
         label: `${label} ${placeholder} picker`,
         hint: `Opens the ${label.toLowerCase()} ${placeholder.toLowerCase()} selector.`,
@@ -216,7 +216,7 @@ export const FlexibleDateField: React.FC<FlexibleDateFieldProps> = ({
                     styles.formatOption,
                     format === option.value && styles.formatOptionActive,
                   ]}
-                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={() => onChangeFormat(option.value)}
+                  onPress={() => onChangeFormat(option.value)}
                   {...getAccessibleButtonProps({
                     label: `${label} format ${option.label}`,
                     selected: format === option.value,
