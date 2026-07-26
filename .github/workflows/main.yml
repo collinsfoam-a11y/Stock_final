@@ -77,8 +77,8 @@ jobs:
 
       - name: Duplicate route registration guard
         env:
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-route-guard-jwt-secret-placeholder-32' }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET || 'ci-route-guard-jwt-refresh-placeholder' }}
           PIN_SALT: ci-import-guard-pin-salt-32-chars-x
           ENVIRONMENT: test
         run: |
@@ -86,8 +86,8 @@ jobs:
 
       - name: Runtime import guard
         env:
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-import-guard-jwt-secret-placeholder32' }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET || 'ci-import-guard-jwt-refresh-placeholder' }}
           PIN_SALT: ci-import-guard-pin-salt-32-chars-x
           ENVIRONMENT: test
         run: |
@@ -97,7 +97,7 @@ jobs:
         env:
           MONGODB_URL: mongodb://localhost:27017/test_db
           REDIS_URL: redis://localhost:6379
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-test-jwt-secret-placeholder-32-chars' }}
           PIN_SALT: ci-test-pin-salt-not-for-production
           APP_ENV: test
           ENVIRONMENT: test
@@ -337,8 +337,8 @@ jobs:
         env:
           MONGO_URL: mongodb://127.0.0.1:27017
           DB_NAME: stock_verification
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-recount-smoke-jwt-secret-placeholder' }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET || 'ci-recount-smoke-jwt-refresh-place' }}
           PIN_SALT: ci-recount-smoke-pin-salt-abcdefghijklmnopqr
           ENVIRONMENT: test
           APP_ENV: test
@@ -432,8 +432,8 @@ jobs:
         run: |
           docker build --no-cache -f backend/Dockerfile -t backend-import-smoke ./backend
           docker run --rm \
-            -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-            -e JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }} \
+            -e JWT_SECRET="${{ secrets.JWT_SECRET || 'ci-docker-smoke-jwt-secret-placeholder32' }}" \
+            -e JWT_REFRESH_SECRET="${{ secrets.JWT_REFRESH_SECRET || 'ci-docker-smoke-jwt-refresh-place' }}" \
             -e ENVIRONMENT=production \
             backend-import-smoke \
             python -c "import backend.server"
