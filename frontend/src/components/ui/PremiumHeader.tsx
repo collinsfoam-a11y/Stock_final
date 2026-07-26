@@ -24,6 +24,8 @@ import { useThemeContext } from "../../context/ThemeContext";
 import { AppTheme } from "../../theme/themes";
 import { BrandLogo } from "../branding/BrandLogo";
 import { font, gap, radius } from '@/theme/staffUiScale';
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 
 interface PremiumHeaderProps {
   title?: string;
@@ -104,15 +106,18 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
       return (
         <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: "rgba(99, 102, 241, 0.15)" }]}
-          onPress={rightAction.onPress}
+          onPress={() => {
+            void haptics.light();
+            rightAction.onPress();
+          }}
           activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel={rightAction.label || "Action"}
+          {...getAccessibleButtonProps({ label: rightAction.label ?? "Custom action" })}
         >
           <Ionicons
             name={rightAction.icon}
             size={22}
             color={rightAction.color || theme.colors.primary[400]}
+            {...getDecorativeIconProps()}
           />
         </TouchableOpacity>
       );
@@ -122,12 +127,14 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
       return (
         <TouchableOpacity
           style={[styles.actionButton, styles.logoutButton]}
-          onPress={onLogout}
+          onPress={() => {
+            void haptics.light();
+            onLogout();
+          }}
           activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Sign out"
+          {...getAccessibleButtonProps({ label: "Log out" })}
         >
-          <Ionicons name="log-out-outline" size={22} color={theme.colors.error.main} />
+          <Ionicons name="log-out-outline" size={22} color={theme.colors.error.main} {...getDecorativeIconProps()} />
         </TouchableOpacity>
       );
     }
@@ -136,12 +143,14 @@ export const PremiumHeader: React.FC<PremiumHeaderProps> = ({
       return (
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={onMenuPress}
+          onPress={() => {
+            void haptics.light();
+            onMenuPress();
+          }}
           activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Open menu"
+          {...getAccessibleButtonProps({ label: "Open menu" })}
         >
-          <Ionicons name="menu-outline" size={24} color={theme.colors.text.primary} />
+          <Ionicons name="menu-outline" size={24} color={theme.colors.text.primary} {...getDecorativeIconProps()} />
         </TouchableOpacity>
       );
     }

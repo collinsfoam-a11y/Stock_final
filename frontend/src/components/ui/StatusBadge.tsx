@@ -11,6 +11,7 @@
 import React, { useMemo } from "react";
 import { View, Text, StyleSheet, ViewStyle } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -128,10 +129,21 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     borderColor: colors.border,
   };
 
+  const accessibilityProps = {
+    accessible: true,
+    accessibilityRole: "text" as const,
+    accessibilityLabel: `Status: ${label}`,
+  };
+
   const content = (
     <>
       {icon && (
-        <Ionicons name={icon} size={sizeConfig.iconSize} color={colors.text} />
+        <Ionicons
+          name={icon}
+          size={sizeConfig.iconSize}
+          color={colors.text}
+          {...getDecorativeIconProps()}
+        />
       )}
       <Text
         style={[
@@ -149,13 +161,20 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   if (pulse) {
     return (
-      <Animated.View style={[containerStyle, animatedStyle, style]}>
+      <Animated.View
+        style={[containerStyle, animatedStyle, style]}
+        {...accessibilityProps}
+      >
         {content}
       </Animated.View>
     );
   }
 
-  return <View style={[containerStyle, style]}>{content}</View>;
+  return (
+    <View style={[containerStyle, style]} {...accessibilityProps}>
+      {content}
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({

@@ -7,6 +7,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -88,6 +89,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
             name={indeterminate ? "remove" : "checkmark"}
             size={16}
             color={disabled ? colors.neutral[700] : colors.white}
+            {...getDecorativeIconProps()}
           />
         </Animated.View>
       </View>

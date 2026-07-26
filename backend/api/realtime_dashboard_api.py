@@ -279,102 +279,78 @@ async def get_dashboard_stats(
         return await projection_reads.get_dashboard_stats()
 
     with trace_span("calculate_dashboard_stats"):
-        # Run aggregations in parallel
-        stats_pipeline = [
+        today_start = (
+            datetime.now(timezone.utc).replace(tzinfo=None).replace(hour=0, minute=0, second=0)
+        )
+
+        variance_pipeline: list[dict[str, Any]] = [
             {
-                "$facet": {
-                    "total": [{"$count": "count"}],
-                    "verified": [
-                        {"$match": {"verified": True}},
-                        {"$count": "count"},
-                    ],
-                    "pending": [
-                        {"$match": {"verified": False}},
-                        {"$count": "count"},
-                    ],
-                    "variance_stats": [
-                        {
-                            "$group": {
-                                "_id": None,
-                                "total_variance": {"$sum": "$variance"},
-                                "positive": {
-                                    "$sum": {
-                                        "$cond": [
-                                            {"$gt": ["$variance", 0]},
-                                            "$variance",
-                                            0,
-                                        ]
-                                    }
-                                },
-                                "negative": {
-                                    "$sum": {
-                                        "$cond": [
-                                            {"$lt": ["$variance", 0]},
-                                            "$variance",
-                                            0,
-                                        ]
-                                    }
-                                },
-                                "avg_variance": {"$avg": "$variance"},
-                            }
-                        }
-                    ],
-                    "today_activity": [
-                        {
-                            "$match": {
-                                "counted_at": {
-                                    "$gte": datetime.now(timezone.utc)
-                                    .replace(tzinfo=None)
-                                    .replace(hour=0, minute=0, second=0)
-                                }
-                            }
-                        },
-                        {"$count": "count"},
-                    ],
-                    "by_warehouse": [
-                        {"$group": {"_id": "$warehouse", "count": {"$sum": 1}}},
-                        {"$sort": {"count": -1}},
-                        {"$limit": 10},
-                    ],
-                    "by_status": [
-                        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
-                    ],
+                "$group": {
+                    "_id": None,
+                    "total_variance": {"$sum": "$variance"},
+                    "positive": {
+                        "$sum": {"$cond": [{"$gt": ["$variance", 0]}, "$variance", 0]}
+                    },
+                    "negative": {
+                        "$sum": {"$cond": [{"$lt": ["$variance", 0]}, "$variance", 0]}
+                    },
+                    "avg_variance": {"$avg": "$variance"},
                 }
             }
         ]
 
-        result = await db.count_lines.aggregate(stats_pipeline).to_list(1)
+        warehouse_pipeline: list[dict[str, Any]] = [
+            {"$group": {"_id": "$warehouse", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 10},
+        ]
 
-    stats = result[0] if result else {}
+        status_pipeline: list[dict[str, Any]] = [
+            {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+        ]
 
-    def get_count(key: str) -> int:
-        data = stats.get(key, [])
-        return data[0]["count"] if data else 0
+        (
+            total_count,
+            verified_count,
+            pending_count,
+            today_count,
+            variance_result,
+            warehouse_result,
+            status_result,
+        ) = await asyncio.gather(
+            db.count_lines.count_documents({}),
+            db.count_lines.count_documents({"verified": True}),
+            db.count_lines.count_documents({"verified": False}),
+            db.count_lines.count_documents({"counted_at": {"$gte": today_start}}),
+            db.count_lines.aggregate(variance_pipeline).to_list(1),
+            db.count_lines.aggregate(warehouse_pipeline).to_list(10),
+            db.count_lines.aggregate(status_pipeline).to_list(100),
+        )
 
-    variance_stats = stats.get("variance_stats", [{}])[0] if stats.get("variance_stats") else {}
+    variance_stats = variance_result[0] if variance_result else {}
 
     return {
         "success": True,
         "stats": {
-            "total_items": get_count("total"),
-            "verified_items": get_count("verified"),
-            "pending_items": get_count("pending"),
-            "today_activity": get_count("today_activity"),
+            "total_items": total_count,
+            "verified_items": verified_count,
+            "pending_items": pending_count,
+            "today_activity": today_count,
             "total_variance": variance_stats.get("total_variance", 0),
             "positive_variance": variance_stats.get("positive", 0),
             "negative_variance": variance_stats.get("negative", 0),
             "avg_variance": variance_stats.get("avg_variance", 0),
             "verification_rate": (
-                (get_count("verified") / get_count("total") * 100) if get_count("total") > 0 else 0
+                (verified_count / total_count * 100) if total_count > 0 else 0
             ),
         },
         "by_warehouse": [
             {"warehouse": item["_id"] or "Unknown", "count": item["count"]}
-            for item in stats.get("by_warehouse", [])
+            for item in warehouse_result
         ],
         "by_status": [
             {"status": item["_id"] or "Unknown", "count": item["count"]}
-            for item in stats.get("by_status", [])
+            for item in status_result
         ],
         "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
     }
@@ -577,7 +553,9 @@ async def _ws_process_message(
 
 
 @realtime_dashboard_router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, token: str | None = Query(None)):
+async def websocket_endpoint_no_path_token(
+    websocket: WebSocket, token: str | None = Query(None)
+):
     """WebSocket endpoint for bidirectional real-time communication.
 
     The JWT is taken from the ``Sec-WebSocket-Protocol`` header (preferred) or a
