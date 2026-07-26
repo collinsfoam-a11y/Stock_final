@@ -119,7 +119,7 @@ describe("getItemByBarcode", () => {
 
     const result = await getItemByIdentifier("5089");
 
-    expect(httpClient.get).toHaveBeenCalledWith("/api/v2/items/5089");
+    expect(httpClient.get).toHaveBeenCalledWith("/api/v2/items/5089", { params: undefined });
     expect(result).toEqual(
       expect.objectContaining({
         item_code: "5089",

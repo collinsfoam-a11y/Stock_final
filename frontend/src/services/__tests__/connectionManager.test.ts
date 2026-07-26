@@ -88,6 +88,13 @@ describe("ConnectionManager backend detection", () => {
         error: jest.fn(),
       }),
     }));
+    jest.doMock("@react-native-community/netinfo", () => ({
+      __esModule: true,
+      default: {
+        addEventListener: jest.fn(() => jest.fn()),
+        fetch: jest.fn(async () => ({ isConnected: true, type: "wifi" })),
+      },
+    }));
 
     global.fetch = jest.fn(async (url: string) => ({
       healthy: url === "http://localhost:8001/api/health",

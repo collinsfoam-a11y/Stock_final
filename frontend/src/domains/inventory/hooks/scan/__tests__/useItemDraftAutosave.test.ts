@@ -8,6 +8,10 @@ jest.mock("@/services/api/api", () => ({
   saveDraft: (...args: unknown[]) => mockSaveDraft(...args),
 }));
 
+jest.mock("@/hooks/useSessionWebSocket", () => ({
+  useSessionWebSocket: () => ({ isConnected: false, sendMessage: jest.fn() }),
+}));
+
 describe("useItemDraftAutosave", () => {
   beforeEach(() => {
     jest.clearAllMocks();
