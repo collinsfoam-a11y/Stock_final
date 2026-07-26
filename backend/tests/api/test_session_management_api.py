@@ -276,6 +276,7 @@ class TestCreateSessionEndpoint:
                     assert data["warehouse"] == "WH001"
                     assert data["status"] == "OPEN"
                     assert data["staff_user"] == "staff1"
+                    mock_refresh_service.revoke_all_user_tokens.assert_not_awaited()
         finally:
             app.dependency_overrides.clear()
 
@@ -699,6 +700,42 @@ class TestSessionStatsEndpoint:
         finally:
             app.dependency_overrides.clear()
 
+    @pytest.mark.asyncio
+    async def test_admin_can_view_another_users_session_detail_and_stats(
+        self, sample_verification_session
+    ):
+        other_session = {**sample_verification_session, "staff_user": "other_user"}
+        mock_db = MagicMock()
+        mock_db.sessions = MagicMock()
+        mock_db.sessions.find_one = AsyncMock(return_value=other_session)
+        mock_db.count_lines = MagicMock()
+        mock_db.count_lines.find = MagicMock(return_value=_AsyncCursor([]))
+
+        async def override_get_db():
+            return mock_db
+
+        async def override_get_current_user():
+            return {"username": "admin1", "role": "admin", "is_active": True}
+
+        from backend.auth.dependencies import get_current_user_async
+        from backend.db.runtime import get_db
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user_async] = override_get_current_user
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://localhost",
+            ) as client:
+                detail_response = await client.get("/api/sessions/sess_123")
+                stats_response = await client.get("/api/sessions/sess_123/stats")
+
+            assert detail_response.status_code == 200
+            assert stats_response.status_code == 200
+        finally:
+            app.dependency_overrides.clear()
+
 
 class TestCompleteSessionEndpoint:
     """Test POST /api/sessions/{session_id}/complete"""
@@ -933,7 +970,12 @@ class TestActiveSessionsEndpoint:
 
         mock_db = MagicMock()
         mock_db.sessions = MagicMock()
-        mock_db.sessions.find = MagicMock(return_value=_AsyncCursor(active_sessions))
+
+        def _find_sessions(query):
+            assert query["staff_user"] == "staff1"
+            return _AsyncCursor(active_sessions)
+
+        mock_db.sessions.find = MagicMock(side_effect=_find_sessions)
         mock_db.count_lines = MagicMock()
         mock_db.count_lines.find = MagicMock(
             return_value=_AsyncCursor(

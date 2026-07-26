@@ -205,7 +205,7 @@ const toIsoTimestamp = (...values: unknown[]): string => {
   return new Date(parsed).toISOString();
 };
 
-const resolveClientRecordId = (item: OfflineQueueItem): string => {
+export const resolveClientRecordId = (item: OfflineQueueItem): string => {
   const audit = asObject(item.data.audit);
   return (
     firstString(
@@ -676,13 +676,16 @@ export const initializeSyncService = () => {
     };
   }
 
-  let networkReady = useNetworkStore.getState().isOnline;
+  const initialState = useNetworkStore.getState();
+  // Writes require confirmed reachability, so a reachability transition must
+  // wake the queue even when the device was already connected to a network.
+  let networkReady = initialState.isOnline && initialState.isInternetReachable === true;
 
   const unsubscribe = useNetworkStore.subscribe((state) => {
     const wasOnline = networkReady;
-    networkReady = state.isOnline;
+    networkReady = state.isOnline && state.isInternetReachable === true;
 
-    if (state.isOnline && !wasOnline) {
+    if (networkReady && !wasOnline) {
       const settings = useSettingsStore.getState().settings;
       if (
         settings.offlineMode ||
