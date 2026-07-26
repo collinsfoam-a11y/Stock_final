@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import inspect
 import hashlib
-from typing import Any, Literal, Optional
+import inspect
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
@@ -54,7 +54,7 @@ class FlagResolution(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     @model_validator(mode="after")
-    def validate_combination(self) -> "FlagResolution":
+    def validate_combination(self) -> FlagResolution:
         if self.shadow and not self.compare:
             raise FlagResolutionError("invalid flag combination: shadow requires compare")
         if self.enforce_writes and not self.compare:
@@ -133,11 +133,11 @@ async def is_global_disable_active(*, request_context: Any, db: Any = None) -> b
     raise FlagResolutionError("BL_V2_GLOBAL_DISABLE must be globally enabled or disabled")
 
 
-async def _load_phase0_flags(db: Any) -> dict[str, Optional[FeatureFlag]]:
+async def _load_phase0_flags(db: Any) -> dict[str, FeatureFlag | None]:
     return {key: await _load_flag(db, key) for key in (BL_V2_GLOBAL_DISABLE, *_SCOPED_FLAG_KEYS)}
 
 
-async def _load_flag(db: Any, key: str) -> Optional[FeatureFlag]:
+async def _load_flag(db: Any, key: str) -> FeatureFlag | None:
     collection = getattr(db, "feature_flags", None)
     if collection is None:
         collection = db["feature_flags"]
@@ -157,12 +157,12 @@ async def _load_flag(db: Any, key: str) -> Optional[FeatureFlag]:
 
 
 def _resolve_flag_value(
-    flag: Optional[FeatureFlag],
+    flag: FeatureFlag | None,
     *,
     request_context: Any,
     include_request_scope: bool,
-) -> tuple[bool, Optional[StableScope], Optional[bool]]:
-    request_override: Optional[bool] = None
+) -> tuple[bool, StableScope | None, bool | None]:
+    request_override: bool | None = None
     if include_request_scope:
         request_identifier = _context_value(request_context, "request")
         request_override, found = _override_value(flag, "request", request_identifier)
@@ -182,10 +182,10 @@ def _resolve_flag_value(
 
 
 def _override_value(
-    flag: Optional[FeatureFlag],
+    flag: FeatureFlag | None,
     scope: str,
-    identifier: Optional[str],
-) -> tuple[Optional[bool], bool]:
+    identifier: str | None,
+) -> tuple[bool | None, bool]:
     if not flag or not identifier:
         return None, False
 
@@ -197,7 +197,7 @@ def _override_value(
     return None, False
 
 
-def _global_flag_value(flag: Optional[FeatureFlag], request_context: Any) -> bool:
+def _global_flag_value(flag: FeatureFlag | None, request_context: Any) -> bool:
     if not flag:
         return False
     if flag.state == FeatureState.DISABLED:
@@ -214,12 +214,12 @@ def _global_flag_value(flag: Optional[FeatureFlag], request_context: Any) -> boo
         user_key = _context_value(request_context, "user")
         if not user_key:
             return False
-        digest = hashlib.sha256(f"{flag.key}:{user_key}".encode("utf-8")).hexdigest()
+        digest = hashlib.sha256(f"{flag.key}:{user_key}".encode()).hexdigest()
         return int(digest[:8], 16) % 100 < flag.percentage
     return False
 
 
-def _context_value(request_context: Any, scope: str) -> Optional[str]:
+def _context_value(request_context: Any, scope: str) -> str | None:
     if scope == "request":
         return _normalize_identifier(getattr(request_context, "request_id", None))
     if scope == "session":
@@ -233,7 +233,7 @@ def _context_value(request_context: Any, scope: str) -> Optional[str]:
     raise FlagResolutionError(f"unsupported scope requested: {scope}")
 
 
-def _normalize_identifier(value: Any) -> Optional[str]:
+def _normalize_identifier(value: Any) -> str | None:
     if value is None:
         return None
     normalized = str(value).strip()

@@ -6,8 +6,8 @@ Uses MongoDB 'locks' collection with TTL indexes.
 import logging
 from datetime import datetime, timedelta, timezone
 
-from pymongo.errors import DuplicateKeyError
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.errors import DuplicateKeyError
 
 # Default lock TTL in seconds
 DEFAULT_LOCK_TTL = 30
@@ -18,13 +18,9 @@ logger = logging.getLogger(__name__)
 class LockError(Exception):
     """Base exception for lock related errors."""
 
-    pass
-
 
 class ResourceLockedError(LockError):
     """Raised when attempting to acquire a lock that is already held."""
-
-    pass
 
 
 class LockService:

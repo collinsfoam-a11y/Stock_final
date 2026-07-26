@@ -1,13 +1,15 @@
-import pytest
-import os
 import importlib
+import os
 from datetime import timedelta
 from unittest.mock import patch
+
+import pytest
 from fastapi import HTTPException
-from backend.utils.result import Result, Either, result_function, UnwrapError
-from backend.utils.result import handle_result as result_handle_result
+
 from backend.utils.api_utils import result_to_response
 from backend.utils.auth_utils import create_access_token
+from backend.utils.result import Either, Result, UnwrapError, result_function
+from backend.utils.result import handle_result as result_handle_result
 
 # --- Tests for api_utils.py ---
 

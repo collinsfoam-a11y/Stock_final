@@ -11,7 +11,7 @@ Part of US1: Optimized Item Search
 """
 
 import logging
-from typing import Any, Optional, Union
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
@@ -33,19 +33,19 @@ class SearchItemResponse(BaseModel):
 
     id: str = Field(..., description="Item ID")
     item_name: str = Field(..., description="Item name")
-    item_code: Optional[str] = Field(None, description="Item code")
-    barcode: Optional[str] = Field(None, description="Barcode")
+    item_code: str | None = Field(None, description="Item code")
+    barcode: str | None = Field(None, description="Barcode")
     stock_qty: float = Field(0.0, description="Stock quantity")
-    mrp: Optional[float] = Field(None, description="MRP/Price")
-    sale_price: Optional[float] = Field(None, description="Sale Price")
-    category: Optional[str] = Field(None, description="Category")
-    subcategory: Optional[str] = Field(None, description="Subcategory")
-    warehouse: Optional[str] = Field(None, description="Warehouse")
-    uom_name: Optional[str] = Field(None, description="Unit of measure")
-    manual_barcode: Optional[str] = Field(None, description="Manual barcode")
-    unit2_barcode: Optional[str] = Field(None, description="Unit 2 barcode")
-    unit_m_barcode: Optional[str] = Field(None, description="Unit M barcode")
-    batch_id: Optional[Union[int, str]] = Field(None, description="Batch ID")
+    mrp: float | None = Field(None, description="MRP/Price")
+    sale_price: float | None = Field(None, description="Sale Price")
+    category: str | None = Field(None, description="Category")
+    subcategory: str | None = Field(None, description="Subcategory")
+    warehouse: str | None = Field(None, description="Warehouse")
+    uom_name: str | None = Field(None, description="Unit of measure")
+    manual_barcode: str | None = Field(None, description="Manual barcode")
+    unit2_barcode: str | None = Field(None, description="Unit 2 barcode")
+    unit_m_barcode: str | None = Field(None, description="Unit M barcode")
+    batch_id: int | str | None = Field(None, description="Batch ID")
     relevance_score: float = Field(0.0, description="Search relevance score")
     match_type: str = Field("none", description="Type of match found")
 

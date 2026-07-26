@@ -27,6 +27,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Modal } from "./Modal";
 import { colors, semanticColors, spacing, radius, textStyles } from "@/theme/legacyCompat";
 import { haptics } from "@/services/haptics";
+import { duration } from "@/theme/staffUiScale";
 
 export type ConfirmModalVariant = "default" | "danger" | "warning" | "success";
 

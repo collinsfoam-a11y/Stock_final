@@ -14,7 +14,7 @@ import asyncio
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 async def _find_parent_session(
     db: AsyncIOMotorDatabase,
     session_id: str,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     return await db.sessions.find_one({"$or": [{"id": session_id}, {"session_id": session_id}]})
 
 
@@ -43,8 +43,8 @@ async def backfill_empty_session_snapshots(
     db: AsyncIOMotorDatabase,
     *,
     dry_run: bool = True,
-    limit: Optional[int] = None,
-    session_id: Optional[str] = None,
+    limit: int | None = None,
+    session_id: str | None = None,
 ) -> dict[str, int]:
     stats = {
         "scanned": 0,

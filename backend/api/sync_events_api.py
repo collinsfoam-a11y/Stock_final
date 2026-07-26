@@ -7,7 +7,7 @@ so the bridge falls back to the polling path (/api/sync/batch).
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -85,7 +85,9 @@ async def ingest_change_events(
 
     logger.info(
         "ERP event batch %s ingested: %s accepted, %s rejected",
-        batch.batch_id, len(accepted), len(rejected),
+        batch.batch_id,
+        len(accepted),
+        len(rejected),
     )
     return {
         "batch_id": batch.batch_id,
@@ -108,7 +110,7 @@ async def event_sync_metrics(
 
 @router.post("/dlq/requeue")
 async def requeue_dlq(
-    limit: Optional[int] = 100,
+    limit: int | None = 100,
     current_user: dict[str, Any] = Depends(get_current_user),
     redis_service=Depends(get_redis),
 ) -> dict[str, Any]:

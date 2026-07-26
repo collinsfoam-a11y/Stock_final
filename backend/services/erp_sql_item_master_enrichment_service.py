@@ -13,7 +13,7 @@ ERPNext. Never fabricates a value: a field with no source data is left
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 # Fields aliased 1:1 from erp_items because no separately-tracked ERPNext
 # "item_group" concept exists in the SQL sync today -- category IS the
@@ -22,7 +22,7 @@ _IDENTITY_FIELDS = ("barcode", "brand_name")
 _CLASSIFICATION_FIELDS = ("category", "subcategory")
 
 
-def _as_iso(value: Any) -> Optional[str]:
+def _as_iso(value: Any) -> str | None:
     if isinstance(value, datetime):
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
@@ -84,13 +84,17 @@ class ErpSqlItemMasterEnrichmentService:
             "sgst_percent": erp_item.get("sgst_percent"),
             "cgst_percent": erp_item.get("cgst_percent"),
             "igst_percent": erp_item.get("igst_percent"),
-            "gst_source": "sql_item_master" if erp_item.get("gst_percent") is not None else "missing",
+            "gst_source": (
+                "sql_item_master" if erp_item.get("gst_percent") is not None else "missing"
+            ),
             "mrp": erp_item.get("mrp"),
             "last_purchase_cost": erp_item.get("last_purchase_cost"),
             "last_purchase_rate": erp_item.get("last_purchase_rate"),
-            "last_purchase_date": _as_iso(erp_item.get("last_purchase_date")) or erp_item.get("last_purchase_date"),
+            "last_purchase_date": _as_iso(erp_item.get("last_purchase_date"))
+            or erp_item.get("last_purchase_date"),
             "last_purchase_qty": erp_item.get("last_purchase_qty"),
-            "last_supplier_id": erp_item.get("supplier_id") or erp_item.get("last_purchase_supplier"),
+            "last_supplier_id": erp_item.get("supplier_id")
+            or erp_item.get("last_purchase_supplier"),
             "last_supplier_name": erp_item.get("supplier_name"),
             "purchase_voucher_type": erp_item.get("purchase_voucher_type"),
             "sql_item_master_refreshed_at": _as_iso(erp_item.get("last_synced")),

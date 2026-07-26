@@ -1,6 +1,6 @@
 import re
-import pytest
 
+import pytest
 from backend.api.v2.items import _lookup_identified_items
 
 

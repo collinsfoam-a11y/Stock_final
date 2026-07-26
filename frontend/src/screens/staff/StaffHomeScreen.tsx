@@ -39,6 +39,25 @@ import ModernHeader from "@/components/ui/ModernHeader";
 import ModernCard from "@/components/ui/ModernCard";
 import ModernButton from "@/components/ui/ModernButton";
 import ModernInput from "@/components/ui/ModernInput";
+import { duration } from "@/theme/staffUiScale";
+
+// ─── Web-Safe Animation Wrapper ───────────────────────────────────────────────
+const SafeAnimatedView: React.FC<{
+  entering?: any;
+  exiting?: any;
+  layout?: any;
+  style?: any;
+  children?: React.ReactNode;
+}> = ({ entering, exiting, layout, style, children }) => {
+  if (Platform.OS === "web") {
+    return <View style={style}>{children}</View>;
+  }
+  return (
+    <Animated.View entering={entering} exiting={exiting} layout={layout} style={style}>
+      {children}
+    </Animated.View>
+  );
+};
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -586,7 +605,7 @@ const StaffHome = React.memo(function StaffHome() {
           />
         }
       >
-        <Animated.View entering={prefersReducedMotion ? undefined : FadeInDown.duration(400)}>
+        <SafeAnimatedView entering={prefersReducedMotion ? undefined : FadeInDown.duration(duration.slow)}>
           {/* Distinct loading / error states so an in-flight or failed fetch is
               never mistaken for a genuinely empty list. */}
           {sessions.length === 0 && sessionsLoading ? (
@@ -644,7 +663,7 @@ const StaffHome = React.memo(function StaffHome() {
           ) : (
             finishedSessions.map((s) => renderSessionCard(s, handleOpenHistory, true))
           )}
-        </Animated.View>
+        </SafeAnimatedView>
       </ScrollView>
 
       {/* ── Create Session Modal ─────────────────────────────────────────── */}
@@ -745,7 +764,7 @@ const StaffHome = React.memo(function StaffHome() {
 
             {/* Floor chips */}
             {!!locationType && (
-              <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(220)}>
+              <SafeAnimatedView entering={prefersReducedMotion ? undefined : FadeInUp.duration(duration.normal)}>
                 <Text style={[s.sectionLabel, { color: uiTokens.colors.textSecondary }]}>Select Floor / Area</Text>
                 <View style={s.chips}>
                   {warehouses.map((wh) => {
@@ -778,12 +797,12 @@ const StaffHome = React.memo(function StaffHome() {
                     );
                   })}
                 </View>
-              </Animated.View>
+              </SafeAnimatedView>
             )}
 
             {/* Rack input */}
             {!!selectedFloor && (
-              <Animated.View entering={prefersReducedMotion ? undefined : FadeInUp.duration(220)}>
+              <SafeAnimatedView entering={prefersReducedMotion ? undefined : FadeInUp.duration(duration.normal)}>
                 <ModernInput
                   label="Rack / Shelf Number"
                   placeholder="e.g. A-123"
@@ -799,7 +818,7 @@ const StaffHome = React.memo(function StaffHome() {
                     </Text>
                   </View>
                 )}
-              </Animated.View>
+              </SafeAnimatedView>
             )}
           </ScrollView>
 

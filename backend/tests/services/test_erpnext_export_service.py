@@ -16,7 +16,6 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
-
 from backend.api.erpnext_exports_api import ErpNextExportPreviewRequest, preview_erpnext_export
 from backend.services.erpnext_export_service import (
     ErpNextExportApprovalError,
@@ -156,7 +155,10 @@ async def test_preview_blocks_if_session_not_finalized():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-1", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-1",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert result["status"] == "VALIDATION_FAILED"
@@ -182,7 +184,10 @@ async def test_preview_blocks_if_no_approved_lines():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-2", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-2",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert result["status"] == "VALIDATION_FAILED"
@@ -199,7 +204,10 @@ async def test_preview_calculates_all_formulas_correctly():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-3", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-3",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     row = result["rows"][0]
@@ -227,7 +235,10 @@ async def test_preview_never_uses_variance_as_erpnext_adjustment():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-4", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-4",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     row = result["rows"][0]
@@ -245,7 +256,10 @@ async def test_unknown_unmapped_item_blocks_preview():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-5", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-5",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert result["status"] == "VALIDATION_FAILED"
@@ -263,7 +277,10 @@ async def test_serialized_item_without_serials_blocks_preview():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-6", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-6",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert "SERIAL_REQUIRED_MISSING" in result["blockers"]
@@ -286,7 +303,10 @@ async def test_serial_count_mismatch_blocks_preview():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-7", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-7",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert "SERIAL_COUNT_MISMATCH" in result["blockers"]
@@ -319,7 +339,10 @@ async def test_duplicate_serial_in_export_blocks_preview():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-8", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-8",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert "SERIAL_DUPLICATE_IN_EXPORT" in result["blockers"]
@@ -338,7 +361,10 @@ async def test_batch_controlled_item_without_batch_no_blocks_using_explicit_flag
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-9", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-9",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert "BATCH_REQUIRED_MISSING" in result["blockers"]
@@ -359,7 +385,10 @@ async def test_non_batch_controlled_item_without_batch_no_does_not_block():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-9b", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-9b",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert "BATCH_REQUIRED_MISSING" not in result["blockers"]
@@ -378,7 +407,10 @@ async def test_batch_controlled_item_with_no_flag_configured_does_not_block():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-9c", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-9c",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert "BATCH_REQUIRED_MISSING" not in result["blockers"]
@@ -402,7 +434,10 @@ async def test_high_variance_without_photo_blocks_preview():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-10", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-10",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert "HIGH_VARIANCE_PHOTO_MISSING" in result["blockers"]
@@ -419,7 +454,10 @@ async def test_requires_photo_for_export_flag_blocks_even_without_high_variance(
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-10b", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-10b",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert "HIGH_VARIANCE_PHOTO_MISSING" in result["blockers"]
@@ -435,7 +473,10 @@ async def test_missing_warehouse_mapping_blocks_preview():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-11", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-11",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert "WAREHOUSE_MAPPING_MISSING" in result["blockers"]
@@ -498,7 +539,10 @@ async def test_missing_uom_mapping_blocks_preview():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-12", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-12",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert "UOM_MAPPING_MISSING" in result["blockers"]
@@ -510,15 +554,16 @@ async def test_active_uom_mapping_resolves_erpnext_uom_and_conversion_factor_on_
     db = InMemoryDatabase()
     await _seed_finalized_session(db, "sess-12b")
     await _seed_warehouse_mapping(db)
-    await _seed_uom_mapping(
-        db, stock_verify_uom="PCS", erpnext_uom="Nos", conversion_factor=1.0
-    )
+    await _seed_uom_mapping(db, stock_verify_uom="PCS", erpnext_uom="Nos", conversion_factor=1.0)
     await _seed_erp_item(db, "ITEM-12B")
     await _seed_approved_line(db, "sess-12b", "ITEM-12B", counted_qty=10.0, erp_qty=10.0)
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-12b", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-12b",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert "UOM_MAPPING_MISSING" not in result["blockers"]
@@ -540,7 +585,10 @@ async def test_pending_offline_conflict_blocks_preview():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-13", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-13",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert "OFFLINE_CONFLICT_PENDING" in result["blockers"]
@@ -556,7 +604,10 @@ async def test_preview_creates_export_version_record():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-14", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-14",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     stored = await db.erpnext_export_previews.find_one({"export_id": result["export_id"]})
@@ -576,7 +627,10 @@ async def test_preview_writes_audit_event():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-15", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-15",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     audit_entry = await db.audit_logs.find_one({"entity_id": result["export_id"]})
@@ -595,10 +649,16 @@ async def test_regenerating_preview_supersedes_previous_draft():
     service = ErpNextExportService(db)
 
     first = await service.generate_preview(
-        session_id="sess-16", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-16",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     second = await service.generate_preview(
-        session_id="sess-16", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-16",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert second["export_version"] == first["export_version"] + 1
@@ -630,7 +690,10 @@ async def test_historical_count_lines_without_new_metadata_do_not_crash_preview(
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-17", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-17",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert len(result["rows"]) == 1
@@ -654,13 +717,19 @@ async def test_negative_opening_qty_blocked_unless_flag_allows_it():
     service = ErpNextExportService(db)
 
     result = await service.generate_preview(
-        session_id="sess-18", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-18",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     assert "NEGATIVE_OPENING_QTY_NOT_ALLOWED" in result["blockers"]
 
     # OPENING_STOCK mode: still blocked, no flag configured.
     result_opening = await ErpNextExportService(db).generate_preview(
-        session_id="sess-18", mode="OPENING_STOCK", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-18",
+        mode="OPENING_STOCK",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     assert "NEGATIVE_OPENING_QTY_NOT_ALLOWED" in result_opening["blockers"]
 
@@ -675,12 +744,18 @@ async def test_negative_opening_qty_allowed_when_flag_set_regardless_of_mode():
     await _seed_approved_line(db, "sess-19", "ITEM-19", counted_qty=-5.0, erp_qty=10.0)
 
     adjustment_result = await ErpNextExportService(db).generate_preview(
-        session_id="sess-19", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-19",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     assert "NEGATIVE_OPENING_QTY_NOT_ALLOWED" not in adjustment_result["blockers"]
 
     opening_result = await ErpNextExportService(db).generate_preview(
-        session_id="sess-19", mode="OPENING_STOCK", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-19",
+        mode="OPENING_STOCK",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     assert "NEGATIVE_OPENING_QTY_NOT_ALLOWED" not in opening_result["blockers"]
 
@@ -803,12 +878,18 @@ async def test_warehouse_mapping_lookup_uses_company_to_disambiguate():
     service = ErpNextExportService(db)
 
     result_a = await service.generate_preview(
-        session_id="sess-33", mode="STOCK_ADJUSTMENT", company="Company A", current_user=CURRENT_USER
+        session_id="sess-33",
+        mode="STOCK_ADJUSTMENT",
+        company="Company A",
+        current_user=CURRENT_USER,
     )
     assert result_a["rows"][0]["erpnext_warehouse"] == "Stores - A"
 
     result_b = await ErpNextExportService(db).generate_preview(
-        session_id="sess-33", mode="STOCK_ADJUSTMENT", company="Company B", current_user=CURRENT_USER
+        session_id="sess-33",
+        mode="STOCK_ADJUSTMENT",
+        company="Company B",
+        current_user=CURRENT_USER,
     )
     assert result_b["rows"][0]["erpnext_warehouse"] == "Stores - B"
 
@@ -859,7 +940,10 @@ async def test_cannot_approve_validation_failed_preview():
     # VALIDATION_FAILED.
     await _seed_approved_line(db, "sess-34", "ITEM-34", counted_qty=10.0, erp_qty=10.0)
     preview = await ErpNextExportService(db).generate_preview(
-        session_id="sess-34", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-34",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     assert preview["status"] == "VALIDATION_FAILED"
 
@@ -901,7 +985,10 @@ async def test_cannot_approve_superseded_preview():
     preview = await _generate_ready_preview(db, "sess-35", "ITEM-35")
     # Regenerate to supersede the first (un-approved) draft.
     await ErpNextExportService(db).generate_preview(
-        session_id="sess-35", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-35",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     with pytest.raises(ErpNextExportApprovalError):
@@ -986,7 +1073,10 @@ async def test_regenerating_preview_after_approval_creates_new_version_and_does_
     )
 
     regenerated = await ErpNextExportService(db).generate_preview(
-        session_id="sess-38", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-38",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert regenerated["export_id"] != preview["export_id"]
@@ -1005,7 +1095,10 @@ async def test_new_preview_generation_supersedes_draft_but_never_approved():
     )
 
     await ErpNextExportService(db).generate_preview(
-        session_id="sess-39", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-39",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     approved_doc = await db.erpnext_export_previews.find_one({"export_id": preview["export_id"]})
@@ -1064,7 +1157,9 @@ async def test_router_approve_endpoint_maps_errors_to_http_status(monkeypatch):
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc_info:
-        await approve_erpnext_export("does-not-exist", current_user={"username": "admin1", "role": "admin"})
+        await approve_erpnext_export(
+            "does-not-exist", current_user={"username": "admin1", "role": "admin"}
+        )
     assert exc_info.value.status_code == 404
 
     preview = await _generate_ready_preview(db, "sess-43", "ITEM-43")
@@ -1077,9 +1172,7 @@ async def test_router_approve_endpoint_maps_errors_to_http_status(monkeypatch):
 def test_bsr_remediation_status_doc_exists_and_documents_this_step():
     import pathlib
 
-    doc_path = (
-        pathlib.Path(__file__).resolve().parents[3] / "docs" / "BSR_REMEDIATION_STATUS.md"
-    )
+    doc_path = pathlib.Path(__file__).resolve().parents[3] / "docs" / "BSR_REMEDIATION_STATUS.md"
     assert doc_path.exists()
     content = doc_path.read_text()
     for section in (

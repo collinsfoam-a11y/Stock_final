@@ -2,8 +2,6 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
-
 from backend.api.erp_api import (
     _normalize_barcode_input,
     get_all_items,
@@ -12,6 +10,7 @@ from backend.api.erp_api import (
     refresh_item_stock,
     search_items_compatibility,
 )
+from fastapi import HTTPException
 
 
 @pytest.fixture(autouse=True)
@@ -45,6 +44,7 @@ async def test_get_item_by_barcode_db_hit_triggers_background_sql_sync(setup_moc
     fake_refresh_svc.sql_sync_service.sync_single_item_by_barcode = mock_background_sync
 
     import backend.api.erp_api as erp_api_module
+
     erp_api_module._sql_connector = MagicMock()
 
     captured = []
@@ -54,8 +54,9 @@ async def test_get_item_by_barcode_db_hit_triggers_background_sql_sync(setup_moc
         captured.append(task)
         return task
 
-    with patch.object(erp_api_module.asyncio, "create_task", _create_task), patch(
-        "backend.services.item_refresh_service.item_refresh_service", fake_refresh_svc
+    with (
+        patch.object(erp_api_module.asyncio, "create_task", _create_task),
+        patch("backend.services.item_refresh_service.item_refresh_service", fake_refresh_svc),
     ):
         current_user = {"username": "testuser"}
         response = await get_item_by_barcode(barcode="510001", current_user=current_user)
@@ -81,6 +82,7 @@ async def test_get_item_by_barcode_db_hit_skips_background_sync_when_sql_unavail
     mock_db.erp_items.find_one.return_value = db_item
 
     import backend.api.erp_api as erp_api_module
+
     erp_api_module._sql_connector = None
 
     fake_refresh_svc = MagicMock()
@@ -93,8 +95,9 @@ async def test_get_item_by_barcode_db_hit_skips_background_sync_when_sql_unavail
         captured.append(task)
         return task
 
-    with patch.object(erp_api_module.asyncio, "create_task", _create_task), patch(
-        "backend.services.item_refresh_service.item_refresh_service", fake_refresh_svc
+    with (
+        patch.object(erp_api_module.asyncio, "create_task", _create_task),
+        patch("backend.services.item_refresh_service.item_refresh_service", fake_refresh_svc),
     ):
         current_user = {"username": "testuser"}
         response = await get_item_by_barcode(barcode="510001", current_user=current_user)
@@ -210,7 +213,10 @@ async def test_refresh_item_stock(setup_mocks):
     fake_refresh_response.item_code = "CODE123"
     fake_refresh_response.changed = False
 
-    with patch("backend.services.item_refresh_service.item_refresh_service.refresh_single_item_by_identifier", new=AsyncMock(return_value=fake_refresh_response)):
+    with patch(
+        "backend.services.item_refresh_service.item_refresh_service.refresh_single_item_by_identifier",
+        new=AsyncMock(return_value=fake_refresh_response),
+    ):
         response_val = await refresh_item_stock(
             request=request, response=response, item_code="CODE123", current_user=current_user
         )

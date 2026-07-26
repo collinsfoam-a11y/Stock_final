@@ -14,7 +14,7 @@ import random
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from .metrics_collector import MetricsCollector
 
@@ -28,7 +28,6 @@ class BaseEvaluator(ABC):
     @abstractmethod
     async def evaluate(self, **kwargs) -> dict[str, Any]:
         """Run evaluation and return results."""
-        pass
 
 
 class APIPerformanceEvaluator(BaseEvaluator):
@@ -57,7 +56,7 @@ class APIPerformanceEvaluator(BaseEvaluator):
     async def evaluate(
         self,
         client,
-        auth_headers: dict[str, Optional[str]] = None,
+        auth_headers: dict[str, str | None] = None,
         iterations: int = 10,
     ) -> dict[str, Any]:
         """Run API performance evaluation."""
@@ -110,7 +109,7 @@ class APIPerformanceEvaluator(BaseEvaluator):
                         success_count += 1
                     total_count += 1
                 except Exception as e:
-                    logging.warning(f"API check failed for {endpoint_name}: {str(e)}")
+                    logging.warning(f"API check failed for {endpoint_name}: {e!s}")
                     total_count += 1
 
             # Record endpoint metrics
@@ -476,7 +475,7 @@ class WorkflowEvaluator(BaseEvaluator):
     async def evaluate(
         self,
         client=None,
-        auth_headers: dict[str, Optional[str]] = None,
+        auth_headers: dict[str, str | None] = None,
         **kwargs,
     ) -> dict[str, Any]:
         """Run workflow evaluation."""
@@ -539,7 +538,7 @@ class WorkflowEvaluator(BaseEvaluator):
                     if response.status_code in [200, 404]:
                         steps_completed += 1
         except Exception as e:
-            logging.error(f"Auth workflow failed: {str(e)}")
+            logging.error(f"Auth workflow failed: {e!s}")
 
         duration = time.time() - start_time
         completion_rate = steps_completed / total_steps
@@ -557,7 +556,7 @@ class WorkflowEvaluator(BaseEvaluator):
     async def _evaluate_session_workflow(
         self,
         client,
-        auth_headers: dict[str, Optional[str]],
+        auth_headers: dict[str, str | None],
     ) -> dict[str, Any]:
         """Evaluate session creation workflow."""
         if client is None or auth_headers is None:
@@ -612,7 +611,7 @@ class WorkflowEvaluator(BaseEvaluator):
                     if response.status_code in [200, 404]:
                         steps_completed += 1
         except Exception as e:
-            logging.error(f"Session workflow failed: {str(e)}")
+            logging.error(f"Session workflow failed: {e!s}")
 
         duration = time.time() - start_time
         completion_rate = steps_completed / total_steps
@@ -634,7 +633,7 @@ class WorkflowEvaluator(BaseEvaluator):
     async def _evaluate_verification_workflow(
         self,
         client,
-        auth_headers: dict[str, Optional[str]],
+        auth_headers: dict[str, str | None],
     ) -> dict[str, Any]:
         """Evaluate item verification workflow."""
         if client is None or auth_headers is None:
@@ -665,7 +664,7 @@ class WorkflowEvaluator(BaseEvaluator):
             # Step 3: Submit verification (would require valid session)
             steps_completed += 1  # Count as passed since we can't create count_line without session
         except Exception as e:
-            logging.error(f"Verification workflow failed: {str(e)}")
+            logging.error(f"Verification workflow failed: {e!s}")
 
         duration = time.time() - start_time
         completion_rate = steps_completed / total_steps

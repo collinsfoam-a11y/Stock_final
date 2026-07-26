@@ -12,6 +12,7 @@ import { verifyPin } from "@/services/api/api"; // We will add this next
 import { useUiTokens } from "@/hooks/useUiTokens";
 import type { ThemeTokens } from "@/theme/themeTokens";
 import { colors as staticColors } from "@/theme/legacyCompat";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 interface PinEntryModalProps {
   visible: boolean;
@@ -187,8 +188,8 @@ const createStyles = (uiTokens: ThemeTokens) =>
     },
     input: {
       backgroundColor: uiTokens.colors.surfaceElevated,
-      borderRadius: 8,
-      padding: 12,
+      borderRadius: radius.sm,
+      padding: gap.md,
       color: uiTokens.colors.textPrimary,
       borderWidth: 1,
       borderColor: uiTokens.colors.border,
@@ -204,9 +205,9 @@ const createStyles = (uiTokens: ThemeTokens) =>
       gap: 10,
     },
     button: {
-      paddingVertical: 12,
-      paddingHorizontal: 20,
-      borderRadius: 8,
+      paddingVertical: gap.md,
+      paddingHorizontal: gap.xl,
+      borderRadius: radius.sm,
       minWidth: 100,
       alignItems: "center",
     },

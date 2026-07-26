@@ -3,7 +3,7 @@ Unknown Items API - Management of items scanned but not found in ERP/Cache
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -31,26 +31,26 @@ class UnknownItemReportRequest(BaseModel):
     location_id: str
     floor_id: str
     rack_id: str
-    barcode: Optional[str] = None
-    counted_qty: Optional[float] = None
-    floor_no: Optional[str] = None
-    rack_no: Optional[str] = None
-    notes: Optional[str] = None
+    barcode: str | None = None
+    counted_qty: float | None = None
+    floor_no: str | None = None
+    rack_no: str | None = None
+    notes: str | None = None
 
 
 class MapUnknownItemRequest(BaseModel):
     item_code: str
-    resolve_notes: Optional[str] = None
+    resolve_notes: str | None = None
 
 
 class CreateSKUFromUnknownRequest(BaseModel):
     item_code: str
     item_name: str
     category: str
-    subcategory: Optional[str] = None
+    subcategory: str | None = None
     mrp: float
     uom_code: str
-    resolve_notes: Optional[str] = None
+    resolve_notes: str | None = None
 
 
 def _require_admin(current_user: dict = Depends(get_current_user)):
@@ -81,8 +81,8 @@ async def report_unknown_item(
 
 @router.get("")
 async def list_unknown_items(
-    session_id: Optional[str] = None,
-    reported_by: Optional[str] = None,
+    session_id: str | None = None,
+    reported_by: str | None = None,
     include_dismissed: bool = False,
     limit: int = Query(50, ge=1, le=200),
     skip: int = Query(0, ge=0),

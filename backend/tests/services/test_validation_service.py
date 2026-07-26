@@ -1,5 +1,4 @@
 import pytest
-
 from backend.services.governance_guard import GovernanceViolation
 from backend.services.validation_service import ValidationService
 from backend.tests.utils.in_memory_db import InMemoryDatabase

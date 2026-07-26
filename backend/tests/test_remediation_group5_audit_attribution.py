@@ -5,9 +5,10 @@ Validates that approve, reject, void, recount, finalize, and reopen all capture
 real actor details (user_id, username, role, org_id, timestamp).
 """
 
-from unittest.mock import AsyncMock, MagicMock
-import pytest
 from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from backend.services.governance_audit_service import GovernanceAuditService
 

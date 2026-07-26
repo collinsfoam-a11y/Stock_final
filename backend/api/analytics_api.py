@@ -3,8 +3,9 @@ Analytics API - Exposes KPIs and Heatmaps
 """
 
 import logging
-from typing import Optional
+
 from fastapi import APIRouter, Query
+
 from backend.auth.permissions import Permission, require_permission
 from backend.db.runtime import get_db
 from backend.services.heatmap_service import HeatmapService
@@ -15,7 +16,7 @@ router = APIRouter()
 
 @router.get("/analytics/heatmap")
 async def get_heatmap(
-    session_id: Optional[str] = Query(None),
+    session_id: str | None = Query(None),
     current_user: dict = require_permission(Permission.REPORT_VIEW),
 ):
     """

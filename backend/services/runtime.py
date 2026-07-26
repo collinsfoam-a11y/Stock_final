@@ -1,10 +1,8 @@
-from typing import Optional
-
 from backend.services.cache_service import CacheService
 from backend.services.refresh_token import RefreshTokenService
 
-_CACHE_SERVICE: Optional[CacheService] = None
-_REFRESH_TOKEN_SERVICE: Optional[RefreshTokenService] = None
+_CACHE_SERVICE: CacheService | None = None
+_REFRESH_TOKEN_SERVICE: RefreshTokenService | None = None
 
 
 def get_cache_service() -> CacheService:

@@ -5,7 +5,7 @@ Pydantic models for user-specific app settings.
 """
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -22,10 +22,10 @@ class ColumnVisibilitySettings(BaseModel):
 class ColumnVisibilitySettingsUpdate(BaseModel):
     """Partial update model for column visibility settings."""
 
-    mfg_date: Optional[bool] = Field(default=None, description="Show manufacturing date fields")
-    expiry_date: Optional[bool] = Field(default=None, description="Show expiry date fields")
-    serial_number: Optional[bool] = Field(default=None, description="Show serial number fields")
-    mrp: Optional[bool] = Field(default=None, description="Show MRP fields")
+    mfg_date: bool | None = Field(default=None, description="Show manufacturing date fields")
+    expiry_date: bool | None = Field(default=None, description="Show expiry date fields")
+    serial_number: bool | None = Field(default=None, description="Show serial number fields")
+    mrp: bool | None = Field(default=None, description="Show MRP fields")
 
 
 class UserSettings(BaseModel):
@@ -177,7 +177,7 @@ class UserSettings(BaseModel):
         default_factory=ColumnVisibilitySettings,
         description="Visibility for optional inventory detail fields",
     )
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         default=None, description="Timestamp of last settings update"
     )
 
@@ -230,149 +230,149 @@ class UserSettings(BaseModel):
 class UserSettingsUpdate(BaseModel):
     """Partial update model for user settings."""
 
-    theme: Optional[Literal["light", "dark"]] = Field(
+    theme: Literal["light", "dark"] | None = Field(
         default=None,
         description="UI theme mode: light or dark",
     )
-    notifications_enabled: Optional[bool] = Field(
+    notifications_enabled: bool | None = Field(
         default=None,
         description="Enable in-app notifications",
     )
-    notification_sound: Optional[bool] = Field(
+    notification_sound: bool | None = Field(
         default=None,
         description="Play notification sounds",
     )
-    notification_badge: Optional[bool] = Field(
+    notification_badge: bool | None = Field(
         default=None,
         description="Show notification badges",
     )
-    notification_recount_alerts: Optional[bool] = Field(
+    notification_recount_alerts: bool | None = Field(
         default=None,
         description="Show recount assignment and recount result alerts",
     )
-    notification_approval_alerts: Optional[bool] = Field(
+    notification_approval_alerts: bool | None = Field(
         default=None,
         description="Show supervisor approval and rejection alerts",
     )
-    notification_sync_failure_alerts: Optional[bool] = Field(
+    notification_sync_failure_alerts: bool | None = Field(
         default=None,
         description="Show offline sync failure alerts",
     )
-    notification_session_reminder_alerts: Optional[bool] = Field(
+    notification_session_reminder_alerts: bool | None = Field(
         default=None,
         description="Show long-running session reminder alerts",
     )
-    auto_sync_enabled: Optional[bool] = Field(
+    auto_sync_enabled: bool | None = Field(
         default=None,
         description="Automatically sync data in the background",
     )
-    auto_sync_interval: Optional[int] = Field(
+    auto_sync_interval: int | None = Field(
         default=None,
         ge=5,
         le=120,
         description="Background sync interval in minutes",
     )
-    sync_on_reconnect: Optional[bool] = Field(
+    sync_on_reconnect: bool | None = Field(
         default=None,
         description="Retry sync automatically when connection returns",
     )
-    offline_mode: Optional[bool] = Field(
+    offline_mode: bool | None = Field(
         default=None,
         description="Prefer offline-first app behavior",
     )
-    cache_expiration: Optional[int] = Field(
+    cache_expiration: int | None = Field(
         default=None,
         ge=1,
         le=168,
         description="Cache expiration in hours",
     )
-    max_queue_size: Optional[int] = Field(
+    max_queue_size: int | None = Field(
         default=None,
         ge=100,
         le=10000,
         description="Maximum queued offline actions",
     )
-    scanner_vibration: Optional[bool] = Field(
+    scanner_vibration: bool | None = Field(
         default=None,
         description="Enable vibration feedback for scanner flows",
     )
-    scanner_sound: Optional[bool] = Field(
+    scanner_sound: bool | None = Field(
         default=None,
         description="Enable sound feedback for scanner flows",
     )
-    scanner_auto_submit: Optional[bool] = Field(
+    scanner_auto_submit: bool | None = Field(
         default=None,
         description="Auto-submit scanner results when possible",
     )
-    scanner_timeout: Optional[int] = Field(
+    scanner_timeout: int | None = Field(
         default=None,
         ge=5,
         le=120,
         description="Scanner timeout in seconds",
     )
-    font_size: Optional[int] = Field(
+    font_size: int | None = Field(
         default=None,
         ge=12,
         le=22,
         description="Preferred base font size in points",
     )
-    font_style: Optional[Literal["system", "serif", "mono"]] = Field(
+    font_style: Literal["system", "serif", "mono"] | None = Field(
         default=None,
         description="Preferred font family style",
     )
-    show_item_images: Optional[bool] = Field(
+    show_item_images: bool | None = Field(
         default=None,
         description="Show item images in inventory views",
     )
-    show_item_prices: Optional[bool] = Field(
+    show_item_prices: bool | None = Field(
         default=None,
         description="Show pricing information in inventory views",
     )
-    show_item_stock: Optional[bool] = Field(
+    show_item_stock: bool | None = Field(
         default=None,
         description="Show stock values in inventory views",
     )
-    export_format: Optional[Literal["csv", "json"]] = Field(
+    export_format: Literal["csv", "json"] | None = Field(
         default=None,
         description="Default export file format",
     )
-    backup_frequency: Optional[Literal["daily", "weekly", "monthly", "never"]] = Field(
+    backup_frequency: Literal["daily", "weekly", "monthly", "never"] | None = Field(
         default=None,
         description="Preferred backup reminder cadence",
     )
-    require_auth: Optional[bool] = Field(
+    require_auth: bool | None = Field(
         default=None,
         description="Require authentication when reopening the app",
     )
-    session_timeout: Optional[int] = Field(
+    session_timeout: int | None = Field(
         default=None,
         ge=5,
         le=240,
         description="Auto-lock timeout in minutes",
     )
-    biometric_auth: Optional[bool] = Field(
+    biometric_auth: bool | None = Field(
         default=None,
         description="Allow biometric login when available",
     )
-    operational_mode: Optional[Literal["live_audit", "routine", "training"]] = Field(
+    operational_mode: Literal["live_audit", "routine", "training"] | None = Field(
         default=None,
         description="Preferred app operating mode",
     )
-    image_cache: Optional[bool] = Field(
+    image_cache: bool | None = Field(
         default=None,
         description="Cache item and evidence images locally",
     )
-    lazy_loading: Optional[bool] = Field(
+    lazy_loading: bool | None = Field(
         default=None,
         description="Enable lazy loading for large lists",
     )
-    debounce_delay: Optional[int] = Field(
+    debounce_delay: int | None = Field(
         default=None,
         ge=0,
         le=2000,
         description="Default debounce delay in milliseconds",
     )
-    column_visibility: Optional[ColumnVisibilitySettingsUpdate] = Field(
+    column_visibility: ColumnVisibilitySettingsUpdate | None = Field(
         default=None,
         description="Visibility for optional inventory detail fields",
     )

@@ -1,11 +1,9 @@
+from datetime import datetime, timezone
+from io import BytesIO
 from unittest.mock import AsyncMock, Mock
 
-from io import BytesIO
-import pytest
-from fastapi import HTTPException
-from datetime import datetime, timezone
 import openpyxl
-
+import pytest
 from backend.api.item_verification_api import (
     ItemUpdateRequest,
     VerificationRequest,
@@ -17,6 +15,7 @@ from backend.api.item_verification_api import (
     update_item_master,
     verify_item,
 )
+from fastapi import HTTPException
 
 
 @pytest.fixture(autouse=True)

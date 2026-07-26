@@ -7,7 +7,7 @@ import io
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 from bson import ObjectId
@@ -31,12 +31,12 @@ class DynamicReportService:
         description: str,
         report_type: str,
         fields: list[dict[str, Any]],
-        filters: dict[str, Optional[Any]] = None,
-        grouping: Optional[list[str]] = None,
-        sorting: list[dict[str, Optional[str]]] = None,
-        aggregations: dict[str, Optional[str]] = None,
+        filters: dict[str, Any | None] = None,
+        grouping: list[str] | None = None,
+        sorting: list[dict[str, str | None]] = None,
+        aggregations: dict[str, str | None] = None,
         format: str = "excel",
-        created_by: Optional[str] = None,
+        created_by: str | None = None,
     ) -> dict[str, Any]:
         """
         Create a new report template
@@ -81,10 +81,10 @@ class DynamicReportService:
             return template
 
         except Exception as e:
-            logger.error(f"Error creating report template: {str(e)}")
+            logger.error(f"Error creating report template: {e!s}")
             raise
 
-    async def get_report_templates(self, report_type: Optional[str] = None) -> list[dict[str, Any]]:
+    async def get_report_templates(self, report_type: str | None = None) -> list[dict[str, Any]]:
         """Get all report templates"""
         try:
             query: dict[str, Any] = {"enabled": True}
@@ -97,15 +97,15 @@ class DynamicReportService:
             return templates
 
         except Exception as e:
-            logger.error(f"Error getting report templates: {str(e)}")
+            logger.error(f"Error getting report templates: {e!s}")
             raise
 
     async def generate_report(
         self,
-        template_id: Optional[str] = None,
-        template_data: dict[str, Optional[Any]] = None,
-        runtime_filters: dict[str, Optional[Any]] = None,
-        generated_by: Optional[str] = None,
+        template_id: str | None = None,
+        template_data: dict[str, Any | None] = None,
+        runtime_filters: dict[str, Any | None] = None,
+        generated_by: str | None = None,
     ) -> dict[str, Any]:
         """
         Generate a report from template or custom data
@@ -196,7 +196,7 @@ class DynamicReportService:
             return report_record
 
         except Exception as e:
-            logger.error(f"Error generating report: {str(e)}")
+            logger.error(f"Error generating report: {e!s}")
             raise
 
     async def _fetch_report_data(
@@ -223,7 +223,7 @@ class DynamicReportService:
                 raise ValueError(f"Unknown report type: {report_type}")
 
         except Exception as e:
-            logger.error(f"Error fetching report data: {str(e)}")
+            logger.error(f"Error fetching report data: {e!s}")
             raise
 
     async def _fetch_items_data(
@@ -269,7 +269,7 @@ class DynamicReportService:
             return items
 
         except Exception as e:
-            logger.error(f"Error fetching items data: {str(e)}")
+            logger.error(f"Error fetching items data: {e!s}")
             raise
 
     async def _fetch_sessions_data(
@@ -304,7 +304,7 @@ class DynamicReportService:
             return sessions
 
         except Exception as e:
-            logger.error(f"Error fetching sessions data: {str(e)}")
+            logger.error(f"Error fetching sessions data: {e!s}")
             raise
 
     async def _fetch_variance_data(
@@ -361,7 +361,7 @@ class DynamicReportService:
             return flattened
 
         except Exception as e:
-            logger.error(f"Error fetching variance data: {str(e)}")
+            logger.error(f"Error fetching variance data: {e!s}")
             raise
 
     async def _fetch_audit_data(
@@ -386,7 +386,7 @@ class DynamicReportService:
             return logs
 
         except Exception as e:
-            logger.error(f"Error fetching audit data: {str(e)}")
+            logger.error(f"Error fetching audit data: {e!s}")
             raise
 
     async def _fetch_custom_data(
@@ -406,53 +406,121 @@ class DynamicReportService:
     # new filterable fields are added upstream.
     _FILTER_FIELD_ALLOWLIST: dict[str, set[str]] = {
         "items": {
-            "item_code", "item_name", "name", "barcode", "category",
-            "subcategory", "uom", "uom_code", "uom_name", "mrp",
-            "stock_qty", "current_stock", "quantity",
-            "warehouse", "location", "item_group", "item_type", "is_serialized",
+            "item_code",
+            "item_name",
+            "name",
+            "barcode",
+            "category",
+            "subcategory",
+            "uom",
+            "uom_code",
+            "uom_name",
+            "mrp",
+            "stock_qty",
+            "current_stock",
+            "quantity",
+            "warehouse",
+            "location",
+            "item_group",
+            "item_type",
+            "is_serialized",
             # Pricing fields (see schemas.py + variance_service.py)
-            "sales_price", "sale_price", "standard_rate",
-            "last_purchase_rate", "last_purchase_price", "last_purchase_cost",
-            "purchase_price", "last_cost", "cost_price",
+            "sales_price",
+            "sale_price",
+            "standard_rate",
+            "last_purchase_rate",
+            "last_purchase_price",
+            "last_purchase_cost",
+            "purchase_price",
+            "last_cost",
+            "cost_price",
             # Tax / compliance
-            "hsn_code", "gst_category", "gst_percent",
-            "sgst_percent", "cgst_percent", "igst_percent",
+            "hsn_code",
+            "gst_category",
+            "gst_percent",
+            "sgst_percent",
+            "cgst_percent",
+            "igst_percent",
             # Brand / supplier
-            "brand_id", "brand_name", "brand_code",
-            "supplier_id", "supplier_code", "supplier_name",
+            "brand_id",
+            "brand_name",
+            "brand_code",
+            "supplier_id",
+            "supplier_code",
+            "supplier_name",
             # Barcode variants
-            "manual_barcode", "unit2_barcode", "unit_m_barcode",
+            "manual_barcode",
+            "unit2_barcode",
+            "unit_m_barcode",
             # Lifecycle
-            "manufacturing_date", "expiry_date", "batch_id", "batch_no",
-            "image_url", "description",
-            "created_at", "updated_at", "is_deleted", "_source",
+            "manufacturing_date",
+            "expiry_date",
+            "batch_id",
+            "batch_no",
+            "image_url",
+            "description",
+            "created_at",
+            "updated_at",
+            "is_deleted",
+            "_source",
         },
         "sessions": {
-            "id", "_id", "session_id", "staff_user", "warehouse", "floor_no",
-            "rack_no", "status", "session_type", "created_at", "updated_at",
-            "started_at", "completed_at", "is_section_active",
+            "id",
+            "_id",
+            "session_id",
+            "staff_user",
+            "warehouse",
+            "floor_no",
+            "rack_no",
+            "status",
+            "session_type",
+            "created_at",
+            "updated_at",
+            "started_at",
+            "completed_at",
+            "is_section_active",
         },
         "variance": {
-            "item_code", "item_name", "session_id", "counted_qty", "stock_qty",
-            "variance", "variance_reason", "counted_by", "created_at",
+            "item_code",
+            "item_name",
+            "session_id",
+            "counted_qty",
+            "stock_qty",
+            "variance",
+            "variance_reason",
+            "counted_by",
+            "created_at",
         },
         "audit": {
-            "username", "action", "status", "resource", "resource_id",
-            "timestamp", "ip_address",
+            "username",
+            "action",
+            "status",
+            "resource",
+            "resource_id",
+            "timestamp",
+            "ip_address",
         },
     }
 
     # Operators a caller may use inside a complex condition. Anything else
     # (e.g. $where, $expr, $func) is dropped.
     _ALLOWED_OPERATORS = {
-        "$eq", "$ne", "$gt", "$gte", "$lt", "$lte",
-        "$in", "$nin", "$exists", "$regex",
+        "$eq",
+        "$ne",
+        "$gt",
+        "$gte",
+        "$lt",
+        "$lte",
+        "$in",
+        "$nin",
+        "$exists",
+        "$regex",
     }
 
     def _build_mongo_query(
         self,
         filters: dict[str, Any],
-        report_type: Optional[str] = None,
+        report_type: str | None = None,
     ) -> dict[str, Any]:
         """Build MongoDB query from filter configuration.
 
@@ -463,9 +531,7 @@ class DynamicReportService:
         query: dict[str, Any] = {}
 
         allowed_fields = (
-            self._FILTER_FIELD_ALLOWLIST.get(report_type, set())
-            if report_type
-            else set()
+            self._FILTER_FIELD_ALLOWLIST.get(report_type, set()) if report_type else set()
         )
 
         for field, condition in filters.items():
@@ -555,7 +621,7 @@ class DynamicReportService:
                 raise ValueError(f"Unsupported format: {format}")
 
         except Exception as e:
-            logger.error(f"Error generating file: {str(e)}")
+            logger.error(f"Error generating file: {e!s}")
             raise
 
     def _generate_excel(
@@ -653,7 +719,9 @@ class DynamicReportService:
             from reportlab.lib.units import inch
             from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
         except ImportError as err:
-            raise RuntimeError("PDF generation requires the 'reportlab' package to be installed.") from err
+            raise RuntimeError(
+                "PDF generation requires the 'reportlab' package to be installed."
+            ) from err
 
         def stringify(value: Any) -> str:
             if value is None:
@@ -738,7 +806,7 @@ class DynamicReportService:
         return file_data, file_name, mime_type
 
     async def get_generated_reports(
-        self, generated_by: Optional[str] = None, limit: int = 50
+        self, generated_by: str | None = None, limit: int = 50
     ) -> list[dict[str, Any]]:
         """Get list of generated reports"""
         try:
@@ -752,7 +820,7 @@ class DynamicReportService:
             return reports
 
         except Exception as e:
-            logger.error(f"Error getting generated reports: {str(e)}")
+            logger.error(f"Error getting generated reports: {e!s}")
             raise
 
     async def get_report_file(self, report_id: str) -> tuple:
@@ -774,5 +842,5 @@ class DynamicReportService:
             return file_record["file_data"], report["file_name"], report["mime_type"]
 
         except Exception as e:
-            logger.error(f"Error getting report file: {str(e)}")
+            logger.error(f"Error getting report file: {e!s}")
             raise

@@ -6,7 +6,7 @@ Decorators and utilities for automatic error diagnosis and self-healing
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeVar
 
 from backend.services.auto_diagnosis import AutoDiagnosisService
 from backend.utils.result_types import Result
@@ -186,7 +186,7 @@ def with_auto_diagnosis(
 
 
 async def diagnose_and_handle(
-    error: Exception, context: dict[str, Optional[Any]] = None, auto_fix: bool = False
+    error: Exception, context: dict[str, Any | None] = None, auto_fix: bool = False
 ) -> Result[Any, Exception]:
     """
     Diagnose error and optionally attempt auto-fix
@@ -245,7 +245,7 @@ class SelfDiagnosingErrorHandler:
                     return True  # Suppress exception
 
     async def execute(
-        self, func_or_coro: Any, context: dict[str, Optional[Any]] = None
+        self, func_or_coro: Any, context: dict[str, Any | None] = None
     ) -> Result[Any, Exception]:
         """
         Execute coroutine or coroutine factory with auto-diagnosis.

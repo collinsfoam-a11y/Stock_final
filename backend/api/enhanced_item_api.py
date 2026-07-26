@@ -9,7 +9,7 @@ import re
 import time
 from copy import deepcopy
 from datetime import datetime, timezone
-from typing import Any, NoReturn, Optional, cast
+from typing import Any, NoReturn, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -33,8 +33,8 @@ logger = logging.getLogger(__name__)
 # These will be initialized at runtime
 db: AsyncIOMotorDatabase = cast(AsyncIOMotorDatabase, None)
 cache_service: Any = None
-monitoring_service: Optional[MonitoringService] = None
-sql_sync_service: Optional[SQLSyncService] = None
+monitoring_service: MonitoringService | None = None
+sql_sync_service: SQLSyncService | None = None
 
 
 def init_enhanced_api(
@@ -72,7 +72,7 @@ _CONTEXTUAL_ITEM_FIELDS = {
 }
 
 
-def _validate_barcode_format(barcode: Optional[str]) -> str:
+def _validate_barcode_format(barcode: str | None) -> str:
     """Validate barcode input using the shared ERP normalization rules.
 
     Enhanced barcode lookups should behave consistently with the core ERP
@@ -115,7 +115,7 @@ def _to_cacheable_item(item_data: dict[str, Any]) -> dict[str, Any]:
     return cacheable_item
 
 
-def _extract_cached_item(cached_payload: Any) -> Optional[dict[str, Any]]:
+def _extract_cached_item(cached_payload: Any) -> dict[str, Any] | None:
     if not isinstance(cached_payload, dict):
         return None
 
@@ -126,7 +126,7 @@ def _extract_cached_item(cached_payload: Any) -> Optional[dict[str, Any]]:
     return _to_cacheable_item(cached_item)
 
 
-async def _sync_item_from_sql(barcode: str) -> Optional[dict[str, Any]]:
+async def _sync_item_from_sql(barcode: str) -> dict[str, Any] | None:
     if not sql_sync_service:
         return None
     try:
@@ -155,18 +155,18 @@ async def _sync_item_from_sql(barcode: str) -> Optional[dict[str, Any]]:
 
 
 async def _resolve_item_data_source(
-    normalized_barcode: str, force_source: Optional[str]
-) -> tuple[Optional[dict[str, Any]], str]:
+    normalized_barcode: str, force_source: str | None
+) -> tuple[dict[str, Any] | None, str]:
     if force_source:
         item_data, source = await _fetch_from_specific_source(normalized_barcode, force_source)
-        return cast(Optional[dict[str, Any]], item_data), source
+        return cast(dict[str, Any] | None, item_data), source
 
     synced_item = await _sync_item_from_sql(normalized_barcode)
     if synced_item:
         return synced_item, "sql_server_sync"
 
     item_data, source = await _fetch_with_fallback_strategy(normalized_barcode)
-    return cast(Optional[dict[str, Any]], item_data), source
+    return cast(dict[str, Any] | None, item_data), source
 
 
 def _build_lookup_metadata(
@@ -176,7 +176,7 @@ def _build_lookup_metadata(
     response_time_ms: float,
     normalized_barcode: str,
     current_user: dict[str, Any],
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     if not include_metadata:
         return None
     return {
@@ -202,8 +202,8 @@ def _raise_item_not_found(barcode: str, response_time_ms: float) -> NoReturn:
 
 
 async def _resolve_lookup_context(
-    session_id: Optional[str], rack_no: Optional[str]
-) -> tuple[Optional[str], Optional[str]]:
+    session_id: str | None, rack_no: str | None
+) -> tuple[str | None, str | None]:
     context_rack = rack_no.strip().upper() if rack_no else None
     context_floor = None
     if not session_id:
@@ -222,8 +222,8 @@ async def _resolve_lookup_context(
 
 def _apply_misplaced_flag(
     item_data: dict[str, Any],
-    context_floor: Optional[str],
-    context_rack: Optional[str],
+    context_floor: str | None,
+    context_rack: str | None,
 ) -> None:
     item_floor = (item_data.get("floor") or "").strip().upper()
     item_rack = (item_data.get("rack") or "").strip().upper()
@@ -242,7 +242,7 @@ def _apply_misplaced_flag(
 
 
 async def _decorate_item_with_misplacement_context(
-    item_data: Optional[dict[str, Any]], session_id: Optional[str], rack_no: Optional[str]
+    item_data: dict[str, Any] | None, session_id: str | None, rack_no: str | None
 ) -> None:
     if not item_data or not (session_id or rack_no):
         return
@@ -288,11 +288,11 @@ async def _record_enhanced_lookup_metrics(
 async def get_item_by_barcode_enhanced(
     barcode: str,
     request: Request,
-    force_source: Optional[str] = Query(None, description="Force data source: mongodb, or cache"),
+    force_source: str | None = Query(None, description="Force data source: mongodb, or cache"),
     include_metadata: bool = Query(True, description="Include response metadata"),
     current_user: dict = Depends(get_current_user),
-    session_id: Optional[str] = Query(None, description="Current session ID for context"),
-    rack_no: Optional[str] = Query(None, description="Current rack number for context"),
+    session_id: str | None = Query(None, description="Current session ID for context"),
+    rack_no: str | None = Query(None, description="Current rack number for context"),
 ):
     """
     Enhanced barcode lookup with multiple data sources, caching, and performance monitoring.
@@ -359,7 +359,7 @@ async def get_item_by_barcode_enhanced(
         await _record_enhanced_lookup_metrics(request, status_code, start_time)
 
 
-async def _fetch_from_specific_source(barcode: str, source: str) -> tuple[Optional[dict], str]:
+async def _fetch_from_specific_source(barcode: str, source: str) -> tuple[dict | None, str]:
     """Fetch item from a specific data source"""
 
     if source == "mongodb":
@@ -390,7 +390,7 @@ async def _fetch_from_specific_source(barcode: str, source: str) -> tuple[Option
         raise HTTPException(status_code=400, detail=f"Invalid source: {source}")
 
 
-async def _fetch_with_fallback_strategy(barcode: str) -> tuple[Optional[dict], str]:
+async def _fetch_with_fallback_strategy(barcode: str) -> tuple[dict | None, str]:
     """
     Intelligent fallback strategy:
     1. Try cache first (fastest)
@@ -503,11 +503,11 @@ def _build_relevance_stage(query: str) -> dict[str, Any]:
 def _build_match_conditions(
     query: str,
     search_fields: list[str],
-    category: Optional[str] = None,
-    warehouse: Optional[str] = None,
-    floor: Optional[str] = None,
-    rack: Optional[str] = None,
-    stock_level: Optional[str] = None,
+    category: str | None = None,
+    warehouse: str | None = None,
+    floor: str | None = None,
+    rack: str | None = None,
+    stock_level: str | None = None,
 ) -> dict[str, Any]:
     """Build match conditions for search pipeline"""
     match_conditions: dict[str, Any] = {"$or": []}
@@ -562,7 +562,7 @@ def _build_match_conditions(
     return match_conditions
 
 
-def _get_stock_level_filter(stock_level: str) -> Optional[dict[str, Any]]:
+def _get_stock_level_filter(stock_level: str) -> dict[str, Any] | None:
     """Get stock quantity filter based on level"""
     level_map = {
         "zero": {"$eq": 0},
@@ -579,11 +579,11 @@ def _build_search_pipeline(
     limit: int,
     offset: int,
     sort_by: str,
-    category: Optional[str],
-    warehouse: Optional[str],
-    stock_level: Optional[str],
-    floor: Optional[str],
-    rack: Optional[str],
+    category: str | None,
+    warehouse: str | None,
+    stock_level: str | None,
+    floor: str | None,
+    rack: str | None,
 ) -> list[dict[str, Any]]:
     """Build MongoDB aggregation pipeline for advanced search"""
     pipeline: list[dict[str, Any]] = []
@@ -647,13 +647,11 @@ async def advanced_item_search(
     limit: int = Query(50, ge=1, le=200, description="Maximum results"),
     offset: int = Query(0, ge=0, description="Results offset"),
     sort_by: str = Query("relevance", description="Sort by: relevance, name, code, stock"),
-    category: Optional[str] = Query(None, description="Filter by category"),
-    warehouse: Optional[str] = Query(None, description="Filter by warehouse"),
-    floor: Optional[str] = Query(None, description="Filter by floor"),
-    rack: Optional[str] = Query(None, description="Filter by rack"),
-    stock_level: Optional[str] = Query(
-        None, description="Filter by stock: low, medium, high, zero"
-    ),
+    category: str | None = Query(None, description="Filter by category"),
+    warehouse: str | None = Query(None, description="Filter by warehouse"),
+    floor: str | None = Query(None, description="Filter by floor"),
+    rack: str | None = Query(None, description="Filter by rack"),
+    stock_level: str | None = Query(None, description="Filter by stock: low, medium, high, zero"),
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -773,7 +771,7 @@ async def get_unique_locations(current_user: dict = Depends(get_current_user)):
             "Failed to fetch locations: %s",
             sanitize_for_logging(str(e), 200),
         )
-        raise HTTPException(status_code=500, detail=f"Failed to fetch locations: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Failed to fetch locations: {e!s}") from e
 
 
 @enhanced_item_router.get("/performance/stats")
@@ -817,12 +815,12 @@ async def get_item_api_performance(current_user: dict = Depends(get_current_user
             "Performance stats failed: %s",
             sanitize_for_logging(str(e), 200),
         )
-        raise HTTPException(status_code=500, detail=f"Performance analysis failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Performance analysis failed: {e!s}") from e
 
 
 @enhanced_item_router.post("/sync/realtime")
 async def trigger_realtime_sync(
-    item_codes: Optional[list[str]] = None, current_user: dict = Depends(get_current_user)
+    item_codes: list[str] | None = None, current_user: dict = Depends(get_current_user)
 ):
     """
     Trigger real-time sync for specific items or all items (Now disabled as ERP is disconnected)
@@ -860,7 +858,7 @@ async def get_database_status(current_user: dict = Depends(get_current_user)):
             "Database status check failed: %s",
             sanitize_for_logging(str(e), 200),
         )
-        raise HTTPException(status_code=500, detail=f"Database status failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Database status failed: {e!s}") from e
 
 
 @enhanced_item_router.post("/database/optimize")
@@ -894,4 +892,4 @@ async def optimize_database_performance(current_user: dict = Depends(get_current
             "Database optimization failed: %s",
             sanitize_for_logging(str(e), 200),
         )
-        raise HTTPException(status_code=500, detail=f"Optimization failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Optimization failed: {e!s}") from e

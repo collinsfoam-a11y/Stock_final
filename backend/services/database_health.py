@@ -6,7 +6,7 @@ Monitors database connections and provides health checks
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo.errors import InvalidOperation
@@ -31,9 +31,9 @@ class DatabaseHealthService:
         mongo_db: AsyncIOMotorDatabase,
         sql_connector: "SQLServerConnector",
         check_interval: int = 60,  # Check every 60 seconds
-        mongo_uri: Optional[str] = None,
-        db_name: Optional[str] = None,
-        mongo_client_options: dict[str, Optional[Any]] = None,
+        mongo_uri: str | None = None,
+        db_name: str | None = None,
+        mongo_client_options: dict[str, Any | None] = None,
     ):
         self.mongo_db = mongo_db
         self.sql_connector = sql_connector
@@ -55,11 +55,11 @@ class DatabaseHealthService:
             "uptime_start": datetime.now(timezone.utc),
         }
         self._running = False
-        self._task: Optional[asyncio.Task[None]] = None
+        self._task: asyncio.Task[None] | None = None
         self._mongo_uri = mongo_uri
         self._db_name = db_name or getattr(mongo_db, "name", None)
         self._mongo_client_options = mongo_client_options or {}
-        self._dedicated_client: Optional[AsyncIOMotorClient] = None
+        self._dedicated_client: AsyncIOMotorClient | None = None
 
         if self.mongo_db is None and not self._switch_to_dedicated_client():
             raise RuntimeError("Failed to initialize MongoDB connection for health monitoring")
@@ -167,7 +167,7 @@ class DatabaseHealthService:
                         )
                     except Exception as e:
                         is_available = False
-                        error_detail = f"Connection attempt failed: {str(e)}"
+                        error_detail = f"Connection attempt failed: {e!s}"
                 else:
                     error_detail = "SQL Server configuration is missing"
                     is_available = False
@@ -256,7 +256,7 @@ class DatabaseHealthService:
             try:
                 await self.check_all()
             except Exception as e:
-                logger.error(f"Health check loop error: {str(e)}")
+                logger.error(f"Health check loop error: {e!s}")
 
             await asyncio.sleep(self.check_interval)
 

@@ -12,7 +12,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 
@@ -57,8 +57,8 @@ class NotificationService:
         title: str,
         message: str,
         priority: NotificationPriority = NotificationPriority.MEDIUM,
-        action_url: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        action_url: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """
         Create a new notification.
@@ -104,7 +104,7 @@ class NotificationService:
         self,
         user_id: str,
         token: str,
-        platform: Optional[str] = None,
+        platform: str | None = None,
     ) -> None:
         """Register or refresh a push-capable device token."""
         if not self.notification_devices or not token:
@@ -148,10 +148,10 @@ class NotificationService:
         item_name: str,
         reason: str,
         assigned_by: str,
-        session_id: Optional[str] = None,
-        item_code: Optional[str] = None,
-        barcode: Optional[str] = None,
-        assigned_to: Optional[str] = None,
+        session_id: str | None = None,
+        item_code: str | None = None,
+        barcode: str | None = None,
+        assigned_to: str | None = None,
     ) -> str:
         """Notify user of recount assignment"""
         return await self.create_notification(
@@ -225,9 +225,9 @@ class NotificationService:
         count_line_id: str,
         item_name: str,
         approved_by: str,
-        session_id: Optional[str] = None,
-        item_code: Optional[str] = None,
-        barcode: Optional[str] = None,
+        session_id: str | None = None,
+        item_code: str | None = None,
+        barcode: str | None = None,
     ) -> str:
         """Notify user that their count was approved"""
         return await self.create_notification(
@@ -254,9 +254,9 @@ class NotificationService:
         item_name: str,
         reason: str,
         rejected_by: str,
-        session_id: Optional[str] = None,
-        item_code: Optional[str] = None,
-        barcode: Optional[str] = None,
+        session_id: str | None = None,
+        item_code: str | None = None,
+        barcode: str | None = None,
     ) -> str:
         """Notify user that their count was rejected"""
         return await self.create_notification(
@@ -279,9 +279,9 @@ class NotificationService:
 
     async def get_user_notifications(
         self, user_id: str, unread_only: bool = False, limit: int = 50
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get notifications for a user"""
-        query: Dict[str, Any] = {"user_id": user_id}
+        query: dict[str, Any] = {"user_id": user_id}
         if unread_only:
             query["read"] = False
 
@@ -332,7 +332,7 @@ class NotificationService:
         """Get count of unread notifications"""
         return await self.db.notifications.count_documents({"user_id": user_id, "read": False})
 
-    async def _send_push_notification(self, user_id: str, notification: Dict[str, Any]):
+    async def _send_push_notification(self, user_id: str, notification: dict[str, Any]):
         """Send push notification via Expo push service for registered devices."""
         if not self.notification_devices:
             return

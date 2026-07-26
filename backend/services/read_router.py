@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from backend.services.canonical_inventory import is_superseded_count_line
 from backend.services.event_service import FLAG_PROJECTION_READS
@@ -46,7 +46,7 @@ def _as_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
-def _normalize_string(value: Any) -> Optional[str]:
+def _normalize_string(value: Any) -> str | None:
     if value is None:
         return None
     normalized = str(value).strip()
@@ -57,7 +57,7 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _normalize_batch_totals(document: Optional[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+def _normalize_batch_totals(document: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
     if not isinstance(document, dict):
         return {}
 
@@ -125,7 +125,7 @@ class InventoryReadRouter:
         self.db = db
 
     @staticmethod
-    def _safe_endpoint_name(endpoint: Optional[str], *, default: str) -> str:
+    def _safe_endpoint_name(endpoint: str | None, *, default: str) -> str:
         normalized = _normalize_string(endpoint)
         return normalized or default
 
@@ -183,8 +183,8 @@ class InventoryReadRouter:
         session_id: str,
         item_code: str,
         reason: str,
-        projection_payload: Optional[dict[str, Any]] = None,
-        legacy_payload: Optional[dict[str, Any]] = None,
+        projection_payload: dict[str, Any] | None = None,
+        legacy_payload: dict[str, Any] | None = None,
     ) -> None:
         logger.warning(
             "PROJECTION_FALLBACK endpoint=%s session_id=%s item_code=%s reason=%s",
@@ -248,7 +248,7 @@ class InventoryReadRouter:
         *,
         total_qty: float,
         batch_totals: list[dict[str, Any]],
-    ) -> Optional[str]:
+    ) -> str | None:
         if total_qty <= 0:
             return None
         batch_total_qty = sum(_as_float(batch.get("counted_qty")) for batch in batch_totals)
@@ -269,7 +269,7 @@ class InventoryReadRouter:
         session_id: str,
         item_code: str,
         reason: str,
-        projection_payload: Optional[dict[str, Any]] = None,
+        projection_payload: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         legacy = await self._legacy_item_scan_status(
             session_id=session_id,
@@ -376,7 +376,7 @@ class InventoryReadRouter:
         *,
         session_id: str,
         item_code: str,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         snapshot = await self.db.items_snapshot.find_one(
             {"session_id": session_id, "item_code": item_code}
         )

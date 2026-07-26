@@ -10,7 +10,6 @@ verify the newer, richer AuditService.log_event calls added alongside it
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from backend.models.audit import AuditEventType
 from backend.services.session_lifecycle_service import SessionLifecycleService
 

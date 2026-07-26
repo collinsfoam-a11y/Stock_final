@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { useScanSessionStore } from "@/store/scanSessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
@@ -50,6 +51,7 @@ import { safeBackNavigation } from "@/utils/navigation";
 import { createItemDetailStyles } from "@/styles/screens/ItemDetail.styles";
 import { getStockQty } from "@/utils/itemBatchUtils";
 import { createLogger } from "@/services/logging";
+import { duration } from "@/theme/staffUiScale";
 
 const log = createLogger("ItemDetailScreen");
 
@@ -73,6 +75,36 @@ const formatPriceMetric = (value: number | undefined | null, visible: boolean): 
   if (!visible) return "---";
   const formattedValue = formatMetricNumber(value);
   return formattedValue === "---" ? formattedValue : `₹${formattedValue}`;
+};
+
+// ---------------------------------------------------------------------------
+// Safe Animated View (web-compatible)
+// ---------------------------------------------------------------------------
+
+interface SafeAnimatedViewProps {
+  children: React.ReactNode;
+  style?: any;
+  entering?: any;
+  delay?: number;
+}
+
+const SafeAnimatedView: React.FC<SafeAnimatedViewProps> = ({
+  children,
+  style,
+  entering,
+  delay = 0,
+}) => {
+  if (Platform.OS === "web") {
+    return <View style={style}>{children}</View>;
+  }
+  const animationProps = entering
+    ? { entering: entering.delay(delay).duration(duration.slower).springify() }
+    : {};
+  return (
+    <Animated.View style={style} {...animationProps}>
+      {children}
+    </Animated.View>
+  );
 };
 
 // Reusable section heading — consistent icon + label pattern, avoids 7× repetition
@@ -192,18 +224,22 @@ export default function ItemDetailScreen() {
   const displayBarcode = Array.isArray(barcode) ? barcode[0] : barcode;
   const normalizedSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId;
   const { isConnected, subscribe } = useSessionWebSocket(normalizedSessionId);
-  const { renderCount, scrollFPS } = usePerformanceMonitor("ItemDetailScreen", {
-  trackScrollFPS: true,
-});
+  const { metrics, startMonitoring, stopMonitoring } = usePerformanceMonitor();
 
-  // Log performance metrics
   useEffect(() => {
-    log.debug("ItemDetail Performance", {
-      renderCount,
-      scrollFPS,
-      itemId: displayBarcode,
-    });
-  }, [renderCount, scrollFPS, displayBarcode]);
+    startMonitoring();
+    return () => stopMonitoring();
+  }, [startMonitoring, stopMonitoring]);
+
+  useEffect(() => {
+    if (metrics.fps !== undefined) {
+      log.debug("ItemDetail Performance", {
+        fps: metrics.fps,
+        renderTime: metrics.renderTime,
+        itemId: displayBarcode,
+      });
+    }
+  }, [metrics.fps, metrics.renderTime, displayBarcode]);
 
   const { currentFloor, currentRack } = useScanSessionStore();
   const { settings } = useSettingsStore();
@@ -697,16 +733,6 @@ export default function ItemDetailScreen() {
           bounces
           alwaysBounceVertical
           removeClippedSubviews={Platform.OS === "ios"}
-          onScroll={() => {
-            // Performance instrumentation for scroll FPS
-            if (scrollFPS !== undefined) {
-              log.debug("ItemDetail Performance", {
-                renderCount,
-                scrollFPS,
-                itemId: item?.item_code,
-              });
-            }
-          }}
           scrollEventThrottle={16}
         >
           {/* ── Hero Card ─── single source of truth for item identity ─── */}
@@ -1061,6 +1087,7 @@ export default function ItemDetailScreen() {
           )}
 
         </ScrollView>
+        <MemoizedItemSubmitBar
           canSubmit={canSubmit}
           submitting={submitting}
           submitCountdown={submitCountdown}

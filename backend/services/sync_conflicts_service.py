@@ -6,7 +6,7 @@ Detect and resolve synchronization conflicts between local and server data
 import logging
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -23,7 +23,7 @@ UTC = timezone.utc
 logger = logging.getLogger(__name__)
 
 
-def _object_id_or_none(value: Optional[str]) -> Optional[ObjectId]:
+def _object_id_or_none(value: str | None) -> ObjectId | None:
     if not isinstance(value, str) or not ObjectId.is_valid(value):
         return None
     return ObjectId(value)
@@ -97,8 +97,8 @@ class SyncConflictsService:
         local_data: dict[str, Any],
         server_data: dict[str, Any],
         user: str,
-        session_id: Optional[str] = None,
-    ) -> Optional[str]:
+        session_id: str | None = None,
+    ) -> str | None:
         """
         Detect conflict between local and server data
         Returns conflict_id if conflict detected, None otherwise
@@ -182,9 +182,9 @@ class SyncConflictsService:
     def _build_conflicts_query(
         self,
         status: ConflictStatus = None,
-        session_id: Optional[str] = None,
-        user: Optional[str] = None,
-        entity_type: Optional[str] = None,
+        session_id: str | None = None,
+        user: str | None = None,
+        entity_type: str | None = None,
     ) -> dict[str, Any]:
         query: dict[str, Any] = {}
         if status:
@@ -200,9 +200,9 @@ class SyncConflictsService:
     async def get_conflicts(
         self,
         status: ConflictStatus = None,
-        session_id: Optional[str] = None,
-        user: Optional[str] = None,
-        entity_type: Optional[str] = None,
+        session_id: str | None = None,
+        user: str | None = None,
+        entity_type: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
@@ -231,16 +231,16 @@ class SyncConflictsService:
     async def count_conflicts(
         self,
         status: ConflictStatus = None,
-        session_id: Optional[str] = None,
-        user: Optional[str] = None,
-        entity_type: Optional[str] = None,
+        session_id: str | None = None,
+        user: str | None = None,
+        entity_type: str | None = None,
     ) -> int:
         """SYNC-06: total conflicts matching the filter, so paginating callers
         know how many pages exist beyond the first `limit`."""
         query = self._build_conflicts_query(status, session_id, user, entity_type)
         return await self.db.sync_conflicts.count_documents(query)
 
-    async def get_conflict_by_id(self, conflict_id: str) -> Optional[dict[str, Optional[Any]]]:
+    async def get_conflict_by_id(self, conflict_id: str) -> dict[str, Any | None] | None:
         """Get a specific conflict by ID"""
         conflict = await self.db.sync_conflicts.find_one({"_id": ObjectId(conflict_id)})
 
@@ -254,7 +254,7 @@ class SyncConflictsService:
         conflict_id: str,
         resolution: ConflictResolution,
         resolved_by: str,
-        merged_data: Optional[dict[str, Optional[Any]]] = None,
+        merged_data: dict[str, Any | None] | None = None,
     ) -> dict[str, Any]:
         """
         Resolve a sync conflict
@@ -391,7 +391,7 @@ class SyncConflictsService:
         original_doc: dict,
         new_data: dict,
         *,
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
     ):
         """Creates a forked version of an approved record to preserve audit history (Rule 7)."""
         forked_doc = original_doc.copy()
@@ -420,8 +420,8 @@ class SyncConflictsService:
         self,
         entity_id: str,
         *,
-        db_session: Optional[Any] = None,
-    ) -> Optional[dict[str, Any]]:
+        db_session: Any | None = None,
+    ) -> dict[str, Any] | None:
         kwargs = {"session": db_session} if db_session is not None else {}
         session = await self.db.sessions.find_one(_entity_lookup(entity_id), **kwargs)
         if session:
@@ -463,7 +463,7 @@ class SyncConflictsService:
         entity_id: str,
         data: dict[str, Any],
         *,
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
     ) -> None:
         """Apply resolved data to the entity"""
         kwargs = {"session": db_session} if db_session is not None else {}
@@ -597,7 +597,7 @@ class SyncConflictsService:
 
             logger.error("Unknown entity type for conflict resolution: %s", entity_type)
         except PyMongoError as e:
-            logger.error(f"Failed to apply resolved data: {str(e)}")
+            logger.error(f"Failed to apply resolved data: {e!s}")
             raise
 
     async def auto_resolve_simple_conflicts(
@@ -618,7 +618,7 @@ class SyncConflictsService:
                 if await self._resolve_single_conflict(conflict, strategy):
                     resolved_count += 1
             except (PyMongoError, ValueError) as e:
-                logger.error(f"Failed to auto-resolve conflict {conflict['id']}: {str(e)}")
+                logger.error(f"Failed to auto-resolve conflict {conflict['id']}: {e!s}")
                 continue
 
         logger.info(f"Auto-resolved {resolved_count} conflicts using '{strategy}' strategy")

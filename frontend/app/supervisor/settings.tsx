@@ -26,6 +26,7 @@ import {
   UserSettingsSections,
 } from "@/components/settings";
 import { safeBackNavigation } from "@/utils/navigation";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -157,7 +158,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    paddingHorizontal: 16,
+    paddingHorizontal: gap.lg,
     paddingTop: 16,
   },
   embeddedPanel: {

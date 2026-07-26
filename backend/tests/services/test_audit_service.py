@@ -1,6 +1,7 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
-from backend.services.audit_service import AuditService, AuditEventType, AuditLogStatus
+
+import pytest
+from backend.services.audit_service import AuditEventType, AuditLogStatus, AuditService
 from backend.services.watchdog_service import WatchdogService
 
 

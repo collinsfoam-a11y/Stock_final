@@ -7,7 +7,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from pymongo.errors import DuplicateKeyError
 
@@ -41,14 +41,14 @@ def _as_bool(value: Any, *, default: bool = False) -> bool:
     return default
 
 
-def _normalize_string(value: Any) -> Optional[str]:
+def _normalize_string(value: Any) -> str | None:
     if value is None:
         return None
     normalized = str(value).strip()
     return normalized or None
 
 
-def _normalize_serials(document: Optional[dict[str, Any]]) -> list[str]:
+def _normalize_serials(document: dict[str, Any] | None) -> list[str]:
     if not isinstance(document, dict):
         return []
 
@@ -74,7 +74,7 @@ def _normalize_serials(document: Optional[dict[str, Any]]) -> list[str]:
     return normalized
 
 
-def _line_identifier(document: Optional[dict[str, Any]]) -> Optional[str]:
+def _line_identifier(document: dict[str, Any] | None) -> str | None:
     if not isinstance(document, dict):
         return None
     return _normalize_string(document.get("id") or document.get("_id"))
@@ -87,13 +87,13 @@ class EventService:
         self,
         db: Any,
         *,
-        projection_service: Optional[ProjectionService] = None,
+        projection_service: ProjectionService | None = None,
     ) -> None:
         self.db = db
         self.projection_service = projection_service or ProjectionService(db)
 
     @staticmethod
-    def _kwargs(db_session: Optional[Any]) -> dict[str, Any]:
+    def _kwargs(db_session: Any | None) -> dict[str, Any]:
         return {"session": db_session} if db_session is not None else {}
 
     @staticmethod
@@ -131,10 +131,10 @@ class EventService:
         aggregate_id: str,
         event_type: str,
         payload: dict[str, Any],
-        metadata: Optional[dict[str, Any]] = None,
-        db_session: Optional[Any] = None,
+        metadata: dict[str, Any] | None = None,
+        db_session: Any | None = None,
         apply_projection: bool = True,
-        enforce_writes: Optional[bool] = None,
+        enforce_writes: bool | None = None,
     ) -> dict[str, Any]:
         metadata = self._normalize_event_metadata(
             metadata=metadata,
@@ -204,10 +204,10 @@ class EventService:
         event_type: str,
         session_id: str,
         payload: dict[str, Any],
-        metadata: Optional[dict[str, Any]] = None,
-        db_session: Optional[Any] = None,
+        metadata: dict[str, Any] | None = None,
+        db_session: Any | None = None,
         required: bool = True,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         if not required and not await self.is_enabled(FLAG_EVENT_SHADOW_WRITE, default=True):
             return None
 
@@ -235,7 +235,7 @@ class EventService:
         resolved_result: Any,
         pre_images: list[dict[str, Any]],
         post_images: list[dict[str, Any]],
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
     ) -> list[dict[str, Any]]:
         operation = str(payload.get("operation") or "").strip().lower()
         events: list[dict[str, Any]] = []
@@ -291,13 +291,13 @@ class EventService:
         self,
         *,
         event_type: str,
-        session_id: Optional[str],
-        item_code: Optional[str],
+        session_id: str | None,
+        item_code: str | None,
         strategy: str,
         details: dict[str, Any],
-        resolved_by: Optional[str] = None,
-        db_session: Optional[Any] = None,
-    ) -> Optional[dict[str, Any]]:
+        resolved_by: str | None = None,
+        db_session: Any | None = None,
+    ) -> dict[str, Any] | None:
         queue_id = _normalize_string(details.get("conflict_id")) or str(uuid.uuid4())
         return await self.append_event(
             aggregate_id=item_code or session_id or "sync",
@@ -324,7 +324,7 @@ class EventService:
         *,
         document: dict[str, Any],
         context: dict[str, Any],
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> list[dict[str, Any]]:
         events: list[dict[str, Any]] = []
         aggregate_id = _normalize_string(document.get("item_code")) or "unknown-item"
@@ -393,7 +393,7 @@ class EventService:
         before: dict[str, Any],
         after: dict[str, Any],
         context: dict[str, Any],
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> list[dict[str, Any]]:
         events: list[dict[str, Any]] = []
         aggregate_id = (
@@ -507,8 +507,8 @@ class EventService:
         *,
         document: dict[str, Any],
         context: dict[str, Any],
-        db_session: Optional[Any],
-    ) -> Optional[dict[str, Any]]:
+        db_session: Any | None,
+    ) -> dict[str, Any] | None:
         aggregate_id = _normalize_string(document.get("item_code")) or "unknown-item"
         return await self.append_event(
             aggregate_id=aggregate_id,
@@ -526,8 +526,8 @@ class EventService:
         self,
         *,
         document: dict[str, Any],
-        before: Optional[dict[str, Any]],
-        after: Optional[dict[str, Any]],
+        before: dict[str, Any] | None,
+        after: dict[str, Any] | None,
     ) -> dict[str, Any]:
         active = after or before or document
         before_qty = float((before or {}).get("counted_qty") or 0.0)
@@ -589,7 +589,7 @@ class EventService:
     def _normalize_event_metadata(
         self,
         *,
-        metadata: Optional[dict[str, Any]],
+        metadata: dict[str, Any] | None,
         aggregate_id: str,
         event_type: str,
         payload: dict[str, Any],
@@ -624,10 +624,10 @@ class EventService:
     async def _find_existing_event(
         self,
         *,
-        idempotency_key: Optional[str],
-        scan_fingerprint: Optional[str],
-        db_session: Optional[Any],
-    ) -> Optional[dict[str, Any]]:
+        idempotency_key: str | None,
+        scan_fingerprint: str | None,
+        db_session: Any | None,
+    ) -> dict[str, Any] | None:
         kwargs = self._kwargs(db_session)
         if idempotency_key:
             existing = await self._resolve_awaitable(
@@ -658,7 +658,7 @@ class EventService:
     def compute_scan_fingerprint(
         self,
         document: dict[str, Any],
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> str:
         serials = _normalize_serials(document)
         payload = {

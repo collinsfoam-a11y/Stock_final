@@ -5,9 +5,7 @@ inference-based export blockers (see erpnext_export_service.py and
 docs/BSR_REMEDIATION_STATUS.md).
 """
 
-from fastapi import HTTPException
 import pytest
-
 from backend.api.erpnext_export_settings_api import (
     ItemExportFlagsCreate,
     ItemExportFlagsUpdate,
@@ -31,6 +29,7 @@ from backend.services.erpnext_export_settings_service import (
     ErpNextExportSettingsService,
 )
 from backend.tests.utils.in_memory_db import InMemoryDatabase
+from fastapi import HTTPException
 
 ADMIN_USER = {"username": "admin1", "role": "admin"}
 STAFF_USER = {"username": "staff1", "role": "staff"}
@@ -316,9 +315,7 @@ async def test_require_admin_accepts_admin_role():
 @pytest.mark.asyncio
 async def test_router_create_and_list_warehouse_mapping(monkeypatch):
     db = InMemoryDatabase()
-    monkeypatch.setattr(
-        "backend.api.erpnext_export_settings_api.get_db", lambda: db
-    )
+    monkeypatch.setattr("backend.api.erpnext_export_settings_api.get_db", lambda: db)
 
     created = await create_warehouse_mapping(
         WarehouseMappingCreate(
@@ -338,9 +335,7 @@ async def test_router_create_and_list_warehouse_mapping(monkeypatch):
 @pytest.mark.asyncio
 async def test_router_update_warehouse_mapping_rejects_bad_mapping_id(monkeypatch):
     db = InMemoryDatabase()
-    monkeypatch.setattr(
-        "backend.api.erpnext_export_settings_api.get_db", lambda: db
-    )
+    monkeypatch.setattr("backend.api.erpnext_export_settings_api.get_db", lambda: db)
 
     with pytest.raises(HTTPException) as exc_info:
         await update_warehouse_mapping(
@@ -354,9 +349,7 @@ async def test_router_update_warehouse_mapping_rejects_bad_mapping_id(monkeypatc
 @pytest.mark.asyncio
 async def test_router_create_and_list_uom_mapping(monkeypatch):
     db = InMemoryDatabase()
-    monkeypatch.setattr(
-        "backend.api.erpnext_export_settings_api.get_db", lambda: db
-    )
+    monkeypatch.setattr("backend.api.erpnext_export_settings_api.get_db", lambda: db)
 
     created = await create_uom_mapping(
         UomMappingCreate(stock_verify_uom="EA", erpnext_uom="Each", conversion_factor=1.0),
@@ -371,9 +364,7 @@ async def test_router_create_and_list_uom_mapping(monkeypatch):
 @pytest.mark.asyncio
 async def test_router_update_uom_mapping_rejects_non_positive_factor(monkeypatch):
     db = InMemoryDatabase()
-    monkeypatch.setattr(
-        "backend.api.erpnext_export_settings_api.get_db", lambda: db
-    )
+    monkeypatch.setattr("backend.api.erpnext_export_settings_api.get_db", lambda: db)
     created = await create_uom_mapping(
         UomMappingCreate(stock_verify_uom="DZ", erpnext_uom="Dozen", conversion_factor=12.0),
         current_user=ADMIN_USER,
@@ -391,9 +382,7 @@ async def test_router_update_uom_mapping_rejects_non_positive_factor(monkeypatch
 @pytest.mark.asyncio
 async def test_router_create_get_update_item_flags(monkeypatch):
     db = InMemoryDatabase()
-    monkeypatch.setattr(
-        "backend.api.erpnext_export_settings_api.get_db", lambda: db
-    )
+    monkeypatch.setattr("backend.api.erpnext_export_settings_api.get_db", lambda: db)
 
     created = await create_item_flags(
         ItemExportFlagsCreate(item_code="ITEM-200", is_batch_controlled=True),
@@ -416,9 +405,7 @@ async def test_router_create_get_update_item_flags(monkeypatch):
 @pytest.mark.asyncio
 async def test_router_get_item_flags_404_when_not_configured(monkeypatch):
     db = InMemoryDatabase()
-    monkeypatch.setattr(
-        "backend.api.erpnext_export_settings_api.get_db", lambda: db
-    )
+    monkeypatch.setattr("backend.api.erpnext_export_settings_api.get_db", lambda: db)
 
     with pytest.raises(HTTPException) as exc_info:
         await get_item_flags("ITEM-NEVER-CONFIGURED", current_user=ADMIN_USER)

@@ -1,26 +1,23 @@
 import logging
-from backend.utils.api_utils import sanitize_for_logging
-from typing import Optional
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from backend.auth.jwt_provider import decode
 from backend.config import settings
 from backend.core.websocket_manager import manager
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _parse_subprotocols(header_value: Optional[str]) -> list[str]:
+def _parse_subprotocols(header_value: str | None) -> list[str]:
     if not header_value:
         return []
     return [p.strip() for p in header_value.split(",") if p.strip()]
 
 
-def _extract_jwt_from_websocket(
-    websocket: WebSocket
-) -> tuple[Optional[str], Optional[str]]:
+def _extract_jwt_from_websocket(websocket: WebSocket) -> tuple[str | None, str | None]:
     """Extract JWT token from Authorization header, subprotocol, or legacy query param.
 
     Returns:
@@ -53,7 +50,7 @@ def _extract_jwt_from_websocket(
 @router.websocket("/ws/updates")
 async def websocket_endpoint(
     websocket: WebSocket,
-    session_id: Optional[str] = Query(None),
+    session_id: str | None = Query(None),
 ):
     """WebSocket endpoint for real-time updates.
 

@@ -26,6 +26,7 @@ import {
   type OperationalStyleBridge,
 } from "@/theme/operationalStyleBridge";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 export default function OfflineQueueScreen() {
   const router = useRouter();
@@ -405,10 +406,10 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
   flushButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: gap.sm,
     backgroundColor: operationalTheme.colors.primary[500],
     paddingHorizontal: operationalTheme.spacing.md,
-    paddingVertical: 8,
+    paddingVertical: gap.sm,
     borderRadius: operationalTheme.borderRadius.full,
   },
   flushButtonDisabled: {
@@ -444,8 +445,8 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
     marginBottom: operationalTheme.spacing.sm,
   },
   methodBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: gap.sm,
+    paddingVertical: gap.xxs,
     borderRadius: operationalTheme.borderRadius.sm,
   },
   methodText: {
@@ -469,10 +470,10 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
   errorBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: gap.xs,
     backgroundColor: colorWithAlpha(operationalTheme.colors.warning[500], 0.1),
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: gap.sm,
+    paddingVertical: gap.xxs,
     borderRadius: operationalTheme.borderRadius.full,
   },
   errorBadgeText: {
@@ -496,7 +497,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
     borderWidth: 1,
     borderColor: operationalTheme.colors.border.light,
     paddingHorizontal: operationalTheme.spacing.md,
-    paddingVertical: 6,
+    paddingVertical: gap.sm,
     borderRadius: operationalTheme.borderRadius.full,
   },
   dismissText: {

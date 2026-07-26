@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -22,7 +22,7 @@ class Note(BaseModel):
     title: str
     content: str
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
     created_by: str
 
 
@@ -45,7 +45,7 @@ def _serialize_note(doc: dict[str, Any]) -> Note:
 
 @router.get("/notes", response_model=dict[str, Any])
 async def list_notes(
-    q: Optional[str] = Query(default=None, description="Search query"),
+    q: str | None = Query(default=None, description="Search query"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
     current_user: dict[str, Any] = Depends(get_current_user),

@@ -92,7 +92,7 @@ export default function RecountAssignmentModal({
                 styles.selector,
                 { borderColor: uiTokens.colors.border, backgroundColor: uiTokens.colors.surface },
               ]}
-              onPress={() => setPickerVisible(true)}
+               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={() => setPickerVisible(true)}
               activeOpacity={0.8}
               disabled={loading || staffOptions.length === 0}
             >
@@ -130,7 +130,7 @@ export default function RecountAssignmentModal({
                 styles.cancelButton,
                 { borderColor: uiTokens.colors.border, backgroundColor: uiTokens.colors.surface },
               ]}
-              onPress={onClose}
+               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={onClose}
               disabled={loading}
               activeOpacity={0.8}
             >
@@ -144,7 +144,7 @@ export default function RecountAssignmentModal({
                 { backgroundColor: uiTokens.colors.warning },
                 (!selectedAssignee || loading) && styles.disabledButton,
               ]}
-              onPress={() => void handleSubmit()}
+               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={() => void handleSubmit()}
               disabled={!selectedAssignee || loading}
               activeOpacity={0.8}
             >

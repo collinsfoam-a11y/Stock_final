@@ -9,7 +9,7 @@ import json
 import logging
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
@@ -54,7 +54,7 @@ async def _audit_export_generated(
     *,
     export_type: str,
     export_format: str,
-    filters: Optional[dict[str, Any]] = None,
+    filters: dict[str, Any] | None = None,
 ) -> None:
     """Record that an export was generated (BSR canonical audit coverage).
 
@@ -77,7 +77,7 @@ async def _audit_export_generated(
         logger.warning("Failed to audit export generation: %s", _safe_log_value(exc))
 
 
-def _regex_filter(value: Optional[str]) -> Optional[dict[str, str]]:
+def _regex_filter(value: str | None) -> dict[str, str] | None:
     if not value:
         return None
     return {"$regex": value, "$options": "i"}
@@ -85,14 +85,14 @@ def _regex_filter(value: Optional[str]) -> Optional[dict[str, str]]:
 
 def build_item_filter_query(
     *,
-    category: Optional[str] = None,
-    subcategory: Optional[str] = None,
-    floor: Optional[str] = None,
-    rack: Optional[str] = None,
-    warehouse: Optional[str] = None,
-    uom_code: Optional[str] = None,
-    verified: Optional[bool] = None,
-    search: Optional[str] = None,
+    category: str | None = None,
+    subcategory: str | None = None,
+    floor: str | None = None,
+    rack: str | None = None,
+    warehouse: str | None = None,
+    uom_code: str | None = None,
+    verified: bool | None = None,
+    search: str | None = None,
 ) -> dict[str, Any]:
     """Create a MongoDB filter dict for ERP items."""
     filter_query: dict[str, Any] = {}
@@ -133,7 +133,7 @@ def build_item_filter_query(
     return filter_query
 
 
-def serialize_mongo_datetime(value: Optional[datetime]) -> str:
+def serialize_mongo_datetime(value: datetime | None) -> str:
     return value.isoformat() if isinstance(value, datetime) else ""
 
 
@@ -288,26 +288,26 @@ def serialize_item_document(item: dict[str, Any]) -> dict[str, Any]:
 
 class VerificationRequest(BaseModel):
     verified: bool
-    verified_qty: Optional[float] = None
-    damaged_qty: Optional[float] = 0.0
-    non_returnable_damaged_qty: Optional[float] = 0.0
-    item_condition: Optional[str] = "Good"
-    serial_number: Optional[str] = None
+    verified_qty: float | None = None
+    damaged_qty: float | None = 0.0
+    non_returnable_damaged_qty: float | None = 0.0
+    item_condition: str | None = "Good"
+    serial_number: str | None = None
     # Deprecated for writes: serialization policy is master-data controlled.
-    is_serialized: Optional[bool] = None
-    notes: Optional[str] = None
-    floor: Optional[str] = None
-    rack: Optional[str] = None
-    session_id: Optional[str] = None
-    count_line_id: Optional[str] = None
+    is_serialized: bool | None = None
+    notes: str | None = None
+    floor: str | None = None
+    rack: str | None = None
+    session_id: str | None = None
+    count_line_id: str | None = None
 
 
 class ItemUpdateRequest(BaseModel):
-    mrp: Optional[float] = None
-    sales_price: Optional[float] = None
-    category: Optional[str] = None
-    subcategory: Optional[str] = None
-    uom: Optional[str] = None
+    mrp: float | None = None
+    sales_price: float | None = None
+    category: str | None = None
+    subcategory: str | None = None
+    uom: str | None = None
 
 
 def _not_found_error(barcode: str) -> HTTPException:
@@ -328,7 +328,7 @@ async def _find_item_by_barcode_or_code(barcode: str) -> dict[str, Any]:
 
 def _resolve_item_identity(
     item: dict[str, Any], fallback_barcode: str
-) -> tuple[Optional[str], str, dict[str, Any]]:
+) -> tuple[str | None, str, dict[str, Any]]:
     actual_barcode = item.get("barcode")
     actual_item_code = item.get("item_code") or fallback_barcode
     if actual_item_code:
@@ -361,8 +361,8 @@ def _build_master_update_doc(
 
 async def _invalidate_item_cache(
     *,
-    actual_barcode: Optional[str],
-    actual_item_code: Optional[str],
+    actual_barcode: str | None,
+    actual_item_code: str | None,
     clear_search_cache: bool = False,
 ) -> None:
     if not cache_service:
@@ -378,7 +378,7 @@ async def _invalidate_item_cache(
 async def _insert_master_update_audit_log(
     *,
     actual_item_code: str,
-    actual_barcode: Optional[str],
+    actual_barcode: str | None,
     requested_barcode: str,
     request: ItemUpdateRequest,
     current_user: dict[str, Any],
@@ -397,10 +397,10 @@ async def _insert_master_update_audit_log(
 
 def _build_verification_filter(
     *,
-    actual_barcode: Optional[str],
+    actual_barcode: str | None,
     actual_item_code: str,
     requested_barcode: str,
-    expected_stock_qty: Optional[float],
+    expected_stock_qty: float | None,
 ) -> dict[str, Any]:
     if actual_item_code:
         update_filter: dict[str, Any] = {"item_code": actual_item_code}
@@ -459,12 +459,12 @@ async def _create_conflict_fork_response(
             "message": f"Conflict detected! Original verification preserved. Fork ID: {fork.fork_id}",
             "fork_id": fork.fork_id,
             "variance": item.get("variance"),
-        }
+        },
     )
 
 
 async def _fetch_updated_item(
-    update_filter: dict[str, Any], actual_barcode: Optional[str]
+    update_filter: dict[str, Any], actual_barcode: str | None
 ) -> dict[str, Any]:
     updated_item = await db.erp_items.find_one(update_filter)
     if not updated_item and actual_barcode:
@@ -530,8 +530,9 @@ async def refresh_item_qty_from_sql(
     DEPRECATED: Forwards to the canonical refresh endpoint.
     Manually refresh item quantity from SQL Server.
     """
-    from backend.services.item_refresh_service import item_refresh_service
     import uuid
+
+    from backend.services.item_refresh_service import item_refresh_service
 
     request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
 
@@ -558,7 +559,7 @@ async def refresh_item_qty_from_sql(
     }
 
 
-def _calculate_variance(request: VerificationRequest, system_qty: float) -> Optional[float]:
+def _calculate_variance(request: VerificationRequest, system_qty: float) -> float | None:
     """Calculates the variance based on verified and damaged quantities."""
     if request.verified_qty is not None:
         total_assets = request.verified_qty + (request.damaged_qty or 0.0)
@@ -579,7 +580,7 @@ async def _enforce_variance_governance(
     request: VerificationRequest,
     item: dict[str, Any],
     item_code: str,
-    variance: Optional[float],
+    variance: float | None,
     current_user: dict[str, Any],
 ) -> None:
     """Apply the same threshold-driven governance count-line writes enforce.
@@ -596,7 +597,15 @@ async def _enforce_variance_governance(
     variance_data = await variance_service.calculate_variance(
         item_code=item_code,
         counted_qty=float(request.verified_qty or 0.0),
-        expected_qty=float(item.get("session_baseline") if getattr(request, "session_id", None) and item.get("session_baseline") is not None else item.get("baseline_qty") if getattr(request, "session_id", None) and item.get("baseline_qty") is not None else item.get("stock_qty", 0.0)),
+        expected_qty=float(
+            item.get("session_baseline")
+            if getattr(request, "session_id", None) and item.get("session_baseline") is not None
+            else (
+                item.get("baseline_qty")
+                if getattr(request, "session_id", None) and item.get("baseline_qty") is not None
+                else item.get("stock_qty", 0.0)
+            )
+        ),
         unit_price=_resolve_unit_price(item),
     )
     requires_approval, violated_thresholds = await variance_service.check_thresholds(
@@ -618,8 +627,7 @@ async def _enforce_variance_governance(
         raise HTTPException(
             status_code=403,
             detail=(
-                "This variance requires supervisor approval. "
-                "Ask a supervisor to verify this item."
+                "This variance requires supervisor approval. Ask a supervisor to verify this item."
             ),
         )
 
@@ -736,8 +744,8 @@ def _build_verification_log_doc(
     request: VerificationRequest,
     current_user: dict,
     item: dict,
-    variance: Optional[float],
-    is_serialized_from_update: Optional[bool],
+    variance: float | None,
+    is_serialized_from_update: bool | None,
 ) -> dict[str, Any]:
     """Builds the document for verification_logs and item_variances collections."""
     return {
@@ -792,7 +800,7 @@ async def verify_item(
             if expected_stock_qty is None:
                 raise HTTPException(
                     status_code=422,
-                    detail="Session-linked verification requires a baseline quantity, but none is set."
+                    detail="Session-linked verification requires a baseline quantity, but none is set.",
                 )
         else:
             expected_stock_qty = item.get("stock_qty", 0.0)
@@ -861,19 +869,19 @@ async def verify_item(
             _safe_log_value(barcode),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Verification failed: {e!s}") from e
 
 
 @verification_router.get("/filtered")
 async def get_filtered_items(
-    category: Optional[str] = Query(None, description="Filter by category"),
-    subcategory: Optional[str] = Query(None, description="Filter by subcategory"),
-    floor: Optional[str] = Query(None, description="Filter by floor"),
-    rack: Optional[str] = Query(None, description="Filter by rack"),
-    warehouse: Optional[str] = Query(None, description="Filter by warehouse"),
-    uom_code: Optional[str] = Query(None, description="Filter by UOM code"),
-    verified: Optional[bool] = Query(None, description="Filter by verification status"),
-    search: Optional[str] = Query(None, description="Search in item name/code"),
+    category: str | None = Query(None, description="Filter by category"),
+    subcategory: str | None = Query(None, description="Filter by subcategory"),
+    floor: str | None = Query(None, description="Filter by floor"),
+    rack: str | None = Query(None, description="Filter by rack"),
+    warehouse: str | None = Query(None, description="Filter by warehouse"),
+    uom_code: str | None = Query(None, description="Filter by UOM code"),
+    verified: bool | None = Query(None, description="Filter by verification status"),
+    search: str | None = Query(None, description="Search in item name/code"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum results"),
     skip: int = Query(0, ge=0, description="Skip results"),
     current_user: dict = Depends(get_current_user),
@@ -934,12 +942,12 @@ async def get_filtered_items(
 
     except Exception as e:
         logger.error("Error getting filtered items: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Failed to get items: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Failed to get items: {e!s}") from e
 
 
 @verification_router.get("/sync")
 async def sync_items_for_offline_cache(
-    since: Optional[datetime] = Query(
+    since: datetime | None = Query(
         None, description="Return items updated after this timestamp (ISO 8601)"
     ),
     limit: int = Query(5000, ge=1, le=20000, description="Maximum items to return"),
@@ -987,18 +995,18 @@ async def sync_items_for_offline_cache(
 
     except Exception as e:
         logger.error("Error syncing items: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Failed to sync items: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Failed to sync items: {e!s}") from e
 
 
 @verification_router.get("/export/csv")
 async def export_items_csv(
-    category: Optional[str] = Query(None),
-    subcategory: Optional[str] = Query(None),
-    floor: Optional[str] = Query(None),
-    rack: Optional[str] = Query(None),
-    warehouse: Optional[str] = Query(None),
-    verified: Optional[bool] = Query(None),
-    search: Optional[str] = Query(None),
+    category: str | None = Query(None),
+    subcategory: str | None = Query(None),
+    floor: str | None = Query(None),
+    rack: str | None = Query(None),
+    warehouse: str | None = Query(None),
+    verified: bool | None = Query(None),
+    search: str | None = Query(None),
     max_rows: int = Query(10000, ge=1, le=100000, description="Maximum rows to export"),
     current_user: dict = Depends(get_current_user),
 ):
@@ -1058,18 +1066,18 @@ async def export_items_csv(
 
     except Exception as e:
         logger.error("Error exporting items to CSV: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"CSV export failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"CSV export failed: {e!s}") from e
 
 
 @verification_router.get("/export/json")
 async def export_items_json(
-    category: Optional[str] = Query(None),
-    subcategory: Optional[str] = Query(None),
-    floor: Optional[str] = Query(None),
-    rack: Optional[str] = Query(None),
-    warehouse: Optional[str] = Query(None),
-    verified: Optional[bool] = Query(None),
-    search: Optional[str] = Query(None),
+    category: str | None = Query(None),
+    subcategory: str | None = Query(None),
+    floor: str | None = Query(None),
+    rack: str | None = Query(None),
+    warehouse: str | None = Query(None),
+    verified: bool | None = Query(None),
+    search: str | None = Query(None),
     max_rows: int = Query(10000, ge=1, le=100000, description="Maximum rows to export"),
     current_user: dict = Depends(get_current_user),
 ):
@@ -1108,18 +1116,18 @@ async def export_items_json(
         raise
     except Exception as e:
         logger.error("Error exporting items to JSON: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"JSON export failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"JSON export failed: {e!s}") from e
 
 
 @verification_router.get("/export/xlsx")
 async def export_items_xlsx(
-    category: Optional[str] = Query(None),
-    subcategory: Optional[str] = Query(None),
-    floor: Optional[str] = Query(None),
-    rack: Optional[str] = Query(None),
-    warehouse: Optional[str] = Query(None),
-    verified: Optional[bool] = Query(None),
-    search: Optional[str] = Query(None),
+    category: str | None = Query(None),
+    subcategory: str | None = Query(None),
+    floor: str | None = Query(None),
+    rack: str | None = Query(None),
+    warehouse: str | None = Query(None),
+    verified: bool | None = Query(None),
+    search: str | None = Query(None),
     max_rows: int = Query(10000, ge=1, le=100000, description="Maximum rows to export"),
     current_user: dict = Depends(get_current_user),
 ):
@@ -1158,15 +1166,15 @@ async def export_items_xlsx(
         raise
     except Exception as e:
         logger.error("Error exporting items to XLSX: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Excel export failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Excel export failed: {e!s}") from e
 
 
 @verification_router.get("/variances")
 async def get_variances(
-    category: Optional[str] = Query(None),
-    floor: Optional[str] = Query(None),
-    rack: Optional[str] = Query(None),
-    warehouse: Optional[str] = Query(None),
+    category: str | None = Query(None),
+    floor: str | None = Query(None),
+    rack: str | None = Query(None),
+    warehouse: str | None = Query(None),
     limit: int = Query(100, ge=1, le=1000),
     skip: int = Query(0, ge=0),
     current_user: dict = Depends(get_current_user),
@@ -1220,15 +1228,15 @@ async def get_variances(
 
     except Exception as e:
         logger.error("Error getting variances: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Failed to get variances: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Failed to get variances: {e!s}") from e
 
 
 async def _fetch_variance_export_rows(
     *,
-    category: Optional[str],
-    floor: Optional[str],
-    rack: Optional[str],
-    warehouse: Optional[str],
+    category: str | None,
+    floor: str | None,
+    rack: str | None,
+    warehouse: str | None,
     max_rows: int,
 ) -> list[dict[str, Any]]:
     filter_query: dict[str, Any] = {"variance": {"$ne": 0}}
@@ -1253,10 +1261,10 @@ async def _fetch_variance_export_rows(
 
 @verification_router.get("/variances/export/csv")
 async def export_variances_csv(
-    category: Optional[str] = Query(None),
-    floor: Optional[str] = Query(None),
-    rack: Optional[str] = Query(None),
-    warehouse: Optional[str] = Query(None),
+    category: str | None = Query(None),
+    floor: str | None = Query(None),
+    rack: str | None = Query(None),
+    warehouse: str | None = Query(None),
     max_rows: int = Query(10000, ge=1, le=100000, description="Maximum rows to export"),
     current_user: dict = Depends(get_current_user),
 ):
@@ -1297,15 +1305,15 @@ async def export_variances_csv(
             "Error exporting variances to CSV: %s",
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=f"Variance CSV export failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Variance CSV export failed: {e!s}") from e
 
 
 @verification_router.get("/variances/export/xlsx")
 async def export_variances_xlsx(
-    category: Optional[str] = Query(None),
-    floor: Optional[str] = Query(None),
-    rack: Optional[str] = Query(None),
-    warehouse: Optional[str] = Query(None),
+    category: str | None = Query(None),
+    floor: str | None = Query(None),
+    rack: str | None = Query(None),
+    warehouse: str | None = Query(None),
     max_rows: int = Query(10000, ge=1, le=100000, description="Maximum rows to export"),
     current_user: dict = Depends(get_current_user),
 ):
@@ -1341,9 +1349,7 @@ async def export_variances_xlsx(
             "Error exporting variances to XLSX: %s",
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(
-            status_code=500, detail=f"Variance Excel export failed: {str(e)}"
-        ) from e
+        raise HTTPException(status_code=500, detail=f"Variance Excel export failed: {e!s}") from e
 
 
 @verification_router.get("/live/users")
@@ -1392,7 +1398,7 @@ async def get_live_users(current_user: dict = Depends(get_current_user)):
 
     except Exception as e:
         logger.error("Error getting live users: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Failed to get live users: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Failed to get live users: {e!s}") from e
 
 
 @verification_router.get("/live/verifications")
@@ -1443,7 +1449,7 @@ async def get_live_verifications(
             _safe_log_value(e, max_length=200),
         )
         raise HTTPException(
-            status_code=500, detail=f"Failed to get live verifications: {str(e)}"
+            status_code=500, detail=f"Failed to get live verifications: {e!s}"
         ) from e
 
 
@@ -1457,14 +1463,12 @@ async def refresh_erp_item(
     Explicitly refresh an item's quantity from SQL Server.
     Used to handle manual refresh requests from the UI.
     """
-    from backend.services.item_refresh_service import item_refresh_service
     import uuid
+
+    from backend.services.item_refresh_service import item_refresh_service
 
     request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
 
     return await item_refresh_service.refresh_single_item_by_identifier(
-        identifier=identifier,
-        actor=current_user,
-        request_id=request_id
+        identifier=identifier, actor=current_user, request_id=request_id
     )
-

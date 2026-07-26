@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from backend.api.security_api import get_suspicious_activity
 
 

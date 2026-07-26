@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -7,8 +6,8 @@ from pydantic import BaseModel
 from backend.auth.dependencies import get_current_user
 from backend.db.runtime import get_db
 from backend.services.activity_log import ActivityLogService
-from backend.utils.auth_utils import verify_pin_hash
 from backend.utils.api_utils import sanitize_for_logging
+from backend.utils.auth_utils import verify_pin_hash
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -24,8 +23,8 @@ class PinVerificationRequest(BaseModel):
     action: str
     reason: str
     staff_username: str
-    entity_id: Optional[str] = None
-    entity_type: Optional[str] = None
+    entity_id: str | None = None
+    entity_type: str | None = None
 
 
 @router.post("/supervisor/verify-pin")
@@ -38,7 +37,8 @@ async def verify_supervisor_pin(
     db = get_db()
 
     # H7 fix: Rate limit PIN attempts per supervisor (max 5 attempts per 5 minutes)
-    from datetime import datetime as dt, timezone as tz
+    from datetime import datetime as dt
+    from datetime import timezone as tz
 
     rate_key = f"pin_attempts:{request.supervisor_username}"
     attempts_doc = await db.rate_limits.find_one({"_id": rate_key})

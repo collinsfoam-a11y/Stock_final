@@ -3,8 +3,6 @@ Notifications API - In-app notifications and task management
 """
 
 import logging
-from backend.utils.api_utils import sanitize_for_logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -13,10 +11,11 @@ from pydantic import BaseModel
 from backend.auth.dependencies import get_current_user
 from backend.db.runtime import get_db
 from backend.services.notification_service import (
+    NotificationPriority,
     NotificationService,
     NotificationType,
-    NotificationPriority,
 )
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
@@ -42,10 +41,10 @@ class NotificationResponse(BaseModel):
     title: str
     message: str
     priority: str
-    action_url: Optional[str] = None
+    action_url: str | None = None
     read: bool
     created_at: str
-    read_at: Optional[str] = None
+    read_at: str | None = None
 
 
 class NotificationListResponse(BaseModel):
@@ -64,13 +63,13 @@ class BatchNotificationRequest(BaseModel):
     title: str
     message: str
     priority: str = "medium"
-    action_url: Optional[str] = None
+    action_url: str | None = None
     unread_count: int
 
 
 class NotificationDeviceRequest(BaseModel):
     token: str
-    platform: Optional[str] = None
+    platform: str | None = None
 
 
 # API Endpoints

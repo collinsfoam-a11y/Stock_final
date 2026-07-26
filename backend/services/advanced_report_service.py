@@ -9,7 +9,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -48,37 +48,37 @@ class ColumnConfig(BaseModel):
     visible: bool = True
     sortable: bool = True
     filterable: bool = True
-    width: Optional[int] = None
-    format: Optional[str] = None  # "date", "currency", "percentage", "number"
-    aggregation: Optional[AggregationType] = None
+    width: int | None = None
+    format: str | None = None  # "date", "currency", "percentage", "number"
+    aggregation: AggregationType | None = None
 
 
 class ReportFilters(BaseModel):
     """Advanced filter configuration for reports."""
 
-    date_from: Optional[datetime] = None
-    date_to: Optional[datetime] = None
-    warehouse: Optional[str] = None
-    floor: Optional[str] = None
-    rack_id: Optional[str] = None
-    category: Optional[str] = None
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
-    verified: Optional[bool] = None
-    status: Optional[str] = None
-    variance_min: Optional[float] = None
-    variance_max: Optional[float] = None
-    item_code: Optional[str] = None
-    search_query: Optional[str] = None
+    date_from: datetime | None = None
+    date_to: datetime | None = None
+    warehouse: str | None = None
+    floor: str | None = None
+    rack_id: str | None = None
+    category: str | None = None
+    user_id: str | None = None
+    session_id: str | None = None
+    verified: bool | None = None
+    status: str | None = None
+    variance_min: float | None = None
+    variance_max: float | None = None
+    item_code: str | None = None
+    search_query: str | None = None
 
 
 class ReportConfig(BaseModel):
     """Configuration for report generation."""
 
     report_type: str
-    filters: Optional[ReportFilters] = None
-    columns: Optional[list[ColumnConfig]] = None
-    sort_by: Optional[str] = None
+    filters: ReportFilters | None = None
+    columns: list[ColumnConfig] | None = None
+    sort_by: str | None = None
     sort_order: SortOrder = SortOrder.DESC
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=50, ge=1, le=1000)
@@ -232,7 +232,7 @@ class AdvancedReportService:
 
         return query
 
-    def _add_search_filter(self, query: dict[str, Any], search_query: Optional[str]) -> None:
+    def _add_search_filter(self, query: dict[str, Any], search_query: str | None) -> None:
         """Add search filter to query."""
         if search_query:
             query["$or"] = [
@@ -244,8 +244,8 @@ class AdvancedReportService:
     def _add_date_filter(
         self,
         query: dict[str, Any],
-        date_from: Optional[datetime],
-        date_to: Optional[datetime],
+        date_from: datetime | None,
+        date_to: datetime | None,
     ) -> None:
         """Add date range filter to query."""
         if date_from or date_to:
@@ -259,8 +259,8 @@ class AdvancedReportService:
     def _add_variance_filter(
         self,
         query: dict[str, Any],
-        variance_min: Optional[float],
-        variance_max: Optional[float],
+        variance_min: float | None,
+        variance_max: float | None,
     ) -> None:
         """Add variance range filter to query."""
         if variance_min is not None or variance_max is not None:

@@ -35,6 +35,7 @@ import {
   nextAfterResume,
   nextAfterSerialAdded,
 } from "./serialScannerState";
+import { font, gap, radius } from "@/theme/staffUiScale";
 import {
   colors,
   scrim,
@@ -866,7 +867,7 @@ const styles = StyleSheet.create({
   closeButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: radius["2xl"],
     backgroundColor: scrim.medium,
     alignItems: "center",
     justifyContent: "center",
@@ -888,7 +889,7 @@ const styles = StyleSheet.create({
   countBadge: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: radius["2xl"],
     backgroundColor: colors.primary[600],
     alignItems: "center",
     justifyContent: "center",
@@ -1076,7 +1077,7 @@ const styles = StyleSheet.create({
     minWidth: 50,
     borderRadius: borderRadius.full,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: gap.xs,
     alignItems: "center",
   },
   detectedBadgeReady: {

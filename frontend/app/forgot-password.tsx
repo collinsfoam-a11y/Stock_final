@@ -1,10 +1,17 @@
 /**
- * Forgot Password Screen
+ * Forgot Password Screen - Lavanya eMart
  * Initiates the password reset flow via phone OTP delivery
  */
 
-import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
@@ -19,27 +26,50 @@ import apiClient from "@/services/httpClient";
 import { toastService } from "@/services/toastService";
 import { useAuthStore } from "@/store/authStore";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { colorWithAlpha } from "@/theme/themeTokens";
+import { haptics } from "@/services/haptics";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import {
+  spacing as unifiedSpacing,
+  textStyles,
+  shadows,
+} from "@/theme/legacyCompat";
 import { safeBackNavigation } from "@/utils/navigation";
+import { font, gap, radius } from '@/theme/staffUiScale';
+import { duration } from "@/theme/staffUiScale";
 
-const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
+// ---------------------------------------------------------------------------
+// Safe Animated View (web-compatible)
+// ---------------------------------------------------------------------------
+
+interface SafeAnimatedViewProps {
+  children: React.ReactNode;
+  style?: any;
+  entering?: any;
+  delay?: number;
+}
+
+const SafeAnimatedView: React.FC<SafeAnimatedViewProps> = ({
+  children,
+  style,
+  entering,
+  delay = 0,
+}) => {
   if (Platform.OS === "web") {
-    return (
-      <View style={style} {...props}>
-        {children}
-      </View>
-    );
+    return <View style={style}>{children}</View>;
   }
-
+  const animationProps = entering
+    ? { entering: entering.delay(delay).duration(duration.slowest).springify() }
+    : {};
   return (
-    <Animated.View style={style} entering={entering} {...props}>
+    <Animated.View style={style} {...animationProps}>
       {children}
     </Animated.View>
   );
 };
 
 const getPasswordResetRequestError = (err: any): string => {
-  const serverMessage = err?.response?.data?.message || err?.response?.data?.error?.message;
+  const serverMessage =
+    err?.response?.data?.message || err?.response?.data?.error?.message;
   if (typeof serverMessage === "string" && serverMessage.trim()) {
     return serverMessage;
   }
@@ -57,72 +87,15 @@ const getPasswordResetRequestError = (err: any): string => {
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
-  const clearPendingRedirect = useAuthStore((state) => state.clearPendingRedirect);
+  const clearPendingRedirect = useAuthStore(
+    (state) => state.clearPendingRedirect
+  );
   const uiTokens = useUiTokens();
+  const styles = React.useMemo(() => createStyles(uiTokens), [uiTokens]);
+
   const [identifier, setIdentifier] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        button: {
-          marginTop: uiTokens.spacing.lg,
-        },
-        card: {
-          backgroundColor: uiTokens.colors.surfaceElevated,
-          borderWidth: 1,
-          borderColor: uiTokens.colors.border,
-        },
-        container: {
-          flex: 1,
-          backgroundColor: uiTokens.colors.background,
-        },
-        contentContainer: {
-          flex: 1,
-          maxWidth: 400,
-          alignSelf: "center",
-          width: "100%",
-          justifyContent: "center",
-          paddingTop: uiTokens.spacing.xxl,
-        },
-        iconContainer: {
-          width: 80,
-          height: 80,
-          borderRadius: 40,
-          backgroundColor: colorWithAlpha(
-            uiTokens.colors.accent,
-            uiTokens.mode === "dark" ? 0.25 : 0.12
-          ),
-          justifyContent: "center",
-          alignItems: "center",
-          alignSelf: "center",
-          marginBottom: uiTokens.spacing.lg,
-        },
-        keyboardView: {
-          flex: 1,
-        },
-        scrollContent: {
-          flexGrow: 1,
-          paddingHorizontal: uiTokens.spacing.lg,
-          paddingBottom: uiTokens.spacing.xl,
-        },
-        subtitle: {
-          fontSize: 16,
-          color: uiTokens.colors.textSecondary,
-          textAlign: "center",
-          marginBottom: uiTokens.spacing.xl,
-          lineHeight: 24,
-        },
-        title: {
-          fontSize: 28,
-          fontWeight: "800",
-          color: uiTokens.colors.textPrimary,
-          textAlign: "center",
-          marginBottom: uiTokens.spacing.sm,
-        },
-      }),
-    [uiTokens]
-  );
 
   useEffect(() => {
     void clearPendingRedirect().catch((error) => {
@@ -130,11 +103,11 @@ export default function ForgotPasswordScreen() {
     });
   }, [clearPendingRedirect]);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     safeBackNavigation(router, { fallbackHref: "/login" });
-  };
+  }, [router]);
 
-  const handleRequestOtp = async () => {
+  const handleRequestOtp = useCallback(async () => {
     if (!identifier.trim()) {
       setError("Please enter your username or phone number");
       return;
@@ -142,15 +115,18 @@ export default function ForgotPasswordScreen() {
 
     setIsLoading(true);
     setError("");
+    haptics.medium();
 
     try {
-      // Determine if input is phone or username
       const isPhone = /^\+?[0-9]{10,15}$/.test(identifier.trim());
       const payload = isPhone
         ? { phone_number: identifier.trim() }
         : { username: identifier.trim() };
 
-      const response = await apiClient.post("/api/auth/password-reset/request", payload);
+      const response = await apiClient.post(
+        "/api/auth/password-reset/request",
+        payload
+      );
 
       if (response.data.success) {
         toastService.showSuccess("Verification code sent.");
@@ -170,17 +146,11 @@ export default function ForgotPasswordScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [identifier, router]);
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: uiTokens.colors.background }]}
-      edges={["top", "left", "right"]}
-    >
-      <StatusBar
-        style={uiTokens.mode === "dark" ? "light" : "dark"}
-        backgroundColor={uiTokens.colors.background}
-      />
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
 
       <ModernHeader
         title="Reset Password"
@@ -192,54 +162,133 @@ export default function ForgotPasswordScreen() {
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="none"
         >
-          <SafeAnimatedView
-            entering={FadeInDown.duration(600).springify()}
-            style={styles.contentContainer}
-          >
-            <View style={styles.iconContainer}>
-              <Ionicons name="lock-open" size={48} color={uiTokens.colors.accent} />
-            </View>
+          <View style={styles.contentContainer}>
+            <SafeAnimatedView entering={FadeInDown} style={styles.welcomeSection}>
+              <View style={styles.iconContainer}>
+                <Ionicons
+                  name="lock-open"
+                  size={48}
+                  color={uiTokens.colors.accent}
+                />
+              </View>
 
-            <Text style={[styles.title, { color: uiTokens.colors.textPrimary }]}>
-              Forgot Password?
-            </Text>
-            <Text style={[styles.subtitle, { color: uiTokens.colors.textSecondary }]}>
-              Enter your username or registered phone number. We'll send a verification code to the
-              phone number associated with your account
-            </Text>
+              <Text style={styles.title}>Forgot Password?</Text>
+              <Text style={styles.subtitle}>
+                Enter your username or registered phone number. We'll send a
+                verification code to the phone number associated with your
+                account.
+              </Text>
+            </SafeAnimatedView>
 
-            <ModernCard padding={uiTokens.spacing.lg} style={styles.card}>
-              <ModernInput
-                label="Username or Phone"
-                placeholder="e.g. johndoe or +919876543210"
-                value={identifier}
-                onChangeText={(text) => {
-                  setIdentifier(text);
-                  setError("");
-                }}
-                error={error}
-                icon="person-outline"
-                autoCapitalize="none"
-              />
+            <SafeAnimatedView
+              entering={FadeInDown}
+              delay={100}
+              style={styles.formContainer}
+            >
+              <ModernCard padding={unifiedSpacing.lg} style={styles.card}>
+                <ModernInput
+                  label="Username or Phone"
+                  placeholder="e.g. johndoe or +919876543210"
+                  value={identifier}
+                  onChangeText={(text) => {
+                    setIdentifier(text);
+                    setError("");
+                  }}
+                  error={error}
+                  icon="person-outline"
+                  autoCapitalize="none"
+                  disabled={isLoading}
+                />
 
-              <ModernButton
-                title={isLoading ? "Sending..." : "Send Verification Code"}
-                onPress={handleRequestOtp}
-                loading={isLoading}
-                disabled={isLoading || !identifier}
-                fullWidth
-                style={styles.button}
-                icon="logo-whatsapp"
-              />
-            </ModernCard>
-          </SafeAnimatedView>
+                <ModernButton
+                  title={isLoading ? "Sending..." : "Send Verification Code"}
+                  onPress={handleRequestOtp}
+                  loading={isLoading}
+                  disabled={isLoading || !identifier}
+                  fullWidth
+                  style={styles.button}
+                  icon="logo-whatsapp"
+                />
+              </ModernCard>
+            </SafeAnimatedView>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
+const createStyles = (tokens: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: tokens.colors.background,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: unifiedSpacing.lg,
+      paddingBottom: unifiedSpacing.xl,
+    },
+    contentContainer: {
+      flex: 1,
+      justifyContent: "center",
+      maxWidth: 400,
+      alignSelf: "center",
+      width: "100%",
+    },
+    welcomeSection: {
+      alignItems: "center",
+      marginBottom: unifiedSpacing["2xl"],
+      paddingTop: unifiedSpacing.xxl,
+    },
+    iconContainer: {
+      width: 80,
+      height: 80,
+      borderRadius: radius["3xl"],
+      backgroundColor: colorWithAlpha(
+        tokens.colors.accent,
+        tokens.mode === "dark" ? 0.25 : 0.12
+      ),
+      justifyContent: "center",
+      alignItems: "center",
+      alignSelf: "center",
+      marginBottom: unifiedSpacing.lg,
+      ...shadows.sm,
+    },
+    title: {
+      ...textStyles.h3,
+      color: tokens.colors.textPrimary,
+      textAlign: "center",
+      marginBottom: unifiedSpacing.sm,
+    },
+    subtitle: {
+      ...textStyles.body,
+      color: tokens.colors.textSecondary,
+      textAlign: "center",
+      marginBottom: unifiedSpacing.xl,
+      lineHeight: 24,
+      paddingHorizontal: unifiedSpacing.md,
+    },
+    formContainer: {
+      marginBottom: unifiedSpacing.xl,
+    },
+    card: {
+      backgroundColor: tokens.colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: tokens.colors.border,
+    },
+    button: {
+      marginTop: unifiedSpacing.lg,
+    },
+  });

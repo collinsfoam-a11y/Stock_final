@@ -9,7 +9,6 @@ import pytest
 from fastapi import HTTPException
 from pymongo.errors import DuplicateKeyError
 
-from backend.models.audit import AuditEventType
 from backend.api.count_lines_routes import (
     BulkCountLineUpdate,
     CountLineApprovalRequest,
@@ -18,9 +17,9 @@ from backend.api.count_lines_routes import (
     approve_count_line,
     bulk_approve_count_lines,
     bulk_reject_count_lines,
+    calculate_financial_impact,
     check_item_counted,
     check_item_scan_status,
-    calculate_financial_impact,
     check_serial_uniqueness,
     create_count_line,
     detect_risk_flags,
@@ -30,8 +29,9 @@ from backend.api.count_lines_routes import (
     unverify_stock,
     verify_stock,
 )
-from backend.tests.utils.in_memory_db import InMemoryDatabase
 from backend.api.schemas import CountLineCreate
+from backend.models.audit import AuditEventType
+from backend.tests.utils.in_memory_db import InMemoryDatabase
 
 
 class AsyncIter:
@@ -537,6 +537,7 @@ class TestCreateCountLine:
             patch("backend.api.count_lines_routes.manager") as mock_manager,
         ):
             mock_manager.broadcast_to_roles = AsyncMock()
+            mock_manager.broadcast_to_session = AsyncMock()
             await create_count_line(
                 request=AsyncMock(),
                 line_data=line_data,
@@ -544,7 +545,8 @@ class TestCreateCountLine:
             )
 
         mock_manager.broadcast_to_roles.assert_awaited_once()
-        message = mock_manager.broadcast_to_roles.await_args.kwargs["message"]
+        # broadcast_to_roles is called with positional args: (message, roles)
+        message = mock_manager.broadcast_to_roles.await_args.args[0]
         assert message["type"] == "dashboard_refresh_requested"
         assert message["payload"]["event"] == "count_line_created"
         assert message["payload"]["session_id"] == "session123"
@@ -1026,6 +1028,7 @@ class TestVerifyStock:
             patch("backend.api.count_lines_routes.manager") as mock_manager,
         ):
             mock_manager.broadcast_to_roles = AsyncMock()
+            mock_manager.broadcast_to_session = AsyncMock()
             await verify_stock(
                 line_id="line123",
                 current_user={"username": "supervisor", "role": "supervisor"},
@@ -1033,7 +1036,7 @@ class TestVerifyStock:
             )
 
         mock_manager.broadcast_to_roles.assert_awaited_once()
-        message = mock_manager.broadcast_to_roles.await_args.kwargs["message"]
+        message = mock_manager.broadcast_to_roles.await_args.args[0]
         assert message["type"] == "dashboard_refresh_requested"
         assert message["payload"]["event"] == "count_line_verified"
         assert message["payload"]["session_id"] == "session123"
@@ -1128,6 +1131,7 @@ class TestUnverifyStock:
             patch("backend.api.count_lines_routes.manager") as mock_manager,
         ):
             mock_manager.broadcast_to_roles = AsyncMock()
+            mock_manager.broadcast_to_session = AsyncMock()
             await unverify_stock(
                 line_id="line123",
                 current_user={"username": "supervisor", "role": "supervisor"},
@@ -1135,7 +1139,7 @@ class TestUnverifyStock:
             )
 
         mock_manager.broadcast_to_roles.assert_awaited_once()
-        message = mock_manager.broadcast_to_roles.await_args.kwargs["message"]
+        message = mock_manager.broadcast_to_roles.await_args.args[0]
         assert message["type"] == "dashboard_refresh_requested"
         assert message["payload"]["event"] == "count_line_unverified"
         assert message["payload"]["session_id"] == "session123"
@@ -1460,22 +1464,14 @@ class TestApprovalWorkflow:
                 "backend.api.count_lines_routes._get_count_line_write_service",
                 return_value=write_service,
             ),
-            patch(
-                "backend.api.count_lines_routes._ensure_count_line_mutable", AsyncMock()
-            ),
+            patch("backend.api.count_lines_routes._ensure_count_line_mutable", AsyncMock()),
             patch(
                 "backend.api.count_lines_routes._enforce_count_line_logic_from_line",
                 AsyncMock(),
             ),
-            patch(
-                "backend.api.count_lines_routes.record_count_line_variance", AsyncMock()
-            ),
-            patch(
-                "backend.api.count_lines_routes._recompute_session_totals_batch", AsyncMock()
-            ),
-            patch(
-                "backend.api.count_lines_routes._broadcast_dashboard_refresh", AsyncMock()
-            ),
+            patch("backend.api.count_lines_routes.record_count_line_variance", AsyncMock()),
+            patch("backend.api.count_lines_routes._recompute_session_totals_batch", AsyncMock()),
+            patch("backend.api.count_lines_routes._broadcast_dashboard_refresh", AsyncMock()),
             patch("backend.services.audit_service.AuditService", return_value=audit_service),
         ):
             result = await bulk_approve_count_lines(
@@ -1517,19 +1513,13 @@ class TestApprovalWorkflow:
                 "backend.api.count_lines_routes._get_count_line_write_service",
                 return_value=write_service,
             ),
-            patch(
-                "backend.api.count_lines_routes._ensure_count_line_mutable", AsyncMock()
-            ),
+            patch("backend.api.count_lines_routes._ensure_count_line_mutable", AsyncMock()),
             patch(
                 "backend.api.count_lines_routes._enforce_count_line_logic_from_line",
                 AsyncMock(),
             ),
-            patch(
-                "backend.api.count_lines_routes._recompute_session_totals_batch", AsyncMock()
-            ),
-            patch(
-                "backend.api.count_lines_routes._broadcast_dashboard_refresh", AsyncMock()
-            ),
+            patch("backend.api.count_lines_routes._recompute_session_totals_batch", AsyncMock()),
+            patch("backend.api.count_lines_routes._broadcast_dashboard_refresh", AsyncMock()),
             patch("backend.services.audit_service.AuditService", return_value=audit_service),
         ):
             result = await bulk_reject_count_lines(

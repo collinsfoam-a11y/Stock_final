@@ -10,7 +10,7 @@ import traceback
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Any, Generic, Literal, Optional, TypeVar, cast
+from typing import Any, Generic, Literal, TypeVar, cast
 
 from fastapi import HTTPException
 
@@ -28,8 +28,6 @@ logger = logging.getLogger(__name__)
 
 class ResultError(Exception):
     """Base exception for Result-related errors."""
-
-    pass
 
 
 class UnwrapError(ResultError):
@@ -54,9 +52,9 @@ class Result(Generic[T, E]):
     - Context manager compatible
     """
 
-    _value: Optional[T] = field(default=None, init=False)
-    _error: Optional[E] = field(default=None, init=False)
-    _traceback: Optional[str] = field(default=None, init=False, repr=False)
+    _value: T | None = field(default=None, init=False)
+    _error: E | None = field(default=None, init=False)
+    _traceback: str | None = field(default=None, init=False, repr=False)
     _is_success: bool = field(default=False, init=False)
 
     def __post_init__(self) -> None:
@@ -90,7 +88,7 @@ class Result(Generic[T, E]):
         return result
 
     @classmethod
-    def fail(cls, error: E, context: dict[str, Optional[Any]] = None) -> Result[Any, E]:
+    def fail(cls, error: E, context: dict[str, Any | None] = None) -> Result[Any, E]:
         """Create a failed result with an error and optional context."""
         if error is None:
             raise ValueError("Cannot create Fail(None)")
@@ -121,7 +119,7 @@ class Result(Generic[T, E]):
             if isinstance(e, error_type):
                 return cls.fail(cast(E, e))
             logger.exception("Unexpected error in from_callable")
-            return cls.fail(error_type(f"Unexpected error: {str(e)}"))
+            return cls.fail(error_type(f"Unexpected error: {e!s}"))
 
     @property
     def is_ok(self) -> bool:
@@ -196,10 +194,10 @@ class Result(Generic[T, E]):
     def log_error(self, logger: logging.Logger, message: str = "") -> Result[T, E]:
         """Log the error if the result is a failure."""
         if self.is_err:
-            logger.error(f"{message}: {str(self._error)}", extra={"traceback": self._traceback})
+            logger.error(f"{message}: {self._error!s}", extra={"traceback": self._traceback})
         return self
 
-    def to_optional(self) -> Optional[T]:
+    def to_optional(self) -> T | None:
         """Convert to Optional[T], returning None on error."""
         return self._value if self.is_ok else None
 

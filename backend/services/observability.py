@@ -11,15 +11,15 @@ import uuid
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 # Context variables for request tracing
-request_id_ctx: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
-correlation_id_ctx: ContextVar[Optional[str]] = ContextVar("correlation_id", default=None)
-span_id_ctx: ContextVar[Optional[str]] = ContextVar("span_id", default=None)
-trace_id_ctx: ContextVar[Optional[str]] = ContextVar("trace_id", default=None)
+request_id_ctx: ContextVar[str | None] = ContextVar("request_id", default=None)
+correlation_id_ctx: ContextVar[str | None] = ContextVar("correlation_id", default=None)
+span_id_ctx: ContextVar[str | None] = ContextVar("span_id", default=None)
+trace_id_ctx: ContextVar[str | None] = ContextVar("trace_id", default=None)
 
 logger = logging.getLogger(__name__)
 
@@ -44,11 +44,11 @@ class StructuredLogEntry(BaseModel):
     message: str
 
     # Tracing context
-    request_id: Optional[str] = None
-    correlation_id: Optional[str] = None
-    trace_id: Optional[str] = None
-    span_id: Optional[str] = None
-    parent_span_id: Optional[str] = None
+    request_id: str | None = None
+    correlation_id: str | None = None
+    trace_id: str | None = None
+    span_id: str | None = None
+    parent_span_id: str | None = None
 
     # Service context
     service: str = "stock-verify"
@@ -56,17 +56,17 @@ class StructuredLogEntry(BaseModel):
     version: str = "2.1.0"
 
     # Request context
-    method: Optional[str] = None
-    path: Optional[str] = None
-    user_id: Optional[str] = None
-    ip_address: Optional[str] = None
+    method: str | None = None
+    path: str | None = None
+    user_id: str | None = None
+    ip_address: str | None = None
 
     # Performance
-    duration_ms: Optional[float] = None
+    duration_ms: float | None = None
 
     # Additional data
     extra: dict[str, Any] = Field(default_factory=dict)
-    error: Optional[dict[str, Optional[Any]]] = None
+    error: dict[str, Any | None] | None = None
 
 
 class StructuredLogger:
@@ -91,7 +91,7 @@ class StructuredLogger:
         self.output_json = output_json
         self._logger = logging.getLogger(service_name)
 
-    def _get_context(self) -> dict[str, Optional[str]]:
+    def _get_context(self) -> dict[str, str | None]:
         """Get current tracing context"""
         return {
             "request_id": request_id_ctx.get(),
@@ -104,7 +104,7 @@ class StructuredLogger:
         self,
         level: str,
         message: str,
-        extra: dict[str, Optional[Any]] = None,
+        extra: dict[str, Any | None] = None,
         error: Exception = None,
         **kwargs,
     ) -> str:
@@ -136,7 +136,7 @@ class StructuredLogger:
             return json.dumps(entry.model_dump(exclude_none=True))
         return f"[{entry.timestamp}] {entry.level.upper()} - {entry.message}"
 
-    def _get_traceback(self, error: Exception) -> Optional[str]:
+    def _get_traceback(self, error: Exception) -> str | None:
         """Get traceback string from exception"""
         import traceback
 
@@ -172,25 +172,25 @@ class Span:
     def __init__(
         self,
         name: str,
-        trace_id: Optional[str] = None,
-        parent_span_id: Optional[str] = None,
+        trace_id: str | None = None,
+        parent_span_id: str | None = None,
     ):
         self.name = name
         self.trace_id = trace_id or trace_id_ctx.get() or str(uuid.uuid4())
         self.span_id = str(uuid.uuid4())[:16]
         self.parent_span_id = parent_span_id or span_id_ctx.get()
         self.start_time = time.time()
-        self.end_time: Optional[float] = None
+        self.end_time: float | None = None
         self.status = "ok"
         self.attributes: dict[str, Any] = {}
         self.events: list[dict[str, Any]] = []
-        self._token: Optional[Any] = None
+        self._token: Any | None = None
 
     def set_attribute(self, key: str, value: Any):
         """Set span attribute"""
         self.attributes[key] = value
 
-    def add_event(self, name: str, attributes: dict[str, Optional[Any]] = None):
+    def add_event(self, name: str, attributes: dict[str, Any | None] = None):
         """Add event to span"""
         self.events.append(
             {
@@ -200,7 +200,7 @@ class Span:
             }
         )
 
-    def set_status(self, status: str, description: Optional[str] = None):
+    def set_status(self, status: str, description: str | None = None):
         """Set span status"""
         self.status = status
         if description:
@@ -257,8 +257,8 @@ class Tracer:
     def start_span(
         self,
         name: str,
-        trace_id: Optional[str] = None,
-        parent_span_id: Optional[str] = None,
+        trace_id: str | None = None,
+        parent_span_id: str | None = None,
     ) -> Span:
         """Start a new span"""
         span = Span(name, trace_id, parent_span_id)
@@ -270,11 +270,11 @@ class Tracer:
 
         return span
 
-    def get_current_trace_id(self) -> Optional[str]:
+    def get_current_trace_id(self) -> str | None:
         """Get current trace ID"""
         return trace_id_ctx.get()
 
-    def get_current_span_id(self) -> Optional[str]:
+    def get_current_span_id(self) -> str | None:
         """Get current span ID"""
         return span_id_ctx.get()
 
@@ -292,19 +292,19 @@ class MetricsCollector:
         self._histograms: dict[str, list[float]] = {}
         self._lock = asyncio.Lock()
 
-    async def increment(self, name: str, value: int = 1, labels: dict[str, Optional[str]] = None):
+    async def increment(self, name: str, value: int = 1, labels: dict[str, str | None] = None):
         """Increment a counter"""
         key = self._make_key(name, labels)
         async with self._lock:
             self._counters[key] = self._counters.get(key, 0) + value
 
-    async def set_gauge(self, name: str, value: float, labels: dict[str, Optional[str]] = None):
+    async def set_gauge(self, name: str, value: float, labels: dict[str, str | None] = None):
         """Set a gauge value"""
         key = self._make_key(name, labels)
         async with self._lock:
             self._gauges[key] = value
 
-    async def observe(self, name: str, value: float, labels: dict[str, Optional[str]] = None):
+    async def observe(self, name: str, value: float, labels: dict[str, str | None] = None):
         """Record a histogram observation"""
         key = self._make_key(name, labels)
         async with self._lock:
@@ -315,7 +315,7 @@ class MetricsCollector:
             if len(self._histograms[key]) > 1000:
                 self._histograms[key] = self._histograms[key][-1000:]
 
-    def _make_key(self, name: str, labels: Optional[dict[str, Optional[str]]]) -> str:
+    def _make_key(self, name: str, labels: dict[str, str | None] | None) -> str:
         """Create metric key from name and labels"""
         if not labels:
             return name
@@ -375,9 +375,9 @@ def generate_request_id() -> str:
 
 
 def set_request_context(
-    request_id: Optional[str] = None,
-    correlation_id: Optional[str] = None,
-    trace_id: Optional[str] = None,
+    request_id: str | None = None,
+    correlation_id: str | None = None,
+    trace_id: str | None = None,
 ):
     """Set request context for logging and tracing"""
     if request_id:

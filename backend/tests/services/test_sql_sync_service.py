@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+
 from services.sql_sync_service import SQLSyncService
 
 
@@ -54,7 +55,7 @@ async def test_should_run_nightly_sync_hour_and_once_per_day(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Patch the module-level datetime used by SQLSyncService
-    import services.sql_sync_service as sql_sync_service
+    from services import sql_sync_service
 
     fixed_now = datetime(2025, 1, 2, 2, 5, 0)
 

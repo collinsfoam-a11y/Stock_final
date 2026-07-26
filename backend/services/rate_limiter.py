@@ -8,7 +8,7 @@ import logging
 import time
 from collections import defaultdict
 from threading import Lock
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class RateLimiter:
         self._window_start = time.time()
         self._window_size = 60  # 1 minute window
 
-    def _get_bucket_key(self, user_id: Optional[str], endpoint: Optional[str]) -> str:
+    def _get_bucket_key(self, user_id: str | None, endpoint: str | None) -> str:
         """Generate bucket key based on configuration"""
         parts = []
 
@@ -93,10 +93,10 @@ class RateLimiter:
 
     def is_allowed(
         self,
-        user_id: Optional[str] = None,
-        endpoint: Optional[str] = None,
-        rate: Optional[int] = None,
-        burst: Optional[int] = None,
+        user_id: str | None = None,
+        endpoint: str | None = None,
+        rate: int | None = None,
+        burst: int | None = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Check if request is allowed

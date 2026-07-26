@@ -2,9 +2,8 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
 from backend.server import app
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.mark.asyncio

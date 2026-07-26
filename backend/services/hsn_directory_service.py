@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 VALID_DIRECTORY_SOURCES = (
     "GST_PORTAL_DIRECTORY",
@@ -37,7 +37,7 @@ class HsnDirectoryError(ValueError):
     """Request-level validation error (bad source, missing required field)."""
 
 
-def _tokenize(*parts: Optional[str]) -> set[str]:
+def _tokenize(*parts: str | None) -> set[str]:
     text = " ".join(p for p in parts if p)
     return {tok for tok in re.findall(r"[a-z0-9]+", text.lower()) if len(tok) > 1}
 
@@ -53,12 +53,12 @@ class HsnDirectoryService:
         description: str,
         source: str,
         current_user: dict[str, Any],
-        gst_percentage: Optional[float] = None,
-        source_url: Optional[str] = None,
-        source_file: Optional[str] = None,
-        is_official_source: Optional[bool] = None,
-        keywords: Optional[list[str]] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        gst_percentage: float | None = None,
+        source_url: str | None = None,
+        source_file: str | None = None,
+        is_official_source: bool | None = None,
+        keywords: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         hsn_sac = str(hsn_sac or "").strip()
         if not hsn_sac:
@@ -68,7 +68,9 @@ class HsnDirectoryService:
                 f"source must be one of {VALID_DIRECTORY_SOURCES}, got {source!r}"
             )
 
-        official = is_official_source if is_official_source is not None else source in _OFFICIAL_SOURCES
+        official = (
+            is_official_source if is_official_source is not None else source in _OFFICIAL_SOURCES
+        )
         now = datetime.now(timezone.utc)
         derived_keywords = set(keywords or []) | _tokenize(description, *(keywords or []))
 
@@ -102,7 +104,12 @@ class HsnDirectoryService:
         return {k: v for k, v in doc.items() if k != "_id"}
 
     async def search(
-        self, query: str, *, source_filter: Optional[str] = None, active_only: bool = True, limit: int = 20
+        self,
+        query: str,
+        *,
+        source_filter: str | None = None,
+        active_only: bool = True,
+        limit: int = 20,
     ) -> list[dict[str, Any]]:
         mongo_query: dict[str, Any] = {}
         if active_only:
@@ -124,7 +131,7 @@ class HsnDirectoryService:
         scored.sort(key=lambda pair: pair[0], reverse=True)
         return [self._strip(r) for _score, r in scored[:limit]]
 
-    async def list_active(self, *, source_filter: Optional[str] = None) -> list[dict[str, Any]]:
+    async def list_active(self, *, source_filter: str | None = None) -> list[dict[str, Any]]:
         mongo_query: dict[str, Any] = {"is_active": True}
         if source_filter:
             mongo_query["source"] = source_filter

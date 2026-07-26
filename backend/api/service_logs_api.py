@@ -7,7 +7,7 @@ import os
 import platform
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -34,7 +34,7 @@ def _detect_log_level(line: str) -> str:
 def _parse_log_file(
     log_file: Path,
     lines: int,
-    level: Optional[str] = None,
+    level: str | None = None,
 ) -> list[dict]:
     """Parse a log file and return structured log entries."""
     logs: list[dict[str, Any]] = []
@@ -64,7 +64,7 @@ def _parse_log_file(
     return logs
 
 
-def _find_log_file(*candidates: Path) -> Optional[Path]:
+def _find_log_file(*candidates: Path) -> Path | None:
     """Find the first existing log file from candidates."""
     for path in candidates:
         if path.exists():
@@ -75,7 +75,7 @@ def _find_log_file(*candidates: Path) -> Optional[Path]:
 @service_logs_router.get("/backend")
 async def get_backend_logs(
     lines: int = Query(100, ge=1, le=1000),
-    level: Optional[str] = Query(None, pattern="^(INFO|WARN|ERROR|DEBUG)$"),
+    level: str | None = Query(None, pattern="^(INFO|WARN|ERROR|DEBUG)$"),
     current_user: dict = Depends(require_admin),
 ):
     """Get backend server logs"""
@@ -105,14 +105,14 @@ async def get_backend_logs(
         logger.error("Error getting backend logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get backend logs: {str(e)}",
+            detail=f"Failed to get backend logs: {e!s}",
         ) from e
 
 
 @service_logs_router.get("/frontend")
 async def get_frontend_logs(
     lines: int = Query(100, ge=1, le=1000),
-    level: Optional[str] = Query(None, pattern="^(INFO|WARN|ERROR|DEBUG)$"),
+    level: str | None = Query(None, pattern="^(INFO|WARN|ERROR|DEBUG)$"),
     current_user: dict = Depends(require_admin),
 ):
     """Get frontend/Expo logs"""
@@ -138,14 +138,14 @@ async def get_frontend_logs(
         logger.error("Error getting frontend logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get frontend logs: {str(e)}",
+            detail=f"Failed to get frontend logs: {e!s}",
         ) from e
 
 
 @service_logs_router.get("/mongodb")
 async def get_mongodb_logs(
     lines: int = Query(100, ge=1, le=1000),
-    level: Optional[str] = Query(None, pattern="^(INFO|WARN|ERROR|DEBUG)$"),
+    level: str | None = Query(None, pattern="^(INFO|WARN|ERROR|DEBUG)$"),
     current_user: dict = Depends(require_admin),
 ):
     """Get MongoDB logs"""
@@ -186,14 +186,14 @@ async def get_mongodb_logs(
         logger.error("Error getting MongoDB logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get MongoDB logs: {str(e)}",
+            detail=f"Failed to get MongoDB logs: {e!s}",
         ) from e
 
 
 @service_logs_router.get("/system")
 async def get_system_logs(
     lines: int = Query(100, ge=1, le=1000),
-    level: Optional[str] = Query(None, pattern="^(INFO|WARN|ERROR|DEBUG)$"),
+    level: str | None = Query(None, pattern="^(INFO|WARN|ERROR|DEBUG)$"),
     current_user: dict = Depends(require_admin),
 ):
     """Get system/application logs"""
@@ -214,7 +214,7 @@ async def get_system_logs(
         logger.error("Error getting system logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get system logs: {str(e)}",
+            detail=f"Failed to get system logs: {e!s}",
         ) from e
 
 
@@ -248,5 +248,5 @@ async def clear_logs(
         logger.error("Error clearing logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear logs: {str(e)}",
+            detail=f"Failed to clear logs: {e!s}",
         ) from e

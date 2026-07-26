@@ -10,7 +10,6 @@ report for the explicit gap note).
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from backend.api.recount_api import RecountCreateRequest, create_recount_request
 from backend.models.audit import AuditEventType
 from backend.services.governance_guard import install_db_write_guards
@@ -49,9 +48,7 @@ async def test_create_recount_request_writes_canonical_audit_event():
     ):
         audit_service = AsyncMock()
         audit_service.log_event = AsyncMock()
-        with patch(
-            "backend.services.audit_service.AuditService", return_value=audit_service
-        ):
+        with patch("backend.services.audit_service.AuditService", return_value=audit_service):
             await create_recount_request(
                 request=RecountCreateRequest(
                     count_line_id="line-1",

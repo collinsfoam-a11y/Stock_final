@@ -6,7 +6,7 @@ Tracks and stores application errors, exceptions, and system issues for monitori
 import logging
 import traceback
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
@@ -15,13 +15,13 @@ logger = logging.getLogger(__name__)
 
 
 def _build_error_filter(
-    severity: Optional[str],
-    error_type: Optional[str],
-    endpoint: Optional[str],
-    user: Optional[str],
-    resolved: Optional[bool],
-    start_date: Optional[datetime],
-    end_date: Optional[datetime],
+    severity: str | None,
+    error_type: str | None,
+    endpoint: str | None,
+    user: str | None,
+    resolved: bool | None,
+    start_date: datetime | None,
+    end_date: datetime | None,
 ) -> dict[str, Any]:
     """Build MongoDB filter query for error logs."""
     filter_query: dict[str, Any] = {}
@@ -58,26 +58,26 @@ def _process_error_for_response(error: dict[str, Any]) -> None:
 class ErrorLog(BaseModel):
     """Error log entry model"""
 
-    id: Optional[str] = None
+    id: str | None = None
     timestamp: datetime
     error_type: str  # e.g., "HTTPException", "ValueError", "ConnectionError"
     error_message: str
-    error_code: Optional[str] = None
+    error_code: str | None = None
     severity: str = "error"  # "critical", "error", "warning", "info"
-    endpoint: Optional[str] = None
-    method: Optional[str] = None
-    user: Optional[str] = None
-    role: Optional[str] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    stack_trace: Optional[str] = None
-    request_data: Optional[dict[str, Optional[Any]]] = None
-    response_status: Optional[int] = None
-    context: Optional[dict[str, Optional[Any]]] = None
+    endpoint: str | None = None
+    method: str | None = None
+    user: str | None = None
+    role: str | None = None
+    ip_address: str | None = None
+    user_agent: str | None = None
+    stack_trace: str | None = None
+    request_data: dict[str, Any | None] | None = None
+    response_status: int | None = None
+    context: dict[str, Any | None] | None = None
     resolved: bool = False
-    resolved_at: Optional[datetime] = None
-    resolved_by: Optional[str] = None
-    resolution_note: Optional[str] = None
+    resolved_at: datetime | None = None
+    resolved_by: str | None = None
+    resolution_note: str | None = None
 
 
 class ErrorLogService:
@@ -90,18 +90,18 @@ class ErrorLogService:
     async def log_error(
         self,
         error: Exception,
-        error_type: Optional[str] = None,
-        error_code: Optional[str] = None,
+        error_type: str | None = None,
+        error_code: str | None = None,
         severity: str = "error",
-        endpoint: Optional[str] = None,
-        method: Optional[str] = None,
-        user: Optional[str] = None,
-        role: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        request_data: Optional[dict[str, Optional[Any]]] = None,
-        response_status: Optional[int] = None,
-        context: Optional[dict[str, Optional[Any]]] = None,
+        endpoint: str | None = None,
+        method: str | None = None,
+        user: str | None = None,
+        role: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        request_data: dict[str, Any | None] | None = None,
+        response_status: int | None = None,
+        context: dict[str, Any | None] | None = None,
         include_stack_trace: bool = True,
     ) -> str:
         """
@@ -189,7 +189,7 @@ class ErrorLogService:
 
             return str(result.inserted_id)
         except Exception as e:
-            logger.error(f"Failed to log error: {str(e)}", exc_info=True)
+            logger.error(f"Failed to log error: {e!s}", exc_info=True)
             # Don't raise - error logging failures shouldn't break the app
             return ""
 
@@ -199,11 +199,11 @@ class ErrorLogService:
         detail: Any,
         endpoint: str,
         method: str = "GET",
-        user: Optional[str] = None,
-        role: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        request_data: Optional[dict[str, Optional[Any]]] = None,
+        user: str | None = None,
+        role: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        request_data: dict[str, Any | None] | None = None,
     ) -> str:
         """Log an HTTP error"""
         # Determine severity based on status code
@@ -244,13 +244,13 @@ class ErrorLogService:
 
     async def get_errors(
         self,
-        severity: Optional[str] = None,
-        error_type: Optional[str] = None,
-        endpoint: Optional[str] = None,
-        user: Optional[str] = None,
-        resolved: Optional[bool] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        severity: str | None = None,
+        error_type: str | None = None,
+        endpoint: str | None = None,
+        user: str | None = None,
+        resolved: bool | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         page: int = 1,
         page_size: int = 50,
     ) -> dict[str, Any]:
@@ -299,10 +299,10 @@ class ErrorLogService:
                 },
             }
         except Exception as e:
-            logger.error(f"Failed to retrieve errors: {str(e)}")
+            logger.error(f"Failed to retrieve errors: {e!s}")
             raise
 
-    async def get_error_by_id(self, error_id: str) -> Optional[dict[str, Any]]:
+    async def get_error_by_id(self, error_id: str) -> dict[str, Any] | None:
         """Get a specific error by ID"""
         try:
             from bson import ObjectId
@@ -313,11 +313,11 @@ class ErrorLogService:
                 del error["_id"]
             return error
         except Exception as e:
-            logger.error(f"Failed to retrieve error: {str(e)}")
+            logger.error(f"Failed to retrieve error: {e!s}")
             return None
 
     async def mark_resolved(
-        self, error_id: str, resolved_by: str, resolution_note: Optional[str] = None
+        self, error_id: str, resolved_by: str, resolution_note: str | None = None
     ) -> bool:
         """Mark an error as resolved"""
         try:
@@ -336,11 +336,11 @@ class ErrorLogService:
             )
             return result.modified_count > 0
         except Exception as e:
-            logger.error(f"Failed to mark error as resolved: {str(e)}")
+            logger.error(f"Failed to mark error as resolved: {e!s}")
             return False
 
     async def get_statistics(
-        self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None
+        self, start_date: datetime | None = None, end_date: datetime | None = None
     ) -> dict[str, Any]:
         """Get error statistics"""
         try:
@@ -426,7 +426,7 @@ class ErrorLogService:
                 ],
             }
         except Exception as e:
-            logger.error(f"Failed to get statistics: {str(e)}")
+            logger.error(f"Failed to get statistics: {e!s}")
             return {
                 "total": 0,
                 "by_severity": {"critical": 0, "error": 0, "warning": 0, "info": 0},

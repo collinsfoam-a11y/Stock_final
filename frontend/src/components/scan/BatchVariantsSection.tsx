@@ -183,6 +183,8 @@ export const BatchVariantsSection: React.FC<BatchVariantsSectionProps> = ({
 
             return (
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={`Select variant ${variant.barcode}`}
                 key={variantKey}
                 onPress={() => onSelectVariant(variant.barcode)}
                 activeOpacity={0.8}

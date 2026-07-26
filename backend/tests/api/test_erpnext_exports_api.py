@@ -10,8 +10,6 @@ corrections/photo-manifest endpoints added this step.
 from datetime import datetime, timezone
 
 import pytest
-from fastapi import HTTPException
-
 from backend.api.erpnext_exports_api import (
     CorrectionProposalCreate,
     CorrectionProposalReview,
@@ -35,6 +33,7 @@ from backend.api.hsn_directory_api import (
 from backend.services.erpnext_export_service import ErpNextExportService
 from backend.services.hsn_directory_service import HsnDirectoryService
 from backend.tests.utils.in_memory_db import InMemoryDatabase
+from fastapi import HTTPException
 
 CURRENT_USER = {"username": "supervisor1", "role": "supervisor"}
 ADMIN_USER = {"username": "admin1", "role": "admin"}
@@ -123,7 +122,10 @@ async def _seed_draft_preview(db: InMemoryDatabase, session_id: str, item_code: 
     await _seed_erp_item(db, item_code)
     await _seed_approved_line(db, session_id, item_code, counted_qty=10.0, erp_qty=10.0)
     return await ErpNextExportService(db).generate_preview(
-        session_id=session_id, mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id=session_id,
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
 
@@ -228,11 +230,18 @@ async def test_photo_manifest_router_create_and_get(monkeypatch):
         "sess-5",
         "ITEM-5",
         photo_proofs=[
-            {"id": "photo-1", "url": "https://example.com/p.jpg", "timestamp": "2026-01-01T00:00:00Z"}
+            {
+                "id": "photo-1",
+                "url": "https://example.com/p.jpg",
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
         ],
     )
     preview = await ErpNextExportService(db).generate_preview(
-        session_id="sess-5", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-5",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     await ErpNextExportService(db).approve_preview(
         export_id=preview["export_id"], current_user=ADMIN_USER
@@ -243,7 +252,9 @@ async def test_photo_manifest_router_create_and_get(monkeypatch):
     )
     assert created["status"] == "EXTERNAL_REFERENCES_ONLY"
 
-    fetched = await get_erpnext_export_photo_manifest(preview["export_id"], current_user=CURRENT_USER)
+    fetched = await get_erpnext_export_photo_manifest(
+        preview["export_id"], current_user=CURRENT_USER
+    )
     assert fetched["photo_manifest_id"] == created["photo_manifest_id"]
 
 
@@ -330,7 +341,9 @@ async def test_select_hsn_suggestion_via_router(monkeypatch):
         preview["export_id"],
         row_key,
         HsnSuggestionSelectionRequest(
-            suggestion_id=suggestion_id, hsn_sac="853950", gst_percentage=12.0,
+            suggestion_id=suggestion_id,
+            hsn_sac="853950",
+            gst_percentage=12.0,
             reason="Selected from HSN suggestion list after manual review",
         ),
         current_user=CURRENT_USER,

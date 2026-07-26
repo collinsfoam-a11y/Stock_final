@@ -1,7 +1,8 @@
 """Tests for auth utilities and result types"""
 
-import pytest
 from datetime import timedelta
+
+import pytest
 
 
 class TestPasswordHashing:

@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -22,21 +22,21 @@ class ErrorLogModel(BaseModel):
     timestamp: datetime
     error_type: str = "UnknownError"
     error_message: str
-    error_code: Optional[str] = None
+    error_code: str | None = None
     severity: str = "error"
-    endpoint: Optional[str] = None
-    method: Optional[str] = None
-    user: Optional[str] = None
-    role: Optional[str] = None
-    ip_address: Optional[str] = None
+    endpoint: str | None = None
+    method: str | None = None
+    user: str | None = None
+    role: str | None = None
+    ip_address: str | None = None
     resolved: bool = False
-    resolved_at: Optional[datetime] = None
-    resolved_by: Optional[str] = None
-    resolution_note: Optional[str] = None
-    stack_trace: Optional[str] = None
-    stack_trace_preview: Optional[str] = None
-    request_data: Optional[dict[str, Optional[Any]]] = None
-    context: Optional[dict[str, Optional[Any]]] = None
+    resolved_at: datetime | None = None
+    resolved_by: str | None = None
+    resolution_note: str | None = None
+    stack_trace: str | None = None
+    stack_trace_preview: str | None = None
+    request_data: dict[str, Any | None] | None = None
+    context: dict[str, Any | None] | None = None
 
 
 class ActivityLogModel(BaseModel):
@@ -44,17 +44,17 @@ class ActivityLogModel(BaseModel):
     timestamp: datetime
     user: str
     action: str
-    entity_type: Optional[str] = None
-    entity_id: Optional[str] = None
-    details: Optional[dict[str, Optional[Any]]] = None
-    metadata: Optional[dict[str, Optional[Any]]] = None
+    entity_type: str | None = None
+    entity_id: str | None = None
+    details: dict[str, Any | None] | None = None
+    metadata: dict[str, Any | None] | None = None
     status: str = "success"
 
 
 # --- Helpers ---
 
 
-def build_date_query(start_date: Optional[str], end_date: Optional[str]) -> dict[str, Any]:
+def build_date_query(start_date: str | None, end_date: str | None) -> dict[str, Any]:
     """Build MongoDB date query from ISO strings."""
     date_query: dict[str, Any] = {}
     if start_date:
@@ -77,12 +77,12 @@ def build_date_query(start_date: Optional[str], end_date: Optional[str]) -> dict
 async def get_error_logs(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
-    severity: Optional[str] = None,
-    error_type: Optional[str] = None,
-    endpoint: Optional[str] = None,
-    resolved: Optional[bool] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    severity: str | None = None,
+    error_type: str | None = None,
+    endpoint: str | None = None,
+    resolved: bool | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     current_user: dict = Depends(require_permissions([Permission.ERROR_LOG_READ])),
 ):
     query: dict[str, Any] = {}
@@ -134,8 +134,8 @@ async def delete_error_logs(
 
 @router.get("/error-logs/stats")
 async def get_error_stats(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     current_user: dict = Depends(require_permissions([Permission.ERROR_LOG_READ])),
 ):
     query: dict[str, Any] = {}
@@ -214,11 +214,11 @@ async def resolve_error(
 async def get_activity_logs(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
-    user: Optional[str] = None,
-    action: Optional[str] = None,
-    status_filter: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    user: str | None = None,
+    action: str | None = None,
+    status_filter: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     current_user: dict = Depends(require_permissions([Permission.ACTIVITY_LOG_READ])),
 ):
     query: dict[str, Any] = {}
@@ -259,8 +259,8 @@ async def get_activity_logs(
 
 @router.get("/activity-logs/stats")
 async def get_activity_stats(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     current_user: dict = Depends(require_permissions([Permission.ACTIVITY_LOG_READ])),
 ):
     query: dict[str, Any] = {}

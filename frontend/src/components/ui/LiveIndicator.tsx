@@ -22,6 +22,7 @@ import Animated, {
 import { useThemeContext } from "../../context/ThemeContext";
 
 import { shadows as uiShadows } from "@/theme/legacyCompat";
+import { duration } from "@/theme/staffUiScale";
 interface LiveIndicatorProps {
   label?: string;
   color?: string;
@@ -51,8 +52,8 @@ export const LiveIndicator: React.FC<LiveIndicatorProps> = ({
   useEffect(() => {
     pulseScale.value = withRepeat(
       withSequence(
-        withTiming(1.3, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+        withTiming(1.3, { duration: duration.slowest, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: duration.slowest, easing: Easing.inOut(Easing.ease) })
       ),
       -1,
       true
@@ -60,8 +61,8 @@ export const LiveIndicator: React.FC<LiveIndicatorProps> = ({
 
     pulseOpacity.value = withRepeat(
       withSequence(
-        withTiming(0.3, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+        withTiming(0.3, { duration: duration.slowest, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: duration.slowest, easing: Easing.inOut(Easing.ease) })
       ),
       -1,
       true

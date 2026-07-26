@@ -1,12 +1,11 @@
 import pytest
-from fastapi import FastAPI, Request
-from fastapi.testclient import TestClient
-from starlette.responses import JSONResponse
-
 from backend.middleware.lan_enforcement import (
     LANEnforcementMiddleware,
     resolve_lan_client_ip,
 )
+from fastapi import FastAPI, Request
+from fastapi.testclient import TestClient
+from starlette.responses import JSONResponse
 
 # Setup a dummy app for testing
 app = FastAPI()

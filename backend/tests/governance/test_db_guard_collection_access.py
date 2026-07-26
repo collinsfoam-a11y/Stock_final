@@ -1,5 +1,4 @@
 import pytest
-
 from backend.services.governance_guard import (
     GovernanceViolation,
     install_db_write_guards,

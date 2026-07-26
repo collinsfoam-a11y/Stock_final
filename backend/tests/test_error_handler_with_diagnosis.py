@@ -1,9 +1,11 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+
 from backend.utils.error_handler_with_diagnosis import (
-    with_auto_diagnosis,
-    diagnose_and_handle,
     SelfDiagnosingErrorHandler,
+    diagnose_and_handle,
+    with_auto_diagnosis,
 )
 from backend.utils.result_types import Result
 
@@ -228,8 +230,6 @@ async def test_self_diagnosing_error_handler_execute_fail(mock_diagnosis_service
     # This is the same bug I found in `async_utils.py`.
 
     # I should verify this bug exists with a test case.
-
-    pass
 
 
 @pytest.mark.asyncio

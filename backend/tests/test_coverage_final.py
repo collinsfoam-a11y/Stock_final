@@ -1,20 +1,24 @@
-import pytest
 import os
 from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi import HTTPException
-from backend.utils.result import (
-    Result,
-    handle_result,
-    result_to_response as result_decorator,
-)
-from backend.utils.api_utils import handle_result as api_handle_result
-from backend.utils.api_utils import sanitize_for_logging, create_safe_error_response
+
 from backend.exceptions import (
     AuthenticationError,
     AuthorizationError,
-    ValidationError,
     NotFoundError,
     RateLimitError,
+    ValidationError,
+)
+from backend.utils.api_utils import create_safe_error_response, sanitize_for_logging
+from backend.utils.api_utils import handle_result as api_handle_result
+from backend.utils.result import (
+    Result,
+    handle_result,
+)
+from backend.utils.result import (
+    result_to_response as result_decorator,
 )
 
 # --- result.py coverage ---
@@ -290,8 +294,9 @@ def test_auth_utils_argon2_init_failure():
     """Test argon2 init failure (lines 43-45)"""
     # We need to simulate exception during CryptContext init
     # This runs at module level, so we need to reload the module
-    import backend.utils.auth_utils
     import importlib
+
+    import backend.utils.auth_utils
 
     with patch("passlib.context.CryptContext", side_effect=Exception("Init failed")):
         # The module catches this and falls back to bcrypt-only

@@ -35,6 +35,13 @@ const isBlindRecountLine = (line: Record<string, any> | null | undefined) =>
     line?.original_count_hidden || line?.blind_recount_required || line?.dual_verification_required
   );
 
+const isRecountTargetLine = (line: Record<string, any> | null | undefined) => {
+  if (!line) return false;
+  if (line.recount_requested_at) return true;
+  if (["REJECTED", "NEEDS_REVIEW"].includes(line.status)) return true;
+  return false;
+};
+
 const resolveRecountTargetId = (line: Record<string, any> | null | undefined): string | null => {
   const candidate = line?.recount_of_id || line?.id || line?.line_id || line?._id;
   return typeof candidate === "string" && candidate.trim() ? candidate : null;
@@ -266,24 +273,34 @@ export const useItemDetailData = ({
       if (sessionId && !offlineMode) {
         try {
           const countCheck = await checkItemCounted(sessionId, itemData.item_code || barcode);
-          const blindLine = (countCheck.count_lines || []).find((line: any) =>
-            isBlindRecountLine(line)
+          const recountTargetLine = (countCheck.count_lines || []).find((line: any) =>
+            (isRecountTargetLine(line) || isBlindRecountLine(line)) &&
+            line.floor_no === currentFloor &&
+            line.rack_no === currentRack
           );
 
-          if (blindLine) {
+          if (recountTargetLine) {
+            const isBlind = isBlindRecountLine(recountTargetLine);
             const assignedTo =
-              typeof blindLine.assigned_to === "string" ? blindLine.assigned_to.trim() : "";
-            setBlindRecountRequired(true);
-            setRecountTargetId(resolveRecountTargetId(blindLine));
+              typeof recountTargetLine.assigned_to === "string" ? recountTargetLine.assigned_to.trim() : "";
+            
+            setBlindRecountRequired(isBlind);
+            setRecountTargetId(resolveRecountTargetId(recountTargetLine));
 
             if (assignedTo && currentUsername && assignedTo !== currentUsername) {
               setRecountBlockedReason(`This recount is assigned to ${assignedTo}.`);
-            } else {
+            } else if (isBlind) {
               toastService.show("Blind recount active: previous count is hidden.", {
                 type: "info",
               });
+            } else {
+              toastService.show("Recount active: please verify the quantity.", {
+                type: "info",
+              });
             }
-          } else {
+          }
+
+          if (!recountTargetLine || !isBlindRecountLine(recountTargetLine)) {
             const scanStatus = await checkItemScanStatus(sessionId, itemData.item_code || barcode);
 
             if (scanStatus.scanned) {
@@ -294,7 +311,9 @@ export const useItemDetailData = ({
 
               if (existing) {
                 onQuantityChange(String(existing.counted_qty));
-                toastService.show("Loaded existing count", { type: "info" });
+                if (!recountTargetLine) {
+                  toastService.show("Loaded existing count", { type: "info" });
+                }
               }
             }
           }

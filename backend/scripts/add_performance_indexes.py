@@ -81,7 +81,7 @@ async def _create_single_index(
         if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
             logger.info(f"  ⏭️  Index already exists: {index_key}")
         else:
-            logger.warning(f"  ✗ Error creating index {index_key}: {str(e)}")
+            logger.warning(f"  ✗ Error creating index {index_key}: {e!s}")
 
 
 async def add_performance_indexes():
@@ -119,7 +119,7 @@ async def add_performance_indexes():
         logger.info("=" * 60)
 
     except Exception as e:
-        logger.error(f"Error: {str(e)}")
+        logger.error(f"Error: {e!s}")
         raise
     finally:
         client.close()

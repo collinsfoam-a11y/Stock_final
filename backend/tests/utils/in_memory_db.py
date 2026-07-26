@@ -10,12 +10,12 @@ import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
+from backend.config import settings
 from backend.services.activity_log import ActivityLogService
 from backend.services.error_log import ErrorLogService
 from backend.services.refresh_token import RefreshTokenService
-from backend.config import settings
 
 
 def _normalize_value(val: Any) -> Any:
@@ -113,7 +113,7 @@ def _matches_exists_logic(document: dict[str, Any], key: str, value: dict[str, A
     return _match_condition(doc_value, condition_without_exists)
 
 
-def _match_filter(document: dict[str, Any], filter_query: dict[str, Optional[Any]]) -> bool:
+def _match_filter(document: dict[str, Any], filter_query: dict[str, Any | None]) -> bool:
     """Basic Mongo-style filter matching."""
     if not filter_query:
         return True
@@ -199,7 +199,7 @@ class InsertOneResult:
 class UpdateResult:
     matched_count: int
     modified_count: int
-    upserted_id: Optional[str] = None
+    upserted_id: str | None = None
 
 
 @dataclass
@@ -252,14 +252,14 @@ class InMemoryCollection:
         document.setdefault("_id", os.urandom(12).hex())
 
     async def find_one(
-        self, filter: Optional[dict[str, Any]] = None, *args, **kwargs
-    ) -> dict[str, Optional[Any]]:
+        self, filter: dict[str, Any] | None = None, *args, **kwargs
+    ) -> dict[str, Any | None]:
         # Handle case where filter is None (Motor allows this)
         filter_query = filter or {}
 
         # Handle sort being passed in kwargs (Motor style)
         documents = self._documents
-        if "sort" in kwargs and kwargs["sort"]:
+        if kwargs.get("sort"):
             sort_key, direction = kwargs["sort"][0]
             reverse = direction < 0
             # Need a stable sort, and handle missing keys
@@ -293,7 +293,7 @@ class InMemoryCollection:
 
     async def replace_one(
         self,
-        filter_query: dict[str, Optional[Any]],
+        filter_query: dict[str, Any | None],
         replacement: dict[str, Any],
         upsert: bool = False,
         *args,
@@ -329,12 +329,11 @@ class InMemoryCollection:
 
     async def update_one(
         self,
-        filter_query: dict[str, Optional[Any]],
+        filter_query: dict[str, Any | None],
         update: dict[str, Any],
         upsert: bool = False,
-        array_filters: Optional[
-            list[dict]
-        ] = None,  # Added array_filters to signature to match generic usage
+        array_filters: list[dict]
+        | None = None,  # Added array_filters to signature to match generic usage
         *args,
         **kwargs,
     ) -> UpdateResult:
@@ -363,7 +362,7 @@ class InMemoryCollection:
 
     async def update_many(
         self,
-        filter_query: dict[str, Optional[Any]],
+        filter_query: dict[str, Any | None],
         update: dict[str, Any],
         *args,
         **kwargs,
@@ -379,7 +378,7 @@ class InMemoryCollection:
 
     async def find_one_and_update(
         self,
-        filter_query: dict[str, Optional[Any]],
+        filter_query: dict[str, Any | None],
         update: dict[str, Any],
         upsert: bool = False,
         return_document: bool = False,
@@ -412,7 +411,7 @@ class InMemoryCollection:
 
     async def delete_one(
         self,
-        filter_query: dict[str, Optional[Any]],
+        filter_query: dict[str, Any | None],
         *args,
         **kwargs,
     ) -> DeleteResult:
@@ -424,7 +423,7 @@ class InMemoryCollection:
 
     async def delete_many(
         self,
-        filter_query: dict[str, Optional[Any]],
+        filter_query: dict[str, Any | None],
         *args,
         **kwargs,
     ) -> DeleteResult:
@@ -440,7 +439,7 @@ class InMemoryCollection:
 
     async def count_documents(
         self,
-        filter_query: dict[str, Optional[Any]] = None,
+        filter_query: dict[str, Any | None] = None,
         *args,
         **kwargs,
     ) -> int:
@@ -448,8 +447,8 @@ class InMemoryCollection:
 
     def find(
         self,
-        filter_query: dict[str, Optional[Any]] = None,
-        projection: dict[str, Optional[int]] = None,
+        filter_query: dict[str, Any | None] = None,
+        projection: dict[str, int | None] = None,
         *args,
         **kwargs,
     ):
@@ -533,7 +532,7 @@ class InMemoryDatabase:
         return {"ok": 1}
 
     @staticmethod
-    def _unwrap_collection(value: Any) -> Optional[InMemoryCollection]:
+    def _unwrap_collection(value: Any) -> InMemoryCollection | None:
         if isinstance(value, InMemoryCollection):
             return value
         wrapped = getattr(value, "_collection", None)
@@ -597,7 +596,7 @@ class InMemoryClientSession:
 class _InMemoryTransaction:
     def __init__(self, db: InMemoryDatabase) -> None:
         self._db = db
-        self._snapshot: Optional[dict[str, list[dict[str, Any]]]] = None
+        self._snapshot: dict[str, list[dict[str, Any]]] | None = None
 
     async def __aenter__(self):
         self._snapshot = self._db._snapshot_collections()
@@ -617,12 +616,11 @@ def setup_server_with_in_memory_db(monkeypatch) -> InMemoryDatabase:
     """
     from typing import cast
 
-    from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-
-    import backend.server as server_module
     import backend.core.lifespan as lifespan_module
     import backend.db.runtime as runtime_module
+    import backend.server as server_module
     from backend.db.runtime import set_client, set_db
+    from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
     fake_db = InMemoryDatabase()
     monkeypatch.setattr(server_module, "db", fake_db)
@@ -660,11 +658,9 @@ def _setup_core_services(monkeypatch, fake_db, server_module) -> None:
     """Setup core services like refresh tokens, activity logs, error logs."""
     from typing import cast
 
-    from motor.motor_asyncio import AsyncIOMotorDatabase
-
-    from backend.services.runtime import set_refresh_token_service
-
     from backend.config import settings
+    from backend.services.runtime import set_refresh_token_service
+    from motor.motor_asyncio import AsyncIOMotorDatabase
 
     refresh_service = RefreshTokenService(
         cast(AsyncIOMotorDatabase, fake_db),
@@ -751,8 +747,8 @@ def _setup_cache_and_redis(monkeypatch, server_module) -> Any:
     """Setup cache service and Redis mock."""
     from unittest.mock import AsyncMock
 
-    from backend.services.cache_service import CacheService
     from backend.services import lock_manager as lock_manager_module
+    from backend.services.cache_service import CacheService
     from backend.services.runtime import set_cache_service
 
     mock_cache = CacheService(redis_url=None)  # Force in-memory
@@ -781,12 +777,11 @@ def _initialize_apis(monkeypatch, fake_db, server_module, cache_service) -> None
     """Initialize all API modules with the fake database."""
     from typing import cast
 
-    from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-
     from backend.api.count_lines_api import init_count_lines_api
     from backend.api.erp_api import init_erp_api
     from backend.api.item_verification_api import init_verification_api
     from backend.auth.dependencies import init_auth_dependencies
+    from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
     init_auth_dependencies(
         cast(AsyncIOMotorDatabase, fake_db),
@@ -812,7 +807,6 @@ def _initialize_apis(monkeypatch, fake_db, server_module, cache_service) -> None
 
 def _setup_auth_and_seed_users(monkeypatch, fake_db, server_module) -> None:
     """Setup authentication overrides and seed default test users."""
-    pass
 
     # Removed server_module auth patches, settings handles this now
 
@@ -888,14 +882,14 @@ class _FakeRedisService:
         self,
         _key: str,
         _value: Any,
-        ex: Optional[int] = None,
-        px: Optional[int] = None,
+        ex: int | None = None,
+        px: int | None = None,
         nx: bool = False,
         xx: bool = False,
     ) -> bool:
         return True
 
-    async def get(self, _key: str) -> Optional[str]:
+    async def get(self, _key: str) -> str | None:
         return None
 
     async def delete(self, *_keys: str) -> int:

@@ -1,5 +1,4 @@
 import pytest
-
 from backend.services.event_service import EventService
 from backend.services.projection_service import PROJECTION_VERSION
 from backend.tests.utils.in_memory_db import InMemoryDatabase

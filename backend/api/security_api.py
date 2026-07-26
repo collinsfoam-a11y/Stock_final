@@ -4,14 +4,14 @@ Provides endpoints for security monitoring, failed login tracking, and audit log
 """
 
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from backend.auth.dependencies import get_current_user
 from backend.db.runtime import get_db
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +30,8 @@ async def get_failed_logins(
     current_user: dict = Depends(require_admin),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
     hours: int = Query(24, ge=1, le=168, description="Hours to look back"),
-    username: Optional[str] = Query(None, description="Filter by username"),
-    ip_address: Optional[str] = Query(None, description="Filter by IP address"),
+    username: str | None = Query(None, description="Filter by username"),
+    ip_address: str | None = Query(None, description="Filter by IP address"),
 ):
     """Get failed login attempts"""
     try:
@@ -100,7 +100,7 @@ async def get_failed_logins(
         logger.error("Error getting failed logins: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve failed logins: {str(e)}",
+            detail=f"Failed to retrieve failed logins: {e!s}",
         ) from e
 
 
@@ -172,7 +172,7 @@ async def get_suspicious_activity(
         logger.error("Error getting suspicious activity: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve suspicious activity: {str(e)}",
+            detail=f"Failed to retrieve suspicious activity: {e!s}",
         ) from e
 
 
@@ -256,7 +256,7 @@ async def get_security_sessions(
         logger.error("Error getting sessions: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve sessions: {str(e)}",
+            detail=f"Failed to retrieve sessions: {e!s}",
         ) from e
 
 
@@ -265,8 +265,8 @@ async def get_audit_log(
     current_user: dict = Depends(require_admin),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
     hours: int = Query(24, ge=1, le=720, description="Hours to look back"),
-    action: Optional[str] = Query(None, description="Filter by action"),
-    user: Optional[str] = Query(None, description="Filter by username"),
+    action: str | None = Query(None, description="Filter by action"),
+    user: str | None = Query(None, description="Filter by username"),
 ):
     """Get security audit log from activity logs"""
     try:
@@ -328,7 +328,7 @@ async def get_audit_log(
         logger.error("Error getting audit log: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve audit log: {str(e)}",
+            detail=f"Failed to retrieve audit log: {e!s}",
         ) from e
 
 
@@ -393,7 +393,7 @@ async def get_ip_tracking(
         logger.error("Error getting IP tracking: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve IP tracking: {str(e)}",
+            detail=f"Failed to retrieve IP tracking: {e!s}",
         ) from e
 
 
@@ -479,5 +479,5 @@ async def get_security_summary(
         logger.error("Error getting security summary: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve security summary: {str(e)}",
+            detail=f"Failed to retrieve security summary: {e!s}",
         ) from e

@@ -2,8 +2,6 @@
 User Preferences Model
 """
 
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.models.user import PyObjectId
@@ -22,15 +20,15 @@ class UserPreferencesCreate(UserPreferencesBase):
 
 
 class UserPreferencesUpdate(BaseModel):
-    theme: Optional[str] = None
-    font_scale: Optional[float] = None
-    primary_color: Optional[str] = None
-    enable_haptic_feedback: Optional[bool] = None
-    enable_sound_effects: Optional[bool] = None
+    theme: str | None = None
+    font_scale: float | None = None
+    primary_color: str | None = None
+    enable_haptic_feedback: bool | None = None
+    enable_sound_effects: bool | None = None
 
 
 class UserPreferencesInDB(UserPreferencesBase):
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
+    id: PyObjectId | None = Field(default_factory=PyObjectId, alias="_id")
     user_id: PyObjectId
 
     model_config = ConfigDict(

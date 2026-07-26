@@ -4,7 +4,6 @@ Rate Limit Middleware - Enforce rate limiting on API endpoints
 
 import logging
 import os
-from typing import Optional
 
 from fastapi import Request
 from jwt import decode as jwt_decode
@@ -23,7 +22,7 @@ class RateLimitMiddleware:
         app: ASGIApp,
         rate_limiter: RateLimiter,
         enabled: bool = True,
-        jwt_secret: Optional[str] = None,
+        jwt_secret: str | None = None,
     ):
         self.app = app
         self.rate_limiter = rate_limiter

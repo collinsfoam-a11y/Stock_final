@@ -35,7 +35,7 @@ import json
 import logging
 import time
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ class ErpSyncEventConsumer:
         redis_client: Any,
         db: Any,
         *,
-        broadcast: Optional[Any] = None,
+        broadcast: Any | None = None,
         consumer_name: str = CONSUMER_NAME,
     ):
         self._redis = redis_client
@@ -112,7 +112,7 @@ class ErpSyncEventConsumer:
         self._broadcast = broadcast
         self._consumer_name = consumer_name
         self._running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
 
     async def ensure_group(self) -> None:
         try:
@@ -207,9 +207,7 @@ class ErpSyncEventConsumer:
             # events on this item.
             if version is not None:
                 delete_set["sync_source_version"] = version
-            await self._db.erp_items.update_one(
-                {"item_code": item_code}, {"$set": delete_set}
-            )
+            await self._db.erp_items.update_one({"item_code": item_code}, {"$set": delete_set})
             return
 
         doc = {k: v for k, v in payload.items() if k != "_id"}
@@ -221,9 +219,7 @@ class ErpSyncEventConsumer:
         # when this event has no parseable source_version.
         if version is not None:
             doc["sync_source_version"] = version
-        await self._db.erp_items.update_one(
-            {"item_code": item_code}, {"$set": doc}, upsert=True
-        )
+        await self._db.erp_items.update_one({"item_code": item_code}, {"$set": doc}, upsert=True)
 
     async def _is_stale(self, item_code: str, version: float) -> bool:
         """True when a newer source_version is already stored for this item."""
@@ -240,13 +236,19 @@ class ErpSyncEventConsumer:
         await self._redis.xack(STREAM_KEY, CONSUMER_GROUP, message_id)
 
         if retries + 1 >= MAX_RETRIES:
-            dlq_fields = {**fields, "retries": str(retries + 1), "error": error[:500],
-                          "failed_at": str(time.time())}
+            dlq_fields = {
+                **fields,
+                "retries": str(retries + 1),
+                "error": error[:500],
+                "failed_at": str(time.time()),
+            }
             await self._redis.xadd(DLQ_STREAM_KEY, dlq_fields)
             await self._bump_metric("dead_lettered")
             logger.error(
                 "ERP sync event dead-lettered (item=%s, retries=%s): %s",
-                fields.get("item_code"), retries + 1, error,
+                fields.get("item_code"),
+                retries + 1,
+                error,
             )
         else:
             retry_fields = {**fields, "retries": str(retries + 1)}
@@ -254,7 +256,9 @@ class ErpSyncEventConsumer:
             await self._bump_metric("retried")
             logger.warning(
                 "ERP sync event re-queued (item=%s, retry=%s): %s",
-                fields.get("item_code"), retries + 1, error,
+                fields.get("item_code"),
+                retries + 1,
+                error,
             )
 
     async def _already_processed(self, event_id: str) -> bool:
@@ -350,7 +354,7 @@ async def requeue_dead_letters(redis_client: Any, *, limit: int = 100) -> int:
     return moved
 
 
-def _parse_version(value: Any) -> Optional[float]:
+def _parse_version(value: Any) -> float | None:
     """Parse a source_version into a comparable number, or None if not numeric.
 
     SQL Server change-tracking versions and epoch timestamps are numeric and

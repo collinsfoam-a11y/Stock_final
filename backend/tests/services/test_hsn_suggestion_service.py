@@ -8,7 +8,6 @@ authoritative. See docs/BSR_REMEDIATION_STATUS.md Step 10.
 from typing import Any
 
 import pytest
-
 from backend.services.hsn_directory_service import HsnDirectoryService
 from backend.services.hsn_suggestion_service import (
     MCP_INDIA_STACK_SOURCE,
@@ -58,7 +57,9 @@ async def test_suggest_by_exact_item_name_keyword():
     await _seed_directory_record(db)
     service = HsnSuggestionService(db)
 
-    result = await service.suggest(item_code="ITM-1", item_name="LED Bulb 9W", category="Electrical")
+    result = await service.suggest(
+        item_code="ITM-1", item_name="LED Bulb 9W", category="Electrical"
+    )
 
     assert result["item_code"] == "ITM-1"
     assert any(s["hsn_sac"] == "853950" for s in result["suggestions"])
@@ -77,7 +78,9 @@ async def test_suggest_by_fuzzy_description_match():
     )
     service = HsnSuggestionService(db)
 
-    result = await service.suggest(item_code="ITM-2", item_name="Steel Cooking Pot", category="Kitchenware")
+    result = await service.suggest(
+        item_code="ITM-2", item_name="Steel Cooking Pot", category="Kitchenware"
+    )
 
     assert any(s["hsn_sac"] == "732393" for s in result["suggestions"])
 
@@ -96,7 +99,9 @@ async def test_official_source_ranks_above_mcp_seed():
     )
     service = HsnSuggestionService(db)
 
-    result = await service.suggest(item_code="ITM-3", item_name="LED Bulb", category="Lighting Lamp")
+    result = await service.suggest(
+        item_code="ITM-3", item_name="LED Bulb", category="Lighting Lamp"
+    )
 
     official = next(s for s in result["suggestions"] if s["hsn_sac"] == "853950")
     non_official = next(s for s in result["suggestions"] if s["hsn_sac"] == "853951")
@@ -109,7 +114,9 @@ async def test_mcp_india_stack_suggestion_includes_description():
     db = InMemoryDatabase()
     service = HsnSuggestionService(db, enabled_sources=frozenset({"mcp_india_stack"}))
 
-    result = await service.suggest(item_code="ITM-4", item_name="LED Bulb 9W screw base", category="Lighting")
+    result = await service.suggest(
+        item_code="ITM-4", item_name="LED Bulb 9W screw base", category="Lighting"
+    )
 
     mcp_suggestions = [s for s in result["suggestions"] if s["source"] == MCP_INDIA_STACK_SOURCE]
     assert mcp_suggestions
@@ -150,11 +157,18 @@ async def test_photo_caption_match_boosts_confidence_without_auto_approving():
 
     name_only = await service.suggest(item_code="ITM-7", item_name="Bulb", category="Lighting")
     name_and_photo = await service.suggest(
-        item_code="ITM-7", item_name="Bulb", category="Lighting", photo_caption="small LED light bulb"
+        item_code="ITM-7",
+        item_name="Bulb",
+        category="Lighting",
+        photo_caption="small LED light bulb",
     )
 
-    conf_name_only = next(s["confidence"] for s in name_only["suggestions"] if s["hsn_sac"] == "853950")
-    conf_with_photo = next(s["confidence"] for s in name_and_photo["suggestions"] if s["hsn_sac"] == "853950")
+    conf_name_only = next(
+        s["confidence"] for s in name_only["suggestions"] if s["hsn_sac"] == "853950"
+    )
+    conf_with_photo = next(
+        s["confidence"] for s in name_and_photo["suggestions"] if s["hsn_sac"] == "853950"
+    )
     assert conf_with_photo >= conf_name_only
     for s in name_and_photo["suggestions"]:
         assert s["verification_status"] == "SUGGESTED_NOT_VERIFIED"
@@ -168,7 +182,10 @@ async def test_photo_only_match_has_capped_confidence():
 
     # No item_name/category overlap at all -- only the photo caption matches.
     result = await service.suggest(
-        item_code="ITM-8", item_name="Widget", category="Uncategorized", photo_caption="LED lamp bulb lighting"
+        item_code="ITM-8",
+        item_name="Widget",
+        category="Uncategorized",
+        photo_caption="LED lamp bulb lighting",
     )
 
     matches = [s for s in result["suggestions"] if s["hsn_sac"] == "853950"]

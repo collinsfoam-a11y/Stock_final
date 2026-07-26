@@ -3,6 +3,7 @@ Unit tests for VarianceService
 """
 
 import pytest
+
 from backend.services.variance_service import VarianceService
 
 

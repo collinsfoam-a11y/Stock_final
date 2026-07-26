@@ -9,7 +9,6 @@ import platform
 import socket
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +40,7 @@ class ServiceManager:
         )
 
     @staticmethod
-    def get_process_using_port(port: int) -> Optional[int]:
+    def get_process_using_port(port: int) -> int | None:
         """Get PID of process using a port"""
         try:
             if platform.system() == "Windows":
@@ -199,7 +198,7 @@ class ServiceManager:
         return (preferred_port, False)
 
     @staticmethod
-    def save_port_info(service: str, port: int, pid: Optional[int] = None):
+    def save_port_info(service: str, port: int, pid: int | None = None):
         """Save port information to file"""
         try:
             port_file = Path(__file__).parent.parent.parent / f"{service}_port.json"

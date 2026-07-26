@@ -3,7 +3,7 @@ Custom Exception Classes for STOCK_VERIFY_2
 Provides structured error handling with context
 """
 
-from typing import Any, Optional
+from typing import Any
 
 
 class StockVerifyException(Exception):
@@ -12,8 +12,8 @@ class StockVerifyException(Exception):
     def __init__(
         self,
         message: str,
-        error_code: Optional[str] = None,
-        details: dict[str, Optional[Any]] = None,
+        error_code: str | None = None,
+        details: dict[str, Any | None] = None,
         status_code: int = 500,
     ):
         super().__init__(message)
@@ -38,7 +38,7 @@ class DatabaseConnectionError(StockVerifyException):
         self,
         message: str,
         database: str = "unknown",
-        details: dict[str, Optional[Any]] = None,
+        details: dict[str, Any | None] = None,
     ):
         super().__init__(
             message=message,
@@ -52,7 +52,7 @@ class DatabaseConnectionError(StockVerifyException):
 class SQLServerConnectionError(DatabaseConnectionError):
     """SQL Server specific connection errors"""
 
-    def __init__(self, message: str, details: dict[str, Optional[Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any | None] = None):
         super().__init__(
             message=message,
             database="sql_server",
@@ -64,7 +64,7 @@ class SQLServerConnectionError(DatabaseConnectionError):
 class MongoDBConnectionError(DatabaseConnectionError):
     """MongoDB specific connection errors"""
 
-    def __init__(self, message: str, details: dict[str, Optional[Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any | None] = None):
         super().__init__(
             message=message,
             database="mongodb",
@@ -80,8 +80,8 @@ class SyncError(StockVerifyException):
         self,
         message: str,
         sync_type: str = "unknown",
-        item_code: Optional[str] = None,
-        details: dict[str, Optional[Any]] = None,
+        item_code: str | None = None,
+        details: dict[str, Any | None] = None,
     ):
         super().__init__(
             message=message,
@@ -100,7 +100,7 @@ class SyncError(StockVerifyException):
 class ItemNotFoundError(StockVerifyException):
     """Item not found errors"""
 
-    def __init__(self, item_code: str, details: dict[str, Optional[Any]] = None):
+    def __init__(self, item_code: str, details: dict[str, Any | None] = None):
         super().__init__(
             message=f"Item not found: {item_code}",
             error_code="ITEM_NOT_FOUND",
@@ -117,7 +117,7 @@ class NotFoundError(StockVerifyException):
         self,
         message: str,
         resource: str = "unknown",
-        details: dict[str, Optional[Any]] = None,
+        details: dict[str, Any | None] = None,
     ):
         super().__init__(
             message=message,
@@ -134,8 +134,8 @@ class ValidationError(StockVerifyException):
     def __init__(
         self,
         message: str,
-        field: Optional[str] = None,
-        details: dict[str, Optional[Any]] = None,
+        field: str | None = None,
+        details: dict[str, Any | None] = None,
     ):
         super().__init__(
             message=message,
@@ -152,7 +152,7 @@ class AuthenticationError(StockVerifyException):
     def __init__(
         self,
         message: str = "Authentication failed",
-        details: dict[str, Optional[Any]] = None,
+        details: dict[str, Any | None] = None,
         status_code: int = 401,
     ):
         super().__init__(
@@ -169,7 +169,7 @@ class SessionConflictError(AuthenticationError):
     def __init__(
         self,
         message: str = "This account is already active on another device.",
-        details: dict[str, Optional[Any]] = None,
+        details: dict[str, Any | None] = None,
     ):
         super().__init__(
             message=message,
@@ -185,7 +185,7 @@ class AuthorizationError(StockVerifyException):
     def __init__(
         self,
         message: str = "Insufficient permissions",
-        details: dict[str, Optional[Any]] = None,
+        details: dict[str, Any | None] = None,
     ):
         super().__init__(
             message=message,
@@ -198,7 +198,7 @@ class AuthorizationError(StockVerifyException):
 class RateLimitError(StockVerifyException):
     """Rate limiting errors"""
 
-    def __init__(self, message: str = "Rate limit exceeded", retry_after: Optional[int] = None):
+    def __init__(self, message: str = "Rate limit exceeded", retry_after: int | None = None):
         super().__init__(
             message=message,
             error_code="RATE_LIMIT_ERROR",
@@ -207,10 +207,11 @@ class RateLimitError(StockVerifyException):
         )
         self.retry_after = retry_after
 
+
 class ERPItemNotFoundError(StockVerifyException):
     """ERP Item not found error"""
 
-    def __init__(self, item_code: str, details: dict[str, Optional[Any]] = None):
+    def __init__(self, item_code: str, details: dict[str, Any | None] = None):
         super().__init__(
             message=f"ERP Item not found: {item_code}",
             error_code="ERP_ITEM_NOT_FOUND",
@@ -219,10 +220,13 @@ class ERPItemNotFoundError(StockVerifyException):
         )
         self.item_code = item_code
 
+
 class SQLUnavailableError(SQLServerConnectionError):
     """SQL Server Unavailable"""
 
-    def __init__(self, message: str = "SQL Server unavailable", details: dict[str, Optional[Any]] = None):
+    def __init__(
+        self, message: str = "SQL Server unavailable", details: dict[str, Any | None] = None
+    ):
         super().__init__(
             message=message,
             details=details,
@@ -230,10 +234,13 @@ class SQLUnavailableError(SQLServerConnectionError):
         self.error_code = "SQL_SERVER_UNAVAILABLE"
         self.status_code = 503
 
+
 class SQLConnectionTimeoutError(SQLServerConnectionError):
     """SQL Connection Timeout Error"""
 
-    def __init__(self, message: str = "SQL Server query timed out", details: dict[str, Optional[Any]] = None):
+    def __init__(
+        self, message: str = "SQL Server query timed out", details: dict[str, Any | None] = None
+    ):
         super().__init__(
             message=message,
             details=details,
@@ -241,10 +248,13 @@ class SQLConnectionTimeoutError(SQLServerConnectionError):
         self.error_code = "SQL_SERVER_TIMEOUT"
         self.status_code = 504
 
+
 class SQLQueryError(SQLServerConnectionError):
     """SQL Query Error"""
 
-    def __init__(self, message: str = "SQL Server query failed", details: dict[str, Optional[Any]] = None):
+    def __init__(
+        self, message: str = "SQL Server query failed", details: dict[str, Any | None] = None
+    ):
         super().__init__(
             message=message,
             details=details,
@@ -252,10 +262,13 @@ class SQLQueryError(SQLServerConnectionError):
         self.error_code = "SQL_QUERY_ERROR"
         self.status_code = 502
 
+
 class ERPCacheUpdateError(DatabaseConnectionError):
     """ERP Cache Update Error"""
 
-    def __init__(self, message: str = "ERP cache update failed", details: dict[str, Optional[Any]] = None):
+    def __init__(
+        self, message: str = "ERP cache update failed", details: dict[str, Any | None] = None
+    ):
         super().__init__(
             message=message,
             database="mongodb",
@@ -264,6 +277,7 @@ class ERPCacheUpdateError(DatabaseConnectionError):
         self.error_code = "ERP_CACHE_UPDATE_ERROR"
         self.status_code = 503
 
+
 class ERPRefreshInProgressError(StockVerifyException):
     """ERP Refresh In Progress Error"""
 
@@ -271,7 +285,7 @@ class ERPRefreshInProgressError(StockVerifyException):
         self,
         message: str = "A refresh is already running for this item.",
         retry_after: int = 2,
-        details: dict[str, Optional[Any]] = None,
+        details: dict[str, Any | None] = None,
     ):
         super().__init__(
             message=message,
@@ -281,10 +295,16 @@ class ERPRefreshInProgressError(StockVerifyException):
         )
         self.retry_after = retry_after
 
+
 class ERPInvalidResponseError(SyncError):
     """ERP Invalid Response Error"""
 
-    def __init__(self, message: str = "Invalid response from ERP", item_code: Optional[str] = None, details: dict[str, Optional[Any]] = None):
+    def __init__(
+        self,
+        message: str = "Invalid response from ERP",
+        item_code: str | None = None,
+        details: dict[str, Any | None] = None,
+    ):
         super().__init__(
             message=message,
             sync_type="sql_refresh",

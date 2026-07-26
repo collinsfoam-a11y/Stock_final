@@ -6,7 +6,6 @@ to export-facing preview row fields are proposals, never silent edits.
 from datetime import datetime, timezone
 
 import pytest
-
 from backend.services.erpnext_export_correction_service import (
     ErpNextExportCorrectionError,
     ErpNextExportCorrectionNotFoundError,
@@ -103,7 +102,10 @@ async def _seed_draft_preview(db: InMemoryDatabase, session_id: str, item_code: 
     await _seed_erp_item(db, item_code)
     await _seed_approved_line(db, session_id, item_code, counted_qty=10.0, erp_qty=10.0)
     return await ErpNextExportService(db).generate_preview(
-        session_id=session_id, mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id=session_id,
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
 
@@ -222,7 +224,9 @@ async def test_approve_correction_proposal():
     )
 
     approved = await service.approve_proposal(
-        proposal["proposal_id"], current_user=ADMIN_USER, review_reason="Confirmed with warehouse team"
+        proposal["proposal_id"],
+        current_user=ADMIN_USER,
+        review_reason="Confirmed with warehouse team",
     )
 
     assert approved["status"] == "APPROVED"
@@ -297,7 +301,10 @@ async def test_regenerated_preview_applies_approved_correction():
     await service.approve_proposal(proposal["proposal_id"], current_user=ADMIN_USER)
 
     regenerated = await ErpNextExportService(db).generate_preview(
-        session_id="sess-9", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-9",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
     assert regenerated["export_id"] != preview["export_id"]
@@ -409,12 +416,15 @@ async def test_applied_audit_event_written_on_regeneration():
     await service.approve_proposal(proposal["proposal_id"], current_user=ADMIN_USER)
 
     await ErpNextExportService(db).generate_preview(
-        session_id="sess-12", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-12",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
-    applied_events = await db.audit_logs.find(
-        {"event_type": "EXPORT_CORRECTION_APPLIED"}
-    ).to_list(length=10)
+    applied_events = await db.audit_logs.find({"event_type": "EXPORT_CORRECTION_APPLIED"}).to_list(
+        length=10
+    )
     assert len(applied_events) == 1
     assert applied_events[0]["details"]["proposal_id"] == proposal["proposal_id"]
 

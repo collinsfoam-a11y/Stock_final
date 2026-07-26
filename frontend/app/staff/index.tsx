@@ -1,5 +1,6 @@
 /**
- * Staff Index - Default route redirects to home
+ * Staff Index - Lavanya eMart
+ * Default route redirects to home
  */
 
 import { Redirect } from "expo-router";

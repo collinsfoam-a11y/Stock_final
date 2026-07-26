@@ -35,13 +35,11 @@ export { SuccessFeedback, ToastFeedback } from "./SuccessFeedback";
 export { SkeletonList, SkeletonGrid, SkeletonScreen } from "./SkeletonList";
 
 // Aurora Design System Components (v2.0)
-export { AuroraBackground } from "./AuroraBackground";
 export { FloatingScanButton } from "./FloatingScanButton";
 
 // Enhanced UI/UX Components (v2.1)
 export { AnimatedCounter } from "./AnimatedCounter";
 export { Shimmer, ShimmerPlaceholder } from "./Shimmer";
-export { ParticleField } from "./ParticleField";
 export * from "./SyncStatusPill";
 
 // Phase 4: Supervisor Dashboard Components
@@ -73,7 +71,6 @@ export { Radio } from "./Radio";
 export { Checkbox } from "./Checkbox";
 
 // Theme & Appearance Components
-export { PatternBackground } from "./PatternBackground";
 export { ThemePicker } from "./ThemePicker";
 export { AppearanceSettings } from "./AppearanceSettings";
 export { ThemedScreen, ThemedCard, ThemedText } from "./ThemedScreen";

@@ -45,7 +45,14 @@ def test_missing_template_returns_source_missing(tmp_path):
 def test_manifest_present_but_template_file_missing_returns_source_missing(tmp_path):
     _write_manifest(
         tmp_path,
-        {"stock_entry": {"file": "stock_entry_template.csv", "doctype": "Stock Entry", "has_child_table": True, "child_table_name": "items"}},
+        {
+            "stock_entry": {
+                "file": "stock_entry_template.csv",
+                "doctype": "Stock Entry",
+                "has_child_table": True,
+                "child_table_name": "items",
+            }
+        },
     )
     # Note: stock_entry_template.csv is intentionally never written.
     service = ErpNextTemplateValidationService(template_dir=tmp_path)
@@ -79,7 +86,14 @@ def test_missing_erpnext_version_returns_version_unknown(tmp_path):
 def test_matching_template_passes(tmp_path):
     _write_manifest(
         tmp_path,
-        {"stock_entry": {"file": "stock_entry_template.csv", "doctype": "Stock Entry", "has_child_table": True, "child_table_name": "items"}},
+        {
+            "stock_entry": {
+                "file": "stock_entry_template.csv",
+                "doctype": "Stock Entry",
+                "has_child_table": True,
+                "child_table_name": "items",
+            }
+        },
     )
     _write_csv(tmp_path, "stock_entry_template.csv", ["Item Code", "Qty", "UOM"])
     service = ErpNextTemplateValidationService(template_dir=tmp_path)
@@ -175,12 +189,21 @@ def test_extra_uom_conversion_factor_column_fails_in_strict_mode(tmp_path):
 def test_child_table_ambiguity_warns(tmp_path):
     _write_manifest(
         tmp_path,
-        {"stock_entry": {"file": "stock_entry_template.csv", "doctype": "Stock Entry", "has_child_table": True, "child_table_name": "unknown"}},
+        {
+            "stock_entry": {
+                "file": "stock_entry_template.csv",
+                "doctype": "Stock Entry",
+                "has_child_table": True,
+                "child_table_name": "unknown",
+            }
+        },
     )
     _write_csv(tmp_path, "stock_entry_template.csv", ["Item Code"])
     service = ErpNextTemplateValidationService(template_dir=tmp_path)
 
-    result = service.validate(file_type="stock_entry", file_format="csv", stock_verify_headers=["Item Code"])
+    result = service.validate(
+        file_type="stock_entry", file_format="csv", stock_verify_headers=["Item Code"]
+    )
 
     assert "CHILD_TABLE_AMBIGUITY" in result["warnings"]
 
@@ -234,7 +257,9 @@ def test_explicit_unknown_string_treated_same_as_missing_version(tmp_path):
     _write_csv(tmp_path, "stock_entry_template.csv", ["Item Code"])
     service = ErpNextTemplateValidationService(template_dir=tmp_path)
 
-    result = service.validate(file_type="stock_entry", file_format="csv", stock_verify_headers=["Item Code"])
+    result = service.validate(
+        file_type="stock_entry", file_format="csv", stock_verify_headers=["Item Code"]
+    )
 
     codes = [e["code"] for e in result["errors"]]
     assert "ERP_VERSION_UNKNOWN" in codes
@@ -271,7 +296,14 @@ def test_serial_batch_gate_blocks_negative_qty_on_v15(tmp_path):
     service = ErpNextTemplateValidationService(template_dir=tmp_path)
 
     result = service.evaluate_serial_batch_gate(
-        [{"item_code": "ITM-1", "serial_numbers": ["SN-1"], "batch_no": None, "erpnext_opening_qty": -2.0}]
+        [
+            {
+                "item_code": "ITM-1",
+                "serial_numbers": ["SN-1"],
+                "batch_no": None,
+                "erpnext_opening_qty": -2.0,
+            }
+        ]
     )
 
     assert result["gate_applies"] is True
@@ -284,7 +316,14 @@ def test_serial_batch_gate_does_not_block_negative_qty_on_v13(tmp_path):
     service = ErpNextTemplateValidationService(template_dir=tmp_path)
 
     result = service.evaluate_serial_batch_gate(
-        [{"item_code": "ITM-2", "serial_numbers": ["SN-1"], "batch_no": None, "erpnext_opening_qty": -2.0}]
+        [
+            {
+                "item_code": "ITM-2",
+                "serial_numbers": ["SN-1"],
+                "batch_no": None,
+                "erpnext_opening_qty": -2.0,
+            }
+        ]
     )
 
     assert result["gate_applies"] is False
@@ -309,7 +348,14 @@ def test_serial_batch_gate_applies_when_bundle_flag_true_even_pre_v15(tmp_path):
     service = ErpNextTemplateValidationService(template_dir=tmp_path)
 
     result = service.evaluate_serial_batch_gate(
-        [{"item_code": "ITM-3", "serial_numbers": [], "batch_no": "BATCH-1", "erpnext_opening_qty": -1.0}]
+        [
+            {
+                "item_code": "ITM-3",
+                "serial_numbers": [],
+                "batch_no": "BATCH-1",
+                "erpnext_opening_qty": -1.0,
+            }
+        ]
     )
 
     assert result["gate_applies"] is True
@@ -333,7 +379,14 @@ def test_serial_batch_gate_never_flags_non_serialized_non_batch_rows(tmp_path):
     service = ErpNextTemplateValidationService(template_dir=tmp_path)
 
     result = service.evaluate_serial_batch_gate(
-        [{"item_code": "ITM-4", "serial_numbers": [], "batch_no": None, "erpnext_opening_qty": -5.0}]
+        [
+            {
+                "item_code": "ITM-4",
+                "serial_numbers": [],
+                "batch_no": None,
+                "erpnext_opening_qty": -5.0,
+            }
+        ]
     )
 
     codes = [b["code"] for b in result["blockers"]]

@@ -5,7 +5,7 @@ Exposes enterprise-grade features via REST API
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -27,8 +27,8 @@ class IPListEntry(BaseModel):
 
     ip_address: str
     list_type: str = Field(..., pattern="^(whitelist|blacklist)$")
-    reason: Optional[str] = None
-    expires_hours: Optional[int] = None
+    reason: str | None = None
+    expires_hours: int | None = None
 
 
 class FeatureFlagRequest(BaseModel):
@@ -36,7 +36,7 @@ class FeatureFlagRequest(BaseModel):
 
     key: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     state: str = "disabled"
     percentage: int = Field(default=0, ge=0, le=100)
     allowed_users: list[str] = Field(default_factory=list)
@@ -48,8 +48,8 @@ class DataSubjectRequestCreate(BaseModel):
 
     request_type: str = Field(..., pattern="^(access|erasure|rectification|portability)$")
     subject_id: str
-    subject_email: Optional[str] = None
-    notes: Optional[str] = None
+    subject_email: str | None = None
+    notes: str | None = None
 
 
 class RetentionPolicyRequest(BaseModel):
@@ -58,7 +58,7 @@ class RetentionPolicyRequest(BaseModel):
     collection_name: str
     retention_days: int = Field(..., ge=1, le=3650)
     archive_before_delete: bool = True
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class UnlockAccountRequest(BaseModel):
@@ -75,11 +75,11 @@ class UnlockAccountRequest(BaseModel):
 @enterprise_router.get("/audit/logs")
 async def get_audit_logs(
     request: Request,
-    event_type: Optional[str] = None,
-    username: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    severity: Optional[str] = None,
+    event_type: str | None = None,
+    username: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    severity: str | None = None,
     limit: int = Query(default=100, le=1000),
     skip: int = Query(default=0, ge=0),
     current_user: dict = Depends(require_admin),
@@ -103,8 +103,8 @@ async def get_audit_logs(
 @enterprise_router.get("/audit/verify-integrity")
 async def verify_audit_integrity(
     request: Request,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     current_user: dict = Depends(require_admin),
 ) -> dict[str, Any]:
     """Verify audit log integrity (tamper detection)"""
@@ -248,8 +248,8 @@ async def unlock_account(
 async def get_security_events(
     request: Request,
     limit: int = Query(default=100, le=500),
-    event_type: Optional[str] = None,
-    severity: Optional[str] = None,
+    event_type: str | None = None,
+    severity: str | None = None,
     current_user: dict = Depends(require_admin),
 ) -> list[dict[str, Any]]:
     """Get recent security events"""

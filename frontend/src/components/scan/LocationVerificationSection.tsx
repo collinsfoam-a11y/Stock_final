@@ -6,6 +6,8 @@ import { DEFAULT_FLOOR_OPTIONS } from "@/config/location";
 import { useUiTokens } from "@/hooks/useUiTokens";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { font, gap, radius } from "@/theme/staffUiScale";
+
 export type LocationVerificationSectionProps = {
   floorNo?: string | null;
   rackNo?: string | null;
@@ -48,7 +50,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
         style={{
           flexDirection: "row",
           alignItems: "center",
-          gap: 12,
+          gap: gap.md,
           marginBottom: 8,
         }}
       >
@@ -84,11 +86,11 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
         </Text>
       </View>
 
-      <View style={{ flexDirection: "row", gap: 12 }}>
+      <View style={{ flexDirection: "row", gap: gap.md }}>
         {/* Floor chips */}
         <View style={{ flex: 1 }}>
           <Text style={{ color: tokens.colors.textSecondary, marginBottom: 6 }}>Floor</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: gap.sm }}>
             {OPTIONS.map((opt) => {
               const active = floorNo === opt;
               return (
@@ -96,8 +98,8 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                   key={opt}
                   style={{
                     paddingHorizontal: 10,
-                    paddingVertical: 6,
-                    borderRadius: 8,
+                    paddingVertical: gap.sm,
+                    borderRadius: radius.sm,
                     minHeight: 44,
                     backgroundColor: active
                       ? tokens.colors.accent
@@ -140,14 +142,14 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                 marginTop: 6,
                 borderWidth: 1,
                 borderColor: tokens.colors.border,
-                borderRadius: 10,
+                borderRadius: radius.md,
                 backgroundColor: tokens.colors.surfaceElevated,
               }}
             >
               {rackSuggestions.map((sugg) => (
                 <TouchableOpacity
                   key={`sugg-${sugg}`}
-                  style={{ paddingHorizontal: 10, paddingVertical: 8, minHeight: 44 }}
+                  style={{ paddingHorizontal: gap.sm, paddingVertical: gap.sm, minHeight: 44 }}
                   onPress={() => onChangeRack(sugg)}
                   accessibilityLabel={`Use suggestion ${sugg}`}
                   testID={`suggest-rack-${sugg.replace(/\s+/g, "-").toLowerCase()}`}
@@ -174,7 +176,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                     onPress={onClearRecentRacks}
                     accessibilityLabel="Clear recent racks"
                     testID="btn-clear-recent-racks"
-                    style={{ minHeight: 44, paddingHorizontal: 8 }}
+                    style={{ minHeight: 44, paddingHorizontal: gap.sm }}
                   >
                     <Text
                       style={{
@@ -187,14 +189,14 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                   </TouchableOpacity>
                 )}
               </View>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: gap.sm }}>
                 {recentRacks.map((r) => (
                   <TouchableOpacity
                     key={`rack-${r}`}
                     style={{
                       paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 8,
+                      paddingVertical: gap.sm,
+                      borderRadius: radius.sm,
                       minHeight: 44,
                       backgroundColor: tokens.colors.surfaceElevated,
                       borderWidth: 1,
@@ -221,20 +223,20 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
       </View>
 
       {/* Verified by & Date/Time */}
-      <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
+      <View style={{ flexDirection: "row", gap: gap.md, marginTop: 8 }}>
         <View style={{ flex: 1 }}>
           <Text style={{ color: tokens.colors.textSecondary, marginBottom: 6 }}>Verified By</Text>
           <View
             style={{
               height: 44,
-              borderRadius: 10,
+              borderRadius: radius.md,
               borderWidth: 1,
               borderColor: tokens.colors.border,
               backgroundColor: tokens.colors.surfaceElevated,
-              paddingHorizontal: 12,
+              paddingHorizontal: gap.md,
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
+              gap: gap.sm,
             }}
           >
             <Ionicons name="person" size={16} color={tokens.colors.textMuted} />
@@ -248,14 +250,14 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
           <View
             style={{
               height: 44,
-              borderRadius: 10,
+              borderRadius: radius.md,
               borderWidth: 1,
               borderColor: tokens.colors.border,
               backgroundColor: tokens.colors.surfaceElevated,
-              paddingHorizontal: 12,
+              paddingHorizontal: gap.md,
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
+              gap: gap.sm,
             }}
           >
             <Ionicons name="time" size={16} color={tokens.colors.textMuted} />

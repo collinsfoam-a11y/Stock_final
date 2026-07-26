@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-import backend.app_factory as app_factory
+from backend import app_factory
 from backend.services.canonical_inventory import build_session_lookup
 
 

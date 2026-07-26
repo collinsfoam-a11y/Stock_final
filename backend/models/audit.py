@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -82,30 +82,30 @@ class AuditLogStatus(str, Enum):
 
 
 class AuditLog(BaseModel):
-    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    id: PyObjectId | None = Field(alias="_id", default=None)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     event_type: AuditEventType
-    actor_id: Optional[str] = None
-    actor_username: Optional[str] = None
-    ip_address: Optional[str] = None
-    resource_id: Optional[str] = None
-    details: Dict[str, Any] = Field(default_factory=dict)
+    actor_id: str | None = None
+    actor_username: str | None = None
+    ip_address: str | None = None
+    resource_id: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
     status: AuditLogStatus = Field(default=AuditLogStatus.SUCCESS)
 
     # Canonical audit fields (BSR remediation). All optional so existing
     # callers and existing stored documents remain valid.
-    entity_type: Optional[str] = None
-    entity_id: Optional[str] = None
-    session_id: Optional[str] = None
-    count_line_id: Optional[str] = None
-    item_code: Optional[str] = None
-    location_context: Optional[Dict[str, Any]] = None
-    actor_role: Optional[str] = None
-    decision: Optional[str] = None
-    reason: Optional[str] = None
-    before: Optional[Dict[str, Any]] = None
-    after: Optional[Dict[str, Any]] = None
-    request_id: Optional[str] = None
-    device_id: Optional[str] = None
+    entity_type: str | None = None
+    entity_id: str | None = None
+    session_id: str | None = None
+    count_line_id: str | None = None
+    item_code: str | None = None
+    location_context: dict[str, Any] | None = None
+    actor_role: str | None = None
+    decision: str | None = None
+    reason: str | None = None
+    before: dict[str, Any] | None = None
+    after: dict[str, Any] | None = None
+    request_id: str | None = None
+    device_id: str | None = None
 
     model_config = ConfigDict(populate_by_name=True)

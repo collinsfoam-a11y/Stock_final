@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 class MetricCategory(Enum):
@@ -41,7 +41,7 @@ class Metric:
     value: float
     unit: str
     category: MetricCategory
-    threshold: Optional[float] = None
+    threshold: float | None = None
     threshold_type: str = "max"  # "max" or "min"
     status: MetricStatus = MetricStatus.PASSED
     timestamp: datetime = field(default_factory=datetime.now)
@@ -86,7 +86,7 @@ class EvaluationReport:
 
     metrics: list[Metric] = field(default_factory=list)
     start_time: datetime = field(default_factory=datetime.now)
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -226,7 +226,7 @@ class MetricsCollector:
 
     def __init__(self):
         self.metrics: list[Metric] = []
-        self.start_time: Optional[datetime] = None
+        self.start_time: datetime | None = None
         self._timers: dict[str, float] = {}
 
     def start_evaluation(self) -> None:
@@ -235,7 +235,7 @@ class MetricsCollector:
         self.start_time = datetime.now()
         self._timers = {}
 
-    def finish_evaluation(self, metadata: dict[str, Optional[Any]] = None) -> EvaluationReport:
+    def finish_evaluation(self, metadata: dict[str, Any | None] = None) -> EvaluationReport:
         """Finish evaluation and generate report."""
         report = EvaluationReport(
             metrics=self.metrics.copy(),
@@ -263,9 +263,9 @@ class MetricsCollector:
         value: float,
         unit: str,
         category: MetricCategory,
-        threshold: Optional[float] = None,
+        threshold: float | None = None,
         threshold_type: str = "max",
-        metadata: dict[str, Optional[Any]] = None,
+        metadata: dict[str, Any | None] = None,
     ) -> Metric:
         """Record a generic metric."""
         metric = Metric(
@@ -302,7 +302,7 @@ class MetricsCollector:
         endpoint: str,
         latency_ms: float,
         threshold: float = 200.0,
-        metadata: dict[str, Optional[Any]] = None,
+        metadata: dict[str, Any | None] = None,
     ) -> Metric:
         """Record API endpoint latency."""
         return self.record_metric(
@@ -320,7 +320,7 @@ class MetricsCollector:
         name: str,
         requests_per_second: float,
         threshold: float = 10.0,
-        metadata: dict[str, Optional[Any]] = None,
+        metadata: dict[str, Any | None] = None,
     ) -> Metric:
         """Record throughput metric."""
         return self.record_metric(
@@ -338,7 +338,7 @@ class MetricsCollector:
         name: str,
         rate: float,
         threshold: float = 0.95,
-        metadata: dict[str, Optional[Any]] = None,
+        metadata: dict[str, Any | None] = None,
     ) -> Metric:
         """Record success rate (0.0 to 1.0)."""
         return self.record_metric(
@@ -356,7 +356,7 @@ class MetricsCollector:
         name: str,
         rate: float,
         threshold: float = 0.05,
-        metadata: dict[str, Optional[Any]] = None,
+        metadata: dict[str, Any | None] = None,
     ) -> Metric:
         """Record error rate (0.0 to 1.0)."""
         return self.record_metric(
@@ -378,7 +378,7 @@ class MetricsCollector:
         name: str,
         accuracy: float,
         threshold: float = 0.99,
-        metadata: dict[str, Optional[Any]] = None,
+        metadata: dict[str, Any | None] = None,
     ) -> Metric:
         """Record calculation accuracy (0.0 to 1.0)."""
         return self.record_metric(
@@ -396,7 +396,7 @@ class MetricsCollector:
         expected: float,
         actual: float,
         threshold: float = 0.01,
-        metadata: dict[str, Optional[Any]] = None,
+        metadata: dict[str, Any | None] = None,
     ) -> Metric:
         """Record variance calculation delta."""
         delta = abs(expected - actual)
@@ -419,7 +419,7 @@ class MetricsCollector:
         name: str,
         consistency_rate: float,
         threshold: float = 0.99,
-        metadata: dict[str, Optional[Any]] = None,
+        metadata: dict[str, Any | None] = None,
     ) -> Metric:
         """Record data consistency rate."""
         return self.record_metric(
@@ -437,7 +437,7 @@ class MetricsCollector:
         name: str,
         completeness_rate: float,
         threshold: float = 0.95,
-        metadata: dict[str, Optional[Any]] = None,
+        metadata: dict[str, Any | None] = None,
     ) -> Metric:
         """Record data completeness rate."""
         return self.record_metric(
@@ -454,7 +454,7 @@ class MetricsCollector:
         self,
         lag_seconds: float,
         threshold: float = 60.0,
-        metadata: dict[str, Optional[Any]] = None,
+        metadata: dict[str, Any | None] = None,
     ) -> Metric:
         """Record data sync lag time."""
         return self.record_metric(
@@ -476,7 +476,7 @@ class MetricsCollector:
         workflow_name: str,
         completion_rate: float,
         threshold: float = 0.90,
-        metadata: dict[str, Optional[Any]] = None,
+        metadata: dict[str, Any | None] = None,
     ) -> Metric:
         """Record workflow completion rate."""
         return self.record_metric(
@@ -494,7 +494,7 @@ class MetricsCollector:
         workflow_name: str,
         duration_seconds: float,
         threshold: float = 30.0,
-        metadata: dict[str, Optional[Any]] = None,
+        metadata: dict[str, Any | None] = None,
     ) -> Metric:
         """Record workflow duration."""
         return self.record_metric(

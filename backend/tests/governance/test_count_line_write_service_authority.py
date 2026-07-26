@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 
-
 MUTATION_METHODS = {
     "insert_one",
     "insert_many",

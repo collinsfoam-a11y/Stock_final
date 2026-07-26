@@ -4,7 +4,7 @@ Provides consistent response formats across all API endpoints
 """
 
 from datetime import datetime, timezone
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -18,22 +18,20 @@ class ApiResponse(BaseModel, Generic[T]):
     """
 
     success: bool = Field(..., description="Whether the request was successful")
-    data: Optional[T] = Field(None, description="Response data")
-    error: Optional[dict[str, Optional[Any]]] = Field(
+    data: T | None = Field(None, description="Response data")
+    error: dict[str, Any | None] | None = Field(
         None, description="Error details if success is false"
     )
-    message: Optional[str] = Field(None, description="Human-readable message")
+    message: str | None = Field(None, description="Human-readable message")
     payload_version: str = Field("1.0", description="API Payload Version")
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
         description="Response timestamp",
     )
-    request_id: Optional[str] = Field(None, description="Request ID for tracking")
+    request_id: str | None = Field(None, description="Request ID for tracking")
 
     @classmethod
-    def success_response(
-        cls, data: T, message: Optional[str] = None, request_id: Optional[str] = None
-    ):
+    def success_response(cls, data: T, message: str | None = None, request_id: str | None = None):
         """Create a successful response"""
         return cls(
             success=True,
@@ -47,8 +45,8 @@ class ApiResponse(BaseModel, Generic[T]):
         cls,
         error_code: str,
         error_message: str,
-        details: dict[str, Optional[Any]] = None,
-        request_id: Optional[str] = None,
+        details: dict[str, Any | None] = None,
+        request_id: str | None = None,
     ):
         """Create an error response"""
         return cls(
@@ -108,7 +106,7 @@ class HealthCheckResponse(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
         description="Health check timestamp",
     )
-    version: Optional[str] = Field(None, description="Application version")
+    version: str | None = Field(None, description="Application version")
 
 
 class ConnectionPoolStatusResponse(BaseModel):
@@ -121,6 +119,6 @@ class ConnectionPoolStatusResponse(BaseModel):
     checked_out: int = Field(..., description="Number of connections in use")
     utilization: float = Field(..., description="Pool utilization percentage")
     metrics: dict[str, Any] = Field(..., description="Detailed metrics")
-    health_check: Optional[dict[str, Optional[Any]]] = Field(
+    health_check: dict[str, Any | None] | None = Field(
         default=None, description="Last health check results"
     )

@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ def _build_risk_item(
     item_risk: float,
     cat_risk: float,
     category_heuristics: dict[str, float],
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Build a high-risk item dict if risk exceeds threshold."""
     category = item.get("category", "General")
 

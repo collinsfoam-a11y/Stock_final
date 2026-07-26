@@ -1,8 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import Response
-
 from backend.api.auth import (
     UserRegister,
     check_rate_limit,
@@ -12,6 +10,7 @@ from backend.api.auth import (
 )
 from backend.api.auth_routes import _session_belongs_to_current_client
 from backend.exceptions import NotFoundError, RateLimitError
+from fastapi import Response
 
 
 @pytest.fixture

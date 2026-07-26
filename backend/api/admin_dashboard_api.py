@@ -4,11 +4,10 @@ PC-based web dashboard endpoints for administrators
 """
 
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 import psutil
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -16,6 +15,7 @@ from pydantic import BaseModel
 
 from backend.auth.dependencies import require_admin
 from backend.db.runtime import get_db
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class ActiveUserInfo(BaseModel):
     username: str
     role: str
     last_activity: str
-    current_session: Optional[str]
+    current_session: str | None
     status: str
 
 
@@ -63,9 +63,9 @@ class ErrorLogEntry(BaseModel):
     timestamp: str
     level: str
     message: str
-    endpoint: Optional[str]
-    user_id: Optional[str]
-    details: dict[str, Optional[Any]]
+    endpoint: str | None
+    user_id: str | None
+    details: dict[str, Any | None]
 
 
 class PerformanceMetric(BaseModel):
@@ -397,7 +397,7 @@ async def get_active_users(current_user: dict = Depends(require_admin)):
 @admin_dashboard_router.get("/error-logs", response_model=list[ErrorLogEntry])
 async def get_error_logs(
     limit: int = Query(default=100, le=500),
-    level: Optional[str] = Query(default=None, pattern="^(error|warning|critical)$"),
+    level: str | None = Query(default=None, pattern="^(error|warning|critical)$"),
     hours: int = Query(default=24, le=168),
     current_user: dict = Depends(require_admin),
 ):

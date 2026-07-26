@@ -1,6 +1,6 @@
+import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-import pytest
 
 from backend.api import notifications_api
 
@@ -40,7 +40,7 @@ def notifications_app(monkeypatch: pytest.MonkeyPatch) -> FastAPI:
         "username": "staff1",
         "role": "staff",
     }
-    app.dependency_overrides[notifications_api.get_db] = lambda: {}
+    app.dependency_overrides[notifications_api.get_db] = dict
     monkeypatch.setattr(notifications_api, "NotificationService", _DummyNotificationService)
     return app
 

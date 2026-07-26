@@ -5,7 +5,7 @@ Identifies differences, trends, and changes
 
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class CompareEngine:
         snapshot_a_id: str,
         snapshot_b_id: str,
         created_by: str,
-        comparison_name: Optional[str] = None,
+        comparison_name: str | None = None,
     ) -> dict[str, Any]:
         """
         Compare two snapshots
@@ -235,13 +235,13 @@ class CompareEngine:
 
         return diff
 
-    async def get_comparison(self, job_id: str) -> dict[str, Optional[Any]]:
+    async def get_comparison(self, job_id: str) -> dict[str, Any | None]:
         """Get comparison job by ID"""
         job = await self.db.report_compare_jobs.find_one({"job_id": job_id})
         return job
 
     async def list_comparisons(
-        self, created_by: Optional[str] = None, limit: int = 50
+        self, created_by: str | None = None, limit: int = 50
     ) -> list[dict[str, Any]]:
         """List comparison jobs"""
         query = {}

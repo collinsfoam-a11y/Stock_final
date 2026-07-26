@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Any
+from typing import Any
 
 from .value_objects import SemanticIdentity
 
@@ -44,7 +44,7 @@ class DuplicateVerdict:
     reason_code: DuplicateReasonCode
     severity: str
     message: str
-    existing_line_id: Optional[str] = None
+    existing_line_id: str | None = None
     requires_supervisor_review: bool = False
 
 
@@ -57,8 +57,8 @@ class CandidateLine:
 
     id: str
     status: str = "pending"
-    batch_id: Optional[str] = None
-    recount_requested_at: Optional[Any] = None
+    batch_id: str | None = None
+    recount_requested_at: Any | None = None
 
 
 class DuplicateDetectionPolicy:
@@ -67,11 +67,11 @@ class DuplicateDetectionPolicy:
         *,
         candidate: SemanticIdentity,
         session_finalized: bool = False,
-        matching_idempotency_line: Optional[CandidateLine] = None,
-        serial_conflict_line: Optional[CandidateLine] = None,
-        same_location_line: Optional[CandidateLine] = None,
-        elsewhere_in_session_line: Optional[CandidateLine] = None,
-        semantic_hash_match_line: Optional[CandidateLine] = None,
+        matching_idempotency_line: CandidateLine | None = None,
+        serial_conflict_line: CandidateLine | None = None,
+        same_location_line: CandidateLine | None = None,
+        elsewhere_in_session_line: CandidateLine | None = None,
+        semantic_hash_match_line: CandidateLine | None = None,
     ) -> DuplicateVerdict:
         if session_finalized:
             return DuplicateVerdict(
@@ -107,7 +107,9 @@ class DuplicateDetectionPolicy:
                 and same_location_line.batch_id != candidate.batch_id
             )
             if not batches_explicitly_differ:
-                if same_location_line.status == "rejected" or getattr(same_location_line, "recount_requested_at", None):
+                if same_location_line.status == "rejected" or getattr(
+                    same_location_line, "recount_requested_at", None
+                ):
                     return DuplicateVerdict(
                         is_duplicate=True,
                         reason_code=DuplicateReasonCode.RECOUNT_ALLOWED,

@@ -1,8 +1,7 @@
-from httpx import ASGITransport, AsyncClient
 import pytest
-
 from backend.api import auth_routes
 from backend.server import app
+from httpx import ASGITransport, AsyncClient
 
 
 class _FakeUsersCollection:

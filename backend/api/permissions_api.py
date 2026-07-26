@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
+from backend.auth.dependencies import require_admin
 from backend.auth.permissions import (
     ROLE_PERMISSIONS,
     Permission,
@@ -17,7 +18,6 @@ from backend.auth.permissions import (
     remove_permissions_from_user,
     require_permission,
 )
-from backend.auth.dependencies import require_admin
 from backend.db.runtime import get_db
 
 permissions_router = APIRouter(

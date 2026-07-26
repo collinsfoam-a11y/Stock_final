@@ -1,7 +1,6 @@
 """Tests for DataGovernanceService retention policies and GDPR data-subject requests."""
 
 import pytest
-
 from backend.services.data_governance import (
     DataCategory,
     DataGovernanceService,

@@ -31,6 +31,7 @@ import { haptics } from "@/services/haptics";
 
 import { shadows as uiShadows } from "@/theme/legacyCompat";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { font, gap, radius } from '@/theme/staffUiScale';
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export interface ModalProps {
@@ -293,7 +294,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   modal: {
-    borderRadius: 16,
+    borderRadius: radius.xl,
     borderWidth: 1,
     maxHeight: "90%",
     ...Platform.select({
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    padding: gap.lg,
     borderBottomWidth: 1,
   },
   title: {
@@ -319,13 +320,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   closeButton: {
-    padding: 4,
+    padding: gap.xs,
     marginLeft: 8,
   },
   content: {
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
+    padding: gap.lg,
   },
 });

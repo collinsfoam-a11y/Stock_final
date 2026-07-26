@@ -5,7 +5,7 @@ Based on fastapi-pagination patterns from awesome-fastapi best practices.
 Provides consistent pagination across all API endpoints with proper typing.
 """
 
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from fastapi import Query
 from pydantic import BaseModel, ConfigDict, Field
@@ -68,7 +68,7 @@ class CursorPaginationParams:
 
     def __init__(
         self,
-        cursor: Optional[str] = Query(
+        cursor: str | None = Query(
             None,
             description="Cursor for next page",
         ),
@@ -97,11 +97,11 @@ class PageInfo(BaseModel):
 class CursorInfo(BaseModel):
     """Pagination metadata for cursor-based pagination"""
 
-    next_cursor: Optional[str] = Field(
+    next_cursor: str | None = Field(
         None,
         description="Cursor for next page",
     )
-    previous_cursor: Optional[str] = Field(
+    previous_cursor: str | None = Field(
         None,
         description="Cursor for previous page",
     )
@@ -206,8 +206,8 @@ def paginate(
 def cursor_paginate(
     items: list[Any],
     params: CursorPaginationParams,
-    next_cursor: Optional[str] = None,
-    previous_cursor: Optional[str] = None,
+    next_cursor: str | None = None,
+    previous_cursor: str | None = None,
 ) -> CursorPage:
     """
     Create a cursor-based paginated response.
@@ -244,8 +244,8 @@ async def get_paginated_mongo(
     collection,
     query: dict,
     params: PaginationParams,
-    sort: Optional[list[tuple[str, int]]] = None,
-    projection: Optional[dict] = None,
+    sort: list[tuple[str, int]] | None = None,
+    projection: dict | None = None,
 ) -> tuple[list[dict], int]:
     """
     Execute paginated MongoDB query.

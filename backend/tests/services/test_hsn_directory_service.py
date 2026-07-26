@@ -5,7 +5,6 @@ docs/BSR_REMEDIATION_STATUS.md Step 10 for the full source-trust policy.
 """
 
 import pytest
-
 from backend.services.hsn_directory_service import HsnDirectoryError, HsnDirectoryService
 from backend.tests.utils.in_memory_db import InMemoryDatabase
 
@@ -27,11 +26,15 @@ async def test_import_official_gst_portal_directory_record():
     )
 
     assert record["is_official_source"] is True
-    stored = await db.hsn_directory.find_one({"hsn_sac": "853950", "source": "GST_PORTAL_DIRECTORY"})
+    stored = await db.hsn_directory.find_one(
+        {"hsn_sac": "853950", "source": "GST_PORTAL_DIRECTORY"}
+    )
     assert stored is not None
     assert stored["is_official_source"] is True
 
-    audit_entry = await db.audit_logs.find_one({"details.hsn_sac": "853950", "details.source": "GST_PORTAL_DIRECTORY"})
+    audit_entry = await db.audit_logs.find_one(
+        {"details.hsn_sac": "853950", "details.source": "GST_PORTAL_DIRECTORY"}
+    )
     assert audit_entry is not None
     assert audit_entry["event_type"] == "HSN_DIRECTORY_RECORD_IMPORTED"
 
@@ -70,7 +73,10 @@ async def test_reimporting_same_source_refreshes_without_touching_other_sources(
     service = HsnDirectoryService(db)
 
     await service.import_record(
-        hsn_sac="853950", description="Old description", source="MCP_INDIA_STACK_SEED", current_user=ADMIN_USER
+        hsn_sac="853950",
+        description="Old description",
+        source="MCP_INDIA_STACK_SEED",
+        current_user=ADMIN_USER,
     )
     await service.import_record(
         hsn_sac="853950",
@@ -81,11 +87,18 @@ async def test_reimporting_same_source_refreshes_without_touching_other_sources(
     )
     # Re-import the MCP seed source again -- must not touch the GST_PORTAL_DIRECTORY record.
     await service.import_record(
-        hsn_sac="853950", description="Updated MCP description", source="MCP_INDIA_STACK_SEED", current_user=ADMIN_USER
+        hsn_sac="853950",
+        description="Updated MCP description",
+        source="MCP_INDIA_STACK_SEED",
+        current_user=ADMIN_USER,
     )
 
-    mcp_record = await db.hsn_directory.find_one({"hsn_sac": "853950", "source": "MCP_INDIA_STACK_SEED"})
-    official_record = await db.hsn_directory.find_one({"hsn_sac": "853950", "source": "GST_PORTAL_DIRECTORY"})
+    mcp_record = await db.hsn_directory.find_one(
+        {"hsn_sac": "853950", "source": "MCP_INDIA_STACK_SEED"}
+    )
+    official_record = await db.hsn_directory.find_one(
+        {"hsn_sac": "853950", "source": "GST_PORTAL_DIRECTORY"}
+    )
 
     assert mcp_record["description"] == "Updated MCP description"
     assert official_record["description"] == "Light-emitting diode lamps"

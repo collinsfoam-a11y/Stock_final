@@ -9,7 +9,6 @@ deterministic (no real sleeps).
 import time
 
 import pytest
-
 from backend.services.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,

@@ -8,7 +8,6 @@ approval is required.
 
 import logging
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Tuple
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -28,7 +27,7 @@ class VarianceService:
         expected_qty: float,
         unit_price: float,
         valuation_basis: str = "last_cost",
-    ) -> Dict:
+    ) -> dict:
         """
         Calculate variance metrics for a count line.
 
@@ -76,10 +75,10 @@ class VarianceService:
 
     async def check_thresholds(
         self,
-        variance_data: Dict,
-        item_category: Optional[str] = None,
-        location: Optional[str] = None,
-    ) -> Tuple[bool, List[Dict]]:
+        variance_data: dict,
+        item_category: str | None = None,
+        location: str | None = None,
+    ) -> tuple[bool, list[dict]]:
         """
         Check if variance exceeds configured thresholds.
 
@@ -123,11 +122,14 @@ class VarianceService:
 
             # Check threshold
             is_violated = False
-            if operator == "gte" and actual_value >= threshold_value:
-                is_violated = True
-            elif operator == "lte" and actual_value <= threshold_value:
-                is_violated = True
-            elif operator == "eq" and actual_value == threshold_value:
+            if (
+                operator == "gte"
+                and actual_value >= threshold_value
+                or operator == "lte"
+                and actual_value <= threshold_value
+                or operator == "eq"
+                and actual_value == threshold_value
+            ):
                 is_violated = True
 
             if is_violated:
@@ -154,8 +156,8 @@ class VarianceService:
         return requires_approval, violated_thresholds
 
     async def _get_applicable_config(
-        self, category: Optional[str], location: Optional[str]
-    ) -> Optional[Dict]:
+        self, category: str | None, location: str | None
+    ) -> dict | None:
         """
         Get the most specific threshold config that applies.
 
@@ -205,7 +207,7 @@ class VarianceService:
             logger.info("Using default threshold config")
         return config
 
-    async def _get_default_config(self) -> Dict:
+    async def _get_default_config(self) -> dict:
         """Get or create default threshold configuration"""
         config = await self.db.variance_threshold_configs.find_one(
             {"name": "Default Variance Thresholds"}

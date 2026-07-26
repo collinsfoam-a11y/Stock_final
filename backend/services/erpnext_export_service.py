@@ -13,7 +13,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 from backend.services.canonical_inventory import (
     find_session,
@@ -22,7 +22,9 @@ from backend.services.canonical_inventory import (
 )
 from backend.services.erpnext_export_correction_service import ErpNextExportCorrectionService
 from backend.services.erpnext_export_settings_service import ErpNextExportSettingsService
-from backend.services.erpnext_import_data_validation_service import ErpNextImportDataValidationService
+from backend.services.erpnext_import_data_validation_service import (
+    ErpNextImportDataValidationService,
+)
 
 # Correction fields that, once corrected, resolve these specific blocker
 # codes (a bounded, explicit remediation -- not a general blocker
@@ -62,7 +64,7 @@ class ErpNextExportApprovalError(ValueError):
     data, missing company, blockers present)."""
 
 
-def _as_naive_utc(value: Any) -> Optional[datetime]:
+def _as_naive_utc(value: Any) -> datetime | None:
     if not isinstance(value, datetime):
         return None
     if value.tzinfo is not None:
@@ -87,7 +89,7 @@ class ErpNextExportService:
         session_id: str,
         mode: str,
         current_user: dict[str, Any],
-        company: Optional[str] = None,
+        company: str | None = None,
     ) -> dict[str, Any]:
         if mode not in VALID_EXPORT_MODES:
             raise ErpNextExportPreviewError(
@@ -105,9 +107,9 @@ class ErpNextExportService:
 
         count_lines: list[dict[str, Any]] = []
         if session:
-            count_lines = await self.db.count_lines.find(
-                {"session_id": session_id}
-            ).to_list(length=100000)
+            count_lines = await self.db.count_lines.find({"session_id": session_id}).to_list(
+                length=100000
+            )
 
         approved_lines = [
             line for line in count_lines if get_effective_approval_status(line) == "APPROVED"
@@ -216,7 +218,7 @@ class ErpNextExportService:
         await self._audit_preview_generated(current_user, response)
         return response
 
-    async def _resolve_company(self, company: Optional[str]) -> str:
+    async def _resolve_company(self, company: str | None) -> str:
         """`company` is required context for warehouse mapping lookups (see
         docs/BSR_REMEDIATION_STATUS.md). Backward-compat allowance: if the
         caller omits it and exactly one active company is configured across
@@ -256,7 +258,7 @@ class ErpNextExportService:
         *,
         mode: str,
         company: str,
-        session: Optional[dict[str, Any]],
+        session: dict[str, Any] | None,
         serials_seen: dict[str, str],
         current_user: dict[str, Any],
     ) -> dict[str, Any]:
@@ -268,7 +270,7 @@ class ErpNextExportService:
         if not item_code:
             blockers.append("ITEM_CODE_MISSING")
 
-        erp_item: Optional[dict[str, Any]] = None
+        erp_item: dict[str, Any] | None = None
         if item_code:
             erp_item = await self.db.erp_items.find_one({"item_code": item_code})
         if erp_item is None:
@@ -278,7 +280,9 @@ class ErpNextExportService:
         warehouse_mapping = await self.settings_service.find_active_warehouse_mapping(
             stock_verify_warehouse_id=warehouse, company=company
         )
-        erpnext_warehouse = warehouse_mapping.get("erpnext_warehouse") if warehouse_mapping else None
+        erpnext_warehouse = (
+            warehouse_mapping.get("erpnext_warehouse") if warehouse_mapping else None
+        )
         if not erpnext_warehouse:
             blockers.append("WAREHOUSE_MAPPING_MISSING")
 
@@ -296,7 +300,7 @@ class ErpNextExportService:
         baseline_qty = float(line.get("erp_qty") or 0.0)
         counted_qty = float(line.get("counted_qty") or 0.0)
 
-        existing_sql_qty: Optional[float] = None
+        existing_sql_qty: float | None = None
         if erp_item is not None:
             raw_stock_qty = erp_item.get("stock_qty")
             if raw_stock_qty is None:
@@ -459,9 +463,11 @@ class ErpNextExportService:
         # regenerating a preview for a different mode or company must not
         # supersede an unrelated draft/approval.
         version_scope = {"session_id": session_id, "mode": mode, "company": company}
-        existing = await self.db.erpnext_export_previews.find(
-            version_scope
-        ).sort("export_version", -1).to_list(length=1)
+        existing = (
+            await self.db.erpnext_export_previews.find(version_scope)
+            .sort("export_version", -1)
+            .to_list(length=1)
+        )
 
         next_version = 1
         if existing:
@@ -563,9 +569,7 @@ class ErpNextExportService:
                 "READY_FOR_APPROVAL preview can be approved"
             )
         if preview.get("blockers"):
-            raise ErpNextExportApprovalError(
-                "Cannot approve a preview with unresolved blockers"
-            )
+            raise ErpNextExportApprovalError("Cannot approve a preview with unresolved blockers")
         if await self.correction_service.has_pending_proposals(export_id):
             raise ErpNextExportApprovalError(
                 "Cannot approve a preview with pending correction proposals; "
@@ -585,13 +589,15 @@ class ErpNextExportService:
                 "Session is no longer finalized; regenerate the preview before approving"
             )
 
-        current_lines = await self.db.count_lines.find(
-            {"session_id": session_id}
-        ).to_list(length=100000)
+        current_lines = await self.db.count_lines.find({"session_id": session_id}).to_list(
+            length=100000
+        )
         current_approved_count = sum(
             1 for line in current_lines if get_effective_approval_status(line) == "APPROVED"
         )
-        snapshot_approved_count = int((preview.get("summary") or {}).get("approved_line_count") or 0)
+        snapshot_approved_count = int(
+            (preview.get("summary") or {}).get("approved_line_count") or 0
+        )
         if current_approved_count != snapshot_approved_count:
             raise ErpNextExportApprovalError(
                 "Approved count-line count has changed since this preview was "

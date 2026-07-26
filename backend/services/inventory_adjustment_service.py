@@ -15,7 +15,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from backend.services.governance_audit_service import GovernanceAuditService
 from backend.services.governance_guard import (
@@ -322,7 +322,7 @@ class InventoryAdjustmentService:
         to_state: str,
         actor: dict[str, Any],
         operation: str,
-        extra: Optional[dict[str, Any]] = None,
+        extra: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         self._require_real_actor(actor)
         doc = await self.db.inventory_adjustments.find_one({"id": adjustment_id})

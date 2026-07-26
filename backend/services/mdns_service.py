@@ -3,12 +3,12 @@ import logging
 import socket
 from functools import partial
 from types import ModuleType
-from typing import Any, Optional
+from typing import Any
 
 try:
     import zeroconf as _zeroconf_module
 
-    _ZEROCONF_MODULE: Optional[ModuleType] = _zeroconf_module
+    _ZEROCONF_MODULE: ModuleType | None = _zeroconf_module
 except ImportError:  # pragma: no cover - depends on optional dependency
     _ZEROCONF_MODULE = None
 
@@ -97,7 +97,7 @@ class MDNSService:
 
 
 # Global instance
-mdns_service: Optional[MDNSService] = None
+mdns_service: MDNSService | None = None
 
 
 async def start_mdns(port: int = 8001) -> None:

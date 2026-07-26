@@ -8,7 +8,6 @@ instead of immediately returning 503.
 from __future__ import annotations
 
 import asyncio
-from collections import deque
 import json
 import logging
 import os
@@ -16,6 +15,7 @@ import re
 import subprocess
 import sys
 import time
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path

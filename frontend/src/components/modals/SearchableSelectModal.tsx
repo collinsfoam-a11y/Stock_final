@@ -72,7 +72,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
   const renderOption = ({ item }: { item: string }) => (
     <TouchableOpacity
       style={styles.optionItem}
-      onPress={() => handleSelect(item)}
+       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={() => handleSelect(item)}
       testID={`${testID}-option-${item}`}
     >
       <Text style={styles.optionText}>{item}</Text>
@@ -102,7 +102,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
             <Text style={styles.title}>{title}</Text>
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={handleClose}
+               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={handleClose}
               testID={`${testID}-close`}
               accessibilityRole="button"
               accessibilityLabel="Close"

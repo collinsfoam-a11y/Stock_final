@@ -1,6 +1,6 @@
 import ipaddress
 import logging
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -9,7 +9,7 @@ from starlette.responses import JSONResponse
 logger = logging.getLogger(__name__)
 
 
-def resolve_lan_client_ip(request: Request) -> Optional[str]:
+def resolve_lan_client_ip(request: Request) -> str | None:
     """Resolve the effective client IP for LAN enforcement.
 
     Behind a reverse proxy (nginx), ``request.client.host`` is the proxy's

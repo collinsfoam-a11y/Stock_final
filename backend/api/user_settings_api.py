@@ -5,7 +5,6 @@ Endpoints for managing user-specific app settings.
 """
 
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 from datetime import datetime, timezone
 from typing import Any
 
@@ -21,6 +20,7 @@ from backend.core.schemas.user_settings import (
 from backend.db.runtime import get_db
 from backend.models.audit import AuditEventType, AuditLogStatus
 from backend.services.audit_service import AuditService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 

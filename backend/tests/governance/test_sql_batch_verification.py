@@ -1,7 +1,6 @@
 from unittest.mock import Mock
 
 import pytest
-
 from backend.tests.utils.in_memory_db import setup_server_with_in_memory_db
 
 

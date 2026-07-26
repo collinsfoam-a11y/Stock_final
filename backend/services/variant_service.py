@@ -3,7 +3,8 @@ Variant Service - Handles relationships between item variants (Rule 5)
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ class VariantService:
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
 
-    async def get_item_family(self, item_id: Any) -> List[Dict[str, Any]]:
+    async def get_item_family(self, item_id: Any) -> list[dict[str, Any]]:
         """
         Get all items belonging to the same ProductID (family).
         """
@@ -28,7 +29,7 @@ class VariantService:
         cursor = self.db.erp_items.find({"item_id": item_id})
         return await cursor.to_list(None)
 
-    async def get_sibling_barcodes(self, barcode: str) -> List[str]:
+    async def get_sibling_barcodes(self, barcode: str) -> list[str]:
         """
         Given a barcode, find all other barcodes in the same variant family.
         """
@@ -60,7 +61,7 @@ class VariantService:
         await lock_service.acquire_lock(f"product:{item_id}", owner)
         return True
 
-    async def check_variant_busy(self, barcode: str, lock_service: Any) -> Optional[str]:
+    async def check_variant_busy(self, barcode: str, lock_service: Any) -> str | None:
         """
         Check if any variant in the family is currently being counted.
         Returns the owner of the lock if busy.

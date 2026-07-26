@@ -17,7 +17,7 @@ returns, used as-is.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 _PURCHASE_MODE_BY_VOUCHER_TYPE = {
     "PI": "PURCHASE_INVOICE",
@@ -30,7 +30,7 @@ _PURCHASE_MODE_BY_VOUCHER_TYPE = {
 _PURCHASE_STALE_AFTER = timedelta(days=180)
 
 
-def _parse_iso(value: Any) -> Optional[datetime]:
+def _parse_iso(value: Any) -> datetime | None:
     if isinstance(value, datetime):
         return value
     if isinstance(value, str):
@@ -49,20 +49,33 @@ class PurchaseHistoryLookupService:
 
     def resolve(self, item_master: dict[str, Any]) -> dict[str, Any]:
         voucher_type_raw = item_master.get("purchase_voucher_type")
-        purchase_mode = _PURCHASE_MODE_BY_VOUCHER_TYPE.get(voucher_type_raw) if voucher_type_raw else None
+        purchase_mode = (
+            _PURCHASE_MODE_BY_VOUCHER_TYPE.get(voucher_type_raw) if voucher_type_raw else None
+        )
         purchase_mode_unknown = bool(voucher_type_raw) and purchase_mode is None
         is_non_gst = purchase_mode == "PURCHASE_ESTIMATE_NON_GST_LOCAL_PURCHASE"
 
         has_purchase_history = any(
             item_master.get(key) is not None
-            for key in ("last_purchase_cost", "last_purchase_rate", "last_purchase_date", "last_purchase_qty")
+            for key in (
+                "last_purchase_cost",
+                "last_purchase_rate",
+                "last_purchase_date",
+                "last_purchase_qty",
+            )
         )
-        has_supplier = bool(item_master.get("last_supplier_id") or item_master.get("last_supplier_name"))
+        has_supplier = bool(
+            item_master.get("last_supplier_id") or item_master.get("last_supplier_name")
+        )
 
         last_purchase_date = _parse_iso(item_master.get("last_purchase_date"))
         is_stale = False
         if last_purchase_date is not None:
-            reference = last_purchase_date if last_purchase_date.tzinfo else last_purchase_date.replace(tzinfo=timezone.utc)
+            reference = (
+                last_purchase_date
+                if last_purchase_date.tzinfo
+                else last_purchase_date.replace(tzinfo=timezone.utc)
+            )
             is_stale = (datetime.now(timezone.utc) - reference) > _PURCHASE_STALE_AFTER
 
         return {

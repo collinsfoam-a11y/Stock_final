@@ -1,6 +1,7 @@
+from unittest.mock import MagicMock
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import MagicMock
 
 
 @pytest.mark.asyncio
@@ -210,7 +211,9 @@ async def test_create_manual_batches_requires_item_code_and_batches(
     async_client: AsyncClient, authenticated_headers
 ):
     response = await async_client.post(
-        "/api/item-batches/manual", json={"batches": [{"quantity": 1}]}, headers=authenticated_headers
+        "/api/item-batches/manual",
+        json={"batches": [{"quantity": 1}]},
+        headers=authenticated_headers,
     )
     assert response.status_code == 400
 

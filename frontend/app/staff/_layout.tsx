@@ -1,5 +1,6 @@
 /**
- * Staff Layout - Navigation structure for staff role
+ * Staff Layout - Lavanya eMart
+ * Navigation structure for staff role
  * Features:
  * - Stack-based navigation optimized for scanning workflow
  * - Quick access to scan and history

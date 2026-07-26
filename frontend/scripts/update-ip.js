@@ -96,6 +96,10 @@ async function main() {
       uniqueCandidates[0] || `http://${localIp}:${preferredPort}`;
 
     for (const candidate of uniqueCandidates) {
+      if (candidate.startsWith("https://")) {
+        computedBackendUrl = candidate;
+        break;
+      }
       // eslint-disable-next-line no-await-in-loop
       const ok = await probeHealth(candidate);
       if (!ok) continue;

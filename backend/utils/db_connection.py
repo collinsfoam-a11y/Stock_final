@@ -6,7 +6,6 @@ Shared database connection utilities to eliminate duplicate connection logic
 
 import logging
 import unittest.mock
-from typing import Optional
 
 try:
     import pyodbc
@@ -32,7 +31,7 @@ class SQLServerConnectionBuilder:
         "SQL Server",  # Legacy driver (usually installed by default on Windows)
     ]
     DEFAULT_TIMEOUT = 30
-    _detected_driver: Optional[str] = None
+    _detected_driver: str | None = None
 
     @staticmethod
     def _require_pyodbc():
@@ -43,7 +42,7 @@ class SQLServerConnectionBuilder:
         return pyodbc
 
     @classmethod
-    def get_available_driver(cls) -> Optional[str]:
+    def get_available_driver(cls) -> str | None:
         """Detect and cache the best available ODBC driver"""
         if cls._detected_driver:
             return cls._detected_driver
@@ -81,11 +80,11 @@ class SQLServerConnectionBuilder:
     def build_connection_string(
         host: str,
         database: str,
-        port: Optional[int] = None,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
+        port: int | None = None,
+        user: str | None = None,
+        password: str | None = None,
         timeout: int = DEFAULT_TIMEOUT,
-        additional_params: dict[str, Optional[str]] = None,
+        additional_params: dict[str, str | None] = None,
     ) -> str:
         """
         Build optimized ODBC connection string with consistent parameters
@@ -159,11 +158,11 @@ class SQLServerConnectionBuilder:
     def create_optimized_connection(
         host: str,
         database: str,
-        port: Optional[int] = None,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
+        port: int | None = None,
+        user: str | None = None,
+        password: str | None = None,
         timeout: int = DEFAULT_TIMEOUT,
-    ) -> "pyodbc.Connection":
+    ) -> pyodbc.Connection:
         """
         Create an optimized SQL Server connection with consistent settings
 
@@ -210,9 +209,9 @@ class SQLServerConnectionBuilder:
     def test_connection(
         host: str,
         database: str,
-        port: Optional[int] = None,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
+        port: int | None = None,
+        user: str | None = None,
+        password: str | None = None,
         timeout: int = 5,
     ) -> bool:
         """
@@ -237,7 +236,7 @@ class SQLServerConnectionBuilder:
             return False
 
     @staticmethod
-    def is_connection_valid(conn: "pyodbc.Connection") -> bool:
+    def is_connection_valid(conn: pyodbc.Connection) -> bool:
         """
         Check if an existing connection is still valid
 

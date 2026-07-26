@@ -7,7 +7,7 @@ import hashlib
 import json
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -106,12 +106,12 @@ class QueryBuilder:
     def build_pipeline(
         self,
         collection: str,
-        filters: Optional[dict[str, Optional[Any]]] = None,
-        group_by: Optional[list[str]] = None,
-        aggregations: Optional[dict[str, Optional[str]]] = None,
-        sort: Optional[dict[str, Optional[int]]] = None,
-        limit: Optional[int] = None,
-        skip: Optional[int] = None,
+        filters: dict[str, Any | None] | None = None,
+        group_by: list[str] | None = None,
+        aggregations: dict[str, str | None] | None = None,
+        sort: dict[str, int | None] | None = None,
+        limit: int | None = None,
+        skip: int | None = None,
     ) -> list[dict[str, Any]]:
         """
         Build MongoDB aggregation pipeline
@@ -224,8 +224,8 @@ class QueryBuilder:
 
     def _build_group_stage(
         self,
-        group_by: Optional[list[str]] = None,
-        aggregations: Optional[dict[str, Optional[str]]] = None,
+        group_by: list[str] | None = None,
+        aggregations: dict[str, str | None] | None = None,
     ) -> dict[str, Any]:
         """
         Build group stage
@@ -265,7 +265,7 @@ class QueryBuilder:
         return hashlib.sha256(query_json.encode()).hexdigest()[:16]
 
     def validate_query(
-        self, collection: str, fields: list[str], aggregations: Optional[dict] = None
+        self, collection: str, fields: list[str], aggregations: dict | None = None
     ) -> bool:
         """
         Validate query fields and aggregations

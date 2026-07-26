@@ -6,7 +6,7 @@ Maps ERP database tables and columns to Stock Verification app schema
 import copy
 import logging
 import re
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -664,7 +664,7 @@ def _sanitize_overrides(defaults: dict[str, str], overrides: Any) -> dict[str, s
     return result
 
 
-async def load_active_mapping(db: Optional[Any] = None) -> dict:
+async def load_active_mapping(db: Any | None = None) -> dict:
     """Get the active mapping, overlaying any admin-saved overrides from Mongo.
 
     Falls back to the static defaults (identical to `get_active_mapping()`) if

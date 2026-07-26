@@ -12,11 +12,11 @@ Simulates concurrent counting, syncing, and approvals to verify:
 import asyncio
 import uuid
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
+from backend.services.concurrency import ConcurrencyError, build_version_filter, coerce_version
 from backend.services.lock_manager import LockManager
-from backend.services.concurrency import ConcurrencyError, coerce_version, build_version_filter
-
 
 # ---------------------------------------------------------------------------
 # Helpers

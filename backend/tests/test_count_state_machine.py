@@ -2,12 +2,14 @@
 Unit tests for CountLineStateMachine
 """
 
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
+
 from backend.services.count_state_machine import (
     CountLineStateMachine,
-    StateTransition,
     EditPermission,
+    StateTransition,
 )
 
 

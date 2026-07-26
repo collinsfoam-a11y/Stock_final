@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from backend.services.concurrency import ConcurrencyError
 from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.governance_guard import GovernanceViolation

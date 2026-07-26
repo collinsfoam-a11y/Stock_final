@@ -2,9 +2,9 @@ import asyncio
 import logging
 import re
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, Body
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from backend.api.schemas import ERPItem
@@ -19,15 +19,15 @@ router = APIRouter()
 
 ERP_LEGACY_REFRESH_SUNSET = "2026-10-01"
 
-_db: Optional[AsyncIOMotorDatabase[Any]] = None
-_cache_service: Optional[CacheService] = None
-_sql_connector: Optional[SQLServerConnector] = None
+_db: AsyncIOMotorDatabase[Any] | None = None
+_cache_service: CacheService | None = None
+_sql_connector: SQLServerConnector | None = None
 
 
 def init_erp_api(
     db: AsyncIOMotorDatabase,
     cache_service: CacheService,
-    sql_connector: Optional[SQLServerConnector] = None,
+    sql_connector: SQLServerConnector | None = None,
 ):
     global _db, _cache_service, _sql_connector
     _db = db
@@ -186,9 +186,12 @@ async def get_item_by_barcode(barcode: str, current_user: dict = Depends(get_cur
 
     if _sql_connector is not None:
         from backend.services.item_refresh_service import item_refresh_service
+
         if item_refresh_service.sql_sync_service is not None:
-            asyncio.create_task(
-                item_refresh_service.sql_sync_service.sync_single_item_by_barcode(normalized_barcode)
+            _ = asyncio.create_task(  # noqa: RUF006
+                item_refresh_service.sql_sync_service.sync_single_item_by_barcode(
+                    normalized_barcode
+                )
             )
 
     # Cache for 1 hour
@@ -203,14 +206,15 @@ async def refresh_item_stock(
     request: Request,
     response: Response,
     item_code: str,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Refresh item stock from ERP and update MongoDB
     (DEPRECATED: Forwards to canonical refresh endpoint)
     """
-    from backend.services.item_refresh_service import item_refresh_service
     import uuid
+
+    from backend.services.item_refresh_service import item_refresh_service
 
     if _db is None or _cache_service is None:
         raise HTTPException(status_code=503, detail="Service not initialized")
@@ -233,7 +237,11 @@ async def refresh_item_stock(
     return {
         "success": True,
         "item": ERPItem(**item) if item else None,
-        "message": "Stock refreshed from SQL" if refresh_response.changed else "Stock refreshed from SQL (No change)",
+        "message": (
+            "Stock refreshed from SQL"
+            if refresh_response.changed
+            else "Stock refreshed from SQL (No change)"
+        ),
     }
 
 
@@ -393,7 +401,7 @@ async def test_erp_connection(current_user: dict = Depends(get_current_user)):
 
 @router.get("/erp/items")
 async def get_all_items(
-    search: Optional[str] = None,
+    search: str | None = None,
     current_user: dict = Depends(get_current_user),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
@@ -474,8 +482,8 @@ async def get_all_items(
 
 @router.get("/items/search")
 async def search_items_compatibility(
-    query: Optional[str] = Query(None, description="Search term (legacy param 'query')"),
-    search: Optional[str] = Query(None, description="Alternate search param"),
+    query: str | None = Query(None, description="Search term (legacy param 'query')"),
+    search: str | None = Query(None, description="Alternate search param"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
     current_user: dict = Depends(get_current_user),
@@ -527,9 +535,11 @@ async def create_manual_batches(
     )
     current_seq = int(counter.get("seq", 500000)) if counter else 500000
 
-    cursor = _db.erp_items.find(
-        {"barcode": {"$regex": r"^500\d{3}$"}}, {"barcode": 1}
-    ).sort("barcode", -1).limit(1)
+    cursor = (
+        _db.erp_items.find({"barcode": {"$regex": r"^500\d{3}$"}}, {"barcode": 1})
+        .sort("barcode", -1)
+        .limit(1)
+    )
     max_existing = 500000
     async for doc in cursor:
         try:

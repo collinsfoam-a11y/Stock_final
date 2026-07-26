@@ -1,11 +1,13 @@
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 from motor.motor_asyncio import AsyncIOMotorDatabase
+
 from backend.auth.permissions import (
     add_permissions_to_user,
-    remove_permissions_from_user,
     disable_permissions_for_user,
     enable_permissions_for_user,
+    remove_permissions_from_user,
 )
 
 

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import hashlib
 import inspect
 import json
 import logging
-from typing import Any, Optional
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any
 
 from bson import ObjectId
 from fastapi import HTTPException
@@ -32,7 +32,7 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _normalize_reason(value: Any) -> Optional[str]:
+def _normalize_reason(value: Any) -> str | None:
     if not isinstance(value, str):
         return None
     normalized = value.strip()
@@ -48,7 +48,7 @@ def _as_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
-def _snapshot_document_id(snapshot: dict[str, Any]) -> Optional[str]:
+def _snapshot_document_id(snapshot: dict[str, Any]) -> str | None:
     """Stable identifier for a session_snapshots document: prefers the
     explicit `id` field SessionSnapshot writes on every new snapshot, falls
     back to the Mongo _id for older/legacy or test-seeded snapshots that
@@ -174,8 +174,8 @@ def _apply_update_document_to_merged(
 @dataclass(frozen=True)
 class CountLineGovernanceDecision:
     approval_status: str
-    approved_at: Optional[datetime]
-    approved_by: Optional[str]
+    approved_at: datetime | None
+    approved_by: str | None
     requires_supervisor_approval: bool
     status: str
     variance: float
@@ -244,12 +244,12 @@ class CountLineWriteService:
         self,
         db: Any,
         *,
-        snapshot_service: Optional[SnapshotService] = None,
-        variance_service: Optional[VarianceService] = None,
-        validation_service: Optional[ValidationService] = None,
-        lifecycle_service: Optional[SessionLifecycleService] = None,
-        audit_service: Optional[GovernanceAuditService] = None,
-        projection_service: Optional[ProjectionWriteService] = None,
+        snapshot_service: SnapshotService | None = None,
+        variance_service: VarianceService | None = None,
+        validation_service: ValidationService | None = None,
+        lifecycle_service: SessionLifecycleService | None = None,
+        audit_service: GovernanceAuditService | None = None,
+        projection_service: ProjectionWriteService | None = None,
     ) -> None:
         self.db = db
         self.snapshot_service = snapshot_service or SnapshotService(db)
@@ -258,7 +258,7 @@ class CountLineWriteService:
         self.lifecycle_service = lifecycle_service or SessionLifecycleService(db)
         self.audit_service = audit_service or GovernanceAuditService(db)
         self.projection_service = projection_service or ProjectionWriteService(db)
-        self._session_snapshot_cache: dict[str, Optional[dict[str, Any]]] = {}
+        self._session_snapshot_cache: dict[str, dict[str, Any] | None] = {}
         self._session_snapshot_item_index: dict[str, dict[str, float]] = {}
 
     async def _resolve_awaitable(self, value: Any) -> Any:
@@ -288,8 +288,8 @@ class CountLineWriteService:
         session_id: str,
         actor: str,
         finalized_at: datetime,
-        note: Optional[str] = None,
-        db_session: Optional[Any] = None,
+        note: str | None = None,
+        db_session: Any | None = None,
     ) -> int:
         """Lock and approve mutable count lines for a finalized session."""
         line_update: dict[str, Any] = {
@@ -383,14 +383,14 @@ class CountLineWriteService:
         return True
 
     @staticmethod
-    def _extract_db_session(context: dict[str, Any]) -> Optional[Any]:
+    def _extract_db_session(context: dict[str, Any]) -> Any | None:
         return context.get("db_session") or context.get("mongo_session")
 
     async def _load_session_for_write(
         self,
         session_id: str,
         *,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> dict[str, Any]:
         kwargs = {"session": db_session} if db_session is not None else {}
         session = await self._resolve_awaitable(
@@ -408,7 +408,7 @@ class CountLineWriteService:
         session_ids: list[str],
         *,
         context: dict[str, Any],
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> dict[str, int]:
         expected_map: dict[str, int] = {}
         expected_ctx = context.get("expected_session_version")
@@ -437,7 +437,7 @@ class CountLineWriteService:
         self,
         session_id: str,
         *,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> dict[str, Any]:
         from backend.services.canonical_inventory import is_count_line_effectively_reviewed
 
@@ -445,7 +445,7 @@ class CountLineWriteService:
         total_variance = 0.0
         verified_items = 0
         damage_items = 0
-        last_activity: Optional[datetime] = None
+        last_activity: datetime | None = None
         kwargs = {"session": db_session} if db_session is not None else {}
         cursor = self.db.count_lines.find({"session_id": session_id}, **kwargs)
         async for line in cursor:
@@ -484,7 +484,7 @@ class CountLineWriteService:
         *,
         session_ids: list[str],
         context: dict[str, Any],
-        db_session: Optional[Any],
+        db_session: Any | None,
         expected_versions: dict[str, int],
     ) -> None:
         actor = str(context.get("username") or context.get("actor") or "system")
@@ -505,7 +505,7 @@ class CountLineWriteService:
         payload: dict[str, Any],
         context: dict[str, Any],
         session_ids: list[str],
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> None:
         operation = str(payload.get("operation") or "").strip().lower()
         raw_document = payload.get("document")
@@ -547,7 +547,7 @@ class CountLineWriteService:
         *,
         payload: dict[str, Any],
         context: dict[str, Any],
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> Any:
         operation = str(payload.get("operation") or "").strip().lower()
         collection = self.db.count_lines
@@ -651,7 +651,7 @@ class CountLineWriteService:
         payload: dict[str, Any],
         context: dict[str, Any],
         *,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> Any:
         operation = str(payload.get("operation") or "").strip().lower()
         if operation not in {
@@ -719,7 +719,7 @@ class CountLineWriteService:
     async def commit(
         self,
         payload: dict[str, Any],
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> Any:
         if not isinstance(payload, dict):
             raise ValueError("payload must be a dictionary")
@@ -741,7 +741,7 @@ class CountLineWriteService:
     async def process_write(
         self,
         payload: dict[str, Any],
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> Any:
         return await self.commit(payload, context)
 
@@ -779,9 +779,7 @@ class CountLineWriteService:
                 # counted_qty/input_qty) when an actual UOM identity field
                 # changed, so the common no-UOM-context submission doesn't
                 # pay for a second write.
-                uom_changed = any(
-                    document.get(key) != before[key] for key in _UOM_IDENTITY_FIELDS
-                )
+                uom_changed = any(document.get(key) != before[key] for key in _UOM_IDENTITY_FIELDS)
                 sync_fields: dict[str, Any] = {}
                 if uom_changed:
                     sync_fields.update(
@@ -1104,8 +1102,8 @@ class CountLineWriteService:
         return bool(context.get("enforce_variance"))
 
     async def assert_session_integrity(
-        self, *, session: Optional[dict[str, Any]] = None, session_id: Optional[str] = None
-    ) -> Optional[dict[str, Any]]:
+        self, *, session: dict[str, Any] | None = None, session_id: str | None = None
+    ) -> dict[str, Any] | None:
         if not hasattr(self.snapshot_service, "assert_session_snapshot_integrity"):
             return None
         try:
@@ -1127,9 +1125,9 @@ class CountLineWriteService:
         session_id: str,
         item_code: str,
         username: str,
-        erp_item: Optional[dict[str, Any]] = None,
-        db_session: Optional[Any] = None,
-    ) -> tuple[float, str, Optional[str]]:
+        erp_item: dict[str, Any] | None = None,
+        db_session: Any | None = None,
+    ) -> tuple[float, str, str | None]:
         """Returns (erp_qty, baseline_hash, baseline_snapshot_id).
 
         baseline_snapshot_id is the frozen session_snapshots document's own
@@ -1167,7 +1165,11 @@ class CountLineWriteService:
                     item_index[indexed_item_code] = _as_float(item.get("stock_qty"))
                 self._session_snapshot_item_index[session_id] = item_index
             if normalized_item_code in item_index:
-                return item_index[normalized_item_code], snapshot_hash or "SESSION_SNAPSHOT", snapshot_id
+                return (
+                    item_index[normalized_item_code],
+                    snapshot_hash or "SESSION_SNAPSHOT",
+                    snapshot_id,
+                )
             # Item absent in frozen baseline: treat baseline as zero, never live ERP qty.
             return 0.0, snapshot_hash or "SESSION_SNAPSHOT_MISS", snapshot_id
 
@@ -1200,9 +1202,9 @@ class CountLineWriteService:
         counted_qty: float,
         expected_qty: float,
         item: dict[str, Any],
-        location: Optional[str] = None,
-        variance_reason: Optional[str] = None,
-        correction_reason: Optional[Any] = None,
+        location: str | None = None,
+        variance_reason: str | None = None,
+        correction_reason: Any | None = None,
         require_correction_reason_for_variance: bool = False,
     ) -> CountLineGovernanceDecision:
         variance = float(counted_qty) - float(expected_qty)
@@ -1260,16 +1262,18 @@ class CountLineWriteService:
         counted_qty: float,
         erp_item: dict[str, Any],
         expected_qty: float,
-        variance_reason: Optional[str] = None,
-        correction_reason: Optional[Any] = None,
-        location: Optional[str] = None,
-        require_correction_reason_for_variance: Optional[bool] = None,
+        variance_reason: str | None = None,
+        correction_reason: Any | None = None,
+        location: str | None = None,
+        require_correction_reason_for_variance: bool | None = None,
     ) -> CountLineGovernanceDecision:
         await self.assert_session_integrity(session=session)
         if require_correction_reason_for_variance is None:
             require_correction_reason_for_variance = bool(
                 session.get("require_correction_reason_for_variance")
-                or (session.get("settings") or {}).get("require_correction_reason_for_variance", False)
+                or (session.get("settings") or {}).get(
+                    "require_correction_reason_for_variance", False
+                )
             )
         return await self.evaluate_policy(
             item_code=item_code,
@@ -1289,9 +1293,9 @@ class CountLineWriteService:
         count_line: dict[str, Any],
         counted_qty: float,
         erp_item: dict[str, Any],
-        variance_reason: Optional[str] = None,
-        correction_reason: Optional[Any] = None,
-        location: Optional[str] = None,
+        variance_reason: str | None = None,
+        correction_reason: Any | None = None,
+        location: str | None = None,
         require_correction_reason_for_variance: bool = False,
     ) -> CountLineGovernanceDecision:
         await self.assert_session_integrity(session=session)
@@ -1449,7 +1453,7 @@ class CountLineWriteService:
         self,
         document: dict[str, Any],
         context: dict[str, Any],
-    ) -> tuple[CountLineGovernanceDecision, dict[str, Any], Optional[dict[str, Any]]]:
+    ) -> tuple[CountLineGovernanceDecision, dict[str, Any], dict[str, Any] | None]:
         db_session = self._extract_db_session(context)
         kwargs = {"session": db_session} if db_session is not None else {}
         item_code = str(document.get("item_code") or context.get("item_code") or "").strip()
@@ -1529,7 +1533,7 @@ class CountLineWriteService:
         self,
         document: dict[str, Any],
         context: dict[str, Any],
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         explicit_session = context.get("session")
         if isinstance(explicit_session, dict):
             return explicit_session
@@ -1563,7 +1567,7 @@ class CountLineWriteService:
         document: dict[str, Any],
         erp_item: dict[str, Any],
         governance: CountLineGovernanceDecision,
-        session: Optional[dict[str, Any]],
+        session: dict[str, Any] | None,
         counted_qty: float,
         expected_qty: float,
         mrp_erp: float,
@@ -1664,7 +1668,7 @@ class CountLineWriteService:
         target: dict[str, Any],
         governance: CountLineGovernanceDecision,
         erp_item: dict[str, Any],
-        session: Optional[dict[str, Any]],
+        session: dict[str, Any] | None,
         context: dict[str, Any],
     ) -> None:
         counted_qty = _as_float(target.get("counted_qty"))

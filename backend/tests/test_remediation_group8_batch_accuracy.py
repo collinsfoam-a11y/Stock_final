@@ -3,6 +3,7 @@ FIX GROUP 8 — Regression tests: Batch-controlled items must not collapse into 
 """
 
 import pytest
+
 from backend.services.sync_conflicts_service import SyncConflictsService
 
 

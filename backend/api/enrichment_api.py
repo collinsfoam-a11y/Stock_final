@@ -5,7 +5,7 @@ Provides endpoints for adding serial numbers, MRP, HSN codes, and other missing 
 
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 enrichment_router = APIRouter(prefix="/api/v1/enrichment", tags=["Enrichment"])
 
 # These will be initialized at runtime
-enrichment_service: Optional[EnrichmentService] = None
+enrichment_service: EnrichmentService | None = None
 
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
@@ -38,15 +38,13 @@ class EnrichmentRequest(BaseModel):
     """Request model for item enrichment"""
 
     item_code: str = Field(..., description="Item code to enrich")
-    serial_number: Optional[str] = Field(None, description="Serial number")
-    mrp: Optional[float] = Field(None, description="Maximum Retail Price", ge=0)
-    hsn_code: Optional[str] = Field(None, description="HSN code (4 or 8 digits)")
-    barcode: Optional[str] = Field(None, description="Barcode (8-13 digits)")
-    location: Optional[str] = Field(None, description="Physical location/rack")
-    condition: Optional[str] = Field(
-        None, description="Item condition: good, damaged, obsolete, new"
-    )
-    notes: Optional[str] = Field(None, description="Additional notes")
+    serial_number: str | None = Field(None, description="Serial number")
+    mrp: float | None = Field(None, description="Maximum Retail Price", ge=0)
+    hsn_code: str | None = Field(None, description="HSN code (4 or 8 digits)")
+    barcode: str | None = Field(None, description="Barcode (8-13 digits)")
+    location: str | None = Field(None, description="Physical location/rack")
+    condition: str | None = Field(None, description="Item condition: good, damaged, obsolete, new")
+    notes: str | None = Field(None, description="Additional notes")
 
 
 class EnrichmentResponse(BaseModel):
@@ -58,7 +56,7 @@ class EnrichmentResponse(BaseModel):
     corrections_count: int = 0
     data_complete: bool = False
     completion_percentage: float = 0.0
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class BulkEnrichmentRequest(BaseModel):
@@ -148,7 +146,7 @@ async def record_item_enrichment(
             _safe_log_value(request.item_code),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=f"Failed to record enrichment: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Failed to record enrichment: {e!s}") from e
 
 
 @enrichment_router.get("/completeness/{item_code}", response_model=DataCompletenessResponse)
@@ -180,16 +178,14 @@ async def check_data_completeness(
             _safe_log_value(item_code),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(
-            status_code=500, detail=f"Failed to check completeness: {str(e)}"
-        ) from e
+        raise HTTPException(status_code=500, detail=f"Failed to check completeness: {e!s}") from e
 
 
 @enrichment_router.get("/stats")
 async def get_enrichment_statistics(
-    start_date: Optional[datetime] = Query(None, description="Start date (ISO format)"),
-    end_date: Optional[datetime] = Query(None, description="End date (ISO format)"),
-    user_id: Optional[str] = Query(None, description="Filter by user ID"),
+    start_date: datetime | None = Query(None, description="Start date (ISO format)"),
+    end_date: datetime | None = Query(None, description="End date (ISO format)"),
+    user_id: str | None = Query(None, description="Filter by user ID"),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -208,14 +204,12 @@ async def get_enrichment_statistics(
 
     except Exception as e:
         logger.error("Enrichment stats error: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get enrichment stats: {str(e)}"
-        ) from e
+        raise HTTPException(status_code=500, detail=f"Failed to get enrichment stats: {e!s}") from e
 
 
 @enrichment_router.get("/incomplete")
 async def get_incomplete_items(
-    category: Optional[str] = Query(None, description="Filter by category"),
+    category: str | None = Query(None, description="Filter by category"),
     limit: int = Query(100, ge=1, le=500, description="Maximum items to return"),
     skip: int = Query(0, ge=0, description="Number of items to skip"),
     current_user: dict[str, Any] = Depends(get_current_user),
@@ -236,15 +230,13 @@ async def get_incomplete_items(
 
     except Exception as e:
         logger.error("Get incomplete items error: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get incomplete items: {str(e)}"
-        ) from e
+        raise HTTPException(status_code=500, detail=f"Failed to get incomplete items: {e!s}") from e
 
 
 @enrichment_router.get("/leaderboard")
 async def get_enrichment_leaderboard_endpoint(
-    start_date: Optional[datetime] = Query(None, description="Start date (ISO format)"),
-    end_date: Optional[datetime] = Query(None, description="End date (ISO format)"),
+    start_date: datetime | None = Query(None, description="Start date (ISO format)"),
+    end_date: datetime | None = Query(None, description="End date (ISO format)"),
     limit: int = Query(10, ge=1, le=50, description="Number of users to return"),
     current_user: dict = Depends(get_current_user),
 ):
@@ -264,7 +256,7 @@ async def get_enrichment_leaderboard_endpoint(
 
     except Exception as e:
         logger.error("Leaderboard error: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Failed to get leaderboard: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Failed to get leaderboard: {e!s}") from e
 
 
 @enrichment_router.post("/bulk")
@@ -295,7 +287,7 @@ async def bulk_import_enrichments_endpoint(
 
     except Exception as e:
         logger.error("Bulk import error: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Bulk import failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Bulk import failed: {e!s}") from e
 
 
 @enrichment_router.post("/validate")
@@ -331,4 +323,4 @@ async def validate_enrichment_data_endpoint(
 
     except Exception as e:
         logger.error("Validation error: %s", _safe_log_value(e, max_length=200))
-        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Validation failed: {e!s}") from e

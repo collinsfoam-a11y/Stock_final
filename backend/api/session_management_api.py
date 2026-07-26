@@ -11,7 +11,7 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -21,23 +21,27 @@ from backend.api.response_models import PaginatedResponse
 from backend.api.schemas import Session, SessionCreate
 from backend.auth.dependencies import (
     get_current_user_async as get_current_user,
+)
+from backend.auth.dependencies import (
     require_role,
 )
 from backend.core.websocket_manager import manager
 from backend.db.runtime import get_db
-from backend.services.lock_manager import get_lock_manager
 from backend.services.canonical_inventory import (
     find_session,
     get_session_count_lines,
     is_count_line_effectively_reviewed,
-    is_superseded_count_line,
     is_session_finalized,
+    is_superseded_count_line,
+)
+from backend.services.canonical_inventory import (
     normalize_session_status as normalize_canonical_session_status,
 )
 from backend.services.count_line_write_service import CountLineWriteService
-from backend.services.session_lifecycle_service import SessionLifecycleService
+from backend.services.lock_manager import get_lock_manager
 from backend.services.redis_service import get_redis
 from backend.services.runtime import get_refresh_token_service
+from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
@@ -59,23 +63,23 @@ class SessionDetail(BaseModel):
 
     id: str
     user_id: str
-    warehouse: Optional[str] = None
-    staff_name: Optional[str] = None
-    location_type: Optional[str] = None
-    location_name: Optional[str] = None
-    rack_id: Optional[str] = None
-    floor: Optional[str] = None
+    warehouse: str | None = None
+    staff_name: str | None = None
+    location_type: str | None = None
+    location_name: str | None = None
+    rack_id: str | None = None
+    floor: str | None = None
     status: str  # active, paused, completed
     started_at: float
     last_heartbeat: float
-    completed_at: Optional[float] = None
+    completed_at: float | None = None
     item_count: int = 0
     verified_count: int = 0
     total_items: int = 0
     total_variance: float = 0.0
-    finalization_status: Optional[str] = None
-    finalized_at: Optional[float] = None
-    finalized_by: Optional[str] = None
+    finalization_status: str | None = None
+    finalized_at: float | None = None
+    finalized_by: str | None = None
 
 
 class SessionStats(BaseModel):
@@ -109,7 +113,7 @@ class SessionIntegrityResponse(BaseModel):
     """Session integrity check response (FR-M-34)"""
 
     valid: bool
-    last_sync: Optional[float] = None
+    last_sync: float | None = None
     session_start: float
     updates_detected: bool
     affected_items: int
@@ -119,7 +123,7 @@ class SessionIntegrityResponse(BaseModel):
 class SessionFinalizeRequest(BaseModel):
     """Optional metadata supplied when finalizing a session."""
 
-    note: Optional[str] = None
+    note: str | None = None
 
 
 class CanonicalSessionStatus(str, Enum):
@@ -174,20 +178,20 @@ class UserWorkflowSummary(BaseModel):
     """Running workflow snapshot grouped by user."""
 
     username: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
     role: str = "staff"
     workflow_stage: WorkflowStage
     presence_status: WorkflowPresenceStatus
-    active_session_id: Optional[str] = None
-    session_status: Optional[CanonicalSessionStatus] = None
-    session_type: Optional[str] = None
-    warehouse: Optional[str] = None
-    rack_id: Optional[str] = None
-    floor: Optional[str] = None
-    session_started_at: Optional[datetime] = None
-    last_activity: Optional[datetime] = None
-    pending_review_since: Optional[datetime] = None
-    recount_assigned_at: Optional[datetime] = None
+    active_session_id: str | None = None
+    session_status: CanonicalSessionStatus | None = None
+    session_type: str | None = None
+    warehouse: str | None = None
+    rack_id: str | None = None
+    floor: str | None = None
+    session_started_at: datetime | None = None
+    last_activity: datetime | None = None
+    pending_review_since: datetime | None = None
+    recount_assigned_at: datetime | None = None
     open_session_count: int = 0
     items_counted: int = 0
     reviewed_items: int = 0
@@ -228,7 +232,7 @@ RECOUNT_SLA_MINUTES = 30
 INACTIVE_SESSION_SLA_MINUTES = 10
 
 
-def _normalize_location_value(value: Any) -> Optional[str]:
+def _normalize_location_value(value: Any) -> str | None:
     if not isinstance(value, str):
         return None
     normalized = value.strip()
@@ -237,10 +241,10 @@ def _normalize_location_value(value: Any) -> Optional[str]:
 
 def _parse_session_location_parts(
     warehouse: str,
-    location_type: Optional[str] = None,
-    location_name: Optional[str] = None,
-    rack_no: Optional[str] = None,
-) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    location_type: str | None = None,
+    location_name: str | None = None,
+    rack_no: str | None = None,
+) -> tuple[str | None, str | None, str | None]:
     parsed_type = _normalize_location_value(location_type)
     parsed_name = _normalize_location_value(location_name)
     parsed_rack = _normalize_location_value(rack_no)
@@ -262,9 +266,9 @@ def _exact_match_filter(value: str) -> dict[str, str]:
 
 
 def _infer_snapshot_warehouse_aliases(
-    warehouse: Optional[str],
-    location_type: Optional[str],
-    location_name: Optional[str],
+    warehouse: str | None,
+    location_type: str | None,
+    location_name: str | None,
 ) -> list[str]:
     hints = " ".join(
         part.lower()
@@ -281,9 +285,9 @@ def _infer_snapshot_warehouse_aliases(
 
 def _build_snapshot_queries(
     warehouse: str,
-    location_type: Optional[str] = None,
-    location_name: Optional[str] = None,
-    rack_no: Optional[str] = None,
+    location_type: str | None = None,
+    location_name: str | None = None,
+    rack_no: str | None = None,
 ) -> list[dict[str, Any]]:
     queries: list[dict[str, Any]] = [{"warehouse": _exact_match_filter(warehouse)}]
 
@@ -372,9 +376,9 @@ def _build_snapshot_source_data(item: dict[str, Any]) -> dict[str, Any]:
 async def _collect_snapshot_items(
     db: AsyncIOMotorDatabase,
     warehouse: str,
-    location_type: Optional[str] = None,
-    location_name: Optional[str] = None,
-    rack_no: Optional[str] = None,
+    location_type: str | None = None,
+    location_name: str | None = None,
+    rack_no: str | None = None,
 ) -> list[Any]:
     from backend.core.schemas.snapshot import SnapshotItem
 
@@ -403,7 +407,7 @@ async def _collect_snapshot_items(
     return []
 
 
-def _coerce_datetime(value: Any) -> Optional[datetime]:
+def _coerce_datetime(value: Any) -> datetime | None:
     """Best-effort conversion for datetimes stored as epoch, ISO string, or datetime."""
     if value is None:
         return None
@@ -434,12 +438,12 @@ def _coerce_datetime(value: Any) -> Optional[datetime]:
     return None
 
 
-def _max_datetime(*values: Any) -> Optional[datetime]:
+def _max_datetime(*values: Any) -> datetime | None:
     candidates = [candidate for candidate in (_coerce_datetime(v) for v in values) if candidate]
     return max(candidates) if candidates else None
 
 
-def _normalize_session_status(value: Any) -> Optional[CanonicalSessionStatus]:
+def _normalize_session_status(value: Any) -> CanonicalSessionStatus | None:
     if not isinstance(value, str) or not value.strip():
         return None
 
@@ -469,7 +473,7 @@ def _effective_session_status(session: dict[str, Any]) -> CanonicalSessionStatus
         return CanonicalSessionStatus.UNKNOWN
 
 
-def _datetime_to_timestamp(value: Any) -> Optional[float]:
+def _datetime_to_timestamp(value: Any) -> float | None:
     coerced = _coerce_datetime(value)
     return coerced.timestamp() if coerced else None
 
@@ -478,11 +482,11 @@ def _current_utc_naive() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _session_identifier(session: Optional[dict[str, Any]]) -> str:
+def _session_identifier(session: dict[str, Any] | None) -> str:
     return str((session or {}).get("id") or (session or {}).get("session_id") or "")
 
 
-def _session_owner(session: Optional[dict[str, Any]]) -> str:
+def _session_owner(session: dict[str, Any] | None) -> str:
     return str((session or {}).get("staff_user") or (session or {}).get("user_id") or "")
 
 
@@ -549,7 +553,7 @@ def _build_session_detail_from_doc(
 
 
 def _derive_presence_status(
-    last_activity: Optional[datetime],
+    last_activity: datetime | None,
 ) -> WorkflowPresenceStatus:
     if not last_activity:
         return WorkflowPresenceStatus.OFFLINE
@@ -563,7 +567,7 @@ def _derive_presence_status(
 
 
 def _derive_workflow_stage(
-    session_status: Optional[CanonicalSessionStatus],
+    session_status: CanonicalSessionStatus | None,
     pending_approvals: int,
     assigned_recounts: int,
 ) -> WorkflowStage:
@@ -580,7 +584,7 @@ def _derive_workflow_stage(
     return WorkflowStage.IDLE
 
 
-def _minutes_since(value: Optional[datetime]) -> float:
+def _minutes_since(value: datetime | None) -> float:
     if not value:
         return 0.0
     return max(
@@ -592,13 +596,13 @@ def _minutes_since(value: Optional[datetime]) -> float:
 def _calculate_priority_score(
     workflow_stage: WorkflowStage,
     presence_status: WorkflowPresenceStatus,
-    session_status: Optional[CanonicalSessionStatus],
+    session_status: CanonicalSessionStatus | None,
     pending_approvals: int,
     assigned_recounts: int,
     total_variance: float,
-    pending_review_since: Optional[datetime],
-    recount_assigned_at: Optional[datetime],
-    last_activity: Optional[datetime],
+    pending_review_since: datetime | None,
+    recount_assigned_at: datetime | None,
+    last_activity: datetime | None,
 ) -> int:
     score = 0
 
@@ -660,7 +664,7 @@ def _priority_band_for_score(score: int) -> WorkflowPriorityBand:
 def _derive_next_action(
     workflow_stage: WorkflowStage,
     presence_status: WorkflowPresenceStatus,
-    session_status: Optional[CanonicalSessionStatus],
+    session_status: CanonicalSessionStatus | None,
 ) -> WorkflowNextAction:
     if workflow_stage == WorkflowStage.RECOUNT_QUEUE:
         return WorkflowNextAction.HANDLE_RECOUNT
@@ -752,7 +756,7 @@ async def _build_sessions_analytics_payload(db: AsyncIOMotorDatabase) -> dict[st
 
 def _validate_session_create_request(
     session_data: SessionCreate,
-) -> tuple[str, Optional[str], Optional[str], Optional[str]]:
+) -> tuple[str, str | None, str | None, str | None]:
     warehouse = session_data.warehouse.strip()
     if not warehouse:
         raise HTTPException(status_code=400, detail="Warehouse name cannot be empty")
@@ -772,7 +776,7 @@ async def _find_existing_session_for_warehouse(
     db: AsyncIOMotorDatabase,
     username: str,
     warehouse: str,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     existing_session = await db.sessions.find_one(
         {
             "staff_user": username,
@@ -804,9 +808,9 @@ def _build_new_session(
     session_data: SessionCreate,
     current_user: dict[str, Any],
     warehouse: str,
-    location_type: Optional[str],
-    location_name: Optional[str],
-    rack_no: Optional[str],
+    location_type: str | None,
+    location_name: str | None,
+    rack_no: str | None,
 ) -> Session:
     now = datetime.now(timezone.utc)
     return Session(
@@ -833,9 +837,9 @@ async def _persist_session_snapshot(
     db: AsyncIOMotorDatabase,
     session: Session,
     warehouse: str,
-    location_type: Optional[str],
-    location_name: Optional[str],
-    rack_no: Optional[str],
+    location_type: str | None,
+    location_name: str | None,
+    rack_no: str | None,
     username: str,
 ) -> None:
     from backend.core.schemas.snapshot import SessionSnapshot
@@ -1163,8 +1167,8 @@ def _sort_user_workflows(results: list[UserWorkflowSummary]) -> None:
 async def get_sessions(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    status: Optional[str] = Query(None, description="Filter by status"),
-    user_id: Optional[str] = Query(None, description="Filter by user"),
+    status: str | None = Query(None, description="Filter by status"),
+    user_id: str | None = Query(None, description="Filter by user"),
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> PaginatedResponse[Session]:
@@ -1275,8 +1279,8 @@ async def create_session(
 
 @router.get("/active", response_model=list[SessionDetail])
 async def get_active_sessions(
-    user_id: Optional[str] = Query(None, description="Filter by user"),
-    rack_id: Optional[str] = Query(None, description="Filter by rack"),
+    user_id: str | None = Query(None, description="Filter by user"),
+    rack_id: str | None = Query(None, description="Filter by rack"),
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> list[SessionDetail]:
@@ -1638,7 +1642,7 @@ async def _finalize_session_canonical(
     current_user: dict[str, Any],
     lock_manager: Any,
     *,
-    note: Optional[str] = None,
+    note: str | None = None,
 ) -> dict[str, Any]:
     count_line_write_service = CountLineWriteService(db)
     lifecycle_service = SessionLifecycleService(
@@ -1733,7 +1737,7 @@ async def _complete_session_legacy_compatible(
 @router.post("/{session_id}/finalize")
 async def finalize_session(
     session_id: str,
-    request: Optional[SessionFinalizeRequest] = None,
+    request: SessionFinalizeRequest | None = None,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
     redis_service=Depends(get_redis),

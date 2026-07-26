@@ -7,7 +7,7 @@ import React from "react";
 import { View, Text, StyleSheet, Dimensions, Platform } from "react-native";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { colorWithAlpha, type ThemeTokens } from "../../theme/themeTokens";
-import { font, gap } from "@/theme/staffUiScale";
+import { font, gap, radius } from "@/theme/staffUiScale";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CHART_WIDTH = SCREEN_WIDTH - gap.lg * 2 - 80;
@@ -283,7 +283,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
       position: "absolute",
       width: 8,
       height: 8,
-      borderRadius: 4,
+      borderRadius: radius.xs,
       borderWidth: 2,
       borderColor: uiTokens.colors.surfaceElevated,
     },
@@ -293,8 +293,8 @@ const createStyles = (uiTokens: ThemeTokens) =>
       left: -20,
       backgroundColor: uiTokens.colors.surfaceElevated,
       paddingHorizontal: gap.xs,
-      paddingVertical: 2,
-      borderRadius: 4,
+      paddingVertical: gap.xxs,
+      borderRadius: radius.xs,
       borderWidth: 1,
       borderColor: uiTokens.colors.border,
       minWidth: 40,
@@ -331,7 +331,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: uiTokens.colors.surface,
-      borderRadius: 8,
+      borderRadius: radius.sm,
     },
     emptyText: {
       fontSize: font.size.base,

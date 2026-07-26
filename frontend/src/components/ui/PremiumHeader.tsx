@@ -23,6 +23,7 @@ import Animated, {
 import { useThemeContext } from "../../context/ThemeContext";
 import { AppTheme } from "../../theme/themes";
 import { BrandLogo } from "../branding/BrandLogo";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 interface PremiumHeaderProps {
   title?: string;
@@ -225,7 +226,7 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
       ...theme.shadows.sm,
     },
     titleContainer: {
-      gap: 2,
+      gap: gap.xxs,
     },
     title: {
       ...theme.typography.h4,
@@ -237,7 +238,7 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
       color: theme.colors.text.tertiary,
     },
     userInfo: {
-      gap: 2,
+      gap: gap.xxs,
     },
     greeting: {
       ...theme.typography.label.medium,
@@ -252,7 +253,7 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
       marginTop: 4,
       alignSelf: "flex-start",
       paddingHorizontal: theme.spacing.sm,
-      paddingVertical: 2,
+      paddingVertical: gap.xxs,
       borderRadius: theme.borderRadius.full,
       backgroundColor: "rgba(99, 102, 241, 0.15)",
       borderWidth: 1,

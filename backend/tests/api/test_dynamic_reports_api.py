@@ -6,10 +6,9 @@ Target: Achieve 80%+ coverage
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
 from backend.api.dynamic_reports_api import ReportField, ReportGeneration, ReportTemplate
 from backend.server import app
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.fixture

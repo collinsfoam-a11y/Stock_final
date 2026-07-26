@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ class ErpNextExportCorrectionNotFoundError(LookupError):
     """Raised when a proposal_id or export_id does not resolve."""
 
 
-def _strip_id(doc: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+def _strip_id(doc: dict[str, Any] | None) -> dict[str, Any] | None:
     if doc is None:
         return None
     doc = dict(doc)
@@ -143,7 +143,7 @@ class ErpNextExportCorrectionService:
         ).to_list(length=10000)
         return [_strip_id(d) for d in docs]
 
-    async def get_proposal(self, proposal_id: str) -> Optional[dict[str, Any]]:
+    async def get_proposal(self, proposal_id: str) -> dict[str, Any] | None:
         doc = await self.db.erpnext_export_correction_proposals.find_one(
             {"proposal_id": proposal_id}
         )
@@ -154,7 +154,7 @@ class ErpNextExportCorrectionService:
         proposal_id: str,
         *,
         current_user: dict[str, Any],
-        review_reason: Optional[str] = None,
+        review_reason: str | None = None,
     ) -> dict[str, Any]:
         proposal = await self.db.erpnext_export_correction_proposals.find_one(
             {"proposal_id": proposal_id}
@@ -306,6 +306,4 @@ class ErpNextExportCorrectionService:
                 details=details,
             )
         except Exception as exc:  # pragma: no cover - best-effort by contract
-            logger.warning(
-                "Failed to audit ERPNext export correction change (%s): %s", action, exc
-            )
+            logger.warning("Failed to audit ERPNext export correction change (%s): %s", action, exc)

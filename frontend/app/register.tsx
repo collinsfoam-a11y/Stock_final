@@ -1,4 +1,9 @@
-import React from "react";
+/**
+ * Register Screen - Lavanya eMart
+ * Create a new staff account
+ */
+
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -11,6 +16,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
 import { useAuthStore } from "@/store/authStore";
 import { registerUser } from "@/services/api/api";
 import { createLogger } from "@/services/logging";
@@ -23,6 +31,15 @@ import { useUiTokens } from "@/hooks/useUiTokens";
 import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
 import { safeBackNavigation } from "@/utils/navigation";
 import { getFlag } from "@/constants/flags";
+import { haptics } from "@/services/haptics";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
+import { duration } from "@/theme/staffUiScale";
+import {
+  spacing as unifiedSpacing,
+  textStyles,
+  shadows,
+} from "@/theme/legacyCompat";
 
 type RegisterFormData = {
   username: string;
@@ -44,17 +61,48 @@ const initialFormData: RegisterFormData = {
   phone: "",
 };
 
+// ---------------------------------------------------------------------------
+// Safe Animated View (web-compatible)
+// ---------------------------------------------------------------------------
+
+interface SafeAnimatedViewProps {
+  children: React.ReactNode;
+  style?: any;
+  entering?: any;
+  delay?: number;
+}
+
+const SafeAnimatedView: React.FC<SafeAnimatedViewProps> = ({
+  children,
+  style,
+  entering,
+  delay = 0,
+}) => {
+  if (Platform.OS === "web") {
+    return <View style={style}>{children}</View>;
+  }
+  const animationProps = entering
+    ? { entering: entering.delay(delay).duration(duration.slowest).springify() }
+    : {};
+  return (
+    <Animated.View style={style} {...animationProps}>
+      {children}
+    </Animated.View>
+  );
+};
+
 export default function Register() {
-  const [formData, setFormData] = React.useState<RegisterFormData>(initialFormData);
-  const [errors, setErrors] = React.useState<Partial<Record<keyof RegisterFormData, string>>>({});
-  const [loading, setLoading] = React.useState(false);
+  const [formData, setFormData] = useState<RegisterFormData>(initialFormData);
+  const [errors, setErrors] = useState<Partial<Record<keyof RegisterFormData, string>>>({});
+  const [loading, setLoading] = useState(false);
 
   const router = useRouter();
   const establishSession = useAuthStore((state) => state.establishSession);
   const uiTokens = useUiTokens();
+  const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const publicRegistrationEnabled = getFlag("enablePublicRegistration");
 
-  const updateField = React.useCallback((field: keyof RegisterFormData, value: string) => {
+  const updateField = useCallback((field: keyof RegisterFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => {
       if (!prev[field]) {
@@ -66,9 +114,9 @@ export default function Register() {
     });
   }, []);
 
-  const handleBackToLogin = () => {
+  const handleBackToLogin = useCallback(() => {
     safeBackNavigation(router, { fallbackHref: "/login" });
-  };
+  }, [router]);
 
   const validateForm = () => {
     const nextErrors: Partial<Record<keyof RegisterFormData, string>> = {};
@@ -98,6 +146,8 @@ export default function Register() {
 
     try {
       setLoading(true);
+      haptics.medium();
+      
       const response = await registerUser({
         username: formData.username.trim(),
         password: formData.password,
@@ -161,10 +211,7 @@ export default function Register() {
 
   if (!publicRegistrationEnabled) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: uiTokens.colors.background }]}
-        edges={["top", "left", "right"]}
-      >
+      <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
         <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
         <ModernHeader
           title="Account Setup"
@@ -173,35 +220,41 @@ export default function Register() {
           onBackPress={handleBackToLogin}
         />
 
-        <View style={styles.restrictedContent}>
-          <ModernCard
-            padding={uiTokens.spacing.lg}
-            style={[styles.formCard, { backgroundColor: uiTokens.colors.surfaceElevated }]}
-          >
-            <Text style={[styles.title, { color: uiTokens.colors.textPrimary }]}>
-              Registration is restricted
-            </Text>
-            <Text style={[styles.subtitle, { color: uiTokens.colors.textSecondary }]}>
+        <View style={styles.contentContainer}>
+          <SafeAnimatedView entering={FadeInDown} style={styles.welcomeSection}>
+            <View style={styles.iconContainer}>
+              <Ionicons
+                name="lock-closed"
+                size={48}
+                color={uiTokens.colors.accent}
+              />
+            </View>
+
+            <Text style={styles.title}>Registration is restricted</Text>
+            <Text style={styles.subtitle}>
               New users must be created by an administrator before they can sign in.
             </Text>
-            <ModernButton
-              title="Sign In"
-              onPress={handleBackToLogin}
-              fullWidth
-              icon="log-in-outline"
-            />
-          </ModernCard>
+          </SafeAnimatedView>
+
+          <SafeAnimatedView entering={FadeInDown} delay={100} style={styles.formContainer}>
+            <ModernCard padding={unifiedSpacing.lg} style={styles.card}>
+              <ModernButton
+                title="Return to Sign In"
+                onPress={handleBackToLogin}
+                fullWidth
+                icon="log-in-outline"
+              />
+            </ModernCard>
+          </SafeAnimatedView>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: uiTokens.colors.background }]}
-      edges={["top", "left", "right"]}
-    >
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
+      
       <ModernHeader
         title="Create Account"
         subtitle="Staff profile setup"
@@ -212,167 +265,214 @@ export default function Register() {
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          keyboardDismissMode="none"
         >
-          <ModernCard
-            padding={uiTokens.spacing.lg}
-            style={[styles.formCard, { backgroundColor: uiTokens.colors.surfaceElevated }]}
-          >
-            <Text style={[styles.title, { color: uiTokens.colors.textPrimary }]}>
-              Account Details
-            </Text>
-            <Text style={[styles.subtitle, { color: uiTokens.colors.textSecondary }]}>
-              Ask an administrator if registration is restricted for your store.
-            </Text>
+          <View style={styles.contentContainer}>
+            <SafeAnimatedView entering={FadeInDown} style={styles.welcomeSection}>
+              <View style={styles.iconContainer}>
+                <Ionicons
+                  name="person-add"
+                  size={48}
+                  color={uiTokens.colors.accent}
+                />
+              </View>
 
-            <ModernInput
-              label="Username"
-              required
-              placeholder="Enter username"
-              value={formData.username}
-              onChangeText={(text) => updateField("username", text)}
-              error={errors.username}
-              icon="person-outline"
-              autoCapitalize="none"
-            />
-
-            <ModernInput
-              label="Full Name"
-              required
-              placeholder="Enter your full name"
-              value={formData.full_name}
-              onChangeText={(text) => updateField("full_name", text)}
-              error={errors.full_name}
-              icon="person"
-              autoCapitalize="words"
-            />
-
-            <ModernInput
-              label="Employee ID"
-              placeholder="Optional employee ID"
-              value={formData.employee_id}
-              onChangeText={(text) => updateField("employee_id", text)}
-              icon="card-outline"
-              autoCapitalize="none"
-            />
-
-            <ModernInput
-              label="Phone Number"
-              placeholder="Optional phone number"
-              value={formData.phone}
-              onChangeText={(text) => updateField("phone", text)}
-              icon="call-outline"
-              keyboardType="phone-pad"
-            />
-
-            <ModernInput
-              label="Password"
-              required
-              placeholder="Minimum 6 characters"
-              value={formData.password}
-              onChangeText={(text) => updateField("password", text)}
-              error={errors.password}
-              icon="lock-closed-outline"
-              secureTextEntry
-            />
-
-            <ModernInput
-              label="Confirm Password"
-              required
-              placeholder="Re-enter password"
-              value={formData.confirmPassword}
-              onChangeText={(text) => updateField("confirmPassword", text)}
-              error={errors.confirmPassword}
-              icon="lock-closed-outline"
-              secureTextEntry
-            />
-
-            <ModernButton
-              title={loading ? "Creating Account..." : "Create Account"}
-              onPress={handleRegister}
-              loading={loading}
-              disabled={loading}
-              fullWidth
-              icon="person-add"
-              style={styles.registerButton}
-            />
-
-            <View style={styles.loginLink}>
-              <Text style={[styles.loginLinkText, { color: uiTokens.colors.textSecondary }]}>
-                Already have an account?
+              <Text style={styles.title}>Account Details</Text>
+              <Text style={styles.subtitle}>
+                Ask an administrator if registration is restricted for your store.
               </Text>
-              <TouchableOpacity onPress={handleBackToLogin}>
-                <Text style={[styles.loginLinkButton, { color: uiTokens.colors.accent }]}>
-                  Sign in
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </ModernCard>
+            </SafeAnimatedView>
+
+            <SafeAnimatedView
+              entering={FadeInDown}
+              delay={100}
+              style={styles.formContainer}
+            >
+              <ModernCard padding={unifiedSpacing.lg} style={styles.card}>
+                <ModernInput
+                  label="Username"
+                  required
+                  placeholder="Enter username"
+                  value={formData.username}
+                  onChangeText={(text) => updateField("username", text)}
+                  error={errors.username}
+                  icon="person-outline"
+                  autoCapitalize="none"
+                />
+
+                <ModernInput
+                  label="Full Name"
+                  required
+                  placeholder="e.g. Jane Doe"
+                  value={formData.full_name}
+                  onChangeText={(text) => updateField("full_name", text)}
+                  error={errors.full_name}
+                  icon="text-outline"
+                  autoCapitalize="words"
+                />
+
+                <ModernInput
+                  label="Employee ID"
+                  placeholder="Optional ID"
+                  value={formData.employee_id}
+                  onChangeText={(text) => updateField("employee_id", text)}
+                  icon="id-card-outline"
+                />
+
+                <ModernInput
+                  label="Phone Number"
+                  placeholder="Optional phone number"
+                  value={formData.phone}
+                  onChangeText={(text) => updateField("phone", text)}
+                  icon="call-outline"
+                  keyboardType="phone-pad"
+                />
+
+                <ModernInput
+                  label="Password"
+                  required
+                  placeholder="Minimum 6 characters"
+                  value={formData.password}
+                  onChangeText={(text) => updateField("password", text)}
+                  error={errors.password}
+                  icon="lock-closed-outline"
+                  secureTextEntry
+                />
+
+                <ModernInput
+                  label="Confirm Password"
+                  required
+                  placeholder="Re-enter password"
+                  value={formData.confirmPassword}
+                  onChangeText={(text) => updateField("confirmPassword", text)}
+                  error={errors.confirmPassword}
+                  icon="lock-closed-outline"
+                  secureTextEntry
+                />
+
+                <ModernButton
+                  title={loading ? "Creating Account..." : "Create Account"}
+                  onPress={handleRegister}
+                  loading={loading}
+                  disabled={loading}
+                  fullWidth
+                  icon="person-add"
+                  style={styles.registerButton}
+                />
+
+                <View style={styles.loginLink}>
+                  <Text style={styles.loginLinkText}>
+                    Already have an account?
+                  </Text>
+                  <TouchableOpacity
+                    accessibilityRole="link"
+                    accessibilityLabel="Sign in"
+                    onPress={handleBackToLogin}
+                  >
+                    <Text style={styles.loginLinkButton}>
+                      Sign in
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </ModernCard>
+            </SafeAnimatedView>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-  },
-  restrictedContent: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-  },
-  formCard: {
-    width: "100%",
-    maxWidth: 500,
-    alignSelf: "center",
-  },
-  title: {
-    fontSize: 24,
-    lineHeight: 30,
-    fontWeight: "700",
-    textAlign: "center",
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: "center",
-    marginBottom: 24,
-  },
-  registerButton: {
-    marginTop: 8,
-  },
-  loginLink: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 24,
-    flexWrap: "wrap",
-  },
-  loginLinkText: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  loginLinkButton: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "700",
-  },
-});
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
+const createStyles = (tokens: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: tokens.colors.background,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: unifiedSpacing.lg,
+      paddingBottom: unifiedSpacing.xl,
+    },
+    contentContainer: {
+      flex: 1,
+      justifyContent: "center",
+      maxWidth: 400,
+      alignSelf: "center",
+      width: "100%",
+    },
+    welcomeSection: {
+      alignItems: "center",
+      marginBottom: unifiedSpacing["2xl"],
+      paddingTop: unifiedSpacing.xxl,
+    },
+    iconContainer: {
+      width: 80,
+      height: 80,
+      borderRadius: radius["3xl"],
+      backgroundColor: colorWithAlpha(
+        tokens.colors.accent,
+        tokens.mode === "dark" ? 0.25 : 0.12
+      ),
+      justifyContent: "center",
+      alignItems: "center",
+      alignSelf: "center",
+      marginBottom: unifiedSpacing.lg,
+      ...shadows.sm,
+    },
+    title: {
+      ...textStyles.h3,
+      color: tokens.colors.textPrimary,
+      textAlign: "center",
+      marginBottom: unifiedSpacing.sm,
+    },
+    subtitle: {
+      ...textStyles.body,
+      color: tokens.colors.textSecondary,
+      textAlign: "center",
+      marginBottom: unifiedSpacing.xl,
+      lineHeight: 24,
+      paddingHorizontal: unifiedSpacing.md,
+    },
+    formContainer: {
+      marginBottom: unifiedSpacing.xl,
+    },
+    card: {
+      backgroundColor: tokens.colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: tokens.colors.border,
+    },
+    registerButton: {
+      marginTop: unifiedSpacing.lg,
+    },
+    loginLink: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      gap: unifiedSpacing.xs,
+      marginTop: unifiedSpacing.xl,
+      flexWrap: "wrap",
+    },
+    loginLinkText: {
+      ...textStyles.body,
+      color: tokens.colors.textSecondary,
+    },
+    loginLinkButton: {
+      ...textStyles.body,
+      color: tokens.colors.accent,
+      fontWeight: "700",
+    },
+  });

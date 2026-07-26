@@ -6,7 +6,7 @@ Manages serial numbers, MRP, HSN codes, and other missing data additions
 import logging
 import re
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 # Validation helper functions
-def _validate_serial_number(value: str) -> Optional[str]:
+def _validate_serial_number(value: str) -> str | None:
     """Validate serial number format."""
     serial = str(value).strip()
     if serial and not re.match(r"^[A-Z0-9\-]+$", serial, re.IGNORECASE):
@@ -22,7 +22,7 @@ def _validate_serial_number(value: str) -> Optional[str]:
     return None
 
 
-def _validate_mrp(value: Any) -> Optional[str]:
+def _validate_mrp(value: Any) -> str | None:
     """Validate MRP value."""
     try:
         mrp = float(value)
@@ -33,7 +33,7 @@ def _validate_mrp(value: Any) -> Optional[str]:
     return None
 
 
-def _validate_hsn_code(value: str) -> Optional[str]:
+def _validate_hsn_code(value: str) -> str | None:
     """Validate HSN code format (4 or 8 digits)."""
     hsn = str(value).strip()
     if hsn and not re.match(r"^\d{4}(\d{4})?$", hsn):
@@ -41,7 +41,7 @@ def _validate_hsn_code(value: str) -> Optional[str]:
     return None
 
 
-def _validate_barcode(value: str) -> Optional[str]:
+def _validate_barcode(value: str) -> str | None:
     """Validate barcode format (8-13 digits)."""
     barcode = str(value).strip()
     if barcode and not re.match(r"^\d{8,13}$", barcode):
@@ -49,7 +49,7 @@ def _validate_barcode(value: str) -> Optional[str]:
     return None
 
 
-def _validate_condition(value: str, valid_conditions: list[str]) -> Optional[str]:
+def _validate_condition(value: str, valid_conditions: list[str]) -> str | None:
     """Validate condition value against allowed list."""
     if value.lower() not in valid_conditions:
         return f"Condition must be one of: {', '.join(valid_conditions)}"
@@ -215,10 +215,10 @@ class EnrichmentService:
             }
 
         except ValueError as e:
-            logger.error(f"Enrichment validation error for {item_code}: {str(e)}")
+            logger.error(f"Enrichment validation error for {item_code}: {e!s}")
             return {"success": False, "error": str(e)}
         except Exception as e:
-            logger.error(f"Enrichment failed for {item_code}: {str(e)}")
+            logger.error(f"Enrichment failed for {item_code}: {e!s}")
             raise
 
     def validate_enrichment_data(self, data: dict[str, Any]) -> dict[str, Any]:
@@ -241,7 +241,7 @@ class EnrichmentService:
                     errors.append(error)
 
         # Condition validation (special case with valid list)
-        if "condition" in data and data["condition"]:
+        if data.get("condition"):
             error = _validate_condition(data["condition"], _VALID_CONDITIONS)
             if error:
                 errors.append(error)
@@ -249,7 +249,7 @@ class EnrichmentService:
         return {"is_valid": len(errors) == 0, "errors": errors}
 
     async def calculate_completeness(
-        self, item_code: str, additional_fields: dict[str, Optional[Any]] = None
+        self, item_code: str, additional_fields: dict[str, Any | None] = None
     ) -> dict[str, Any]:
         """
         Calculate data completeness for an item
@@ -307,9 +307,9 @@ class EnrichmentService:
 
     async def get_enrichment_stats(
         self,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        user_id: Optional[str] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        user_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Get enrichment statistics for a date range or user
@@ -468,8 +468,8 @@ class EnrichmentService:
 
     async def get_enrichment_leaderboard(
         self,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 10,
     ) -> list[dict[str, Any]]:
         """
@@ -522,7 +522,7 @@ class EnrichmentService:
         ]
 
     async def get_items_needing_enrichment(
-        self, category: Optional[str] = None, limit: int = 100
+        self, category: str | None = None, limit: int = 100
     ) -> list[dict[str, Any]]:
         """
         Get items that need data enrichment (incomplete data)

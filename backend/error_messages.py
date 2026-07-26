@@ -3,8 +3,6 @@ Error Messages - Centralized error message definitions
 Provides consistent, user-friendly error messages throughout the application
 """
 
-from typing import Optional
-
 
 # Error Categories
 class ErrorCategory:
@@ -232,7 +230,7 @@ ERROR_MESSAGES = {
 }
 
 
-def get_error_message(error_key: str, context: Optional[dict] = None) -> dict:
+def get_error_message(error_key: str, context: dict | None = None) -> dict:
     """
     Get formatted error message
     Args:
@@ -265,7 +263,7 @@ def get_error_message(error_key: str, context: Optional[dict] = None) -> dict:
     return result
 
 
-def get_error_by_code(status_code: int, error_key: Optional[str] = None) -> dict:
+def get_error_by_code(status_code: int, error_key: str | None = None) -> dict:
     """
     Get error message by HTTP status code
     Args:

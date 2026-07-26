@@ -24,6 +24,7 @@ import {
   shadows,
 } from "@/theme/legacyCompat";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 import { safeBackNavigation } from "@/utils/navigation";
 import {
@@ -913,7 +914,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
   },
   sessionIdentity: {
     flex: 1,
-    gap: 4,
+    gap: gap.xs,
   },
   sectionLabel: {
     fontSize: typography.fontSize.sm,
@@ -1006,7 +1007,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
   },
   noticeCopy: {
     flex: 1,
-    gap: 4,
+    gap: gap.xs,
   },
   noticeTitle: {
     fontSize: typography.fontSize.sm,
@@ -1022,7 +1023,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
     flexDirection: "row",
     backgroundColor: uiTokens.colors.surfaceElevated,
     borderRadius: borderRadius.xl,
-    padding: 4,
+    padding: gap.xs,
     marginBottom: spacing.lg,
     borderWidth: 1,
     borderColor: uiTokens.colors.border,
@@ -1033,7 +1034,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: gap.sm,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.lg,
   },
@@ -1052,9 +1053,9 @@ const createStyles = (uiTokens: ThemeTokens) =>
   badge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    gap: gap.xs,
+    paddingHorizontal: gap.sm,
+    paddingVertical: gap.xs,
     borderRadius: borderRadius.full,
     borderWidth: 1,
   },
@@ -1096,7 +1097,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: 8,
+    gap: gap.sm,
   },
   lineCode: {
     fontSize: typography.fontSize.sm,
@@ -1130,7 +1131,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
   reasonBox: {
     backgroundColor: colorWithAlpha(uiTokens.colors.warning, 0.12),
     borderRadius: borderRadius.md,
-    padding: 12,
+    padding: gap.md,
     marginBottom: 8,
     borderLeftWidth: 3,
     borderLeftColor: uiTokens.colors.warning,
@@ -1154,9 +1155,9 @@ const createStyles = (uiTokens: ThemeTokens) =>
   verifiedInfo: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: gap.sm,
     marginBottom: spacing.sm,
-    padding: 8,
+    padding: gap.sm,
     borderRadius: borderRadius.md,
     backgroundColor: colorWithAlpha(uiTokens.colors.success, 0.12),
   },
@@ -1168,7 +1169,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
   lineActions: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: gap.md,
     marginTop: spacing.md,
   },
   inlineActionButton: {
@@ -1178,9 +1179,9 @@ const createStyles = (uiTokens: ThemeTokens) =>
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: gap.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,
+    paddingVertical: gap.md,
     borderRadius: borderRadius.md,
     ...shadows.sm,
   },

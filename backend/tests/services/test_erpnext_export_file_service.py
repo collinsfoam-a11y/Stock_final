@@ -11,7 +11,6 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
-
 from backend.api.erpnext_exports_api import download_erpnext_export_file
 from backend.services.erpnext_export_file_service import (
     ErpNextExportFileError,
@@ -113,7 +112,10 @@ async def _approve_ready_preview(
     await _seed_erp_item(db, item_code)
     await _seed_approved_line(db, session_id, item_code, **(line_overrides or {}))
     preview = await ErpNextExportService(db).generate_preview(
-        session_id=session_id, mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id=session_id,
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     await ErpNextExportService(db).approve_preview(
         export_id=preview["export_id"], current_user=ADMIN_USER
@@ -132,7 +134,7 @@ def _parse_xlsx(content: bytes) -> tuple[list[str], list[dict]]:
     sheet = workbook.active
     rows_iter = sheet.iter_rows(values_only=True)
     headers = list(next(rows_iter))
-    rows = [dict(zip(headers, row)) for row in rows_iter]
+    rows = [dict(zip(headers, row, strict=False)) for row in rows_iter]
     return headers, rows
 
 
@@ -147,7 +149,10 @@ async def test_cannot_download_file_for_non_approved_preview():
     await _seed_erp_item(db, "ITEM-1")
     await _seed_approved_line(db, "sess-1", "ITEM-1")
     preview = await ErpNextExportService(db).generate_preview(
-        session_id="sess-1", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-1",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     assert preview["status"] == "READY_FOR_APPROVAL"  # not approved yet
 
@@ -274,11 +279,17 @@ async def test_uom_conversion_factor_exports_in_stock_entry_csv_and_xlsx():
     service = ErpNextExportFileService(db)
 
     csv_result = await service.generate_file(
-        export_id=approved["export_id"], file_type="stock_entry", file_format="csv", current_user=ADMIN_USER
+        export_id=approved["export_id"],
+        file_type="stock_entry",
+        file_format="csv",
+        current_user=ADMIN_USER,
     )
     csv_rows = _parse_csv(csv_result["content"])
     xlsx_result = await service.generate_file(
-        export_id=approved["export_id"], file_type="stock_entry", file_format="xlsx", current_user=ADMIN_USER
+        export_id=approved["export_id"],
+        file_type="stock_entry",
+        file_format="xlsx",
+        current_user=ADMIN_USER,
     )
     xlsx_headers, xlsx_rows = _parse_xlsx(xlsx_result["content"])
 
@@ -295,11 +306,17 @@ async def test_uom_conversion_factor_exports_in_stock_reconciliation_csv_and_xls
     service = ErpNextExportFileService(db)
 
     csv_result = await service.generate_file(
-        export_id=approved["export_id"], file_type="stock_reconciliation", file_format="csv", current_user=ADMIN_USER
+        export_id=approved["export_id"],
+        file_type="stock_reconciliation",
+        file_format="csv",
+        current_user=ADMIN_USER,
     )
     csv_rows = _parse_csv(csv_result["content"])
     xlsx_result = await service.generate_file(
-        export_id=approved["export_id"], file_type="stock_reconciliation", file_format="xlsx", current_user=ADMIN_USER
+        export_id=approved["export_id"],
+        file_type="stock_reconciliation",
+        file_format="xlsx",
+        current_user=ADMIN_USER,
     )
     xlsx_headers, xlsx_rows = _parse_xlsx(xlsx_result["content"])
 
@@ -324,7 +341,10 @@ async def test_serials_csv_creates_one_row_per_serial():
         serial_numbers=["SN-A", "SN-B"],
     )
     preview = await ErpNextExportService(db).generate_preview(
-        session_id="sess-4", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-4",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     assert preview["status"] == "READY_FOR_APPROVAL"
     await ErpNextExportService(db).approve_preview(
@@ -363,7 +383,10 @@ async def test_batches_csv_creates_unique_batch_rows_only():
         id="line-ITEM-5B-sess-5-dup",
     )
     preview = await ErpNextExportService(db).generate_preview(
-        session_id="sess-5", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-5",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     await ErpNextExportService(db).approve_preview(
         export_id=preview["export_id"], current_user=ADMIN_USER
@@ -395,12 +418,19 @@ async def test_photo_manifest_exports_references_not_blob():
         "sess-6",
         "ITEM-6",
         photo_proofs=[
-            {"id": "photo-1", "url": "https://example.com/photo1.jpg", "timestamp": "2026-01-01T00:00:00Z"}
+            {
+                "id": "photo-1",
+                "url": "https://example.com/photo1.jpg",
+                "timestamp": "2026-01-01T00:00:00Z",
+            }
         ],
         photo_base64="this-should-never-appear-in-any-csv-output==",
     )
     preview = await ErpNextExportService(db).generate_preview(
-        session_id="sess-6", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-6",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     await ErpNextExportService(db).approve_preview(
         export_id=preview["export_id"], current_user=ADMIN_USER
@@ -438,20 +468,26 @@ async def test_durable_inline_photo_entries_export_in_xlsx():
     await _seed_finalized_session(db, "sess-6b")
     await _seed_default_mappings(db)
     await _seed_erp_item(db, "ITEM-6B")
-    await _seed_approved_line(
-        db, "sess-6b", "ITEM-6B", photo_base64="aW5saW5lLXBob3RvLWJ5dGVz"
-    )
+    await _seed_approved_line(db, "sess-6b", "ITEM-6B", photo_base64="aW5saW5lLXBob3RvLWJ5dGVz")
     preview = await ErpNextExportService(db).generate_preview(
-        session_id="sess-6b", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-6b",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
-    await ErpNextExportService(db).approve_preview(export_id=preview["export_id"], current_user=ADMIN_USER)
+    await ErpNextExportService(db).approve_preview(
+        export_id=preview["export_id"], current_user=ADMIN_USER
+    )
     await ErpNextExportPhotoManifestService(db).create_manifest(
         export_id=preview["export_id"], current_user=ADMIN_USER
     )
 
     service = ErpNextExportFileService(db)
     result = await service.generate_file(
-        export_id=preview["export_id"], file_type="photo_manifest", file_format="xlsx", current_user=ADMIN_USER
+        export_id=preview["export_id"],
+        file_type="photo_manifest",
+        file_format="xlsx",
+        current_user=ADMIN_USER,
     )
     headers, rows = _parse_xlsx(result["content"])
 
@@ -573,7 +609,13 @@ async def test_approved_preview_rows_remain_unchanged_after_download():
     approval_hash_before = approved["approval_hash"]
 
     service = ErpNextExportFileService(db)
-    for file_type in ("stock_entry", "stock_reconciliation", "serials", "batches", "photo_manifest"):
+    for file_type in (
+        "stock_entry",
+        "stock_reconciliation",
+        "serials",
+        "batches",
+        "photo_manifest",
+    ):
         await service.generate_file(
             export_id=approved["export_id"], file_type=file_type, current_user=ADMIN_USER
         )
@@ -622,7 +664,10 @@ async def test_xlsx_generation_requires_approved_preview():
     await _seed_erp_item(db, "ITEM-14")
     await _seed_approved_line(db, "sess-14", "ITEM-14")
     preview = await ErpNextExportService(db).generate_preview(
-        session_id="sess-14", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-14",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     assert preview["status"] == "READY_FOR_APPROVAL"
 
@@ -646,7 +691,10 @@ async def test_xlsx_generation_blocks_pending_correction_proposals():
     await _seed_erp_item(db, "ITEM-15")
     await _seed_approved_line(db, "sess-15", "ITEM-15")
     preview = await ErpNextExportService(db).generate_preview(
-        session_id="sess-15", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-15",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     row_key = preview["rows"][0]["count_line_id"]
     await ErpNextExportCorrectionService(db).create_proposal(
@@ -741,8 +789,10 @@ async def test_xlsx_headers_match_csv_headers():
             current_user=ADMIN_USER,
         )
         csv_rows = _parse_csv(csv_result["content"])
-        csv_headers = list(csv_rows[0].keys()) if csv_rows else list(
-            csv.DictReader(io.StringIO(csv_result["content"].decode("utf-8"))).fieldnames
+        csv_headers = (
+            list(csv_rows[0].keys())
+            if csv_rows
+            else list(csv.DictReader(io.StringIO(csv_result["content"].decode("utf-8"))).fieldnames)
         )
         xlsx_headers, _xlsx_rows = _parse_xlsx(xlsx_result["content"])
         assert xlsx_headers == csv_headers, file_type
@@ -758,7 +808,10 @@ async def test_xlsx_row_count_matches_csv_row_count():
         db, "sess-19", "ITEM-19", counted_qty=2.0, erp_qty=2.0, serial_numbers=["SN-A", "SN-B"]
     )
     preview = await ErpNextExportService(db).generate_preview(
-        session_id="sess-19", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-19",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     await ErpNextExportService(db).approve_preview(
         export_id=preview["export_id"], current_user=ADMIN_USER
@@ -766,10 +819,16 @@ async def test_xlsx_row_count_matches_csv_row_count():
     service = ErpNextExportFileService(db)
 
     csv_result = await service.generate_file(
-        export_id=preview["export_id"], file_type="serials", file_format="csv", current_user=ADMIN_USER
+        export_id=preview["export_id"],
+        file_type="serials",
+        file_format="csv",
+        current_user=ADMIN_USER,
     )
     xlsx_result = await service.generate_file(
-        export_id=preview["export_id"], file_type="serials", file_format="xlsx", current_user=ADMIN_USER
+        export_id=preview["export_id"],
+        file_type="serials",
+        file_format="xlsx",
+        current_user=ADMIN_USER,
     )
     csv_rows = _parse_csv(csv_result["content"])
     _headers, xlsx_rows = _parse_xlsx(xlsx_result["content"])
@@ -820,7 +879,11 @@ async def test_repeated_xlsx_generation_is_idempotent():
 
     assert first["file_hash"] == second["file_hash"]
     audit_entries = await db.audit_logs.find(
-        {"entity_id": approved["export_id"], "details.file_type": "stock_entry", "details.format": "xlsx"}
+        {
+            "entity_id": approved["export_id"],
+            "details.file_type": "stock_entry",
+            "details.format": "xlsx",
+        }
     ).to_list(length=10)
     assert len(audit_entries) == 1
 
@@ -839,8 +902,7 @@ async def test_xlsx_download_content_type_is_correct():
     )
 
     assert (
-        result["media_type"]
-        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        result["media_type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     assert result["filename"] == "stock-entry.xlsx"
 
@@ -871,8 +933,7 @@ async def test_audit_event_written_for_first_xlsx_generation_with_format_detail(
         approved["export_id"], "stock-entry.xlsx", current_user=CURRENT_USER
     )
     assert (
-        response.media_type
-        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        response.media_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
     entry = await db.audit_logs.find_one(

@@ -28,6 +28,7 @@ import {
 } from "@/utils/accessibility";
 import { ADMIN_NAV_GROUPS } from "./adminNavShared";
 import { SUPERVISOR_NAV_GROUPS } from "./supervisorNavShared";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 interface DrawerNavItem {
   key: string;

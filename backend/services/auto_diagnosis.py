@@ -11,7 +11,7 @@ from collections import defaultdict, deque
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -55,7 +55,7 @@ class DiagnosisResult:
         root_cause: str,
         suggestions: list[str],
         auto_fixable: bool = False,
-        auto_fix: Optional[Callable] = None,
+        auto_fix: Callable | None = None,
         confidence: float = 0.0,
     ):
         self.error = error
@@ -232,7 +232,7 @@ class AutoDiagnosisService:
         }
 
     async def diagnose_error(
-        self, error: Exception, context: dict[str, Optional[Any]] = None
+        self, error: Exception, context: dict[str, Any | None] = None
     ) -> DiagnosisResult:
         """
         Automatically diagnose error and provide solutions
@@ -499,7 +499,7 @@ class AutoDiagnosisService:
 
     def _check_auto_fixable(
         self, error: Exception, category: ErrorCategory
-    ) -> tuple[bool, Optional[Callable]]:
+    ) -> tuple[bool, Callable | None]:
         """Check if error can be auto-fixed"""
         error_type = type(error).__name__
 
@@ -562,7 +562,7 @@ class AutoDiagnosisService:
         return min(confidence, 1.0)  # Cap at 1.0
 
     async def auto_fix_error(
-        self, diagnosis: DiagnosisResult, context: dict[str, Optional[Any]] = None
+        self, diagnosis: DiagnosisResult, context: dict[str, Any | None] = None
     ) -> Result[Any, Exception]:
         """Attempt to auto-fix error"""
         if not diagnosis.auto_fixable or not diagnosis.auto_fix:
@@ -578,10 +578,10 @@ class AutoDiagnosisService:
                 return result
             return Result.success(result)
         except Exception as e:
-            logger.error(f"Auto-fix failed: {str(e)}")
-            return Result.error(e, f"Auto-fix execution failed: {str(e)}")
+            logger.error(f"Auto-fix failed: {e!s}")
+            return Result.error(e, f"Auto-fix execution failed: {e!s}")
 
-    async def get_error_statistics(self, time_window: Optional[timedelta] = None) -> dict[str, Any]:
+    async def get_error_statistics(self, time_window: timedelta | None = None) -> dict[str, Any]:
         """Get error statistics for analysis"""
         time_window = time_window or timedelta(hours=24)
         cutoff_time = datetime.now(timezone.utc).replace(tzinfo=None) - time_window

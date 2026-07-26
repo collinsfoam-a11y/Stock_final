@@ -2,7 +2,7 @@
 User Model
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from bson import ObjectId
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, GetJsonSchemaHandler
@@ -43,32 +43,32 @@ class PyObjectId(ObjectId):
 
 class UserBase(BaseModel):
     username: str
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = None
-    phone_number: Optional[str] = Field(None, pattern=r"^\+?[1-9]\d{1,14}$")
+    email: EmailStr | None = None
+    full_name: str | None = None
+    phone_number: str | None = Field(None, pattern=r"^\+?[1-9]\d{1,14}$")
     role: str = "staff"
     is_active: bool = True
 
 
 class UserCreate(UserBase):
     password: str
-    pin: Optional[str] = None  # 4-6 digit PIN
+    pin: str | None = None  # 4-6 digit PIN
 
 
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = None
-    phone_number: Optional[str] = Field(None, pattern=r"^\+?[1-9]\d{1,14}$")
-    password: Optional[str] = None
-    pin: Optional[str] = None
-    is_active: Optional[bool] = None
-    role: Optional[str] = None
+    email: EmailStr | None = None
+    full_name: str | None = None
+    phone_number: str | None = Field(None, pattern=r"^\+?[1-9]\d{1,14}$")
+    password: str | None = None
+    pin: str | None = None
+    is_active: bool | None = None
+    role: str | None = None
 
 
 class UserInDB(UserBase):
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
+    id: PyObjectId | None = Field(default_factory=PyObjectId, alias="_id")
     hashed_password: str
-    pin_hash: Optional[str] = None
+    pin_hash: str | None = None
 
     model_config = ConfigDict(
         populate_by_name=True,

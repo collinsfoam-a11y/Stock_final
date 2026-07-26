@@ -54,9 +54,7 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
-from fastapi import HTTPException
-
-import backend.api.count_lines_routes as count_lines_routes
+from backend.api import count_lines_routes
 from backend.api.count_lines_routes import (
     CountLineBatchCreate,
     create_count_line,
@@ -66,6 +64,7 @@ from backend.api.schemas import CountLineCreate
 from backend.db.indexes import create_indexes
 from backend.models.audit import AuditEventType
 from backend.services.canonical_inventory import find_session
+from fastapi import HTTPException
 
 pytestmark = pytest.mark.manual
 
@@ -145,14 +144,16 @@ async def _submit_count_line(db, line_data: CountLineCreate, current_user: dict)
     single-submit and batch endpoints call."""
     session = await find_session(db, line_data.session_id)
     write_service = count_lines_routes._get_count_line_write_service(db)
-    count_line, _counted_at, _is_existing_retry = (
-        await count_lines_routes._prepare_and_persist_count_line(
-            db,
-            line_data,
-            current_user,
-            session=session,
-            write_service=write_service,
-        )
+    (
+        count_line,
+        _counted_at,
+        _is_existing_retry,
+    ) = await count_lines_routes._prepare_and_persist_count_line(
+        db,
+        line_data,
+        current_user,
+        session=session,
+        write_service=write_service,
     )
     return count_line
 
@@ -711,8 +712,6 @@ class TestBatchConcurrency:
         response = await _submit_batch(real_db, batch, "staff-a")
         assert response["created"] == 1
 
-        persisted = await real_db.count_lines.find_one(
-            {"id": response["results"][0]["id"]}
-        )
+        persisted = await real_db.count_lines.find_one({"id": response["results"][0]["id"]})
         assert persisted["uom_code"] == "BOX"
         assert persisted["uom_name"] == "Box"

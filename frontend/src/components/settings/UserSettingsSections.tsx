@@ -10,6 +10,7 @@ import { useAuthStore } from "../../store/authStore";
 import { useSettingsStore } from "../../store/settingsStore";
 import type { Settings } from "../../store/settingsStore";
 import { colorWithAlpha } from "../../theme/themeTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
 import { resolveAppUpdateUrl } from "../../services/updateService";
 import ModernCard from "../ui/ModernCard";
 import {
@@ -792,12 +793,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 8,
+    gap: gap.sm,
   },
   sectionStatusBadge: {
     borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: gap.sm,
+    paddingVertical: gap.xs,
   },
   sectionStatusText: {
     fontWeight: "700",

@@ -1,0 +1,402 @@
+Unused files (5)
+src/components/ui/LargeTitle.tsx   
+src/services/offline/syncService.ts
+src/services/offlineQueue.ts       
+src/styles/unifiedSystem.ts        
+src/utils/gs1Parser.ts             
+Unused dependencies (1)
+expo-camera  package.json:110:6
+Unused devDependencies (1)
+@react-native/metro-config  package.json:153:6
+Unlisted dependencies (4)
+expo-updates             app.json                                 
+expo-system-ui           app.json                                 
+babel-preset-expo        babel.config.js                          
+reactotron-react-native  src/services/devtools/reactotron.ts:21:28
+Unlisted binaries (1)
+eas  package.json
+Unused exports (240)
+BootErrorView                                                  function  src/bootstrap/BootStateViews.tsx:200:17        
+default                                                        variable  …omponents/feedback/AdminCrashScreen.tsx:227:16
+default                                                        variable  …omponents/feedback/StaffCrashScreen.tsx:366:16
+default                                                        function  …mponents/navigation/MobileNavDrawer.tsx:235:16
+QuickActions                                                             …c/components/navigation/QuickActions.tsx:26:14
+default                                                        function  …c/components/scan/HardwareScanInput.tsx:114:16
+default                                                        function  …c/components/scan/ScanMissingSession.tsx:79:16
+ChangePinModal                                                 function  …c/components/settings/ChangePinModal.tsx:47:17
+default                                                        variable  …/components/settings/FontSizeSlider.tsx:180:16
+default                                                        variable  …components/settings/FontStylePicker.tsx:154:16
+default                                                        function  …ponents/settings/SettingsSyncStatus.tsx:128:16
+default                                                        function  …nents/settings/UserSettingsSections.tsx:808:16
+default                                                        variable  src/components/SwipeableRow.tsx:81:16          
+AdminResponsiveGrid                                                      src/components/ui/AdminResponsiveGrid.tsx:52:10
+StatsCardPreset                                                          src/components/ui/AnimatedCard.tsx:252:14      
+default                                                        variable  src/components/ui/AnimatedCard.tsx:307:16      
+default                                                        variable  src/components/ui/AnimatedCounter.tsx:105:16   
+AnimatedInput                                                            src/components/ui/AnimatedInput.tsx:32:14      
+default                                                        variable  src/components/ui/AnimatedInput.tsx:239:16     
+AnimatedListItem                                                         src/components/ui/AnimatedListItem.tsx:75:14   
+ListAnimationPresets                                                     src/components/ui/AnimatedListItem.tsx:168:14  
+default                                                        variable  src/components/ui/AnimatedListItem.tsx:202:16  
+AnimatedCard                                                             src/components/ui/AnimatedPressable.tsx:167:14 
+AnimatedButton                                                           src/components/ui/AnimatedPressable.tsx:179:14 
+default                                                        variable  src/components/ui/AnimatedPressable.tsx:190:16 
+default                                                        variable  src/components/ui/AppearanceSettings.tsx:304:16
+default                                                        variable  src/components/ui/AuroraBackground.tsx:299:16  
+Avatar                                                                   src/components/ui/Avatar.tsx:68:14             
+Badge                                                                    src/components/ui/Badge.tsx:52:14              
+default                                                        variable  src/components/ui/BottomSheet.tsx:98:16        
+Checkbox                                                                 src/components/ui/Checkbox.tsx:35:14           
+StaggeredFadeIn                                                          src/components/ui/FadeIn.tsx:112:14            
+default                                                        variable  src/components/ui/FadeIn.tsx:129:16            
+FloatingActionButton                                                     …c/components/ui/FloatingActionButton.tsx:53:14
+default                                                        variable  …/components/ui/FloatingActionButton.tsx:222:16
+FloatingScanButton                                                       src/components/ui/FloatingScanButton.tsx:40:14 
+default                                                        variable  src/components/ui/FloatingScanButton.tsx:200:16
+InlineAlert                                                    function  src/components/ui/InlineAlert.tsx:22:17        
+default                                                        function  src/components/ui/InlineAlert.tsx:72:16        
+MultiSelectList                                                function  src/components/ui/MultiSelectList.tsx:83:17    
+default                                                        function  src/components/ui/MultiSelectList.tsx:435:16   
+default                                                        function  src/components/ui/OnlineStatus.tsx:7:25        
+default                                                        variable  src/components/ui/ParticleField.tsx:195:16     
+default                                                        variable  src/components/ui/PatternBackground.tsx:463:16 
+PremiumHeader                                                            src/components/ui/PremiumHeader.tsx:45:14      
+default                                                        variable  src/components/ui/PremiumHeader.tsx:304:16     
+QuantityStepper                                                function  src/components/ui/QuantityStepper.tsx:17:17    
+default                                                        function  src/components/ui/QuantityStepper.tsx:115:16   
+QuickStatCard                                                            src/components/ui/QuickStatCard.tsx:70:14      
+default                                                        variable  src/components/ui/QuickStatCard.tsx:311:16     
+Radio                                                                    src/components/ui/Radio.tsx:38:14              
+default                                                        variable  src/components/ui/ScreenHeader.tsx:475:16      
+Separator                                                                src/components/ui/Separator.tsx:63:14          
+SeparatorPresets                                                         src/components/ui/Separator.tsx:134:14         
+default                                                        variable  src/components/ui/Separator.tsx:168:16         
+SessionCard                                                              src/components/ui/SessionCard.tsx:61:14        
+default                                                        variable  src/components/ui/SessionCard.tsx:327:16       
+ShimmerPlaceholder                                                       src/components/ui/Shimmer.tsx:119:14           
+default                                                        variable  src/components/ui/Shimmer.tsx:275:16           
+SkeletonGrid                                                             src/components/ui/SkeletonList.tsx:86:14       
+default                                                        variable  src/components/ui/SkeletonList.tsx:194:16      
+default                                                        variable  src/components/ui/StatusBadge.tsx:168:16       
+StickyFooter                                                             src/components/ui/StickyFooter.tsx:60:10       
+StickyFooterProps                                                        src/components/ui/StickyFooter.tsx:60:33       
+SuccessFeedback                                                          src/components/ui/SuccessFeedback.tsx:22:14    
+ToastFeedback                                                            src/components/ui/SuccessFeedback.tsx:158:14   
+default                                                        variable  src/components/ui/SuccessFeedback.tsx:272:16   
+SwipeCard                                                                src/components/ui/SwipeCard.tsx:232:10         
+SyncIndicator                                                  function  src/components/ui/SyncIndicator.tsx:7:17       
+default                                                        function  src/components/ui/SyncIndicator.tsx:11:16      
+Tabs                                                                     src/components/ui/Tabs.tsx:46:14               
+ThemedCard                                                               src/components/ui/ThemedScreen.tsx:127:14      
+ThemedText                                                               src/components/ui/ThemedScreen.tsx:205:14      
+default                                                        variable  src/components/ui/ThemedScreen.tsx:270:16      
+default                                                        variable  src/components/ui/ThemePicker.tsx:107:16       
+UnifiedText                                                              src/components/ui/UnifiedText.tsx:119:14       
+default                                                        variable  src/components/ui/UnifiedText.tsx:192:16       
+UnifiedView                                                              src/components/ui/UnifiedView.tsx:91:14        
+default                                                        variable  src/components/ui/UnifiedView.tsx:156:16       
+API_TIMEOUT_MS                                                           src/constants/config.ts:1:14                   
+QUERY_STALE_TIME_MS                                                      src/constants/config.ts:6:14                   
+QUERY_CACHE_TIME_MS                                                      src/constants/config.ts:7:14                   
+SESSION_TIMEOUT_MS                                                       src/constants/config.ts:12:14                  
+DEFAULT_DATE_FORMAT                                                      src/constants/config.ts:14:14                  
+setFlagOverride                                                          src/constants/flags.ts:167:14                  
+clearFlagOverrides                                                       src/constants/flags.ts:178:14                  
+ROLE_PERMISSIONS                                                         src/constants/permissions.ts:70:14             
+default                                                        variable  src/context/ThemeContext.tsx:540:16            
+getProjectedCountLinesBySession                                          …ries/inventoryControlPlaneRepository.ts:489:14
+getProjectedUnsyncedCountLinesBySession                                  …ries/inventoryControlPlaneRepository.ts:526:14
+getProjectedScanStatus                                                   …ries/inventoryControlPlaneRepository.ts:553:14
+getProjectedSessionStats                                                 …ries/inventoryControlPlaneRepository.ts:627:14
+hasProjectedItemActivity                                                 …ries/inventoryControlPlaneRepository.ts:680:14
+useItemByBarcodeQuery                                                    …inventory/hooks/useItemByBarcodeQuery.ts:16:14
+useSearchItemsQuery                                                      …s/inventory/hooks/useSearchItemsQuery.ts:16:14
+scanDeduplicationService                                                 …ory/services/scanDeduplicationService.ts:54:14
+default                                                                  src/hooks/useAnimations.ts:310:16              
+clearPersistentState                                           function  src/hooks/usePersistentState.ts:93:23          
+clearAllPersistentState                                        function  src/hooks/usePersistentState.ts:101:23         
+default                                                        function  src/hooks/usePersistentState.ts:107:16         
+default                                                        function  src/hooks/useReducedMotion.ts:68:16            
+useSessionManagement                                                     src/hooks/useSessionIntegrity.ts:289:14        
+default                                                        variable  src/hooks/useVersionCheck.ts:142:16            
+getRolePermissions                       adminOperationsApi              src/services/api/adminOperationsApi.ts:120:14  
+checkHealth                              adminOperationsApi              src/services/api/adminOperationsApi.ts:501:14  
+getVarianceTrend                         apiModule                       src/services/api/api.advancedAnalytics.ts:3:14 
+getStaffPerformance                      apiModule                       src/services/api/api.advancedAnalytics.ts:13:14
+getDiagnosisStats                        apiModule                       src/services/api/api.diagnosis.ts:144:14       
+diagnoseError                            apiModule                       src/services/api/api.diagnosis.ts:157:14       
+getFieldDefinitions                      apiModule                       src/services/api/api.dynamicFields.ts:3:14     
+createFieldDefinition                    apiModule                       src/services/api/api.dynamicFields.ts:20:14    
+updateFieldDefinition                    apiModule                       src/services/api/api.dynamicFields.ts:30:14    
+deleteFieldDefinition                    apiModule                       src/services/api/api.dynamicFields.ts:40:14    
+setFieldValue                            apiModule                       src/services/api/api.dynamicFields.ts:50:14    
+setBulkFieldValues                       apiModule                       src/services/api/api.dynamicFields.ts:64:14    
+getItemFieldValues                       apiModule                       src/services/api/api.dynamicFields.ts:80:14    
+getItemsWithFields                       apiModule                       src/services/api/api.dynamicFields.ts:90:14    
+getFieldStatistics                       apiModule                       src/services/api/api.dynamicFields.ts:112:14   
+getErrorLogs                             apiModule                       src/services/api/api.impl.ts:403:14            
+getErrorStats                            apiModule                       src/services/api/api.impl.ts:470:14            
+getErrorDetail                           apiModule                       src/services/api/api.impl.ts:504:14            
+resolveError                             apiModule                       src/services/api/api.impl.ts:531:14            
+clearErrorLogs                           apiModule                       src/services/api/api.impl.ts:543:14            
+getERPConfig                             apiModule                       src/services/api/api.impl.ts:554:14            
+sessionsApi                              apiModule                       src/services/api/api.impl.ts:565:14            
+countLineApi                             apiModule                       src/services/api/api.impl.ts:574:14            
+itemsApi                                 apiModule                       src/services/api/api.impl.ts:587:14            
+mappingApi                               apiModule                       src/services/api/api.impl.ts:596:14            
+exportsApi                               apiModule                       src/services/api/api.impl.ts:604:14            
+syncApi                                  apiModule                       src/services/api/api.impl.ts:615:14            
+metricsApi                               apiModule                       src/services/api/api.impl.ts:627:14            
+adminControlApi                          apiModule                       src/services/api/api.impl.ts:635:14            
+reportsApi                               apiModule                       src/services/api/api.impl.ts:645:14            
+sqlServerApi                             apiModule                       src/services/api/api.impl.ts:650:14            
+securityApi                              apiModule                       src/services/api/api.impl.ts:660:14            
+settingsApi                              apiModule                       src/services/api/api.impl.ts:669:14            
+EnhancedApiService                                             class     src/services/api/enhancedApi.ts:9:14           
+enhancedApiClient                                                        src/services/api/enhancedApiClient.ts:296:14   
+default                                                        class     src/services/api/enhancedApiClient.ts:299:16   
+EnhancedDatabaseAPI                                            class     src/services/api/enhancedDatabaseApi.ts:60:14  
+enrichItem                                                               src/services/api/enrichmentApi.ts:46:14        
+getMissingFields                                                         src/services/api/enrichmentApi.ts:79:14        
+getEnrichmentHistory                                                     src/services/api/enrichmentApi.ts:103:14       
+validateEnrichmentData                                                   src/services/api/enrichmentApi.ts:116:14       
+getIncompleteItems                                                       src/services/api/enrichmentApi.ts:140:14       
+getEnrichmentStats                                                       src/services/api/enrichmentApi.ts:170:14       
+bulkImportEnrichments                                                    src/services/api/enrichmentApi.ts:207:14       
+checkItemQtyRealtime                                                     src/services/api/enrichmentApi.ts:230:14       
+recalculateCompleteness                                                  src/services/api/enrichmentApi.ts:242:14       
+searchItemsSemantic                      inventoryWorkflowApi            src/services/api/inventoryWorkflowApi.ts:674:14
+getRiskPredictions                       inventoryWorkflowApi            src/services/api/inventoryWorkflowApi.ts:699:14
+identifyItem                             inventoryWorkflowApi            src/services/api/inventoryWorkflowApi.ts:717:14
+listNotes                                                      function  src/services/api/notesApi.ts:35:23             
+createNote                                                     function  src/services/api/notesApi.ts:50:23             
+updateNote                                                     function  src/services/api/notesApi.ts:55:23             
+deleteNote                                                     function  src/services/api/notesApi.ts:59:23             
+downloadReport                                                 function  src/services/api/reportApi.ts:193:23           
+default                                                        variable  src/services/api/reportApi.ts:214:16           
+default                                                        variable  src/services/api/userWorkflowApi.ts:72:16      
+initializeBackendURL                                                     src/services/backendUrl.ts:228:14              
+syncPendingCountLineEvents               controlPlane                    …/control-plane/countLineControlPlane.ts:313:14
+getControlPlaneReadMetrics               controlPlane                    …/control-plane/countLineControlPlane.ts:515:14
+syncPendingCountLineReviewEvents         reviewControlPlane              …ol-plane/countLineReviewControlPlane.ts:383:14
+recordSessionHeartbeatCommand                                            …es/control-plane/sessionControlPlane.ts:621:14
+syncPendingSessionEvents                                                 …es/control-plane/sessionControlPlane.ts:651:14
+recoverFromError                                                         src/services/errorRecovery.ts:68:14            
+safeExecute                                                              src/services/errorRecovery.ts:94:14            
+handleNetworkError                                                       src/services/errorRecovery.ts:235:14           
+handleDatabaseError                                                      src/services/errorRecovery.ts:266:14           
+logger                                                                   src/services/logging.ts:98:14                  
+addLogSink                                                     function  src/services/logging.ts:150:17                 
+removeLogSink                                                  function  src/services/logging.ts:157:17                 
+setDeviceContext                                               function  src/services/offline/offlineCountLine.ts:59:17 
+getDeviceContext                                               function  src/services/offline/offlineCountLine.ts:67:17 
+validateCountLineData                                          function  src/services/offline/offlineCountLine.ts:174:17
+startOfflineQueue                                              function  src/services/offline/offlineQueue.ts:199:17    
+stopOfflineQueue                                               function  src/services/offline/offlineQueue.ts:242:17    
+getQueueCount                                                  function  src/services/offline/offlineQueue.ts:317:23    
+listQueue                                                      function  src/services/offline/offlineQueue.ts:322:23    
+getConflictsCount                                              function  src/services/offline/offlineQueue.ts:330:23    
+getSyncStatusPollingMetrics                                              src/services/syncStatusPolling.ts:87:14        
+__resetSyncStatusPollingForTests                                         src/services/syncStatusPolling.ts:94:14        
+useToast                                                                 src/services/toastService.ts:93:14             
+showToast                                                                src/services/toastService.ts:123:14            
+showSuccessToast                                                         src/services/toastService.ts:130:14            
+showErrorToast                                                           src/services/toastService.ts:134:14            
+showWarningToast                                                         src/services/toastService.ts:138:14            
+showInfoToast                                                            src/services/toastService.ts:142:14            
+default                                                        variable  src/services/toastService.ts:146:16            
+default                                                                  src/services/updateService.ts:19:16            
+NetworkMonitor                                                 class     src/services/utils/errorHandler.ts:265:14      
+RetryHandler                                                   class     src/services/utils/errorHandler.ts:293:14      
+versionApi                                                               src/services/versionService.ts:81:14           
+default                                                        variable  src/services/versionService.ts:86:16           
+gradients                                                                src/styles/globalStyles.ts:103:14              
+glassStyle                                                               src/styles/globalStyles.ts:112:14              
+commonStyles                                                             src/styles/globalStyles.ts:183:14              
+animations                                                               src/styles/globalStyles.ts:294:14              
+elevation                                                                src/styles/globalStyles.ts:309:14              
+accessibility                                                            src/styles/globalStyles.ts:335:14              
+scanner                                                                  src/styles/globalStyles.ts:344:14              
+offline                                                                  src/styles/globalStyles.ts:354:14              
+onboarding                                                               src/styles/globalStyles.ts:366:14              
+auroraColors                                                             src/styles/modernDesignSystem.ts:20:14         
+theme                                                                    src/styles/modernDesignSystem.ts:1011:14       
+default                                                        variable  src/styles/modernDesignSystem.ts:1031:16       
+designTokens                                                             src/theme/designTokens.ts:258:14               
+default                                                        variable  src/theme/designTokens.ts:270:16               
+meetsWCAGAA                                                              src/theme/enhancedColors.ts:107:14             
+meetsWCAGAAA                                                             src/theme/enhancedColors.ts:119:14             
+lightSemanticColors                                                      src/theme/enhancedColors.ts:233:14             
+darkSemanticColors                                                       src/theme/enhancedColors.ts:234:14             
+operationalGradients                                                     src/theme/operationalTheme.ts:17:14            
+defaultTheme                                                             src/theme/themes.ts:765:14                     
+default                                                                  src/theme/typography.ts:210:16                 
+LineHeights                                                              src/theme/uiConstants.ts:139:14                
+ComponentSizes                                                           src/theme/uiConstants.ts:153:14                
+ZIndex                                                                   src/theme/uiConstants.ts:217:14                
+HitSlop                                                                  src/theme/uiConstants.ts:233:14                
+Opacity                                                                  src/theme/uiConstants.ts:242:14                
+BlurIntensity                                                            src/theme/uiConstants.ts:258:14                
+ApiResponseSchema                                                        src/types/schemas.ts:6:14                      
+longestCommonSubsequence                                                 src/utils/algorithms.ts:58:14                  
+hammingDistance                                                          src/utils/algorithms.ts:106:14                 
+isAppError                                                     function  src/utils/errors.ts:240:17                     
+getUserMessage                                                 function  src/utils/errors.ts:247:17                     
+default                                                                  src/utils/eventEmitter.ts:66:16                
+default                                                        function  …c/utils/navigation/safeBackNavigation.ts:31:16
+safeRender                                                     function  src/utils/safeRender.tsx:12:17                 
+withErrorBoundary                                              function  src/utils/safeRender.tsx:24:17                 
+safeGet                                                        function  src/utils/safeRender.tsx:87:17                 
+getDefaultMrpForItem                                                     src/utils/scanUtils.ts:243:14                  
+SERIAL_REQUIREMENT_LABELS                                                src/utils/scanUtils.ts:272:14                  
+ITEM_CONDITION_OPTIONS                                                   src/utils/scanUtils.ts:279:14                  
+generateShortId                                                function  src/utils/uuid.ts:52:17                        
+sanitizeBarcode                                                          src/utils/validation.ts:18:14                  
+validateQuantity                                                         src/utils/validation.ts:45:14                  
+validateSessionName                                                      src/utils/validation.ts:65:14                  
+normalizeBarcode                                                         src/utils/validation.ts:99:14                  
+validateMRP                                                              src/utils/validation.ts:153:14                 
+Unused exported types (72)
+InventoryEventType                       type       src/domain/events/inventoryEvents.ts:4:13         
+LoginResponse                            type       src/domains/auth/types.ts:10:13                   
+LoginCredentials                         interface  src/domains/auth/types.ts:72:18                   
+PinCredentials                           interface  src/domains/auth/types.ts:77:18                   
+AuthState                                interface  src/domains/auth/types.ts:82:18                   
+ScheduledReport                          interface  src/domains/reports/types.ts:60:18                
+DiscrepancyReport                        interface  src/domains/reports/types.ts:87:18                
+ApiResponseWithSource         apiModule  interface  src/services/api/api.impl.ts:79:18                
+PinLogin                                 interface  src/services/api/models.ts:3:18                   
+Session                                  interface  src/services/api/models.ts:25:18                  
+ERPItem                                  interface  src/services/api/models.ts:40:18                  
+ConfigurationAuditEvent                  interface  src/services/device/configurationAuditLog.ts:15:18
+ScannerAuditEvent                        interface  src/services/device/scannerAuditLogger.ts:16:18   
+RetryStrategy                            interface  src/services/errorRecovery.ts:21:18               
+PremiumThemeType                         type       src/theme/designSystem.ts:156:13                  
+Spacing                                  type       src/theme/designTokens.ts:114:13                  
+BorderRadius                             type       src/theme/designTokens.ts:176:13                  
+ShadowLevel                              type       src/theme/designTokens.ts:193:13                  
+ZIndex                                   type       src/theme/designTokens.ts:210:13                  
+Breakpoint                               type       src/theme/designTokens.ts:224:13                  
+TouchTarget                              type       src/theme/designTokens.ts:253:13                  
+Spacing                                  type       src/theme/legacyCompat.ts:119:13                  
+Radius                                   type       src/theme/legacyCompat.ts:124:13                  
+ColorKey                                 type       src/theme/modernDesign.ts:282:13                  
+SpacingKey                               type       src/theme/modernDesign.ts:283:13                  
+TypographySize                           type       src/theme/modernDesign.ts:284:13                  
+BorderRadiusKey                          type       src/theme/modernDesign.ts:285:13                  
+ShadowKey                                type       src/theme/modernDesign.ts:286:13                  
+AnimationTiming                          type       src/theme/uiConstants.ts:265:13                   
+SpacingKey                               type       src/theme/uiConstants.ts:266:13                   
+BorderRadiusKey                          type       src/theme/uiConstants.ts:267:13                   
+FontSizeKey                              type       src/theme/uiConstants.ts:268:13                   
+ShadowKey                                type       src/theme/uiConstants.ts:269:13                   
+Duration                                 type       src/theme/unified/animations.ts:173:13            
+EasingKey                                type       src/theme/unified/animations.ts:174:13            
+SpringConfig                             type       src/theme/unified/animations.ts:175:13            
+ColorPalette                             type       src/theme/unified/colors.ts:257:13                
+SemanticColors                           type       src/theme/unified/colors.ts:258:13                
+ColorShade                               type       src/theme/unified/colors.ts:259:13                
+UnifiedTheme                             type       src/theme/unified/index.ts:139:13                 
+Radius                                   type       src/theme/unified/radius.ts:56:13                 
+RadiusKey                                type       src/theme/unified/radius.ts:57:13                 
+ShadowKey                                type       src/theme/unified/shadows.ts:198:13               
+Shadows                                  type       src/theme/unified/shadows.ts:199:13               
+Spacing                                  type       src/theme/unified/spacing.ts:85:13                
+SpacingKey                               type       src/theme/unified/spacing.ts:86:13                
+FontSize                                 type       src/theme/unified/typography.ts:238:13            
+FontWeight                               type       src/theme/unified/typography.ts:239:13            
+TextStyleKey                             type       src/theme/unified/typography.ts:240:13            
+HealthCheckResponse                      interface  src/types/api.ts:40:18                            
+ConnectionPoolStatusResponse             interface  src/types/api.ts:56:18                            
+DataCompleteness                         interface  src/types/enrichment.ts:34:18                     
+EnrichedItem                             interface  src/types/enrichment.ts:45:18                     
+BulkEnrichmentImport                     interface  src/types/enrichment.ts:193:18                    
+MRPVariant                               interface  src/types/item.ts:11:18                           
+MRPHistory                               interface  src/types/item.ts:21:18                           
+SearchResult                             interface  src/types/item.ts:31:18                           
+CountLine                                interface  src/types/item.ts:47:18                           
+CreateCountLineRequest                   interface  src/types/item.ts:70:18                           
+UpdateCountLineRequest                   interface  src/types/item.ts:82:18                           
+ScannerMode                              type       src/types/scan.ts:76:13                           
+ScanFormData                             interface  src/types/scan.ts:80:18                           
+ApiErrorResponse                         interface  src/types/scan.ts:137:18                          
+VarianceReason                           interface  src/types/scan.ts:156:18                          
+WorkflowState                            interface  src/types/scan.ts:225:18                          
+Item                                     type       src/types/schemas.ts:69:13                        
+User                                     type       src/types/schemas.ts:70:13                        
+SessionCreate                            interface  src/types/session.ts:57:18                        
+SessionStats                             interface  src/types/session.ts:65:18                        
+UpdateSessionRequest                     interface  src/types/session.ts:87:18                        
+SessionSummary                           interface  src/types/session.ts:96:18                        
+AuthState                                interface  src/types/user.ts:11:18                           
+Duplicate exports (59)
+AdminCrashScreen|default      src/components/feedback/AdminCrashScreen.tsx    
+StaffCrashScreen|default      src/components/feedback/StaffCrashScreen.tsx    
+SerialScannerModal|default    src/components/modals/SerialScannerModal.tsx    
+MobileNavDrawer|default       src/components/navigation/MobileNavDrawer.tsx   
+HardwareScanInput|default     src/components/scan/HardwareScanInput.tsx       
+ScanMissingSession|default    src/components/scan/ScanMissingSession.tsx      
+FontSizeSlider|default        src/components/settings/FontSizeSlider.tsx      
+FontStylePicker|default       src/components/settings/FontStylePicker.tsx     
+SettingsSyncStatus|default    src/components/settings/SettingsSyncStatus.tsx  
+UserSettingsSections|default  src/components/settings/UserSettingsSections.tsx
+SwipeableRow|default          src/components/SwipeableRow.tsx                 
+AnimatedCard|default          src/components/ui/AnimatedCard.tsx              
+AnimatedCounter|default       src/components/ui/AnimatedCounter.tsx           
+AnimatedInput|default         src/components/ui/AnimatedInput.tsx             
+AnimatedListItem|default      src/components/ui/AnimatedListItem.tsx          
+AnimatedPressable|default     src/components/ui/AnimatedPressable.tsx         
+AppearanceSettings|default    src/components/ui/AppearanceSettings.tsx        
+AppIcon|default               src/components/ui/AppIcon.tsx                   
+AuroraBackground|default      src/components/ui/AuroraBackground.tsx          
+BottomSheet|default           src/components/ui/BottomSheet.tsx               
+FadeIn|default                src/components/ui/FadeIn.tsx                    
+FloatingActionButton|default  src/components/ui/FloatingActionButton.tsx      
+FloatingScanButton|default    src/components/ui/FloatingScanButton.tsx        
+InlineAlert|default           src/components/ui/InlineAlert.tsx               
+ModernButton|default          src/components/ui/ModernButton.tsx              
+ModernCard|default            src/components/ui/ModernCard.tsx                
+ModernHeader|default          src/components/ui/ModernHeader.tsx              
+ModernInput|default           src/components/ui/ModernInput.tsx               
+MultiSelectList|default       src/components/ui/MultiSelectList.tsx           
+ParticleField|default         src/components/ui/ParticleField.tsx             
+PatternBackground|default     src/components/ui/PatternBackground.tsx         
+PremiumHeader|default         src/components/ui/PremiumHeader.tsx             
+QuantityStepper|default       src/components/ui/QuantityStepper.tsx           
+QuickStatCard|default         src/components/ui/QuickStatCard.tsx             
+ScreenHeader|default          src/components/ui/ScreenHeader.tsx              
+Separator|default             src/components/ui/Separator.tsx                 
+SessionCard|default           src/components/ui/SessionCard.tsx               
+Shimmer|default               src/components/ui/Shimmer.tsx                   
+SkeletonList|default          src/components/ui/SkeletonList.tsx              
+StatusBadge|default           src/components/ui/StatusBadge.tsx               
+SuccessFeedback|default       src/components/ui/SuccessFeedback.tsx           
+SyncIndicator|default         src/components/ui/SyncIndicator.tsx             
+ThemedScreen|default          src/components/ui/ThemedScreen.tsx              
+ThemePicker|default           src/components/ui/ThemePicker.tsx               
+UnifiedText|default           src/components/ui/UnifiedText.tsx               
+UnifiedView|default           src/components/ui/UnifiedView.tsx               
+usePersistentState|default    src/hooks/usePersistentState.ts                 
+useReducedMotion|default      src/hooks/useReducedMotion.ts                   
+useVersionCheck|default       src/hooks/useVersionCheck.ts                    
+authApi|default               src/services/api/authApi.ts                     
+reportApi|default             src/services/api/reportApi.ts                   
+userWorkflowApi|default       src/services/api/userWorkflowApi.ts             
+toastService|default          src/services/toastService.ts                    
+versionApi|default            src/services/versionService.ts                  
+useFilterStore|default        src/store/filterStore.ts                        
+glassmorphism|modernGlass     src/styles/modernDesignSystem.ts                
+theme|default                 src/styles/modernDesignSystem.ts                
+designTokens|default          src/theme/designTokens.ts                       
+safeBackNavigation|default    src/utils/navigation/safeBackNavigation.ts      
+Configuration hints (10)
+**/*.d.ts                      knip.json  Remove from ignore            
+src/**/__tests__/**            knip.json  Remove from ignore            
+src/**/__mocks__/**            knip.json  Remove from ignore            
+app/**/__tests__/**            knip.json  Remove from ignore            
+**/*.test.{ts,tsx}             knip.json  Remove from ignore            
+@testing-library/jest-dom      knip.json  Remove from ignoreDependencies
+jest-environment-jsdom         knip.json  Remove from ignoreDependencies
+postinstall-postinstall        knip.json  Remove from ignoreDependencies
+@storybook/addon-essentials    knip.json  Remove from ignoreDependencies
+@tootallnate/once              knip.json  Remove from ignoreDependencies

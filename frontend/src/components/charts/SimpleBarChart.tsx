@@ -238,7 +238,7 @@ const createStyles = (uiTokens: ThemeTokens) =>
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: uiTokens.colors.surface,
-      borderRadius: 8,
+      borderRadius: radius.sm,
     },
     emptyText: {
       fontSize: font.size.base,

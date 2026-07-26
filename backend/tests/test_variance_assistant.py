@@ -1,7 +1,8 @@
 """Tests for the AI Variance Assistant (v2.2 Priority 4)."""
 
-import pytest
 from unittest.mock import AsyncMock, Mock
+
+import pytest
 
 from backend.services.variance_assistant import VarianceAssistant
 
@@ -48,9 +49,7 @@ async def test_zero_variance_reports_no_variance():
 @pytest.mark.asyncio
 async def test_recurring_variance_detected_from_history():
     history = [{"variance": -2}, {"variance": -3}, {"variance": 0}]
-    assistant = VarianceAssistant(
-        make_db(erp_item={"item_code": "A", "mrp": 10}, history=history)
-    )
+    assistant = VarianceAssistant(make_db(erp_item={"item_code": "A", "mrp": 10}, history=history))
     result = await assistant.analyze(item_code="A", expected_qty=10, counted_qty=8)
 
     causes = [c["cause"] for c in result["probable_causes"]]
@@ -60,9 +59,7 @@ async def test_recurring_variance_detected_from_history():
 
 @pytest.mark.asyncio
 async def test_pack_size_multiple_flags_pack_quantity():
-    assistant = VarianceAssistant(
-        make_db(erp_item={"item_code": "A", "pack_size": 12, "mrp": 10})
-    )
+    assistant = VarianceAssistant(make_db(erp_item={"item_code": "A", "pack_size": 12, "mrp": 10}))
     result = await assistant.analyze(item_code="A", expected_qty=48, counted_qty=36)
 
     causes = [c["cause"] for c in result["probable_causes"]]

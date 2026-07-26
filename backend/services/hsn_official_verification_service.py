@@ -18,26 +18,34 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 
 class HsnOfficialVerificationService:
     def __init__(
         self,
         *,
-        base_url: Optional[str] = None,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        gstin: Optional[str] = None,
-        auth_token: Optional[str] = None,
+        base_url: str | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        gstin: str | None = None,
+        auth_token: str | None = None,
     ) -> None:
-        self._base_url = base_url if base_url is not None else os.environ.get("EWAY_BILL_API_BASE_URL")
-        self._client_id = client_id if client_id is not None else os.environ.get("EWAY_BILL_API_CLIENT_ID")
+        self._base_url = (
+            base_url if base_url is not None else os.environ.get("EWAY_BILL_API_BASE_URL")
+        )
+        self._client_id = (
+            client_id if client_id is not None else os.environ.get("EWAY_BILL_API_CLIENT_ID")
+        )
         self._client_secret = (
-            client_secret if client_secret is not None else os.environ.get("EWAY_BILL_API_CLIENT_SECRET")
+            client_secret
+            if client_secret is not None
+            else os.environ.get("EWAY_BILL_API_CLIENT_SECRET")
         )
         self._gstin = gstin if gstin is not None else os.environ.get("EWAY_BILL_API_GSTIN")
-        self._auth_token = auth_token if auth_token is not None else os.environ.get("EWAY_BILL_API_AUTH_TOKEN")
+        self._auth_token = (
+            auth_token if auth_token is not None else os.environ.get("EWAY_BILL_API_AUTH_TOKEN")
+        )
 
     def is_configured(self) -> bool:
         return bool(self._base_url and self._auth_token)

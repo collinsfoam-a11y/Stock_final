@@ -5,12 +5,11 @@ and preserves backward compatibility with legacy offline payloads.
 """
 
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 import re
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
@@ -33,6 +32,7 @@ from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.sync_conflicts_service import SyncConflictsService
 from backend.services.transaction_manager import mongo_transaction
 from backend.services.validation_service import ValidationService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class LegacySyncOperation(BaseModel):
     id: str
     type: str
     data: dict[str, Any]
-    timestamp: Optional[str] = None
+    timestamp: str | None = None
 
     model_config = ConfigDict(extra="allow")
 
@@ -73,17 +73,17 @@ class SyncRecord(BaseModel):
     location_id: str = Field(..., description="Location ID")
     floor_id: str = Field(..., description="Floor ID")
     rack_id: str = Field(..., description="Rack ID")
-    floor: Optional[str] = Field(None, description="Floor")
+    floor: str | None = Field(None, description="Floor")
     item_code: str = Field(..., description="Item code")
     verified_qty: float = Field(..., description="Verified quantity")
     damaged_qty: float = Field(0, description="Damage quantity")
     serial_numbers: list[str] = Field(default_factory=list, description="Serial numbers")
-    mfg_date: Optional[str] = Field(None, description="Manufacturing date")
-    mrp: Optional[float] = Field(None, description="MRP")
-    uom: Optional[str] = Field(None, description="Unit of measure")
-    category: Optional[str] = Field(None, description="Category")
-    subcategory: Optional[str] = Field(None, description="Subcategory")
-    item_condition: Optional[str] = Field(None, description="Item condition")
+    mfg_date: str | None = Field(None, description="Manufacturing date")
+    mrp: float | None = Field(None, description="MRP")
+    uom: str | None = Field(None, description="Unit of measure")
+    category: str | None = Field(None, description="Category")
+    subcategory: str | None = Field(None, description="Subcategory")
+    item_condition: str | None = Field(None, description="Item condition")
     evidence_photos: list[str] = Field(default_factory=list, description="Photo URLs")
     status: str = Field("finalized", description="Record status (partial/finalized)")
     created_at: str = Field(..., description="Client creation timestamp")
@@ -100,7 +100,7 @@ class BatchSyncRequest(BaseModel):
         default_factory=list,
         description="Legacy operations array used by earlier clients",
     )
-    batch_id: Optional[str] = Field(None, description="Client batch ID for tracking")
+    batch_id: str | None = Field(None, description="Client batch ID for tracking")
 
     model_config = ConfigDict(extra="ignore")
 
@@ -127,7 +127,7 @@ class SyncResult(BaseModel):
 
     id: str = Field(..., description="Client record identifier")
     success: bool = Field(..., description="Whether the record synced successfully")
-    message: Optional[str] = Field(
+    message: str | None = Field(
         None, description="Optional error or conflict message for the record"
     )
 
@@ -140,18 +140,18 @@ class BatchSyncResponse(BaseModel):
         default_factory=list, description="Records with conflicts"
     )
     errors: list[SyncError] = Field(default_factory=list, description="Failed records")
-    batch_id: Optional[str] = Field(None, description="Batch ID from request")
+    batch_id: str | None = Field(None, description="Batch ID from request")
     processing_time_ms: float = Field(..., description="Server processing time")
     total_records: int = Field(..., description="Total records in batch")
     results: list[SyncResult] = Field(
         default_factory=list,
         description="Backward compatible per-record results (id/success/message)",
     )
-    processed_count: Optional[int] = Field(
+    processed_count: int | None = Field(
         None, description="Legacy summary: total operations processed"
     )
-    success_count: Optional[int] = Field(None, description="Legacy summary: successful operations")
-    failed_count: Optional[int] = Field(None, description="Legacy summary: failed operations")
+    success_count: int | None = Field(None, description="Legacy summary: successful operations")
+    failed_count: int | None = Field(None, description="Legacy summary: failed operations")
 
 
 # Sync Logic
@@ -161,9 +161,9 @@ async def validate_record(
     record: SyncRecord,
     db,
     lock_manager: LockManager,
-    sync_service: Optional[SyncConflictsService] = None,
-    user_id: Optional[str] = None,
-) -> Optional[SyncConflict]:
+    sync_service: SyncConflictsService | None = None,
+    user_id: str | None = None,
+) -> SyncConflict | None:
     """
     Validate a single record before syncing
 
@@ -246,10 +246,10 @@ async def sync_single_record(
     db,
     user_id: str,
     *,
-    user_role: Optional[str] = None,
-    write_service: Optional[CountLineWriteService] = None,
-    lifecycle_service: Optional[SessionLifecycleService] = None,
-) -> tuple[bool, Optional[str]]:
+    user_role: str | None = None,
+    write_service: CountLineWriteService | None = None,
+    lifecycle_service: SessionLifecycleService | None = None,
+) -> tuple[bool, str | None]:
     """
     Sync a single record to database
 
@@ -512,7 +512,7 @@ async def sync_batch(
         # Record failure in circuit breaker
         await circuit_breaker.record_failure()
         logger.error("Batch sync failed: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=f"Batch sync failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Batch sync failed: {e!s}") from e
 
     processing_time = (time.time() - start_time) * 1000
 
@@ -554,7 +554,7 @@ async def session_heartbeat(
     session_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
     redis_service=Depends(get_redis),
-    rack_id: Optional[str] = None,
+    rack_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Session heartbeat - maintain rack lock and user presence
@@ -585,12 +585,12 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _normalize_operation_name(session_data: dict[str, Any]) -> Optional[str]:
+def _normalize_operation_name(session_data: dict[str, Any]) -> str | None:
     operation_raw = session_data.get("operation")
     return operation_raw.strip().lower() if isinstance(operation_raw, str) else None
 
 
-def _resolve_session_id(value: Any, id_mapping: dict[str, str]) -> Optional[str]:
+def _resolve_session_id(value: Any, id_mapping: dict[str, str]) -> str | None:
     if value is None:
         return None
     key = str(value)
@@ -675,7 +675,7 @@ async def _process_session_mutation_operation(
     current_user: dict[str, Any],
     id_mapping: dict[str, str],
     db: Any,
-) -> Optional[str]:
+) -> str | None:
     operation = _normalize_operation_name(session_data)
     if not operation:
         return None
@@ -706,9 +706,7 @@ def _normalize_session_type(value: Any) -> str:
     return normalized_type
 
 
-async def _find_session_by_offline_id(
-    db: Any, offline_id: Optional[Any]
-) -> Optional[dict[str, Any]]:
+async def _find_session_by_offline_id(db: Any, offline_id: Any | None) -> dict[str, Any] | None:
     if not offline_id:
         return None
     return await db.sessions.find_one({"offline_id": str(offline_id)})
@@ -716,7 +714,7 @@ async def _find_session_by_offline_id(
 
 async def _find_existing_open_session(
     db: Any, staff_user: str, warehouse: str
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     return await db.sessions.find_one(
         {
             "staff_user": staff_user,
@@ -727,7 +725,7 @@ async def _find_existing_open_session(
 
 
 def _link_offline_id_to_session(
-    id_mapping: dict[str, str], offline_id: Optional[Any], session_id: Optional[str]
+    id_mapping: dict[str, str], offline_id: Any | None, session_id: str | None
 ) -> None:
     if offline_id and session_id:
         id_mapping[str(offline_id)] = session_id
@@ -832,7 +830,7 @@ async def _count_line_is_idempotent(db: Any, session_id: str, line_data: dict[st
     return bool(existing_idempotent)
 
 
-async def _find_erp_item_for_line(db: Any, line_data: dict[str, Any]) -> Optional[dict[str, Any]]:
+async def _find_erp_item_for_line(db: Any, line_data: dict[str, Any]) -> dict[str, Any] | None:
     barcode = line_data.get("barcode")
     item_code = line_data.get("item_code")
     if barcode:
@@ -890,7 +888,7 @@ def _collect_risk_flags(
 
 
 def _mark_misplacement_if_needed(
-    line_data: dict[str, Any], erp_item: Optional[dict[str, Any]], risk_flags: list[str]
+    line_data: dict[str, Any], erp_item: dict[str, Any] | None, risk_flags: list[str]
 ) -> bool:
     if not erp_item:
         return False
@@ -1103,7 +1101,7 @@ _LEGACY_OP_HANDLERS: dict[str, Any] = {
 
 async def _process_legacy_operations(
     operations: list[LegacySyncOperation],
-    batch_id: Optional[str],
+    batch_id: str | None,
     current_user: dict[str, Any],
     start_time: float,
 ) -> BatchSyncResponse:

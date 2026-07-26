@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
-
 from backend.api.report_generation_api import (
     ReportFilter,
     generate_session_history_report,

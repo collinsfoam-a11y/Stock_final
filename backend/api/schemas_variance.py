@@ -1,6 +1,5 @@
 # Variance Threshold Models
 from datetime import datetime, timezone
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -25,10 +24,10 @@ class VarianceThresholdConfig(BaseModel):
     name: str = Field(..., description="Configuration name")
     description: str = Field(..., description="Configuration description")
     thresholds: list[VarianceThreshold] = Field(default_factory=list)
-    apply_to_categories: Optional[list[str]] = Field(
+    apply_to_categories: list[str] | None = Field(
         default=None, description="Categories this applies to (None = all)"
     )
-    apply_to_locations: Optional[list[str]] = Field(
+    apply_to_locations: list[str] | None = Field(
         default=None, description="Locations this applies to (None = all)"
     )
     created_at: datetime = Field(
@@ -68,6 +67,6 @@ class ViolatedThreshold(BaseModel):
 class CountLineSubmission(BaseModel):
     """Data for submitting a count line"""
 
-    variance_reason: Optional[str] = Field(
+    variance_reason: str | None = Field(
         default=None, description="Reason for variance (required if threshold exceeded)"
     )

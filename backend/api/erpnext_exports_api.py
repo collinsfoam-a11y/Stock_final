@@ -9,7 +9,7 @@ proposals only -- nothing is ever applied to an existing preview document.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -68,7 +68,7 @@ router = APIRouter(prefix="/api/erpnext-exports", tags=["ERPNext Export"])
 class ErpNextExportPreviewRequest(BaseModel):
     session_id: str
     mode: str
-    company: Optional[str] = None
+    company: str | None = None
 
 
 @router.post("/preview")
@@ -185,7 +185,7 @@ class CorrectionProposalCreate(BaseModel):
 
 
 class CorrectionProposalReview(BaseModel):
-    review_reason: Optional[str] = None
+    review_reason: str | None = None
 
 
 @router.post("/{export_id}/corrections")
@@ -302,7 +302,7 @@ async def get_erpnext_export_photo_manifest(
 class HsnSuggestionSelectionRequest(BaseModel):
     suggestion_id: str
     hsn_sac: str
-    gst_percentage: Optional[float] = None
+    gst_percentage: float | None = None
     reason: str
 
 

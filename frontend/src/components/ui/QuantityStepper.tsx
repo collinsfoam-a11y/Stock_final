@@ -4,6 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useThemeContext } from "../../context/ThemeContext";
 import { haptics } from "../../services/haptics";
 import { getDecorativeIconProps } from "../../utils/accessibility";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 interface Props {
   value: number;
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
   button: {
     width: 40,
     height: 40,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
@@ -99,10 +100,10 @@ const styles = StyleSheet.create({
   },
   valueBox: {
     minWidth: 56,
-    marginHorizontal: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    marginHorizontal: gap.sm,
+    paddingVertical: gap.sm,
+    paddingHorizontal: gap.md,
+    borderRadius: radius.sm,
     borderWidth: 1,
     alignItems: "center",
   },

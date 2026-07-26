@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pytest
-
 from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.governance_guard import install_db_write_guards
 from backend.services.unknown_item_service import UnknownItemService
@@ -96,9 +95,7 @@ async def test_dismiss_unknown_item_writes_canonical_audit_event():
         item_id="unknown-dismiss", actor_id="supervisor1", reason="Wrong barcode label"
     )
 
-    audit_events = await db.audit_logs.find(
-        {"event_type": "UNKNOWN_ITEM_DISMISSED"}
-    ).to_list(None)
+    audit_events = await db.audit_logs.find({"event_type": "UNKNOWN_ITEM_DISMISSED"}).to_list(None)
     assert len(audit_events) == 1
     assert audit_events[0]["entity_id"] == "unknown-dismiss"
     assert audit_events[0]["actor_username"] == "supervisor1"

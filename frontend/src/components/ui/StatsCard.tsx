@@ -19,6 +19,7 @@ import { AnimatedCounter } from "./AnimatedCounter";
 import { ModernCard } from "./ModernCard";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 export type StatVariant = "primary" | "success" | "warning" | "error" | "info";
 
@@ -217,7 +218,7 @@ const styles = StyleSheet.create({
   trendContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: gap.xs,
     marginTop: 4,
   },
   trendText: {

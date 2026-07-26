@@ -1,6 +1,5 @@
 import pytest
 
-
 SENSITIVE_ENDPOINTS = [
     ("get", "/api/sync/status"),
     ("get", "/api/sync/stats"),

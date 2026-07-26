@@ -4,7 +4,6 @@ Provide real-time error diagnosis and health monitoring
 """
 
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 from datetime import timedelta
 from typing import Any
 
@@ -13,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
 from backend.services.auto_diagnosis import AutoDiagnosisService
+from backend.utils.api_utils import sanitize_for_logging
 
 # Global instance
 _diagnosis_service = None
@@ -42,7 +42,7 @@ async def get_health_with_diagnosis(current_user: dict = Depends(get_current_use
         return health_report
     except Exception as e:
         logger.error("Health check failed: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Health check failed: {e!s}") from e
 
 
 @self_diagnosis_router.get("/statistics")
@@ -59,7 +59,7 @@ async def get_error_statistics(
         return stats
     except Exception as e:
         logger.error("Statistics retrieval failed: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=f"Statistics failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Statistics failed: {e!s}") from e
 
 
 @self_diagnosis_router.post("/diagnose")
@@ -102,7 +102,7 @@ async def diagnose_error_endpoint(
         return diagnosis.to_dict()
     except Exception as e:
         logger.error("Error diagnosis failed: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=f"Diagnosis failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Diagnosis failed: {e!s}") from e
 
 
 @self_diagnosis_router.post("/auto-fix")
@@ -167,7 +167,7 @@ async def attempt_auto_fix(
         }
     except Exception as e:
         logger.error("Auto-fix attempt failed: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=f"Auto-fix failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Auto-fix failed: {e!s}") from e
 
 
 @self_diagnosis_router.get("/patterns")
@@ -184,4 +184,4 @@ async def get_error_patterns(current_user: dict = Depends(get_current_user)):
         }
     except Exception as e:
         logger.error("Pattern retrieval failed: %s", sanitize_for_logging(str(e)))
-        raise HTTPException(status_code=500, detail=f"Pattern retrieval failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Pattern retrieval failed: {e!s}") from e

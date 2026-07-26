@@ -7,9 +7,7 @@ Optimized indexes for 20 concurrent users and fast queries
 # field_spec: List of (field, direction) tuples
 # options: Index options dict
 
-from typing import Union
-
-INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
+INDEXES: dict[str, list[tuple[list[tuple[str, int | str]], dict]]] = {
     # Idempotency Operations Collection
     "idempotency_operations": [
         # Unique operation ID
@@ -439,7 +437,7 @@ async def create_indexes(db) -> dict[str, int]:
             logger.info(f"✓ Created {created} indexes on {collection_name}")
 
         except Exception as e:
-            logger.error(f"Failed to create indexes on {collection_name}: {str(e)}")
+            logger.error(f"Failed to create indexes on {collection_name}: {e!s}")
             results[collection_name] = 0
 
     return results
@@ -461,14 +459,14 @@ async def drop_all_indexes(db) -> dict[str, bool]:
     logger = logging.getLogger(__name__)
     results = {}
 
-    for collection_name in INDEXES.keys():
+    for collection_name in INDEXES:
         try:
             collection = db[collection_name]
             await collection.drop_indexes()
             results[collection_name] = True
             logger.info(f"✓ Dropped indexes on {collection_name}")
         except Exception as e:
-            logger.error(f"Failed to drop indexes on {collection_name}: {str(e)}")
+            logger.error(f"Failed to drop indexes on {collection_name}: {e!s}")
             results[collection_name] = False
 
     return results
@@ -486,7 +484,7 @@ async def get_index_stats(db) -> dict[str, list[dict]]:
     """
     stats = {}
 
-    for collection_name in INDEXES.keys():
+    for collection_name in INDEXES:
         try:
             collection = db[collection_name]
             index_info = await collection.index_information()

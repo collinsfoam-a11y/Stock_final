@@ -6,13 +6,14 @@ are blocked unless an authorized service context is active.
 """
 
 from unittest.mock import MagicMock
+
 import pytest
 
 from backend.services.governance_guard import (
+    _GUARD_TARGET_COLLECTIONS,
+    AUTHORIZED_WRITE_AUTHORITIES,
     GovernanceViolation,
     GovernedCollection,
-    AUTHORIZED_WRITE_AUTHORITIES,
-    _GUARD_TARGET_COLLECTIONS,
     write_authority,
 )
 
@@ -60,9 +61,8 @@ async def test_write_with_wrong_authority_raises():
     collection = MagicMock()
     governed = GovernedCollection("count_lines", collection)
 
-    with pytest.raises(GovernanceViolation):
-        with write_authority("SessionLifecycleService"):
-            await governed.insert_one({"item_code": "X"})
+    with pytest.raises(GovernanceViolation), write_authority("SessionLifecycleService"):
+        await governed.insert_one({"item_code": "X"})
 
 
 @pytest.mark.asyncio

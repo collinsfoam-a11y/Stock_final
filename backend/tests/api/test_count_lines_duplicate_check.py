@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from backend.api.count_lines_routes import (
     DuplicateCheckRequest,
     check_duplicate_count_line,

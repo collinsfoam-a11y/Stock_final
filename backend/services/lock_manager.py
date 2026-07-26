@@ -6,7 +6,6 @@ Implements rack locking, session management, and concurrency control
 import logging
 import time
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from backend.services.redis_service import RedisService
 
@@ -51,7 +50,7 @@ class LockManager:
                 return False
 
         except Exception as e:
-            logger.error(f"Error acquiring rack lock {rack_id}: {str(e)}")
+            logger.error(f"Error acquiring rack lock {rack_id}: {e!s}")
             return False
 
     # Lua script for atomic compare-and-delete (C4 fix)
@@ -101,7 +100,7 @@ class LockManager:
                 return False
 
         except Exception as e:
-            logger.error(f"Error releasing rack lock {rack_id}: {str(e)}")
+            logger.error(f"Error releasing rack lock {rack_id}: {e!s}")
             return False
 
     async def renew_rack_lock(self, rack_id: str, user_id: str, ttl: int = 60) -> bool:
@@ -134,10 +133,10 @@ class LockManager:
                 return False
 
         except Exception as e:
-            logger.error(f"Error renewing rack lock {rack_id}: {str(e)}")
+            logger.error(f"Error renewing rack lock {rack_id}: {e!s}")
             return False
 
-    async def get_rack_lock_owner(self, rack_id: str) -> Optional[str]:
+    async def get_rack_lock_owner(self, rack_id: str) -> str | None:
         """Get current owner of rack lock"""
         lock_key = f"rack:lock:{rack_id}"
         return await self.redis.get(lock_key)
@@ -168,7 +167,7 @@ class LockManager:
         await self.redis.set(heartbeat_key, timestamp, ex=ttl)
         logger.debug(f"Heartbeat updated: {user_id}")
 
-    async def get_user_heartbeat(self, user_id: str) -> Optional[int]:
+    async def get_user_heartbeat(self, user_id: str) -> int | None:
         """Get user's last heartbeat timestamp"""
         heartbeat_key = f"user:heartbeat:{user_id}"
         value = await self.redis.get(heartbeat_key)
@@ -243,10 +242,10 @@ class LockManager:
             return bool(result)
 
         except Exception as e:
-            logger.error(f"Error creating session {session_id}: {str(e)}")
+            logger.error(f"Error creating session {session_id}: {e!s}")
             return False
 
-    async def get_session_data(self, session_id: str) -> Optional[dict]:
+    async def get_session_data(self, session_id: str) -> dict | None:
         """Get session metadata"""
         session_key = f"session:lock:{session_id}"
         data = await self.redis.hgetall(session_key)
@@ -327,7 +326,7 @@ class LockManager:
 
 
 # Global instance (initialized with redis_service)
-_lock_manager: Optional[LockManager] = None
+_lock_manager: LockManager | None = None
 
 
 def get_lock_manager(redis_service):

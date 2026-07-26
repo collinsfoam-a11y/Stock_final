@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import logging
 import os
-from decimal import Decimal, InvalidOperation
 from datetime import datetime, timezone
-from typing import Any, Optional
+from decimal import Decimal, InvalidOperation
+from typing import Any
 
 from backend.services.governance_guard import GovernanceViolation
 
@@ -47,14 +47,14 @@ def _as_bool(value: Any, *, default: bool = False) -> bool:
     return default
 
 
-def _normalize_string(value: Any) -> Optional[str]:
+def _normalize_string(value: Any) -> str | None:
     if value is None:
         return None
     normalized = str(value).strip()
     return normalized or None
 
 
-def _normalize_uom(value: Any) -> Optional[str]:
+def _normalize_uom(value: Any) -> str | None:
     normalized = _normalize_string(value)
     return normalized.upper() if normalized else None
 
@@ -90,7 +90,7 @@ def _normalize_serials(doc: dict[str, Any]) -> list[str]:
 
 
 def _decimal_places(value: Decimal) -> int:
-    normalized = value.normalize() if value != 0 else Decimal("0")
+    normalized = value.normalize() if value != 0 else Decimal(0)
     exponent = normalized.as_tuple().exponent
     if not isinstance(exponent, int):
         return 0
@@ -106,7 +106,7 @@ class ValidationService:
         self,
         db: Any,
         *,
-        strict_mode: Optional[bool] = None,
+        strict_mode: bool | None = None,
         write_logs: bool = True,
     ) -> None:
         self.db = db
@@ -131,15 +131,15 @@ class ValidationService:
             raise
 
     @staticmethod
-    def _kwargs(db_session: Optional[Any]) -> dict[str, Any]:
+    def _kwargs(db_session: Any | None) -> dict[str, Any]:
         return {"session": db_session} if db_session is not None else {}
 
     async def resolve_item_master(
         self,
         doc: dict[str, Any],
         *,
-        item: Optional[dict[str, Any]] = None,
-        db_session: Optional[Any] = None,
+        item: dict[str, Any] | None = None,
+        db_session: Any | None = None,
     ) -> dict[str, Any]:
         if isinstance(item, dict):
             return item
@@ -162,10 +162,10 @@ class ValidationService:
         self,
         serial_no: str,
         *,
-        item_code: Optional[str] = None,
-        current_line_id: Optional[str] = None,
-        db_session: Optional[Any] = None,
-    ) -> Optional[dict[str, Any]]:
+        item_code: str | None = None,
+        current_line_id: str | None = None,
+        db_session: Any | None = None,
+    ) -> dict[str, Any] | None:
         normalized = _normalize_string(serial_no)
         if not normalized:
             return None
@@ -291,8 +291,8 @@ class ValidationService:
         item_code: str,
         serial_numbers: list[str],
         *,
-        current_line_id: Optional[str] = None,
-        db_session: Optional[Any] = None,
+        current_line_id: str | None = None,
+        db_session: Any | None = None,
     ) -> None:
         for serial in serial_numbers:
             conflict = await self.find_serial_conflict(
@@ -377,7 +377,7 @@ class ValidationService:
             allowed_qty = Decimal(len(serial_numbers))
             if qty != allowed_qty:
                 raise GovernanceViolation("SERIAL_QTY_MISMATCH")
-        elif is_serial_item and _as_bool(item_serialized, default=False) and qty != Decimal("1"):
+        elif is_serial_item and _as_bool(item_serialized, default=False) and qty != Decimal(1):
             raise GovernanceViolation("SERIAL_QTY_MUST_BE_ONE")
 
         return {
@@ -400,8 +400,8 @@ class ValidationService:
         self,
         doc: dict[str, Any],
         *,
-        item: Optional[dict[str, Any]] = None,
-        db_session: Optional[Any] = None,
+        item: dict[str, Any] | None = None,
+        db_session: Any | None = None,
     ) -> dict[str, Any]:
         if not isinstance(doc, dict):
             return {}
@@ -445,9 +445,9 @@ class ValidationService:
 
     async def validate_count_line(
         self,
-        doc: Optional[dict[str, Any]],
+        doc: dict[str, Any] | None,
         *,
-        raise_on_error: Optional[bool] = None,
+        raise_on_error: bool | None = None,
     ) -> list[str]:
         if not isinstance(doc, dict):
             return []
@@ -482,9 +482,9 @@ class ValidationService:
 
     async def validate_session(
         self,
-        session: Optional[dict[str, Any]],
+        session: dict[str, Any] | None,
         *,
-        raise_on_error: Optional[bool] = None,
+        raise_on_error: bool | None = None,
     ) -> list[str]:
         if not isinstance(session, dict):
             return []
@@ -560,7 +560,7 @@ class ValidationService:
 
     async def check_finalization_violations(
         self,
-        session_id: Optional[str] = None,
+        session_id: str | None = None,
         *,
         limit: int = 1000,
     ) -> list[dict[str, Any]]:
@@ -597,7 +597,7 @@ class ValidationService:
         entity: str,
         doc: dict[str, Any],
         errors: list[str],
-        raise_on_error: Optional[bool],
+        raise_on_error: bool | None,
     ) -> None:
         if not errors:
             return

@@ -22,7 +22,7 @@ import { useThemeContext } from "../../context/ThemeContext";
 import { typography } from "../../theme/designTokens";
 import { authApi } from "../../services/api/authApi";
 import * as Haptics from "expo-haptics";
-
+import { font, gap, radius } from "@/theme/staffUiScale";
 import {
   colors as uiColors,
   semanticColors as uiSemanticColors,
@@ -167,8 +167,8 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
     },
     container: {
       backgroundColor: colors.surface,
-      borderRadius: 16,
-      padding: 24,
+      borderRadius: radius.xl,
+      padding: gap["2xl"],
       width: "90%",
       maxWidth: 400,
       maxHeight: "85%",
@@ -204,13 +204,13 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: colors.background,
-      borderRadius: 8,
+      borderRadius: radius.sm,
       borderWidth: 1,
       borderColor: colors.border,
     },
     input: {
       flex: 1,
-      padding: 12,
+      padding: gap.md,
       fontSize: typography.fontSize.md,
       color: colors.text,
     },
@@ -218,7 +218,7 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
       borderColor: colors.danger,
     },
     showButton: {
-      padding: 12,
+      padding: gap.md,
     },
     showButtonText: {
       fontSize: typography.fontSize.sm,
@@ -239,12 +239,12 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
       borderRadius: 2,
     },
     requirementsList: {
-      gap: 4,
+      gap: gap.xs,
     },
     requirement: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
+      gap: gap.sm,
     },
     requirementIcon: {
       fontSize: 12,
@@ -257,19 +257,19 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
       color: colors.danger,
       textAlign: "center",
       marginBottom: 16,
-      padding: 8,
+      padding: gap.sm,
       backgroundColor: `${colors.danger}15`,
-      borderRadius: 8,
+      borderRadius: radius.sm,
     },
     buttonContainer: {
       flexDirection: "row",
-      gap: 12,
+      gap: gap.md,
       marginTop: 8,
     },
     button: {
       flex: 1,
-      padding: 14,
-      borderRadius: 8,
+      padding: gap.md,
+      borderRadius: radius.sm,
       alignItems: "center",
     },
     cancelButton: {

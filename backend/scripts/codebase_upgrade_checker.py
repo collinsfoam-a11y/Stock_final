@@ -48,7 +48,7 @@ class CodebaseUpgradeChecker:
             try:
                 self._scan_file(py_file)
             except Exception as e:
-                logger.warning(f"Error scanning {py_file}: {str(e)}")
+                logger.warning(f"Error scanning {py_file}: {e!s}")
 
         return {
             "total_files": len(python_files),
@@ -64,7 +64,7 @@ class CodebaseUpgradeChecker:
             with open(file_path, encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
-            logger.warning(f"Cannot read {file_path}: {str(e)}")
+            logger.warning(f"Cannot read {file_path}: {e!s}")
             return
 
         # Check syntax

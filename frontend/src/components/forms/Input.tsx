@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -113,7 +114,7 @@ Input.displayName = "Input";
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: gap.sm,
   },
   label: {
     fontSize: 14,
@@ -124,20 +125,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderRadius: radius.sm,
+    paddingHorizontal: gap.md,
     minHeight: 44,
   },
   multilineContainer: {
     alignItems: "flex-start",
-    paddingVertical: 12,
+    paddingVertical: gap.md,
   },
   leftIcon: {
     marginRight: 8,
   },
   rightIcon: {
     marginLeft: 8,
-    padding: 4,
+    padding: gap.xs,
   },
   input: {
     flex: 1,

@@ -26,6 +26,7 @@ import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 import { colors as staticColors } from "@/theme/legacyCompat";
 import { useToast } from "@/components/feedback/ToastProvider";
 import { safeBackNavigation } from "@/utils/navigation";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 export default function VarianceDetailsScreen() {
   const { itemCode } = useLocalSearchParams();
@@ -497,7 +498,7 @@ const createStyles = ({ spacing, radius, colors }: ThemeTokens) =>
   detailValueRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: gap.sm,
   },
   detailValue: {
     fontSize: 16,

@@ -1,8 +1,9 @@
 """Tests for browser-oriented cookie authentication support."""
 
+from unittest.mock import AsyncMock
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock
 
 from backend.server import app
 from backend.tests.utils.in_memory_db import setup_server_with_in_memory_db
@@ -57,7 +58,7 @@ def test_refresh_accepts_cookie_without_request_body_token(client: TestClient, m
     refresh_token = login_response.cookies.get("sv_refresh_token")
     assert refresh_token
 
-    import backend.app_factory as app_factory
+    from backend import app_factory
 
     refresh_mock = AsyncMock(
         return_value={

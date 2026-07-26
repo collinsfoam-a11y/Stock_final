@@ -7,7 +7,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -42,10 +42,10 @@ class AutoSyncManager:
 
         # State tracking
         self._running = False
-        self._monitoring_task: Optional[asyncio.Task[None]] = None
-        self._sync_service: Optional[SQLSyncService] = None
-        self._last_connection_check: Optional[datetime] = None
-        self._last_sync_attempt: Optional[datetime] = None
+        self._monitoring_task: asyncio.Task[None] | None = None
+        self._sync_service: SQLSyncService | None = None
+        self._last_connection_check: datetime | None = None
+        self._last_sync_attempt: datetime | None = None
         self._sql_available = False
         self._sync_in_progress = False
 
@@ -63,15 +63,15 @@ class AutoSyncManager:
         }
 
         # Callbacks
-        self._on_connection_restored: Optional[Callable] = None
-        self._on_connection_lost: Optional[Callable] = None
-        self._on_sync_complete: Optional[Callable] = None
+        self._on_connection_restored: Callable | None = None
+        self._on_connection_lost: Callable | None = None
+        self._on_sync_complete: Callable | None = None
 
     def set_callbacks(
         self,
-        on_connection_restored: Optional[Callable] = None,
-        on_connection_lost: Optional[Callable] = None,
-        on_sync_complete: Optional[Callable] = None,
+        on_connection_restored: Callable | None = None,
+        on_connection_lost: Callable | None = None,
+        on_sync_complete: Callable | None = None,
     ):
         """Set callback functions for events"""
         self._on_connection_restored = on_connection_restored
@@ -229,7 +229,7 @@ class AutoSyncManager:
         except Exception as e:
             logger.error(f"❌ Error triggering sync: {e}")
             self._stats["syncs_failed"] += 1
-            self._stats["last_sync_status"] = f"failed: {str(e)}"
+            self._stats["last_sync_status"] = f"failed: {e!s}"
         finally:
             self._sync_in_progress = False
 

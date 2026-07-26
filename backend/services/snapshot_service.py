@@ -1,7 +1,8 @@
 import hashlib
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
+
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ class SnapshotService:
 
     async def get_or_create_snapshot(
         self, session_id: str, item_code: str, current_user: str
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Legacy API compatibility helper.
         Returns existing immutable baseline data only; never creates or mutates snapshots.

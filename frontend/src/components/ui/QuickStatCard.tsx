@@ -266,7 +266,7 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   },
   statsContainer: {
     flex: 1,
-    gap: 4,
+    gap: gap.xs,
   },
   title: {
     fontSize: font.size.sm,
@@ -281,7 +281,7 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   valueRow: {
     flexDirection: "row",
     alignItems: "baseline",
-    gap: 4,
+    gap: gap.xs,
   },
   value: {
     fontSize: font.size.xl,
@@ -292,9 +292,9 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    gap: gap.xs,
+    paddingHorizontal: gap.sm,
+    paddingVertical: gap.xs,
     borderRadius: radius.full,
     marginTop: 4,
   },

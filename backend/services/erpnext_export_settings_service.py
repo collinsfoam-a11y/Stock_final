@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class ErpNextExportSettingsError(ValueError):
     """Request-level validation error (bad input, conflicting active mapping, not found)."""
 
 
-def _strip_id(doc: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+def _strip_id(doc: dict[str, Any] | None) -> dict[str, Any] | None:
     if doc is None:
         return None
     doc = dict(doc)
@@ -161,8 +161,8 @@ class ErpNextExportSettingsService:
         return _strip_id(updated)
 
     async def find_active_warehouse_mapping(
-        self, *, stock_verify_warehouse_id: Optional[str], company: str
-    ) -> Optional[dict[str, Any]]:
+        self, *, stock_verify_warehouse_id: str | None, company: str
+    ) -> dict[str, Any] | None:
         """Company is now mandatory context for this lookup (see
         docs/BSR_REMEDIATION_STATUS.md): the mapping key is
         (stock_verify_warehouse_id, company), so an explicit company
@@ -186,7 +186,7 @@ class ErpNextExportSettingsService:
         *,
         stock_verify_uom: str,
         erpnext_uom: str,
-        conversion_factor: Optional[float],
+        conversion_factor: float | None,
         current_user: dict[str, Any],
     ) -> dict[str, Any]:
         stock_verify_uom = str(stock_verify_uom or "").strip()
@@ -280,8 +280,8 @@ class ErpNextExportSettingsService:
         return _strip_id(updated)
 
     async def find_active_uom_mapping(
-        self, *, stock_verify_uom: Optional[str]
-    ) -> Optional[dict[str, Any]]:
+        self, *, stock_verify_uom: str | None
+    ) -> dict[str, Any] | None:
         if not stock_verify_uom:
             return None
         doc = await self.db.erpnext_uom_mappings.find_one(
@@ -347,7 +347,7 @@ class ErpNextExportSettingsService:
         await self._audit("ITEM_EXPORT_FLAGS_CREATED", current_user, after=doc)
         return _strip_id(doc)
 
-    async def get_item_flags(self, item_code: str) -> Optional[dict[str, Any]]:
+    async def get_item_flags(self, item_code: str) -> dict[str, Any] | None:
         item_code = str(item_code or "").strip()
         if not item_code:
             return None
@@ -357,7 +357,7 @@ class ErpNextExportSettingsService:
     async def resolve_item_export_flags(
         self,
         *,
-        erp_item: Optional[dict[str, Any]],
+        erp_item: dict[str, Any] | None,
         item_code: str,
     ) -> dict[str, bool]:
         """Effective flags used by the preview.
@@ -370,7 +370,7 @@ class ErpNextExportSettingsService:
         """
         flags_doc = await self.get_item_flags(item_code) if item_code else None
 
-        def _pick(key: str, *, erp_key: Optional[str] = None) -> bool:
+        def _pick(key: str, *, erp_key: str | None = None) -> bool:
             if erp_key and isinstance(erp_item, dict) and erp_item.get(erp_key) is not None:
                 return bool(erp_item.get(erp_key))
             if flags_doc is not None and flags_doc.get(key) is not None:
@@ -401,7 +401,7 @@ class ErpNextExportSettingsService:
         current_user: dict[str, Any],
         *,
         after: dict[str, Any],
-        before: Optional[dict[str, Any]] = None,
+        before: dict[str, Any] | None = None,
     ) -> None:
         try:
             from backend.models.audit import AuditEventType
@@ -420,6 +420,4 @@ class ErpNextExportSettingsService:
                 details={"action": action},
             )
         except Exception as exc:  # pragma: no cover - best-effort by contract
-            logger.warning(
-                "Failed to audit ERPNext export setting change (%s): %s", action, exc
-            )
+            logger.warning("Failed to audit ERPNext export setting change (%s): %s", action, exc)

@@ -107,9 +107,7 @@ async def test_create_user_writes_audit_event(monkeypatch: pytest.MonkeyPatch):
 @pytest.mark.asyncio
 async def test_update_user_role_change_writes_audit_event(monkeypatch: pytest.MonkeyPatch):
     db = InMemoryDatabase()
-    result = await db.users.insert_one(
-        {"username": "staff_1", "role": "staff", "is_active": True}
-    )
+    result = await db.users.insert_one({"username": "staff_1", "role": "staff", "is_active": True})
     monkeypatch.setattr("backend.api.user_management_api.get_db", lambda: db)
 
     audit_service = AsyncMock()
@@ -135,9 +133,7 @@ async def test_update_user_deactivation_writes_disabled_audit_event(
     monkeypatch: pytest.MonkeyPatch,
 ):
     db = InMemoryDatabase()
-    result = await db.users.insert_one(
-        {"username": "staff_2", "role": "staff", "is_active": True}
-    )
+    result = await db.users.insert_one({"username": "staff_2", "role": "staff", "is_active": True})
     monkeypatch.setattr("backend.api.user_management_api.get_db", lambda: db)
 
     audit_service = AsyncMock()

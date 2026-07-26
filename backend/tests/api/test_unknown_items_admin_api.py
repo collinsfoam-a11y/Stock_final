@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock
 
 import pytest
-
 from backend.api.unknown_items_api import delete_unknown_item
 
 

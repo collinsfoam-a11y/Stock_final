@@ -11,7 +11,7 @@ import asyncio
 import logging
 from collections.abc import Awaitable
 from datetime import datetime, timezone
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import UpdateMany
@@ -51,8 +51,8 @@ class ChangeDetectionSyncService:
         self.enabled = enabled
         self.batch_size = batch_size
         self._running = False
-        self._task: Optional[asyncio.Task[None]] = None
-        self._last_sync: Optional[datetime] = None
+        self._task: asyncio.Task[None] | None = None
+        self._last_sync: datetime | None = None
 
         # Initialize statistics with proper typing
         self._sync_stats: SyncStats = {
@@ -68,7 +68,7 @@ class ChangeDetectionSyncService:
         }
 
     def _get_products_with_changes_query(
-        self, last_sync_time: Optional[datetime] = None
+        self, last_sync_time: datetime | None = None
     ) -> Result[str, SyncError]:
         """
         Get SQL query to fetch products that may have changed.
@@ -182,7 +182,7 @@ class ChangeDetectionSyncService:
             if asyncio.iscoroutine(results):
                 results_list = await cast(Awaitable[list[ProductData]], results)
             else:
-                results_list = cast(Optional[list[ProductData]], results)
+                results_list = cast(list[ProductData] | None, results)
             return Ok(results_list or [])
         except Exception as e:
             return Fail(
@@ -312,7 +312,7 @@ class ChangeDetectionSyncService:
         return Ok(result)
 
     def _update_sync_stats(
-        self, success: bool, items_processed: int = 0, error: Optional[str] = None
+        self, success: bool, items_processed: int = 0, error: str | None = None
     ) -> None:
         """
         Update sync statistics.
@@ -431,7 +431,7 @@ class ChangeDetectionSyncService:
                 # Wait a bit before retrying after an error
                 await asyncio.sleep(min(60, self.sync_interval))
 
-    def _get_next_sync_in(self) -> Optional[int]:
+    def _get_next_sync_in(self) -> int | None:
         """Get seconds until next sync."""
         if not self._running or not self._last_sync:
             return None

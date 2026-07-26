@@ -6,7 +6,6 @@ import logging
 import secrets
 import string
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -65,7 +64,7 @@ class OTPService:
 
         return otp_code
 
-    async def verify_otp(self, user_id: str, code: str) -> Tuple[bool, str]:
+    async def verify_otp(self, user_id: str, code: str) -> tuple[bool, str]:
         """
         Verify an OTP code.
         Returns: (success, message)
@@ -108,7 +107,7 @@ class OTPService:
 
         return token
 
-    async def validate_reset_token(self, token: str) -> Optional[str]:
+    async def validate_reset_token(self, token: str) -> str | None:
         """
         Validate a reset token and return the associated user_id if valid.
         Consumes the token on validation.

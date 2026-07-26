@@ -5,7 +5,7 @@ Based on barcode ranges and patterns
 """
 
 import logging
-from typing import Any, Optional, TypedDict
+from typing import Any, TypedDict
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class BarcodeAnalysisResult(TypedDict):
     category: str
     age_months: int
     recommended_discount: int
-    action_required: Optional[str]
+    action_required: str | None
     priority: str
     flags: list[str]
     recommendations: list[str]
@@ -137,7 +137,7 @@ class BarcodeAnalyzer:
                     result["recommendations"].append("Check stock age manually")
 
         except Exception as e:
-            logger.error(f"Error analyzing barcode {barcode}: {str(e)}")
+            logger.error(f"Error analyzing barcode {barcode}: {e!s}")
 
         return result
 

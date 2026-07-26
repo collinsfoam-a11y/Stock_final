@@ -83,7 +83,7 @@ class CompressionMiddleware(BaseHTTPMiddleware):
             return compressed_response
 
         except Exception as e:
-            logger.warning(f"Compression failed: {str(e)}")
+            logger.warning(f"Compression failed: {e!s}")
             return response
 
     def _should_compress(self, request: Request, response: Response) -> bool:

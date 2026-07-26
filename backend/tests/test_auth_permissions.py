@@ -1,11 +1,14 @@
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
+
 from backend.auth.permissions import (
-    disable_permissions_for_user,
     add_permissions_to_user,
+    disable_permissions_for_user,
+    enable_permissions_for_user,
     remove_permissions_from_user,
-    enable_permissions_for_user
 )
+
 
 @pytest.mark.asyncio
 async def test_disable_permissions_for_user():
@@ -27,8 +30,9 @@ async def test_disable_permissions_for_user():
     # Verify update_one was called with correct arguments
     mock_db.users.update_one.assert_called_once_with(
         {"username": username},
-        {"$addToSet": {"disabled_permissions": {"$each": permissions_to_disable}}}
+        {"$addToSet": {"disabled_permissions": {"$each": permissions_to_disable}}},
     )
+
 
 @pytest.mark.asyncio
 async def test_disable_permissions_for_user_not_found():
@@ -47,6 +51,7 @@ async def test_disable_permissions_for_user_not_found():
     # Verify return value is False when no documents are modified
     assert result is False
 
+
 @pytest.mark.asyncio
 async def test_add_permissions_to_user():
     mock_db = AsyncMock()
@@ -61,9 +66,9 @@ async def test_add_permissions_to_user():
 
     assert result is True
     mock_db.users.update_one.assert_called_once_with(
-        {"username": username},
-        {"$addToSet": {"permissions": {"$each": permissions_to_add}}}
+        {"username": username}, {"$addToSet": {"permissions": {"$each": permissions_to_add}}}
     )
+
 
 @pytest.mark.asyncio
 async def test_remove_permissions_from_user():
@@ -79,9 +84,9 @@ async def test_remove_permissions_from_user():
 
     assert result is True
     mock_db.users.update_one.assert_called_once_with(
-        {"username": username},
-        {"$pull": {"permissions": {"$in": permissions_to_remove}}}
+        {"username": username}, {"$pull": {"permissions": {"$in": permissions_to_remove}}}
     )
+
 
 @pytest.mark.asyncio
 async def test_enable_permissions_for_user():
@@ -97,6 +102,5 @@ async def test_enable_permissions_for_user():
 
     assert result is True
     mock_db.users.update_one.assert_called_once_with(
-        {"username": username},
-        {"$pull": {"disabled_permissions": {"$in": permissions_to_enable}}}
+        {"username": username}, {"$pull": {"disabled_permissions": {"$in": permissions_to_enable}}}
     )

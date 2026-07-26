@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -11,12 +11,12 @@ class SyncItem(BaseModel):
 
     operation: Literal["count_update", "session_complete", "session_start"]
     entity_type: Literal["count_line", "session"]
-    entity_id: Optional[str] = None
+    entity_id: str | None = None
     payload: dict[str, Any]
     created_at: datetime
     retry_count: int = 0
     status: Literal["pending", "syncing", "synced", "failed", "conflict"] = "pending"
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 class SyncRequest(BaseModel):

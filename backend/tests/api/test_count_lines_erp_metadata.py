@@ -20,9 +20,11 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
-from backend.api.count_lines_routes import create_count_line, create_count_lines_batch
-from backend.api.count_lines_routes import CountLineBatchCreate
+from backend.api.count_lines_routes import (
+    CountLineBatchCreate,
+    create_count_line,
+    create_count_lines_batch,
+)
 from backend.api.schemas import CountLineCreate
 from backend.services.governance_guard import install_db_write_guards
 from backend.services.validation_service import ValidationService
@@ -64,7 +66,13 @@ async def _seed_active_session(
 
 
 def _line(
-    *, session_id: str, item_code: str, idempotency_key: str, floor: str = "F1", rack: str = "R1", **overrides
+    *,
+    session_id: str,
+    item_code: str,
+    idempotency_key: str,
+    floor: str = "F1",
+    rack: str = "R1",
+    **overrides,
 ) -> CountLineCreate:
     payload = {
         "session_id": session_id,
@@ -87,12 +95,12 @@ async def test_baseline_snapshot_id_persists_from_session_snapshots_document():
     session_snapshots document's own `id` (matching how SessionSnapshot
     writes real production snapshots), not a fabricated value."""
     db = InMemoryDatabase()
-    await _seed_active_session(
-        db, "sess-meta-1", "ITEM-META1", snapshot_id="snap-fixed-id-1"
-    )
+    await _seed_active_session(db, "sess-meta-1", "ITEM-META1", snapshot_id="snap-fixed-id-1")
     install_db_write_guards(db)
 
-    line_data = _line(session_id="sess-meta-1", item_code="ITEM-META1", idempotency_key="key-meta-1")
+    line_data = _line(
+        session_id="sess-meta-1", item_code="ITEM-META1", idempotency_key="key-meta-1"
+    )
 
     with patch("backend.api.count_lines_routes.get_db", return_value=db):
         result = await create_count_line(
@@ -112,7 +120,9 @@ async def test_baseline_hash_unchanged_and_still_derives_from_frozen_snapshot():
     await _seed_active_session(db, "sess-meta-2", "ITEM-META2", snapshot_id="snap-fixed-id-2")
     install_db_write_guards(db)
 
-    line_data = _line(session_id="sess-meta-2", item_code="ITEM-META2", idempotency_key="key-meta-2")
+    line_data = _line(
+        session_id="sess-meta-2", item_code="ITEM-META2", idempotency_key="key-meta-2"
+    )
 
     with patch("backend.api.count_lines_routes.get_db", return_value=db):
         result = await create_count_line(
@@ -136,7 +146,9 @@ async def test_erp_refreshed_at_persists_from_erp_items_last_synced():
     )
     install_db_write_guards(db)
 
-    line_data = _line(session_id="sess-meta-3", item_code="ITEM-META3", idempotency_key="key-meta-3")
+    line_data = _line(
+        session_id="sess-meta-3", item_code="ITEM-META3", idempotency_key="key-meta-3"
+    )
 
     with patch("backend.api.count_lines_routes.get_db", return_value=db):
         result = await create_count_line(
@@ -156,7 +168,9 @@ async def test_missing_erp_last_synced_does_not_crash_and_is_null():
     await _seed_active_session(db, "sess-meta-4", "ITEM-META4", snapshot_id="snap-4")
     install_db_write_guards(db)
 
-    line_data = _line(session_id="sess-meta-4", item_code="ITEM-META4", idempotency_key="key-meta-4")
+    line_data = _line(
+        session_id="sess-meta-4", item_code="ITEM-META4", idempotency_key="key-meta-4"
+    )
 
     with patch("backend.api.count_lines_routes.get_db", return_value=db):
         result = await create_count_line(
@@ -229,7 +243,9 @@ async def test_uom_source_is_unknown_when_no_uom_resolves_anywhere():
     await _seed_active_session(db, "sess-meta-7", "ITEM-META7", snapshot_id="snap-7")
     install_db_write_guards(db)
 
-    line_data = _line(session_id="sess-meta-7", item_code="ITEM-META7", idempotency_key="key-meta-7")
+    line_data = _line(
+        session_id="sess-meta-7", item_code="ITEM-META7", idempotency_key="key-meta-7"
+    )
 
     with patch("backend.api.count_lines_routes.get_db", return_value=db):
         result = await create_count_line(
@@ -252,7 +268,9 @@ async def test_uom_resolved_at_is_server_generated_timezone_aware_utc():
     install_db_write_guards(db)
 
     before = datetime.now(timezone.utc)
-    line_data = _line(session_id="sess-meta-8", item_code="ITEM-META8", idempotency_key="key-meta-8")
+    line_data = _line(
+        session_id="sess-meta-8", item_code="ITEM-META8", idempotency_key="key-meta-8"
+    )
 
     with patch("backend.api.count_lines_routes.get_db", return_value=db):
         result = await create_count_line(
@@ -306,7 +324,9 @@ async def test_persisted_count_line_metadata_matches_api_response():
     )
     install_db_write_guards(db)
 
-    line_data = _line(session_id="sess-meta-9", item_code="ITEM-META9", idempotency_key="key-meta-9")
+    line_data = _line(
+        session_id="sess-meta-9", item_code="ITEM-META9", idempotency_key="key-meta-9"
+    )
 
     with patch("backend.api.count_lines_routes.get_db", return_value=db):
         result = await create_count_line(

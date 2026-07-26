@@ -11,6 +11,7 @@ import { BrandLogo } from "@/components/branding/BrandLogo";
 
 import { semanticColors, colors } from "@/theme/legacyCompat";
 import { getFlag } from "@/constants/flags";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 const FEATURE_ITEMS: ReadonlyArray<{
   icon: keyof typeof Ionicons.glyphMap;
@@ -137,14 +138,14 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     backgroundColor: semanticColors.background.secondary,
-    padding: 24,
+    padding: gap["2xl"],
     justifyContent: "center",
   },
   shell: {
     width: "100%",
     maxWidth: 1120,
     alignSelf: "center",
-    gap: 20,
+    gap: gap.xl,
   },
   shellWide: {
     flexDirection: "row",
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
   },
   panel: {
     flex: 1,
-    borderRadius: 24,
+    borderRadius: radius["2xl"],
     borderWidth: 1,
     borderColor: semanticColors.border.default,
     backgroundColor: semanticColors.background.primary,
@@ -163,17 +164,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     minHeight: 400,
     borderColor: "rgba(255, 255, 255, 0.12)",
-    gap: 24,
+    gap: gap["2xl"],
   },
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: gap.md,
   },
   brandBadge: {
     width: 48,
     height: 48,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255, 255, 255, 0.92)",
@@ -203,15 +204,15 @@ const styles = StyleSheet.create({
     maxWidth: 520,
   },
   featureList: {
-    gap: 12,
+    gap: gap.md,
   },
   featureItem: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    gap: gap.md,
+    paddingVertical: gap.md,
+    paddingHorizontal: gap.lg,
+    borderRadius: radius.xl,
     backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.14)",
@@ -219,14 +220,14 @@ const styles = StyleSheet.create({
   featureIconWrap: {
     width: 38,
     height: 38,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255, 255, 255, 0.12)",
   },
   featureTextWrap: {
     flex: 1,
-    gap: 2,
+    gap: gap.xxs,
   },
   featureTitle: {
     fontSize: 15,
@@ -252,9 +253,9 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 52,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     flexDirection: "row",
-    gap: 8,
+    gap: gap.sm,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.secondary[700],
@@ -270,7 +271,7 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     minHeight: 52,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: semanticColors.background.primary,
@@ -289,7 +290,7 @@ const styles = StyleSheet.create({
     marginTop: 22,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: gap.sm,
   },
   footer: {
     fontSize: 12,

@@ -6,7 +6,7 @@ Data retention, GDPR compliance, and data lifecycle management
 import logging
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
@@ -31,24 +31,24 @@ class RetentionPolicy(BaseModel):
     collection_name: str
     retention_days: int
     archive_before_delete: bool = True
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class DataSubjectRequest(BaseModel):
     """GDPR data subject request"""
 
-    id: Optional[str] = None
+    id: str | None = None
     request_type: str  # access, rectification, erasure, portability
     subject_id: str  # User ID or email
-    subject_email: Optional[str] = None
+    subject_email: str | None = None
     status: str = "pending"  # pending, processing, completed, denied
     requested_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
     )
-    completed_at: Optional[datetime] = None
-    processed_by: Optional[str] = None
-    notes: Optional[str] = None
-    data_exported: Optional[dict[str, Optional[Any]]] = None
+    completed_at: datetime | None = None
+    processed_by: str | None = None
+    notes: str | None = None
+    data_exported: dict[str, Any | None] | None = None
 
 
 class DataGovernanceService:
@@ -217,8 +217,8 @@ class DataGovernanceService:
         self,
         request_type: str,
         subject_id: str,
-        subject_email: Optional[str] = None,
-        notes: Optional[str] = None,
+        subject_email: str | None = None,
+        notes: str | None = None,
     ) -> str:
         """Create a new data subject request (GDPR Art. 15-20)"""
         if request_type not in [
@@ -297,7 +297,7 @@ class DataGovernanceService:
         self,
         request_id: str,
         processed_by: str,
-        collections_to_erase: Optional[list[str]] = None,
+        collections_to_erase: list[str] | None = None,
     ) -> dict[str, int]:
         """
         Process a data erasure request (GDPR Art. 17 - Right to be forgotten)
@@ -382,7 +382,7 @@ class DataGovernanceService:
             requests.append(doc)
         return requests
 
-    async def get_request_status(self, request_id: str) -> Optional[dict[str, Optional[Any]]]:
+    async def get_request_status(self, request_id: str) -> dict[str, Any | None] | None:
         """Get status of a data subject request"""
         doc = await self.requests_collection.find_one({"_id": request_id})
         if doc:

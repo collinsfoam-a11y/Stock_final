@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime, timezone
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 PLACEHOLDER_SOURCE = "LOCAL_SEED_PLACEHOLDER_PENDING_OFFICIAL_SOURCE"
 
@@ -39,9 +39,8 @@ class HsnReferenceSource(Protocol):
     the placeholder below without touching HsnGstValidationService."""
 
     def suggest(
-        self, *, item_name: str, category: Optional[str], subcategory: Optional[str], brand: Optional[str]
-    ) -> list[dict[str, Any]]:
-        ...
+        self, *, item_name: str, category: str | None, subcategory: str | None, brand: str | None
+    ) -> list[dict[str, Any]]: ...
 
 
 # Explicitly a stand-in, not a real GST HSN master. Keyed by lowercase
@@ -75,7 +74,7 @@ class LocalSeedHsnReferenceSource:
     produces -- see module docstring."""
 
     def suggest(
-        self, *, item_name: str, category: Optional[str], subcategory: Optional[str], brand: Optional[str]
+        self, *, item_name: str, category: str | None, subcategory: str | None, brand: str | None
     ) -> list[dict[str, Any]]:
         haystack = " ".join(
             str(part).lower() for part in (item_name, category, subcategory, brand) if part
@@ -100,24 +99,24 @@ def _is_valid_hsn_format(hsn_sac: str) -> bool:
     return hsn_sac.isdigit() and len(hsn_sac) in _VALID_HSN_LENGTHS
 
 
-def _cache_key(hsn_sac: Optional[str], gst_percentage: Optional[float]) -> str:
+def _cache_key(hsn_sac: str | None, gst_percentage: float | None) -> str:
     raw = f"{hsn_sac}:{gst_percentage}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 class HsnGstValidationService:
-    def __init__(self, db: Any, *, reference_source: Optional[HsnReferenceSource] = None) -> None:
+    def __init__(self, db: Any, *, reference_source: HsnReferenceSource | None = None) -> None:
         self.db = db
         self.reference_source = reference_source or LocalSeedHsnReferenceSource()
 
     async def validate_hsn(
         self,
         *,
-        hsn_sac: Optional[str],
-        gst_percentage: Optional[float],
-        sgst_percent: Optional[float],
-        cgst_percent: Optional[float],
-        igst_percent: Optional[float],
+        hsn_sac: str | None,
+        gst_percentage: float | None,
+        sgst_percent: float | None,
+        cgst_percent: float | None,
+        igst_percent: float | None,
         is_non_gst: bool,
         current_user: dict[str, Any],
     ) -> dict[str, Any]:
@@ -146,12 +145,20 @@ class HsnGstValidationService:
         gst_rate_mismatch = False
         if status == "VALID" and gst_percentage is not None:
             intra_state_total = (sgst_percent or 0.0) + (cgst_percent or 0.0)
-            matches_intra_state = sgst_percent is not None and cgst_percent is not None and abs(
-                gst_percentage - intra_state_total
-            ) < 0.01
-            matches_inter_state = igst_percent is not None and abs(gst_percentage - igst_percent) < 0.01
-            if not matches_intra_state and not matches_inter_state and (
-                sgst_percent is not None or cgst_percent is not None or igst_percent is not None
+            matches_intra_state = (
+                sgst_percent is not None
+                and cgst_percent is not None
+                and abs(gst_percentage - intra_state_total) < 0.01
+            )
+            matches_inter_state = (
+                igst_percent is not None and abs(gst_percentage - igst_percent) < 0.01
+            )
+            if (
+                not matches_intra_state
+                and not matches_inter_state
+                and (
+                    sgst_percent is not None or cgst_percent is not None or igst_percent is not None
+                )
             ):
                 gst_rate_mismatch = True
 
@@ -176,7 +183,9 @@ class HsnGstValidationService:
         return {
             "hsn_validation_status": status,
             "hsn_validation_source": PLACEHOLDER_SOURCE,
-            "hsn_validated_at": validated_at.isoformat() if isinstance(validated_at, datetime) else validated_at,
+            "hsn_validated_at": (
+                validated_at.isoformat() if isinstance(validated_at, datetime) else validated_at
+            ),
             "gst_rate_mismatch": gst_rate_mismatch,
         }
 
@@ -184,9 +193,9 @@ class HsnGstValidationService:
         self,
         *,
         item_name: str,
-        category: Optional[str],
-        subcategory: Optional[str],
-        brand: Optional[str],
+        category: str | None,
+        subcategory: str | None,
+        brand: str | None,
     ) -> list[dict[str, Any]]:
         """Always returns 6-digit HSN candidates only -- never 4-digit
         headings -- per explicit correction to this requirement. Every
@@ -200,7 +209,7 @@ class HsnGstValidationService:
         self,
         current_user: dict[str, Any],
         hsn_sac: str,
-        gst_percentage: Optional[float],
+        gst_percentage: float | None,
         status: str,
     ) -> None:
         try:

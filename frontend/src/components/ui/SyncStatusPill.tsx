@@ -22,7 +22,7 @@ import { useUiTokens } from "@/hooks/useUiTokens";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { colors as legacyColors } from "@/theme/legacyCompat";
-import { radius } from "@/theme/staffUiScale";
+import { font, gap, radius } from "@/theme/staffUiScale";
 export const SyncStatusPill = () => {
   const uiTokens = useUiTokens();
   const reduceMotion = useReducedMotion();
@@ -130,10 +130,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: gap.sm,
     borderRadius: radius.full,
     borderWidth: 1,
-    gap: 6,
+    gap: gap.sm,
     minHeight: 44,
   },
   label: {

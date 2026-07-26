@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 import base64
 import hashlib
 import logging
 import re
-from datetime import datetime
 import unittest.mock
-from typing import Any, Optional
+from datetime import datetime
+from typing import Any
 
 try:
     import pyodbc
@@ -37,8 +38,8 @@ class ConnectionParams(BaseModel):
     host: str
     port: int = 1433
     database: str
-    user: Optional[str] = None
-    password: Optional[str] = None
+    user: str | None = None
+    password: str | None = None
     schema_name: str = "dbo"
 
 
@@ -48,8 +49,8 @@ class TablesRequest(BaseModel):
     host: str
     port: int = 1433
     database: str
-    user: Optional[str] = None
-    password: Optional[str] = None
+    user: str | None = None
+    password: str | None = None
     schema_name: str = "dbo"
 
 
@@ -60,8 +61,8 @@ class ColumnsRequest(BaseModel):
     port: int = 1433
     database: str
     table_name: str
-    user: Optional[str] = None
-    password: Optional[str] = None
+    user: str | None = None
+    password: str | None = None
     schema_name: str = "dbo"
 
 
@@ -71,8 +72,8 @@ class PreviewRequest(BaseModel):
     host: str
     port: int = 1433
     database: str
-    user: Optional[str] = None
-    password: Optional[str] = None
+    user: str | None = None
+    password: str | None = None
     config: MappingConfig
 
 

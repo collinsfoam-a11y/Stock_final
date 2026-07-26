@@ -6,14 +6,13 @@ Implements JWT refresh tokens with automatic rotation for enhanced security
 import hashlib
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Optional
-
-from backend.utils.datetime_utils import utc_now_naive
+from typing import Any
 from uuid import uuid4
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from backend.auth.jwt_provider import jwt
+from backend.utils.datetime_utils import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ class RefreshTokenService:
         secret_key: str,
         algorithm: str = "HS256",
         *,
-        access_secret_key: Optional[str] = None,
+        access_secret_key: str | None = None,
     ):
         self.db = db
         self.refresh_secret_key = secret_key
@@ -80,9 +79,9 @@ class RefreshTokenService:
         username: str,
         expires_at: datetime,
         *,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        device_id: Optional[str] = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        device_id: str | None = None,
     ):
         """Store refresh token in database (public method)"""
         await self._store_refresh_token(
@@ -100,9 +99,9 @@ class RefreshTokenService:
         username: str,
         expires_at: datetime,
         *,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        device_id: Optional[str] = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        device_id: str | None = None,
     ):
         """Store refresh token in database"""
         try:
@@ -158,7 +157,7 @@ class RefreshTokenService:
         except Exception as e:
             logger.error("Error cleaning up tokens: %s", e)
 
-    async def verify_refresh_token(self, token: str) -> Optional[dict[str, Optional[Any]]]:
+    async def verify_refresh_token(self, token: str) -> dict[str, Any | None] | None:
         """Verify and return refresh token payload"""
         try:
             payload = jwt.decode(
@@ -251,7 +250,7 @@ class RefreshTokenService:
                 ) from e
             return 0
 
-    async def refresh_access_token(self, refresh_token: str) -> Optional[dict[str, Optional[Any]]]:
+    async def refresh_access_token(self, refresh_token: str) -> dict[str, Any | None] | None:
         """Generate new access token from refresh token"""
         payload = await self.verify_refresh_token(refresh_token)
 
@@ -262,7 +261,7 @@ class RefreshTokenService:
         role = payload.get("role")
 
         # Fetch user profile to include in response; keep failures non-fatal
-        user_profile: Optional[dict[str, Optional[Any]]] = None
+        user_profile: dict[str, Any | None] | None = None
         if username:
             try:
                 user_profile = await self.db.users.find_one({"username": username})

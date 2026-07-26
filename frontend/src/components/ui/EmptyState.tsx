@@ -10,6 +10,7 @@ import { useUiTokens } from "@/hooks/useUiTokens";
 import { ModernButton } from "./ModernButton";
 import { getDecorativeIconProps } from "@/utils/accessibility";
 import { FadeIn } from "./FadeIn";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 interface EmptyStateProps {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -75,7 +76,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 32,
+    padding: gap["3xl"],
   },
   icon: {
     marginBottom: 16,

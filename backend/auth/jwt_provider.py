@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from authlib.jose import JsonWebToken
 from authlib.jose import jwt as _jwt
@@ -21,7 +21,7 @@ class InvalidTokenError(Exception):
     pass
 
 
-def _ensure_timestamp(exp: Any) -> Optional[float]:
+def _ensure_timestamp(exp: Any) -> float | None:
     if exp is None:
         return None
     if isinstance(exp, (int, float)):
@@ -55,10 +55,10 @@ def _matches_audience(claim_audience: Any, expected_audience: str) -> bool:
 def decode(
     token: str,
     key: str,
-    algorithms: Optional[list[str]] = None,
+    algorithms: list[str] | None = None,
     *,
-    issuer: Optional[str] = None,
-    audience: Optional[str] = None,
+    issuer: str | None = None,
+    audience: str | None = None,
 ) -> dict[str, Any]:
     SUPPORTED_ALGORITHMS = ["HS256", "HS384", "HS512"]
     if algorithms:

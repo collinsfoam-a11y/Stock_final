@@ -6,7 +6,6 @@ import argparse
 import asyncio
 import json
 from pathlib import Path
-from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -24,7 +23,7 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-async def _run_validation(*, session_id: Optional[str], limit: int) -> dict:
+async def _run_validation(*, session_id: str | None, limit: int) -> dict:
     client = AsyncIOMotorClient(settings.MONGO_URL.rstrip("/"))
     db = client[settings.DB_NAME]
     try:
@@ -37,7 +36,7 @@ async def _run_validation(*, session_id: Optional[str], limit: int) -> dict:
         client.close()
 
 
-def _write_report(report_file: Optional[str], report: dict) -> None:
+def _write_report(report_file: str | None, report: dict) -> None:
     if not report_file:
         return
     path = Path(report_file)

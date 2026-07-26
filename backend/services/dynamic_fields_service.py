@@ -5,7 +5,7 @@ Allows supervisors to dynamically add custom fields to items with database mappi
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from bson import ObjectId
 
@@ -28,10 +28,10 @@ class DynamicFieldsService:
         field_name: str,
         field_type: str,
         display_label: str,
-        db_mapping: Optional[str] = None,
-        options: Optional[list[str]] = None,
-        validation_rules: dict[str, Optional[Any]] = None,
-        default_value: Optional[Any] = None,
+        db_mapping: str | None = None,
+        options: list[str] | None = None,
+        validation_rules: dict[str, Any | None] = None,
+        default_value: Any | None = None,
         required: bool = False,
         visible: bool = True,
         searchable: bool = False,
@@ -114,7 +114,7 @@ class DynamicFieldsService:
             return field_def
 
         except Exception as e:
-            logger.error(f"Error creating field definition: {str(e)}")
+            logger.error(f"Error creating field definition: {e!s}")
             raise
 
     async def get_field_definitions(
@@ -134,7 +134,7 @@ class DynamicFieldsService:
             return fields
 
         except Exception as e:
-            logger.error(f"Error getting field definitions: {str(e)}")
+            logger.error(f"Error getting field definitions: {e!s}")
             raise
 
     async def update_field_definition(
@@ -157,7 +157,7 @@ class DynamicFieldsService:
             return result
 
         except Exception as e:
-            logger.error(f"Error updating field definition: {str(e)}")
+            logger.error(f"Error updating field definition: {e!s}")
             raise
 
     async def delete_field_definition(self, field_id: str) -> bool:
@@ -176,7 +176,7 @@ class DynamicFieldsService:
             return result.modified_count > 0
 
         except Exception as e:
-            logger.error(f"Error deleting field definition: {str(e)}")
+            logger.error(f"Error deleting field definition: {e!s}")
             raise
 
     async def set_field_value(
@@ -254,7 +254,7 @@ class DynamicFieldsService:
                 return field_value
 
         except Exception as e:
-            logger.error(f"Error setting field value: {str(e)}")
+            logger.error(f"Error setting field value: {e!s}")
             raise
 
     async def get_item_field_values(self, item_code: str) -> dict[str, Any]:
@@ -276,12 +276,12 @@ class DynamicFieldsService:
             return result
 
         except Exception as e:
-            logger.error(f"Error getting item field values: {str(e)}")
+            logger.error(f"Error getting item field values: {e!s}")
             raise
 
     async def get_items_with_fields(
         self,
-        field_filters: dict[str, Optional[Any]] = None,
+        field_filters: dict[str, Any | None] = None,
         limit: int = 100,
         skip: int = 0,
     ) -> list[dict[str, Any]]:
@@ -347,7 +347,7 @@ class DynamicFieldsService:
             return items
 
         except Exception as e:
-            logger.error(f"Error getting items with fields: {str(e)}")
+            logger.error(f"Error getting items with fields: {e!s}")
             raise
 
     def _validate_number(self, value: Any, validation_rules: dict) -> float:
@@ -409,7 +409,7 @@ class DynamicFieldsService:
             await self.db.items.update_one({"item_code": item_code}, {"$set": {db_field: value}})
             logger.info(f"Updated DB mapping {db_field} for item {item_code}")
         except Exception as e:
-            logger.warning(f"Failed to update DB mapping: {str(e)}")
+            logger.warning(f"Failed to update DB mapping: {e!s}")
 
     async def get_field_statistics(self, field_name: str) -> dict[str, Any]:
         """Get statistics for a specific field"""
@@ -459,5 +459,5 @@ class DynamicFieldsService:
             return stats
 
         except Exception as e:
-            logger.error(f"Error getting field statistics: {str(e)}")
+            logger.error(f"Error getting field statistics: {e!s}")
             raise

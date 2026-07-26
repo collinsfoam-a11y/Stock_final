@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -17,7 +17,7 @@ class ConflictFork(BaseModel):
     user_id: str = Field(..., description="The user attempting the change")
 
     # Forked Data
-    conflicting_payload: Dict[str, Any] = Field(..., description="The payload that was attempted")
+    conflicting_payload: dict[str, Any] = Field(..., description="The payload that was attempted")
 
     reason: str = Field(default="Sync conflict on APPROVED record")
     created_at: datetime = Field(

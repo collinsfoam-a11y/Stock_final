@@ -4,7 +4,6 @@ Connection pool and system metrics monitoring
 """
 
 from datetime import timezone
-
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -46,7 +45,7 @@ async def get_connection_pool_metrics(current_user: dict = Depends(get_current_u
     except Exception as e:
         return ApiResponse.error_response(
             error_code="METRICS_ERROR",
-            error_message=f"Failed to get connection pool metrics: {str(e)}",
+            error_message=f"Failed to get connection pool metrics: {e!s}",
         )
 
 
@@ -84,7 +83,9 @@ async def get_system_metrics(current_user: dict = Depends(get_current_user)):
             "services": {},
         }
 
-        metrics["monitoring"] = await _safe_get_metrics(monitoring_service, "get_metrics", "monitoring")
+        metrics["monitoring"] = await _safe_get_metrics(
+            monitoring_service, "get_metrics", "monitoring"
+        )
         metrics["services"]["cache"] = await _safe_get_metrics(cache_service, "get_status", "cache")
         metrics["services"]["rate_limiter"] = await _safe_get_metrics(
             rate_limiter, "get_stats", "rate_limiter"
@@ -101,5 +102,5 @@ async def get_system_metrics(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         return ApiResponse.error_response(
             error_code="SYSTEM_METRICS_ERROR",
-            error_message=f"Failed to get system metrics: {str(e)}",
+            error_message=f"Failed to get system metrics: {e!s}",
         )

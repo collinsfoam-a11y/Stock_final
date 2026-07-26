@@ -56,7 +56,15 @@ REQUIRED_COLUMNS: dict[str, list[str]] = {
         "Serial No",
         "Remarks",
     ],
-    "serials": ["Serial No", "Item Code", "Warehouse", "Batch No", "Company", "Purchase Rate", "Status"],
+    "serials": [
+        "Serial No",
+        "Item Code",
+        "Warehouse",
+        "Batch No",
+        "Company",
+        "Purchase Rate",
+        "Status",
+    ],
     "batches": ["Batch ID", "Item", "Manufacturing Date", "Expiry Date", "Company"],
     "photo_manifest": [
         "Photo ID",
@@ -120,7 +128,9 @@ class ErpNextImportValidationService:
         preview = await self.db.erpnext_export_previews.find_one({"export_id": export_id})
         if preview is None:
             errors.append("PREVIEW_NOT_FOUND")
-            return self._result(file_type, file_format, errors, warnings, row_count=0, column_count=0)
+            return self._result(
+                file_type, file_format, errors, warnings, row_count=0, column_count=0
+            )
 
         if preview.get("status") != "APPROVED":
             errors.append(f"PREVIEW_NOT_APPROVED:{preview.get('status')}")

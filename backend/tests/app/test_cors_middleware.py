@@ -1,7 +1,6 @@
+from backend.app.middleware import register_middleware
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from backend.app.middleware import register_middleware
 
 
 class _Settings:
@@ -35,14 +34,10 @@ def test_session_create_preflight_allows_idempotency_header():
         headers={
             "Origin": "http://127.0.0.1:8082",
             "Access-Control-Request-Method": "POST",
-            "Access-Control-Request-Headers": (
-                "authorization,content-type,x-idempotency-key"
-            ),
+            "Access-Control-Request-Headers": ("authorization,content-type,x-idempotency-key"),
         },
     )
 
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:8082"
-    assert "x-idempotency-key" in response.headers[
-        "access-control-allow-headers"
-    ].lower()
+    assert "x-idempotency-key" in response.headers["access-control-allow-headers"].lower()

@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock
 
 import pytest
-
 from backend.middleware.performance_middleware import PerformanceMiddleware
 
 

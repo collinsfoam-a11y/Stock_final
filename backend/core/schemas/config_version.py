@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -13,7 +13,7 @@ class ConfigVersion(BaseModel):
 
     id: str = Field(default_factory=lambda: str(uuid4()))
     version_hash: str = Field(..., description="SHA256 hash of the payload")
-    payload: Dict[str, Any] = Field(..., description="Full dump of system settings")
+    payload: dict[str, Any] = Field(..., description="Full dump of system settings")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     created_by: str = Field(..., description="Username of the admin who made the change")
     active_from: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

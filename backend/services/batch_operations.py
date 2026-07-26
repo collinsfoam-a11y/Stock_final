@@ -7,7 +7,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any, Optional, Union
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import InsertOne, ReplaceOne, UpdateOne
@@ -77,7 +77,7 @@ class BatchOperationsService:
                     if progress_callback:
                         progress_callback(total_inserted, total)
                 except PyMongoError as e:
-                    error_msg = f"Error inserting batch {batch_num}: {str(e)}"
+                    error_msg = f"Error inserting batch {batch_num}: {e!s}"
                     logger.error(error_msg, exc_info=True)
                     errors.append(
                         {
@@ -95,7 +95,7 @@ class BatchOperationsService:
             await asyncio.gather(*tasks, return_exceptions=True)
         except Exception as e:
             if ordered:
-                logger.error(f"Batch insert stopped due to error: {str(e)}", exc_info=True)
+                logger.error(f"Batch insert stopped due to error: {e!s}", exc_info=True)
 
         return {
             "inserted_count": total_inserted,
@@ -109,7 +109,7 @@ class BatchOperationsService:
         self,
         collection: str,
         updates: list[dict[str, Any]],
-        update_operation: Optional[Callable] = None,
+        update_operation: Callable | None = None,
         progress_callback: Callable[[int, int], None] = None,
     ) -> dict[str, Any]:
         """
@@ -158,7 +158,7 @@ class BatchOperationsService:
                     if progress_callback:
                         progress_callback(total_updated, total)
                 except Exception as e:
-                    error_msg = f"Error updating batch {batch_num}: {str(e)}"
+                    error_msg = f"Error updating batch {batch_num}: {e!s}"
                     logger.error(error_msg, exc_info=True)
                     errors.append({"batch": batch_num, "error": error_msg})
 
@@ -196,7 +196,7 @@ class BatchOperationsService:
                     f"Deleted batch {i // self.batch_size + 1}: {result.deleted_count} documents"
                 )
             except PyMongoError as e:
-                error_msg = f"Error deleting batch {i // self.batch_size + 1}: {str(e)}"
+                error_msg = f"Error deleting batch {i // self.batch_size + 1}: {e!s}"
                 logger.error(error_msg)
                 errors.append(error_msg)
                 if ordered:
@@ -235,7 +235,7 @@ class BatchOperationsService:
         async def process_batch(batch: list[dict[str, Any]], batch_num: int) -> None:
             async with semaphore:
                 try:
-                    operations: list[Union[InsertOne, ReplaceOne]] = []
+                    operations: list[InsertOne | ReplaceOne] = []
                     now = datetime.now(UTC)
 
                     for item in batch:
@@ -274,7 +274,7 @@ class BatchOperationsService:
                     if progress_callback:
                         progress_callback(total_imported, total)
                 except PyMongoError as e:
-                    error_msg = f"Error importing batch {batch_num}: {str(e)}"
+                    error_msg = f"Error importing batch {batch_num}: {e!s}"
                     logger.error(error_msg, exc_info=True)
                     errors.append({"batch": batch_num, "error": error_msg})
 

@@ -20,6 +20,8 @@ import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
+import { font, gap, radius } from "@/theme/staffUiScale";
+
 import { getLocalItems } from "@/db/localDb";
 import { ItemVerificationAPI } from "@/domains/inventory/services/itemVerificationApi";
 import { ItemFilters, FilterValues } from "@/domains/inventory/components/ItemFilters";
@@ -415,7 +417,7 @@ export default function ItemsScreen() {
               onEndReachedThreshold={0.5}
               ListFooterComponent={
                 loading && items.length > 0 ? (
-                  <View style={{ paddingVertical: 20 }}>
+                  <View style={{ paddingVertical: gap.xl }}>
                     <ActivityIndicator size="small" color={uiTokens.colors.accent} />
                   </View>
                 ) : (
@@ -509,7 +511,7 @@ const createStyles = ({ spacing, radius, colors }: ThemeTokens) =>
     // 15%-alpha success tint for the verified badge surface
     backgroundColor: colorWithAlpha(colors.success, 0.15),
     borderRadius: radius.full,
-    padding: 4,
+    padding: gap.xs,
   },
   itemDetails: {
     flexDirection: "row",

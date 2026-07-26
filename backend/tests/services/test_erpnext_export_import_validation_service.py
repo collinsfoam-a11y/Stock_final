@@ -8,7 +8,6 @@ operator is handed the file for manual import. Never talks to ERPNext.
 from datetime import datetime, timezone
 
 import pytest
-
 from backend.services.erpnext_export_import_validation_service import (
     REQUIRED_COLUMNS,
     ErpNextImportValidationService,
@@ -106,9 +105,14 @@ async def _approve_ready_preview(
     await _seed_erp_item(db, item_code)
     await _seed_approved_line(db, session_id, item_code, **(line_overrides or {}))
     preview = await ErpNextExportService(db).generate_preview(
-        session_id=session_id, mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id=session_id,
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
-    await ErpNextExportService(db).approve_preview(export_id=preview["export_id"], current_user=ADMIN_USER)
+    await ErpNextExportService(db).approve_preview(
+        export_id=preview["export_id"], current_user=ADMIN_USER
+    )
     return await db.erpnext_export_previews.find_one({"export_id": preview["export_id"]})
 
 
@@ -159,7 +163,10 @@ async def test_validation_fails_for_missing_required_columns(monkeypatch):
     )
 
     assert result["valid"] is False
-    assert any(e.startswith("MISSING_REQUIRED_COLUMNS:") and "Nonexistent Column" in e for e in result["errors"])
+    assert any(
+        e.startswith("MISSING_REQUIRED_COLUMNS:") and "Nonexistent Column" in e
+        for e in result["errors"]
+    )
 
 
 @pytest.mark.asyncio
@@ -168,11 +175,18 @@ async def test_validation_fails_for_serialized_item_without_serial_number():
     await _seed_finalized_session(db, "sess-v3")
     await _seed_default_mappings(db)
     await _seed_erp_item(db, "ITEM-V3", is_serialized=True)
-    await _seed_approved_line(db, "sess-v3", "ITEM-V3", counted_qty=1.0, erp_qty=1.0, serial_numbers=["SN-1"])
-    preview = await ErpNextExportService(db).generate_preview(
-        session_id="sess-v3", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+    await _seed_approved_line(
+        db, "sess-v3", "ITEM-V3", counted_qty=1.0, erp_qty=1.0, serial_numbers=["SN-1"]
     )
-    await ErpNextExportService(db).approve_preview(export_id=preview["export_id"], current_user=ADMIN_USER)
+    preview = await ErpNextExportService(db).generate_preview(
+        session_id="sess-v3",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
+    )
+    await ErpNextExportService(db).approve_preview(
+        export_id=preview["export_id"], current_user=ADMIN_USER
+    )
     await _tamper_first_row(
         db, preview["export_id"], {"serial_numbers": [], "blockers": ["SERIAL_REQUIRED_MISSING"]}
     )

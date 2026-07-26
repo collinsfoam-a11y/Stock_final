@@ -73,8 +73,7 @@ def _xlsx_auto_column_widths(ws: "Worksheet") -> None:
         for cell in column:
             try:
                 cell_len = len(str(cell.value)) if cell.value else 0
-                if cell_len > max_length:
-                    max_length = cell_len
+                max_length = max(max_length, cell_len)
             except (AttributeError, TypeError, ValueError) as e:
                 logger.debug(f"Could not calculate cell width: {e}")
                 continue

@@ -1,46 +1,46 @@
-from typing import Any, Optional
+from typing import Any
 
 # Global service instances
 # These are initialized during the lifespan startup event
-scheduled_export_service: Optional[Any] = None
-sync_conflicts_service: Optional[Any] = None
-monitoring_service: Optional[Any] = None
-database_health_service: Optional[Any] = None
-auto_sync_manager: Optional[Any] = None
-sql_sync_service: Optional[Any] = None
-connection_pool: Optional[Any] = None
-enterprise_router: Optional[Any] = None
-init_enrichment_api: Optional[Any] = None
-enrichment_router: Optional[Any] = None
+scheduled_export_service: Any | None = None
+sync_conflicts_service: Any | None = None
+monitoring_service: Any | None = None
+database_health_service: Any | None = None
+auto_sync_manager: Any | None = None
+sql_sync_service: Any | None = None
+connection_pool: Any | None = None
+enterprise_router: Any | None = None
+init_enrichment_api: Any | None = None
+enrichment_router: Any | None = None
 
 # Constants
 ENTERPRISE_AVAILABLE = False
 
 # Core Services
-db: Optional[Any] = None
+db: Any | None = None
 
 
 def set_db(value: Any) -> None: ...
 
 
-cache_service: Optional[Any] = None
+cache_service: Any | None = None
 
 
 def set_cache_service(value: Any) -> None: ...
 
 
-rate_limiter: Optional[Any] = None
-concurrent_handler: Optional[Any] = None
-activity_log_service: Optional[Any] = None
-error_log_service: Optional[Any] = None
-refresh_token_service: Optional[Any] = None
-batch_operations: Optional[Any] = None
-migration_manager: Optional[Any] = None
-websocket_manager: Optional[Any] = None
-sql_server_pool: Optional[Any] = None
+rate_limiter: Any | None = None
+concurrent_handler: Any | None = None
+activity_log_service: Any | None = None
+error_log_service: Any | None = None
+refresh_token_service: Any | None = None
+batch_operations: Any | None = None
+migration_manager: Any | None = None
+websocket_manager: Any | None = None
+sql_server_pool: Any | None = None
 
 # Enterprise Services (previously app.state)
-enterprise_audit_service: Optional[Any] = None
-enterprise_security_service: Optional[Any] = None
-feature_flag_service: Optional[Any] = None
-data_governance_service: Optional[Any] = None
+enterprise_audit_service: Any | None = None
+enterprise_security_service: Any | None = None
+feature_flag_service: Any | None = None
+data_governance_service: Any | None = None

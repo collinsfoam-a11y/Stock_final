@@ -5,7 +5,7 @@ Endpoints for managing scheduled exports
 
 import base64
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -34,17 +34,17 @@ class ExportScheduleCreate(BaseModel):
     export_type: str  # "sessions", "count_lines", "variance_report", "activity_logs"
     frequency: str  # "daily", "weekly", "monthly"
     format: str = "csv"  # "csv", "json"
-    filters: dict[str, Optional[Any]] = Field(default_factory=dict)
+    filters: dict[str, Any | None] = Field(default_factory=dict)
     email_recipients: list[str] = Field(default_factory=list)
 
 
 class ExportScheduleUpdate(BaseModel):
-    name: Optional[str] = None
-    frequency: Optional[str] = None
-    format: Optional[str] = None
-    filters: Optional[dict[str, Optional[Any]]] = None
-    email_recipients: Optional[list[str]] = None
-    enabled: Optional[bool] = None
+    name: str | None = None
+    frequency: str | None = None
+    format: str | None = None
+    filters: dict[str, Any | None] | None = None
+    email_recipients: list[str] | None = None
+    enabled: bool | None = None
 
 
 @exports_router.post("/schedules")
@@ -284,7 +284,7 @@ async def execute_export_schedule(
 
 @exports_router.get("/results")
 async def list_export_results(
-    schedule_id: Optional[str] = None,
+    schedule_id: str | None = None,
     limit: int = 50,
     export_service: ScheduledExportService = Depends(get_scheduled_export_service),
     current_user: dict = require_permission(Permission.EXPORT_ALL),

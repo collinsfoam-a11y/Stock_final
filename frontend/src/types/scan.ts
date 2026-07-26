@@ -52,6 +52,7 @@ export interface Item {
   sync_age_seconds?: number;
   sync_stale?: boolean;
   sql_available?: boolean;
+  sql_verification_in_progress?: boolean;
   /**
    * Session baseline quantities for variance calculation
    */

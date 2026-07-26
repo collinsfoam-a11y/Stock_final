@@ -4,7 +4,7 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, NoReturn, Optional
+from typing import Any, NoReturn
 
 from backend.services.observability import metrics
 
@@ -43,14 +43,14 @@ def _as_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
-def _normalize_string(value: Any) -> Optional[str]:
+def _normalize_string(value: Any) -> str | None:
     if value is None:
         return None
     normalized = str(value).strip()
     return normalized or None
 
 
-def _coerce_datetime(value: Any) -> Optional[datetime]:
+def _coerce_datetime(value: Any) -> datetime | None:
     if isinstance(value, datetime):
         return value
     if isinstance(value, str) and value.strip():
@@ -102,7 +102,7 @@ class ProjectionReadFlags:
 
 
 class ProjectionReadError(RuntimeError):
-    def __init__(self, *, endpoint: str, reason: str, context: Optional[dict[str, Any]] = None):
+    def __init__(self, *, endpoint: str, reason: str, context: dict[str, Any] | None = None):
         self.endpoint = endpoint
         self.reason = reason
         self.context = context or {}
@@ -153,7 +153,7 @@ class ProjectionReadService:
         *,
         endpoint: str,
         reason: str,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> None:
         try:
             await metrics.increment(
@@ -176,21 +176,21 @@ class ProjectionReadService:
         *,
         endpoint: str,
         reason: str,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> NoReturn:
         await self._record_gap(endpoint=endpoint, reason=reason, context=context)
         raise ProjectionReadError(endpoint=endpoint, reason=reason, context=context)
 
-    async def _list_documents(self, collection_name: str, query: Optional[dict[str, Any]] = None):
+    async def _list_documents(self, collection_name: str, query: dict[str, Any] | None = None):
         cursor = self.db[collection_name].find(query or {})
         return [document async for document in cursor]
 
     async def _get_session_projection_docs(
         self,
         *,
-        status: Optional[str] = None,
-        user_id: Optional[str] = None,
-        current_user: Optional[dict[str, Any]] = None,
+        status: str | None = None,
+        user_id: str | None = None,
+        current_user: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         rows = await self._list_documents("session_dashboard_projection")
         has_viewer_context = isinstance(current_user, dict)
@@ -257,8 +257,8 @@ class ProjectionReadService:
         *,
         page: int,
         page_size: int,
-        status: Optional[str],
-        user_id: Optional[str],
+        status: str | None,
+        user_id: str | None,
         current_user: dict[str, Any],
     ) -> dict[str, Any]:
         rows = await self._get_session_projection_docs(
@@ -275,7 +275,7 @@ class ProjectionReadService:
             "total": total,
         }
 
-    async def get_session_stats(self, session_id: str) -> Optional[dict[str, Any]]:
+    async def get_session_stats(self, session_id: str) -> dict[str, Any] | None:
         row = await self.db.session_dashboard_projection.find_one({"session_id": session_id})
         if not isinstance(row, dict):
             return None
@@ -432,7 +432,7 @@ class ProjectionReadService:
     def _sort_verified_items(
         rows: list[dict[str, Any]],
         *,
-        sort_by: Optional[str],
+        sort_by: str | None,
         sort_order: Any,
     ) -> list[dict[str, Any]]:
         key_name = _normalize_string(sort_by) or "counted_at"
@@ -659,7 +659,7 @@ class ProjectionReadService:
             "users": users,
         }
 
-    async def get_dashboard_item_details(self, item_id: str) -> Optional[dict[str, Any]]:
+    async def get_dashboard_item_details(self, item_id: str) -> dict[str, Any] | None:
         row = await self.db.verified_items_projection.find_one({"count_line_id": item_id})
         if not isinstance(row, dict):
             row = await self.db.verified_items_projection.find_one({"id": item_id})

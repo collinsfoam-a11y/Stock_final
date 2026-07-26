@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 
-
 DISALLOWED_SQL_KEYWORDS = (
     "INSERT",
     "UPDATE",

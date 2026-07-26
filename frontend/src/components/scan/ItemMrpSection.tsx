@@ -129,7 +129,7 @@ export function ItemMrpSection({
               <TouchableOpacity
                 key={`mrp-${variantKey}-${index}`}
                 style={[styles.chip, isSelected && styles.chipActive]}
-                onPress={() => onSelectMrpVariant(variant)}
+                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={() => onSelectMrpVariant(variant)}
               >
                 <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
                   ₹{variant.value}

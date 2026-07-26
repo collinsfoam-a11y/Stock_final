@@ -5,7 +5,7 @@ Handles database schema updates and indexing
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -51,7 +51,7 @@ class MigrationManager:
 
             logger.info("All database indexes created successfully")
         except Exception as e:
-            logger.error(f"Error creating indexes: {str(e)}")
+            logger.error(f"Error creating indexes: {e!s}")
             raise
 
     # ── Authoritative collections owned entirely by backend/db/indexes.py ──────
@@ -157,9 +157,7 @@ class MigrationManager:
                         continue
                     try:
                         await collection.drop_index(name)
-                        logger.info(
-                            "Dropped legacy duplicate index %s.%s", collection_name, name
-                        )
+                        logger.info("Dropped legacy duplicate index %s.%s", collection_name, name)
                     except Exception as exc:
                         logger.warning(
                             "Failed to drop legacy index %s.%s: %s",
@@ -168,22 +166,18 @@ class MigrationManager:
                             str(exc),
                         )
             except Exception as exc:
-                logger.warning(
-                    "Legacy index cleanup skipped for %s: %s", collection_name, str(exc)
-                )
+                logger.warning("Legacy index cleanup skipped for %s: %s", collection_name, str(exc))
 
     async def _cleanup_duplicate_usernames(self) -> None:
         """Remove duplicate users before the unique username index is applied."""
         try:
-            pipeline: List[Dict[str, Any]] = [
+            pipeline: list[dict[str, Any]] = [
                 {"$group": {"_id": "$username", "count": {"$sum": 1}}},
                 {"$match": {"count": {"$gt": 1}}},
             ]
             duplicates = await self.db.users.aggregate(pipeline).to_list(None)
             if duplicates:
-                logger.warning(
-                    f"Found {len(duplicates)} duplicate usernames, cleaning up..."
-                )
+                logger.warning(f"Found {len(duplicates)} duplicate usernames, cleaning up...")
                 for dup in duplicates:
                     await self._cleanup_duplicate_users(dup["_id"])
         except Exception as exc:
@@ -215,8 +209,8 @@ class MigrationManager:
         self,
         collection: Any,
         *,
-        key: Union[str, list[tuple[str, int]]],
-        unique: Optional[bool] = None,
+        key: str | list[tuple[str, int]],
+        unique: bool | None = None,
     ) -> None:
         requested_key = self._normalize_index_key(key)
         existing_indexes = await collection.list_indexes().to_list(length=100)
@@ -236,7 +230,7 @@ class MigrationManager:
 
     @staticmethod
     def _normalize_index_key(
-        key: Union[str, list[tuple[str, int]], Dict[str, Any], Any],
+        key: str | list[tuple[str, int]] | dict[str, Any] | Any,
     ) -> list[tuple[str, Any]]:
         """Normalize index specs so list_indexes() output can be compared with requested keys."""
         if isinstance(key, str):
@@ -268,7 +262,7 @@ class MigrationManager:
                 await self._mark_migration_complete(migration["name"])
                 logger.info(f"✓ Migration {migration['name']} completed")
             except Exception as e:
-                logger.error(f"✗ Migration {migration['name']} failed: {str(e)}")
+                logger.error(f"✗ Migration {migration['name']} failed: {e!s}")
                 raise
 
     async def _get_pending_migrations(self) -> list[dict[str, Any]]:

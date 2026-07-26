@@ -6,7 +6,6 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -56,9 +55,9 @@ class RecountCreateRequest(BaseModel):
     count_line_id: str
     reason: str
     priority: RecountPriority = RecountPriority.MEDIUM
-    assign_to: Optional[str] = None
-    due_date: Optional[str] = None
-    notes: Optional[str] = None
+    assign_to: str | None = None
+    due_date: str | None = None
+    notes: str | None = None
     allow_self_assignment: bool = False
 
 
@@ -67,15 +66,15 @@ class RecountAssignRequest(BaseModel):
 
     recount_id: str
     assign_to: str
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class RecountUpdateRequest(BaseModel):
     """Request to update recount status"""
 
-    status: Optional[RecountStatus] = None
-    notes: Optional[str] = None
-    result_qty: Optional[float] = None
+    status: RecountStatus | None = None
+    notes: str | None = None
+    result_qty: float | None = None
 
 
 class RecountResponse(BaseModel):
@@ -84,18 +83,18 @@ class RecountResponse(BaseModel):
     id: str
     count_line_id: str
     item_name: str
-    item_code: Optional[str]
-    barcode: Optional[str]
+    item_code: str | None
+    barcode: str | None
     reason: str
     priority: str
     status: str
     created_by: str
-    assigned_to: Optional[str]
+    assigned_to: str | None
     created_at: str
     updated_at: str
-    due_date: Optional[str]
-    completed_at: Optional[str]
-    result_qty: Optional[float]
+    due_date: str | None
+    completed_at: str | None
+    result_qty: float | None
 
 
 @router.post("/request", response_model=RecountResponse)
@@ -211,9 +210,9 @@ async def create_recount_request(
 
 @router.get("/list", response_model=dict)
 async def list_recount_requests(
-    status: Optional[str] = Query(None),
-    assigned_to: Optional[str] = Query(None),
-    priority: Optional[str] = Query(None),
+    status: str | None = Query(None),
+    assigned_to: str | None = Query(None),
+    priority: str | None = Query(None),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(get_current_user),
@@ -559,7 +558,7 @@ async def complete_recount_request(
 @router.post("/{recount_id}/cancel")
 async def cancel_recount_request(
     recount_id: str,
-    reason: Optional[str] = None,
+    reason: str | None = None,
     current_user: dict = require_permission(Permission.COUNT_LINE_APPROVE),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):

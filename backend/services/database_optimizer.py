@@ -145,7 +145,7 @@ class DatabaseOptimizer:
             return self.mongo_client
 
         except Exception as e:
-            logger.error(f"Failed to optimize MongoDB client: {str(e)}")
+            logger.error(f"Failed to optimize MongoDB client: {e!s}")
             return self.mongo_client
 
     def track_query(self, collection: str, operation: str):
@@ -191,9 +191,7 @@ class DatabaseOptimizer:
 
                 except Exception as e:
                     execution_time = time.time() - start_time
-                    logger.error(
-                        f"Query failed: {query_key} after {execution_time:.3f}s - {str(e)}"
-                    )
+                    logger.error(f"Query failed: {query_key} after {execution_time:.3f}s - {e!s}")
                     raise
 
             return wrapper
@@ -228,7 +226,7 @@ class DatabaseOptimizer:
             await asyncio.gather(*tasks, return_exceptions=True)
             logger.info("Connection warmup completed")
         except Exception as e:
-            logger.warning(f"Connection warmup had some issues: {str(e)}")
+            logger.warning(f"Connection warmup had some issues: {e!s}")
 
     async def optimize_indexes(self, db: AsyncIOMotorDatabase, collection_name: str):
         """
@@ -254,7 +252,7 @@ class DatabaseOptimizer:
                 logger.debug(f"All indexes optimal for {collection_name}")
 
         except Exception as e:
-            logger.error(f"Failed to optimize indexes for {collection_name}: {str(e)}")
+            logger.error(f"Failed to optimize indexes for {collection_name}: {e!s}")
 
     async def check_connection_health(self, db: AsyncIOMotorDatabase) -> dict[str, Any]:
         """
@@ -291,7 +289,7 @@ class DatabaseOptimizer:
                 "ping_time_ms": (time.time() - start_time) * 1000,
             }
         except Exception as e:
-            logger.error(f"Connection health check failed: {str(e)}")
+            logger.error(f"Connection health check failed: {e!s}")
             return {
                 "status": "error",
                 "error": str(e),

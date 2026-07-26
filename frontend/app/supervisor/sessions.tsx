@@ -20,6 +20,7 @@ import { useUiTokens } from "@/hooks/useUiTokens";
 import type { ThemeTokens } from "@/theme/themeTokens";
 import { useToast } from "@/components/feedback/ToastProvider";
 import { safeBackNavigation } from "@/utils/navigation";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 export default function SessionsList() {
   const router = useRouter();
@@ -343,7 +344,7 @@ const createStyles = ({ spacing, radius }: ThemeTokens) =>
   },
   noticeCopy: {
     flex: 1,
-    gap: 4,
+    gap: gap.xs,
   },
   noticeTitle: {
     fontSize: 14,
@@ -393,12 +394,12 @@ const createStyles = ({ spacing, radius }: ThemeTokens) =>
   },
   cardHeaderLeft: {
     flex: 1,
-    gap: 4,
+    gap: gap.xs,
   },
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: gap.sm,
   },
   warehouseName: {
     fontSize: 20,
@@ -406,7 +407,7 @@ const createStyles = ({ spacing, radius }: ThemeTokens) =>
   staffContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: gap.sm,
   },
   staffName: {
     fontSize: 14,
@@ -414,7 +415,7 @@ const createStyles = ({ spacing, radius }: ThemeTokens) =>
   barcodeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: gap.sm,
     marginTop: 2,
   },
   barcodeText: {
@@ -422,8 +423,8 @@ const createStyles = ({ spacing, radius }: ThemeTokens) =>
     fontFamily: "monospace",
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: gap.sm,
+    paddingVertical: gap.xs,
     borderRadius: radius.full,
     borderWidth: 1,
   },
@@ -440,7 +441,7 @@ const createStyles = ({ spacing, radius }: ThemeTokens) =>
   statItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: gap.sm,
   },
   statText: {
     fontSize: 14,

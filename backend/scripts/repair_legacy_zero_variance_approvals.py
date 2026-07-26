@@ -15,7 +15,7 @@ import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -84,8 +84,8 @@ async def repair_legacy_zero_variance_approvals(
     db: AsyncIOMotorDatabase,
     *,
     dry_run: bool = True,
-    limit: Optional[int] = None,
-    session_id: Optional[str] = None,
+    limit: int | None = None,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
     stats: dict[str, Any] = {
         "scanned": 0,

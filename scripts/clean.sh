@@ -11,28 +11,14 @@ fi
 
 echo "Cleaning build artifacts..."
 
-mapfile -d '' cache_dirs < <(
-  find "$repo_root" \
-    \( -path "$repo_root/.git" -o -path "$repo_root/frontend/node_modules" -o -path "$repo_root/.venv" -o -path "$repo_root/backend/.venv" \) -prune -o \
-    -type d \( -name "__pycache__" -o -name ".pytest_cache" -o -name ".mypy_cache" -o -name ".hypothesis" -o -name ".ruff_cache" -o -name ".next" \) \
-    -print0
-)
+find "$repo_root" \
+  \( -path "$repo_root/.git" -o -path "$repo_root/frontend/node_modules" -o -path "$repo_root/.venv" -o -path "$repo_root/backend/.venv" \) -prune -o \
+  -type d \( -name "__pycache__" -o -name ".pytest_cache" -o -name ".mypy_cache" -o -name ".hypothesis" -o -name ".ruff_cache" -o -name ".next" \) \
+  -exec rm -rf {} +
 
-for cache_dir in "${cache_dirs[@]}"; do
-  echo "$cache_dir"
-  rm -rf "$cache_dir"
-done
-
-mapfile -d '' cache_files < <(
-  find "$repo_root" \
-    \( -path "$repo_root/.git" -o -path "$repo_root/frontend/node_modules" -o -path "$repo_root/.venv" -o -path "$repo_root/backend/.venv" \) -prune -o \
-    -type f \( -name "*.pyc" -o -name "*.pyo" \) \
-    -print0
-)
-
-for cache_file in "${cache_files[@]}"; do
-  echo "$cache_file"
-  rm -f "$cache_file"
-done
+find "$repo_root" \
+  \( -path "$repo_root/.git" -o -path "$repo_root/frontend/node_modules" -o -path "$repo_root/.venv" -o -path "$repo_root/backend/.venv" \) -prune -o \
+  -type f \( -name "*.pyc" -o -name "*.pyo" \) \
+  -exec rm -f {} +
 
 echo "Cleanup complete!"

@@ -21,6 +21,7 @@ import Animated, {
 import { borderRadius } from "@/theme/legacyCompat";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import { duration } from "@/theme/staffUiScale";
 
 type BadgeVariant =
   | "success"
@@ -93,16 +94,16 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     if (pulse) {
       pulseOpacity.value = withRepeat(
         withSequence(
-          withTiming(0.6, { duration: 800 }),
-          withTiming(1, { duration: 800 }),
+          withTiming(0.6, { duration: duration.slower }),
+          withTiming(1, { duration: duration.slower }),
         ),
         -1,
         true,
       );
       pulseScale.value = withRepeat(
         withSequence(
-          withTiming(1.02, { duration: 800 }),
-          withTiming(1, { duration: 800 }),
+          withTiming(1.02, { duration: duration.slower }),
+          withTiming(1, { duration: duration.slower }),
         ),
         -1,
         true,

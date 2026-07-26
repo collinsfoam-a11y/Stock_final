@@ -21,6 +21,7 @@ import { safeBackNavigation } from "@/utils/navigation";
 import type { UserRole } from "@/utils/roleNavigation";
 import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 import { haptics } from "@/services/haptics";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 interface ModernHeaderProps {
   title?: string;
@@ -43,7 +44,7 @@ const LogoWithBorder = ({ size = 40, surfaceColor }: { size?: number; surfaceCol
     style={{
       width: size,
       height: size,
-      borderRadius: 8,
+      borderRadius: radius.sm,
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: surfaceColor,
@@ -270,12 +271,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-end",
     flexDirection: "row",
-    gap: 4,
+    gap: gap.xs,
   },
   backButton: {
     width: 44,
     height: 44,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     alignItems: "center",
     justifyContent: "center",
   },

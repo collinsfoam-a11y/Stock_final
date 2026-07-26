@@ -3,6 +3,7 @@ FIX GROUP 9 — Regression tests: Alternate barcode fields must all resolve the 
 """
 
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from backend.services.count_line_write_service import CountLineWriteService

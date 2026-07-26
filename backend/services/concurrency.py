@@ -15,7 +15,7 @@ def coerce_version(value: Any) -> int:
         numeric = int(value)
     except (TypeError, ValueError):
         return 0
-    return numeric if numeric >= 0 else 0
+    return max(numeric, 0)
 
 
 def build_version_filter(expected_version: int) -> dict[str, Any]:

@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 
-import { useItemDraftAutosave } from "../useItemDraftAutosave";
+import { useItemDraftAutosave, UseItemDraftAutosaveParams } from "../useItemDraftAutosave";
 
 const mockSaveDraft = jest.fn();
 
@@ -57,7 +57,7 @@ describe("useItemDraftAutosave", () => {
 
   it("does not autosave repeatedly when props are stable", async () => {
     const { rerender } = renderHook(
-      (props) =>
+      (props: Partial<UseItemDraftAutosaveParams>) =>
         useItemDraftAutosave({
           currentFloor: "F1",
           currentRack: "R1",

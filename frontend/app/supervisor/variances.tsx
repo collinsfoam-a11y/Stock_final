@@ -20,6 +20,8 @@ import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
+import { font, gap, radius } from "@/theme/staffUiScale";
+
 import {
   ItemVerificationAPI,
   VarianceItem,
@@ -273,7 +275,7 @@ export default function VariancesScreen() {
                     marginRight: 12,
                     width: 24,
                     height: 24,
-                    borderRadius: 12,
+                    borderRadius: radius.lg,
                     borderWidth: 2,
                     borderColor: isSelected
                       ? uiTokens.colors.accent
@@ -409,7 +411,7 @@ export default function VariancesScreen() {
             </View>
           </View>
 
-          <View style={{ flexDirection: "row", gap: 8 }}>
+          <View style={{ flexDirection: "row", gap: gap.sm }}>
             {isSelectionMode && (
               <AnimatedPressable
                 style={styles.exportButton}
@@ -546,7 +548,7 @@ export default function VariancesScreen() {
               onEndReachedThreshold={0.5}
               ListFooterComponent={
                 loading && variances.length > 0 ? (
-                  <View style={{ paddingVertical: 20 }}>
+                  <View style={{ paddingVertical: gap.xl }}>
                     <ActivityIndicator size="small" color={uiTokens.colors.accent} />
                   </View>
                 ) : (
@@ -565,7 +567,7 @@ export default function VariancesScreen() {
             variant="outlined"
             elevation="none"
             padding={16}
-            style={{ flexDirection: "row", gap: 12, width: "100%" }}
+            style={{ flexDirection: "row", gap: gap.md, width: "100%" }}
           >
             <AnimatedPressable
               style={[styles.bulkButton, { backgroundColor: uiTokens.colors.error }]}
@@ -668,10 +670,10 @@ const createStyles = ({ spacing, radius }: ThemeTokens) =>
   varianceBadge: {
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: gap.xs,
     minWidth: 60,
     flexDirection: "row",
-    gap: 4,
+    gap: gap.xs,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -757,7 +759,7 @@ const createStyles = ({ spacing, radius }: ThemeTokens) =>
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: gap.sm,
     elevation: 8,
   },
   bulkButtonText: {

@@ -1,6 +1,7 @@
 import { Dimensions, Platform, StyleSheet } from "react-native";
 
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import { font, gap, radius } from '@/theme/staffUiScale';
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export const DASHBOARD_IS_WEB = Platform.OS === "web";
@@ -195,7 +196,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: gap["2xl"],
     paddingTop: Platform.OS === "ios" ? 60 : 40,
     paddingBottom: 20,
   },
@@ -224,7 +225,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   },
   tabsContainer: {
     flexDirection: "row",
-    paddingHorizontal: 24,
+    paddingHorizontal: gap["2xl"],
     borderBottomWidth: 1,
     borderBottomColor: dashboardTheme.colors.border.light,
     gap: uiTokens.spacing.xl,
@@ -249,7 +250,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     flex: 1,
   },
   contentContainer: {
-    padding: 24,
+    padding: gap["2xl"],
     paddingBottom: 40,
   },
   offlineNotice: {
@@ -618,8 +619,8 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     justifyContent: "center",
     backgroundColor: dashboardTheme.colors.primary[500],
     paddingVertical: 10,
-    borderRadius: 8,
-    gap: 8,
+    borderRadius: radius.sm,
+    gap: gap.sm,
   },
   generateButtonText: {
     color: uiSemanticColors.text.inverse,
@@ -676,8 +677,8 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    padding: 12,
+    gap: gap.sm,
+    padding: gap.md,
     borderRadius: uiTokens.radius.md,
     borderWidth: 1,
     borderColor: dashboardTheme.colors.border.light,
@@ -700,7 +701,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   },
   cancelButton: {
     flex: 1,
-    padding: 12,
+    padding: gap.md,
     borderRadius: uiTokens.radius.md,
     alignItems: "center",
     borderWidth: 1,
@@ -712,7 +713,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   },
   confirmButton: {
     flex: 1,
-    padding: 12,
+    padding: gap.md,
     borderRadius: uiTokens.radius.md,
     backgroundColor: dashboardTheme.colors.primary[500],
     alignItems: "center",

@@ -4,8 +4,7 @@ Endpoints for managing custom dynamic fields for items
 """
 
 import logging
-from backend.utils.api_utils import sanitize_for_logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -13,6 +12,7 @@ from pydantic import BaseModel, Field
 from backend.auth import get_current_user
 from backend.db.runtime import get_db
 from backend.services.dynamic_fields_service import DynamicFieldsService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +35,12 @@ class FieldDefinitionCreate(BaseModel):
     field_name: str = Field(..., description="Internal field name")
     field_type: str = Field(..., description="Field type")
     display_label: str = Field(..., description="Display label")
-    db_mapping: Optional[str] = Field(default=None, description="Database field mapping")
-    options: Optional[list[str]] = Field(default=None, description="Options for select types")
-    validation_rules: Optional[dict[str, Optional[Any]]] = Field(
+    db_mapping: str | None = Field(default=None, description="Database field mapping")
+    options: list[str] | None = Field(default=None, description="Options for select types")
+    validation_rules: dict[str, Any | None] | None = Field(
         default=None, description="Validation rules"
     )
-    default_value: Optional[Any] = Field(default=None, description="Default value")
+    default_value: Any | None = Field(default=None, description="Default value")
     required: bool = Field(False, description="Is field required")
     visible: bool = Field(True, description="Is field visible")
     searchable: bool = Field(False, description="Is field searchable")
@@ -49,16 +49,16 @@ class FieldDefinitionCreate(BaseModel):
 
 
 class FieldDefinitionUpdate(BaseModel):
-    display_label: Optional[str] = None
-    options: Optional[list[str]] = None
-    validation_rules: Optional[dict[str, Optional[Any]]] = None
-    default_value: Optional[Any] = None
-    required: Optional[bool] = None
-    visible: Optional[bool] = None
-    searchable: Optional[bool] = None
-    in_reports: Optional[bool] = None
-    order: Optional[int] = None
-    enabled: Optional[bool] = None
+    display_label: str | None = None
+    options: list[str] | None = None
+    validation_rules: dict[str, Any | None] | None = None
+    default_value: Any | None = None
+    required: bool | None = None
+    visible: bool | None = None
+    searchable: bool | None = None
+    in_reports: bool | None = None
+    order: int | None = None
+    enabled: bool | None = None
 
 
 class FieldValueSet(BaseModel):
@@ -363,8 +363,8 @@ async def get_item_field_values(
 
 @dynamic_fields_router.get("/items")
 async def get_items_with_fields(
-    field_name: Optional[str] = None,
-    field_value: Optional[str] = None,
+    field_name: str | None = None,
+    field_value: str | None = None,
     limit: int = 100,
     skip: int = 0,
     current_user: dict = Depends(get_current_user),
@@ -382,7 +382,7 @@ async def get_items_with_fields(
     **Example:** `/api/dynamic-fields/items?field_name=warranty_period&field_value=2 years`
     """
     try:
-        field_filters: Optional[dict[str, Optional[Any]]] = None
+        field_filters: dict[str, Any | None] | None = None
         if field_name and field_value:
             field_filters = {field_name: field_value}
 

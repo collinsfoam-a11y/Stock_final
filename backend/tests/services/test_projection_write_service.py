@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pytest
-
 from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.projection_write_service import ProjectionWriteService
 from backend.tests.utils.in_memory_db import InMemoryDatabase

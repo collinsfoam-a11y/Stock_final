@@ -11,6 +11,8 @@ import { fontAssets } from "@/constants/fontAssets";
 import { initializeApp } from "@/bootstrap/initApp";
 import { BootLoadingView } from "@/bootstrap/BootStateViews";
 import { zIndex } from "@/theme";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { type ThemeTokens } from "@/theme/themeTokens";
 
 const WebAppShell = Platform.OS === "web" ? AppShell : null;
 const LazyAppShell = React.lazy(() => import("@/bootstrap/AppShell"));
@@ -36,6 +38,9 @@ export default function RootLayout() {
   const loadStoredAuth = useAuthStore((state) => state.loadStoredAuth);
   const loadSettings = useSettingsStore((state) => state.loadSettings);
   const [fontsLoaded, fontError] = useFonts(fontAssets);
+
+  const uiTokens = useUiTokens();
+  const styles = React.useMemo(() => createStyles(uiTokens), [uiTokens]);
 
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [initError, setInitError] = React.useState<string | null>(null);
@@ -342,12 +347,14 @@ export default function RootLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  bootOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: zIndex.toast,
-  },
-});
+const createStyles = (tokens: ThemeTokens) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: tokens.colors.background,
+    },
+    bootOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: zIndex.toast,
+    },
+  });

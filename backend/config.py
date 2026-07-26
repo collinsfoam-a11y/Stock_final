@@ -7,8 +7,8 @@ Type-safe configuration with validation using Pydantic
 
 import logging
 import os
-from typing import Optional
 from pathlib import Path
+
 from pydantic import Field, field_validator, model_validator
 
 try:
@@ -36,7 +36,7 @@ ROOT_DIR = Path(__file__).parent
 logger = logging.getLogger(__name__)
 
 
-def _env_first(*names: str) -> Optional[str]:
+def _env_first(*names: str) -> str | None:
     """Return the first non-empty environment variable from the provided names."""
     for name in names:
         value = os.getenv(name)
@@ -45,7 +45,7 @@ def _env_first(*names: str) -> Optional[str]:
     return None
 
 
-def _env_file_value(name: str) -> Optional[str]:
+def _env_file_value(name: str) -> str | None:
     """Read a secret from the conventional `<NAME>_FILE` environment variable."""
     file_var = f"{name}_FILE"
     file_path = os.getenv(file_var)
@@ -64,7 +64,7 @@ def _env_file_value(name: str) -> Optional[str]:
     return value
 
 
-def _secret_env_first(*names: str) -> Optional[str]:
+def _secret_env_first(*names: str) -> str | None:
     """Return the first configured secret value from env vars or `_FILE` aliases."""
     for name in names:
         value = os.getenv(name)
@@ -258,17 +258,17 @@ class Settings(PydanticBaseSettings):
     SQL_SERVER_DRIVER: str = Field(
         default="SQL Server", description="ODBC driver name for SQL Server"
     )
-    SQL_SERVER_HOST: Optional[str] = Field(
+    SQL_SERVER_HOST: str | None = Field(
         None,
         description="SQL Server host (optional)",
     )
     SQL_SERVER_PORT: int = 1433
-    SQL_SERVER_DATABASE: Optional[str] = Field(
+    SQL_SERVER_DATABASE: str | None = Field(
         None,
         description="SQL Server database (optional)",
     )
-    SQL_SERVER_USER: Optional[str] = None
-    SQL_SERVER_PASSWORD: Optional[str] = None
+    SQL_SERVER_USER: str | None = None
+    SQL_SERVER_PASSWORD: str | None = None
 
     @field_validator("SQL_SERVER_PORT")
     @classmethod
@@ -284,23 +284,21 @@ class Settings(PydanticBaseSettings):
         # no target database is unambiguously incomplete in either auth mode
         # and would otherwise fail later with a confusing connection error.
         if self.SQL_SERVER_HOST and not self.SQL_SERVER_DATABASE:
-            raise ValueError(
-                "SQL_SERVER_DATABASE is required when SQL_SERVER_HOST is set"
-            )
+            raise ValueError("SQL_SERVER_DATABASE is required when SQL_SERVER_HOST is set")
         return self
 
     # Security
     # CRITICAL: These MUST be set via env variables - no defaults allowed
     # Generate secure secrets using:
     # python -c "import secrets; print(secrets.token_urlsafe(32))"
-    JWT_SECRET: Optional[str] = Field(
+    JWT_SECRET: str | None = Field(
         default=None, description="JWT secret key (recommended to use env var)"
     )
-    JWT_REFRESH_SECRET: Optional[str] = Field(
+    JWT_REFRESH_SECRET: str | None = Field(
         default=None,
         description=("JWT refresh token secret - must be set via JWT_REFRESH_SECRET env var"),
     )
-    PIN_SALT: Optional[str] = Field(
+    PIN_SALT: str | None = Field(
         default=None, description="Salt for PIN lookup hashing (recommended to use env var)"
     )
     JWT_ALGORITHM: str = "HS256"
@@ -314,7 +312,7 @@ class Settings(PydanticBaseSettings):
 
     @field_validator("JWT_SECRET", mode="before")
     @classmethod
-    def validate_jwt_secret(cls, v: Optional[str]) -> str:
+    def validate_jwt_secret(cls, v: str | None) -> str:
         # Check environment variable first
         env_value = _secret_env_first("JWT_SECRET")
         if env_value:
@@ -338,7 +336,7 @@ class Settings(PydanticBaseSettings):
 
     @field_validator("JWT_REFRESH_SECRET", mode="before")
     @classmethod
-    def validate_jwt_refresh_secret(cls, v: Optional[str]) -> str:
+    def validate_jwt_refresh_secret(cls, v: str | None) -> str:
         # Check environment variable first
         env_value = _secret_env_first("JWT_REFRESH_SECRET")
         if env_value:
@@ -363,7 +361,7 @@ class Settings(PydanticBaseSettings):
 
     @field_validator("PIN_SALT", mode="before")
     @classmethod
-    def validate_pin_salt(cls, v: Optional[str]) -> str:
+    def validate_pin_salt(cls, v: str | None) -> str:
         # Check environment variable first
         env_value = _secret_env_first("PIN_SALT")
         if env_value:
@@ -386,12 +384,12 @@ class Settings(PydanticBaseSettings):
         return v
 
     # Caching
-    REDIS_URL: Optional[str] = None
+    REDIS_URL: str | None = None
     CACHE_TTL: int = Field(3600, ge=0)
 
     @field_validator("REDIS_URL", mode="before")
     @classmethod
-    def validate_redis_url(cls, v: Optional[str]) -> Optional[str]:
+    def validate_redis_url(cls, v: str | None) -> str | None:
         env_value = _secret_env_first("REDIS_URL")
         if env_value:
             return env_value
@@ -435,15 +433,15 @@ class Settings(PydanticBaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"  # json or text
-    LOG_FILE: Optional[str] = None
+    LOG_FILE: str | None = None
     LOG_MAX_BYTES: int = Field(10 * 1024 * 1024, ge=0)
     LOG_BACKUP_COUNT: int = Field(5, ge=0)
 
     # Error Tracking (Sentry)
-    SENTRY_DSN: Optional[str] = Field(
+    SENTRY_DSN: str | None = Field(
         default=None, description="Sentry DSN for error tracking. Set via SENTRY_DSN env var."
     )
-    SENTRY_ENVIRONMENT: Optional[str] = Field(
+    SENTRY_ENVIRONMENT: str | None = Field(
         default="development", description="Sentry environment (defaults to ENVIRONMENT setting)"
     )
     SENTRY_TRACES_SAMPLE_RATE: float = Field(
@@ -463,7 +461,7 @@ class Settings(PydanticBaseSettings):
         description="When true, runtime validation raises governance violations on invariant errors.",
     )
     BLOCK_SANITIZATION_VIOLATIONS: bool = True
-    ALLOWED_HOSTS: Optional[str] = Field(
+    ALLOWED_HOSTS: str | None = Field(
         None,
         description="Comma-separated trusted hostnames for Host header validation.",
     )
@@ -487,7 +485,7 @@ class Settings(PydanticBaseSettings):
         default="sv_refresh_token",
         description="Cookie name used for the refresh token.",
     )
-    AUTH_COOKIE_DOMAIN: Optional[str] = Field(
+    AUTH_COOKIE_DOMAIN: str | None = Field(
         default=None,
         description="Optional cookie domain override for browser authentication.",
     )
@@ -522,8 +520,8 @@ class Settings(PydanticBaseSettings):
         return _parse_bool(env_value if env_value is not None else v, default=False)
 
     # Server
-    CORS_ALLOW_ORIGINS: Optional[str] = None
-    CORS_DEV_ORIGINS: Optional[str] = Field(
+    CORS_ALLOW_ORIGINS: str | None = None
+    CORS_DEV_ORIGINS: str | None = Field(
         None,
         description=(
             "Additional CORS origins for development (comma-separated). "
@@ -554,7 +552,7 @@ class Settings(PydanticBaseSettings):
 
     @field_validator("CORS_ALLOW_ORIGINS", mode="before")
     @classmethod
-    def resolve_cors_allow_origins(cls, v: Optional[str]) -> Optional[str]:
+    def resolve_cors_allow_origins(cls, v: str | None) -> str | None:
         return _env_first("CORS_ALLOW_ORIGINS", "CORS_ORIGINS") or v
 
     @field_validator("METRICS_ENABLED", mode="before")

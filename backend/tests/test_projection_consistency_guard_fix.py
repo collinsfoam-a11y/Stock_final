@@ -1,7 +1,8 @@
-import pytest
 import sys
-from unittest.mock import patch, MagicMock
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Need to fake import backend.db.runtime etc., or we just test the class logic
 from backend.middleware.projection_consistency_guard import ProjectionConsistencyGuardMiddleware

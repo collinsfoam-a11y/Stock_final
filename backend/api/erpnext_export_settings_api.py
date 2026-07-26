@@ -4,7 +4,6 @@ POST /api/erpnext-exports/preview to replace inference-based blockers.
 """
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -33,9 +32,9 @@ class WarehouseMappingCreate(BaseModel):
 
 
 class WarehouseMappingUpdate(BaseModel):
-    stock_verify_warehouse_name: Optional[str] = None
-    erpnext_warehouse: Optional[str] = None
-    is_active: Optional[bool] = None
+    stock_verify_warehouse_name: str | None = None
+    erpnext_warehouse: str | None = None
+    is_active: bool | None = None
 
 
 class UomMappingCreate(BaseModel):
@@ -45,24 +44,24 @@ class UomMappingCreate(BaseModel):
 
 
 class UomMappingUpdate(BaseModel):
-    erpnext_uom: Optional[str] = None
-    conversion_factor: Optional[float] = None
-    is_active: Optional[bool] = None
+    erpnext_uom: str | None = None
+    conversion_factor: float | None = None
+    is_active: bool | None = None
 
 
 class ItemExportFlagsCreate(BaseModel):
     item_code: str
-    is_serialized: Optional[bool] = None
-    is_batch_controlled: Optional[bool] = None
-    allow_negative_opening_qty: Optional[bool] = None
-    requires_photo_for_export: Optional[bool] = None
+    is_serialized: bool | None = None
+    is_batch_controlled: bool | None = None
+    allow_negative_opening_qty: bool | None = None
+    requires_photo_for_export: bool | None = None
 
 
 class ItemExportFlagsUpdate(BaseModel):
-    is_serialized: Optional[bool] = None
-    is_batch_controlled: Optional[bool] = None
-    allow_negative_opening_qty: Optional[bool] = None
-    requires_photo_for_export: Optional[bool] = None
+    is_serialized: bool | None = None
+    is_batch_controlled: bool | None = None
+    allow_negative_opening_qty: bool | None = None
+    requires_photo_for_export: bool | None = None
 
 
 @router.post("/warehouse-mappings")

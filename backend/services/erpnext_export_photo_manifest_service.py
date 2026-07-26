@@ -18,7 +18,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class ErpNextExportPhotoManifestError(ValueError):
     """Request-level validation error (preview not found/not approved)."""
 
 
-def _strip_id(doc: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+def _strip_id(doc: dict[str, Any] | None) -> dict[str, Any] | None:
     if doc is None:
         return None
     doc = dict(doc)
@@ -61,9 +61,11 @@ class ErpNextExportPhotoManifestService:
         manifest_hash = hashlib.sha256(_canonical_json(photos).encode("utf-8")).hexdigest()
         status = self._determine_status(photos)
 
-        existing = await self.db.erpnext_photo_manifests.find(
-            {"export_id": export_id}
-        ).sort("manifest_version", -1).to_list(length=1)
+        existing = (
+            await self.db.erpnext_photo_manifests.find({"export_id": export_id})
+            .sort("manifest_version", -1)
+            .to_list(length=1)
+        )
         if existing and existing[0].get("manifest_hash") == manifest_hash:
             return _strip_id(existing[0])  # idempotent -- nothing changed since last snapshot
 
@@ -151,10 +153,12 @@ class ErpNextExportPhotoManifestService:
 
         return entries
 
-    async def get_manifest(self, export_id: str) -> Optional[dict[str, Any]]:
-        docs = await self.db.erpnext_photo_manifests.find(
-            {"export_id": export_id}
-        ).sort("manifest_version", -1).to_list(length=1)
+    async def get_manifest(self, export_id: str) -> dict[str, Any] | None:
+        docs = (
+            await self.db.erpnext_photo_manifests.find({"export_id": export_id})
+            .sort("manifest_version", -1)
+            .to_list(length=1)
+        )
         return _strip_id(docs[0]) if docs else None
 
     async def _audit(self, current_user: dict[str, Any], manifest: dict[str, Any]) -> None:

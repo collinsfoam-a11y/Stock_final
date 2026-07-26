@@ -1,12 +1,14 @@
 import logging
-from backend.utils.api_utils import sanitize_for_logging
-import httpx
 from datetime import datetime, timezone
+from typing import Any
+
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from typing import Any, Dict
+
 from backend.auth.dependencies import get_current_user
-from backend.db.runtime import get_db
 from backend.config import settings
+from backend.db.runtime import get_db
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger("stock-verify")
 router = APIRouter(prefix="/api/pi", tags=["AI Assistant"])
@@ -46,7 +48,7 @@ async def get_system_stats_context(db: Any) -> str:
 
 
 @router.post("/chat")
-async def chat_with_pi(request: Request, current_user: Dict[str, Any] = Depends(get_current_user)):
+async def chat_with_pi(request: Request, current_user: dict[str, Any] = Depends(get_current_user)):
     """
     Proxy a chat completion request to the pi-server.
     Requires Admin or Supervisor role.
@@ -137,7 +139,7 @@ async def chat_with_pi(request: Request, current_user: Dict[str, Any] = Depends(
 
 @router.get("/history")
 async def get_chat_history(
-    limit: int = Query(20, ge=1, le=100), current_user: Dict[str, Any] = Depends(get_current_user)
+    limit: int = Query(20, ge=1, le=100), current_user: dict[str, Any] = Depends(get_current_user)
 ):
     """Retrieve chat history for the current user."""
     db = get_db()
@@ -152,7 +154,7 @@ async def get_chat_history(
 
 
 @router.get("/status")
-async def get_pi_status(current_user: Dict[str, Any] = Depends(get_current_user)):
+async def get_pi_status(current_user: dict[str, Any] = Depends(get_current_user)):
     """Check if the pi-server sidecar is reachable."""
     async with httpx.AsyncClient(timeout=5.0) as client:
         try:

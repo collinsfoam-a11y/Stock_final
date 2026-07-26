@@ -8,10 +8,10 @@ Provides JSON and text-based logging with different levels
 import json
 import logging
 import sys
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Iterable
 
 
 class NonClosingStreamHandler(logging.StreamHandler):

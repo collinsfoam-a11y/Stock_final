@@ -43,7 +43,13 @@ export const OptionSelectModal: React.FC<OptionSelectModalProps> = ({
               </Pressable>
             )}
           />
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Close options"
+            style={styles.closeButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={onClose}
+          >
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
         </View>

@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from backend.api.admin_dashboard_api import (
     calculate_completion_percentage,
     count_pending_variances,

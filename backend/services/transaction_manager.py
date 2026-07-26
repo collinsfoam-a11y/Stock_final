@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import inspect
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Optional
+from typing import Any
 
 from pymongo.errors import OperationFailure
 
@@ -42,7 +43,7 @@ async def _client_supports_transactions(client: Any) -> bool:
 
 
 @asynccontextmanager
-async def mongo_transaction(client: Any) -> AsyncIterator[Optional[Any]]:
+async def mongo_transaction(client: Any) -> AsyncIterator[Any | None]:
     """
     Open a Mongo transaction when supported, otherwise yield a no-op session.
 

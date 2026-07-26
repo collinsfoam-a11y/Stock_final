@@ -9,7 +9,7 @@ The active source of truth for stock verification is:
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 ACTIVE_SESSION_STATUSES = {"OPEN", "ACTIVE", "PAUSED", "RECONCILE"}
 FINALIZED_SESSION_STATUSES = {"COMPLETED", "CLOSED", "CANCELLED"}
@@ -20,7 +20,7 @@ BLOCKING_COUNT_LINE_STATUSES = {"rejected"}
 SUPERSEDED_COUNT_LINE_STATUSES = {"superseded"}
 
 
-def normalize_location_value(value: Any) -> Optional[str]:
+def normalize_location_value(value: Any) -> str | None:
     if value is None:
         return None
     if not isinstance(value, str):
@@ -62,13 +62,13 @@ def requires_supervisor_review_for_variance(variance: Any) -> bool:
         return False
 
 
-def count_line_requires_supervisor_review(count_line: Optional[dict[str, Any]]) -> bool:
+def count_line_requires_supervisor_review(count_line: dict[str, Any] | None) -> bool:
     if not count_line:
         return False
     return requires_supervisor_review_for_variance(count_line.get("variance"))
 
 
-def is_count_line_effectively_reviewed(count_line: Optional[dict[str, Any]]) -> bool:
+def is_count_line_effectively_reviewed(count_line: dict[str, Any] | None) -> bool:
     if not count_line:
         return False
 
@@ -85,7 +85,7 @@ def is_count_line_effectively_reviewed(count_line: Optional[dict[str, Any]]) -> 
     return not count_line_requires_supervisor_review(count_line) and line_status != "rejected"
 
 
-def get_effective_count_line_status(count_line: Optional[dict[str, Any]]) -> str:
+def get_effective_count_line_status(count_line: dict[str, Any] | None) -> str:
     if not count_line:
         return "pending"
 
@@ -97,7 +97,7 @@ def get_effective_count_line_status(count_line: Optional[dict[str, Any]]) -> str
     return line_status
 
 
-def get_effective_approval_status(count_line: Optional[dict[str, Any]]) -> str:
+def get_effective_approval_status(count_line: dict[str, Any] | None) -> str:
     if not count_line:
         return "PENDING"
 
@@ -121,18 +121,18 @@ def build_session_lookup(session_id: str) -> dict[str, Any]:
     return {"$or": [{"id": session_id}, {"session_id": session_id}]}
 
 
-async def find_session(db: Any, session_id: str) -> Optional[dict[str, Any]]:
+async def find_session(db: Any, session_id: str) -> dict[str, Any] | None:
     return await db.sessions.find_one(build_session_lookup(session_id))
 
 
-def extract_document_id(document: dict[str, Any]) -> Optional[str]:
+def extract_document_id(document: dict[str, Any]) -> str | None:
     value = document.get("id") or document.get("_id")
     if value is None:
         return None
     return str(value)
 
 
-def is_session_finalized(session: Optional[dict[str, Any]]) -> bool:
+def is_session_finalized(session: dict[str, Any] | None) -> bool:
     if not session:
         return False
     if session.get("finalized_at"):
@@ -146,7 +146,7 @@ def is_session_finalized(session: Optional[dict[str, Any]]) -> bool:
     )
 
 
-def is_count_line_locked(count_line: Optional[dict[str, Any]]) -> bool:
+def is_count_line_locked(count_line: dict[str, Any] | None) -> bool:
     if not count_line:
         return False
     if count_line.get("finalized_at"):
@@ -154,7 +154,7 @@ def is_count_line_locked(count_line: Optional[dict[str, Any]]) -> bool:
     return normalize_count_line_status(count_line.get("status")) in LOCKED_COUNT_LINE_STATUSES
 
 
-def is_superseded_count_line(count_line: Optional[dict[str, Any]]) -> bool:
+def is_superseded_count_line(count_line: dict[str, Any] | None) -> bool:
     if not count_line:
         return False
     if normalize_count_line_status(count_line.get("status")) in SUPERSEDED_COUNT_LINE_STATUSES:
@@ -189,8 +189,8 @@ async def find_duplicate_count_line(
     db: Any,
     line_data: dict[str, Any],
     *,
-    exclude_id: Optional[str] = None,
-) -> Optional[dict[str, Any]]:
+    exclude_id: str | None = None,
+) -> dict[str, Any] | None:
     duplicate_filter = build_count_line_duplicate_filter(line_data)
     requested_batch_id = line_data.get("batch_id")
     cursor = db.count_lines.find(duplicate_filter)
@@ -213,7 +213,7 @@ async def find_duplicate_count_line(
 
 
 def can_reuse_rejected_count_line(
-    existing: Optional[dict[str, Any]], line_data: dict[str, Any]
+    existing: dict[str, Any] | None, line_data: dict[str, Any]
 ) -> bool:
     if not existing or not is_explicit_recount(line_data):
         return False
@@ -274,15 +274,13 @@ async def get_session_count_lines(
     return lines
 
 
-def _normalize_activity_timestamp(candidate_activity: Any) -> Optional[datetime]:
+def _normalize_activity_timestamp(candidate_activity: Any) -> datetime | None:
     """Coerce a count-line activity field (str/int/float/datetime) to a naive UTC datetime."""
     if candidate_activity is None:
         return None
     if isinstance(candidate_activity, (int, float)):
         try:
-            return datetime.fromtimestamp(candidate_activity, tz=timezone.utc).replace(
-                tzinfo=None
-            )
+            return datetime.fromtimestamp(candidate_activity, tz=timezone.utc).replace(tzinfo=None)
         except (ValueError, OSError):
             return None
     if isinstance(candidate_activity, str):
@@ -309,7 +307,7 @@ def _compute_session_totals_from_lines(lines: list[dict[str, Any]]) -> dict[str,
     total_variance = 0.0
     verified_items = 0
     damage_items = 0
-    last_activity: Optional[datetime] = None
+    last_activity: datetime | None = None
 
     for line in lines:
         if is_superseded_count_line(line):
@@ -372,7 +370,9 @@ async def recompute_session_totals_batch(
     if not unique_ids:
         return {}
 
-    lines_by_session: dict[str, list[dict[str, Any]]] = {session_id: [] for session_id in unique_ids}
+    lines_by_session: dict[str, list[dict[str, Any]]] = {
+        session_id: [] for session_id in unique_ids
+    }
     cursor = db.count_lines.find({"session_id": {"$in": unique_ids}})
     async for line in cursor:
         bucket = lines_by_session.get(str(line.get("session_id") or ""))

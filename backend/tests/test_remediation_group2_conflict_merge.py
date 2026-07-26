@@ -5,6 +5,7 @@ current=10, incoming=12 → result MUST be 12, never 22.
 """
 
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from backend.services.sync_conflicts_service import ConflictResolution, SyncConflictsService

@@ -11,6 +11,7 @@ import * as Haptics from "expo-haptics";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { useSettingsStore } from "../../store/settingsStore";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 interface ThemePickerProps {
   compact?: boolean;
@@ -71,10 +72,10 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => 
 
 const styles = StyleSheet.create({
   container: {
-    gap: 16,
+    gap: gap.lg,
   },
   modeSection: {
-    gap: 12,
+    gap: gap.md,
   },
   sectionLabel: {
     fontSize: 13,
@@ -85,18 +86,18 @@ const styles = StyleSheet.create({
   },
   modeToggle: {
     flexDirection: "row",
-    borderRadius: 12,
-    padding: 4,
+    borderRadius: radius.lg,
+    padding: gap.xs,
   },
   modeButton: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: gap.sm,
     paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingHorizontal: gap.md,
+    borderRadius: radius.sm,
   },
   modeButtonText: {
     fontSize: 13,

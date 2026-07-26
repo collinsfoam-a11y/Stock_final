@@ -5,8 +5,8 @@ Validates critical environment variables on application startup.
 Raises ValueError if required variables are missing or invalid.
 """
 
-import os
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,6 @@ caller, never logs/exposes credentials.
 """
 
 import pytest
-
 from backend.services.hsn_official_verification_service import HsnOfficialVerificationService
 
 

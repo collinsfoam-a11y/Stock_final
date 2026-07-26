@@ -1,16 +1,18 @@
 # Updated test file for AsyncUtils refactor
-import pytest
 import asyncio
 from unittest.mock import AsyncMock
+
+import pytest
+
 from backend.utils.async_utils import (
-    AsyncExecutor,
     AsyncCache,
-    with_async_executor,
-    safe_async_execute,
-    safe_batch_execute,
+    AsyncExecutor,
+    _async_cache,
     async_connection_pool,
     cached_async,
-    _async_cache,
+    safe_async_execute,
+    safe_batch_execute,
+    with_async_executor,
 )
 
 # ---------------------------------------------------------------------------

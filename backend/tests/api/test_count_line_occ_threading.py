@@ -35,9 +35,8 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 import backend.api.count_lines_routes as clr
+import pytest
 from backend.services.concurrency import ConcurrencyError
 from backend.services.governance_guard import GovernanceViolation
 
@@ -92,7 +91,14 @@ async def test_persist_count_line_threads_fresh_session_version(monkeypatch):
     # earlier in the request); the fresh read says version=7 (current).
     # The write must use the fresh value, not the stale one.
     await clr._persist_count_line_document(
-        _fake_db(fresh_session={"id": "sess-occ", "session_id": "sess-occ", "status": "ACTIVE", "version": 7}),
+        _fake_db(
+            fresh_session={
+                "id": "sess-occ",
+                "session_id": "sess-occ",
+                "status": "ACTIVE",
+                "version": 7,
+            }
+        ),
         _line_data(),
         "user1",
         _count_line(),
@@ -172,7 +178,14 @@ async def test_persist_count_line_propagates_concurrency_error(monkeypatch):
 
     with pytest.raises(ConcurrencyError):
         await clr._persist_count_line_document(
-            _fake_db(fresh_session={"id": "sess-occ", "session_id": "sess-occ", "status": "ACTIVE", "version": 7}),
+            _fake_db(
+                fresh_session={
+                    "id": "sess-occ",
+                    "session_id": "sess-occ",
+                    "status": "ACTIVE",
+                    "version": 7,
+                }
+            ),
             _line_data(),
             "user1",
             _count_line(),

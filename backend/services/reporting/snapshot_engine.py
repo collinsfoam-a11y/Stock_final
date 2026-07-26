@@ -5,7 +5,7 @@ Enables point-in-time reporting and comparisons
 
 import logging
 import time
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from backend.services.reporting.query_builder import QueryBuilder
 
@@ -28,7 +28,7 @@ class SnapshotEngine:
         query_spec: dict[str, Any],
         created_by: str,
         snapshot_type: str = "custom",
-        tags: Optional[list[str]] = None,
+        tags: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Create a new snapshot from query
@@ -105,16 +105,16 @@ class SnapshotEngine:
 
         return snapshot_response
 
-    async def get_snapshot(self, snapshot_id: str) -> dict[str, Optional[Any]]:
+    async def get_snapshot(self, snapshot_id: str) -> dict[str, Any | None]:
         """Get snapshot by ID"""
         snapshot = await self.db.report_snapshots.find_one({"snapshot_id": snapshot_id})
         return snapshot
 
     async def list_snapshots(
         self,
-        created_by: Optional[str] = None,
-        snapshot_type: Optional[str] = None,
-        tags: Optional[list[str]] = None,
+        created_by: str | None = None,
+        snapshot_type: str | None = None,
+        tags: list[str] | None = None,
         limit: int = 50,
     ) -> list[dict[str, Any]]:
         """
@@ -173,7 +173,7 @@ class SnapshotEngine:
 
     async def get_snapshot_data(
         self, snapshot_id: str, skip: int = 0, limit: int = 100
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Get snapshot data with pagination
         """
@@ -201,7 +201,7 @@ class SnapshotEngine:
         }
 
     def _calculate_summary(
-        self, results: list[dict], aggregations: Optional[dict] = None
+        self, results: list[dict], aggregations: dict | None = None
     ) -> dict[str, Any]:
         """
         Calculate summary statistics from results

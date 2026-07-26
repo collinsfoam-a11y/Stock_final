@@ -5,10 +5,11 @@ Unit tests for NotificationService
 from unittest.mock import AsyncMock
 
 import pytest
+
 from backend.services.notification_service import (
+    NotificationPriority,
     NotificationService,
     NotificationType,
-    NotificationPriority,
 )
 
 

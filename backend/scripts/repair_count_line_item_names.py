@@ -11,7 +11,7 @@ import asyncio
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -66,7 +66,7 @@ def _bad_name_query() -> dict[str, Any]:
     return query
 
 
-async def _lookup_erp_item_name(db: AsyncIOMotorDatabase, doc: dict[str, Any]) -> Optional[str]:
+async def _lookup_erp_item_name(db: AsyncIOMotorDatabase, doc: dict[str, Any]) -> str | None:
     item_code = str(doc.get("item_code") or "").strip()
     barcode = str(doc.get("barcode") or "").strip()
 
@@ -113,8 +113,8 @@ async def repair_item_names(
     db: AsyncIOMotorDatabase,
     *,
     dry_run: bool = True,
-    limit: Optional[int] = None,
-    session_id: Optional[str] = None,
+    limit: int | None = None,
+    session_id: str | None = None,
     collections: tuple[str, ...] = TARGET_COLLECTIONS,
 ) -> dict[str, Any]:
     stats: dict[str, Any] = {

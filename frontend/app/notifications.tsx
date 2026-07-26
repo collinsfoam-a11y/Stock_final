@@ -25,6 +25,7 @@ import { createLogger } from "@/services/logging";
 import { toastService } from "@/services/toastService";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 import { safeBackNavigation } from "@/utils/navigation";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 const log = createLogger("notifications");
 
@@ -382,12 +383,12 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     borderWidth: 1,
-    marginHorizontal: 16,
+    marginHorizontal: gap.lg,
     marginTop: 12,
   },
   summaryContent: {
     flexDirection: "row",
-    padding: 14,
+    padding: gap.md,
   },
   summaryMetric: {
     alignItems: "center",
@@ -409,28 +410,28 @@ const styles = StyleSheet.create({
   filterContainer: {
     borderBottomWidth: 1,
     flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: gap.sm,
+    paddingHorizontal: gap.lg,
+    paddingVertical: gap.md,
   },
   filterTab: {
     borderWidth: 1,
     justifyContent: "center",
     minHeight: 44,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: gap.lg,
+    paddingVertical: gap.sm,
   },
   filterText: {
     fontSize: 14,
     fontWeight: "700",
   },
   listContent: {
-    padding: 16,
+    padding: gap.lg,
     paddingBottom: 32,
   },
   notificationCard: {
     marginBottom: 12,
-    padding: 14,
+    padding: gap.md,
   },
   unreadCard: {
     borderLeftWidth: 3,
@@ -441,7 +442,7 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     alignItems: "center",
-    borderRadius: 24,
+    borderRadius: radius["2xl"],
     height: 48,
     justifyContent: "center",
     marginRight: 12,
@@ -464,17 +465,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: gap.sm,
   },
   timeText: {
     fontSize: 12,
     fontWeight: "600",
   },
   statusBadge: {
-    borderRadius: 8,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: gap.sm,
+    paddingVertical: gap.xs,
   },
   statusBadgeText: {
     fontSize: 11,
@@ -482,7 +483,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   unreadDot: {
-    borderRadius: 5,
+    borderRadius: radius.xs,
     height: 10,
     marginLeft: 8,
     marginTop: 4,
@@ -492,7 +493,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
     justifyContent: "center",
-    paddingVertical: 48,
+    paddingVertical: gap["5xl"],
   },
   emptyTitle: {
     fontSize: 18,

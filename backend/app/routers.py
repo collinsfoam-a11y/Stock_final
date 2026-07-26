@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, FastAPI
 
@@ -55,22 +55,22 @@ class RouterRegistry:
     notifications_router: APIRouter
     api_router: APIRouter
 
-    enterprise_router: Optional[APIRouter] = None
-    notes_router: Optional[APIRouter] = None
-    sync_conflicts_router: Optional[APIRouter] = None
-    enrichment_router: Optional[APIRouter] = None
-    v2_router: Optional[APIRouter] = None
-    pin_auth_router: Optional[APIRouter] = None
-    reconciliation_router: Optional[APIRouter] = None
-    recount_router: Optional[APIRouter] = None
-    erpnext_exports_router: Optional[APIRouter] = None
-    erpnext_export_settings_router: Optional[APIRouter] = None
-    hsn_directory_router: Optional[APIRouter] = None
+    enterprise_router: APIRouter | None = None
+    notes_router: APIRouter | None = None
+    sync_conflicts_router: APIRouter | None = None
+    enrichment_router: APIRouter | None = None
+    v2_router: APIRouter | None = None
+    pin_auth_router: APIRouter | None = None
+    reconciliation_router: APIRouter | None = None
+    recount_router: APIRouter | None = None
+    erpnext_exports_router: APIRouter | None = None
+    erpnext_export_settings_router: APIRouter | None = None
+    hsn_directory_router: APIRouter | None = None
     enterprise_available: bool = False
 
 
 def _include_router_specs(
-    app: FastAPI, specs: list[tuple[APIRouter, Optional[str], Optional[list[str]]]]
+    app: FastAPI, specs: list[tuple[APIRouter, str | None, list[str] | None]]
 ) -> None:
     for router, prefix, tags in specs:
         kwargs: dict[str, Any] = {}
@@ -83,12 +83,12 @@ def _include_router_specs(
 
 def _include_optional_router(
     app: FastAPI,
-    router: Optional[APIRouter],
+    router: APIRouter | None,
     logger: Any,
     *,
-    prefix: Optional[str] = None,
-    tags: Optional[list[str]] = None,
-    success_log: Optional[str] = None,
+    prefix: str | None = None,
+    tags: list[str] | None = None,
+    success_log: str | None = None,
     failure_log: str,
 ) -> None:
     if not router:
@@ -107,7 +107,7 @@ def _include_optional_router(
 
 
 def _register_core_router_set(app: FastAPI, registry: RouterRegistry) -> None:
-    specs: list[tuple[APIRouter, Optional[str], Optional[list[str]]]] = [
+    specs: list[tuple[APIRouter, str | None, list[str] | None]] = [
         (registry.health_router, None, ["health"]),
         (registry.health_router, "/api", ["health"]),
         (registry.info_router, None, None),

@@ -8,7 +8,7 @@ import { useSessionWebSocket } from "@/hooks/useSessionWebSocket";
 
 const log = createLogger("useItemDraftAutosave");
 
-interface UseItemDraftAutosaveParams {
+export interface UseItemDraftAutosaveParams {
   currentFloor?: string | null;
   currentRack?: string | null;
   item: Item | null;

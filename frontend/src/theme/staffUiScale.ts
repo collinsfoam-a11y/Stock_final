@@ -74,6 +74,8 @@ export const radius = {
   xl:   16,
   /** Icon wrap, avatar */
   "2xl": 20,
+  /** Large modal / feature card */
+  "3xl": 32,
   full: 999,
 } as const;
 
@@ -108,10 +110,25 @@ export const touch = {
 // ─── Spacing (pixel values for StyleSheet.create) ─────────────────────────────
 
 export const gap = {
+  xxs: 2,
   xs: 4,
   sm: 8,
   md: 12,
   lg: 16,
   xl: 20,
   "2xl": 24,
+  "3xl": 32,
+  "4xl": 40,
+  "5xl": 48,
+} as const;
+
+// ─── Animation Durations ────────────────────────────────────────────────────
+
+export const duration = {
+  instant: 100,
+  fast: 150,
+  normal: 200,
+  slow: 300,
+  slower: 500,
+  slowest: 1000,
 } as const;

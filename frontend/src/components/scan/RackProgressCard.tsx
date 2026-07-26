@@ -96,13 +96,13 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   progressBarBg: {
     height: 6,
     backgroundColor: colorWithAlpha(tokens.colors.textMuted, 0.18),
-    borderRadius: 3,
+    borderRadius: radius.xs,
     overflow: "hidden",
     marginBottom: gap.xs,
   },
   progressBarFill: {
     height: "100%",
-    borderRadius: 3,
+    borderRadius: radius.xs,
   },
   stats: {
     fontSize: font.size.sm,

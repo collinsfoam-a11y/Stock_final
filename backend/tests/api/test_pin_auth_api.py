@@ -5,10 +5,14 @@ Tests for PIN Authentication API
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from backend.api.pin_auth_api import (
+    PinChangeRequest,
+    PinLoginRequest,
+    change_pin_legacy,
+    login_with_pin,
+)
 from fastapi import HTTPException
 from pydantic import ValidationError
-
-from backend.api.pin_auth_api import PinChangeRequest, PinLoginRequest, change_pin_legacy, login_with_pin
 
 
 class OkResult:
@@ -107,9 +111,9 @@ async def test_login_with_pin_invalid_user():
             "backend.api.pin_auth_api.find_user_by_username",
             new=AsyncMock(return_value=ErrResult("not found")),
         ),
+        pytest.raises(HTTPException) as exc,
     ):
-        with pytest.raises(HTTPException) as exc:
-            await login_with_pin(request, mock_http_request, mock_db)
+        await login_with_pin(request, mock_http_request, mock_db)
 
     assert exc.value.status_code == 401
     assert exc.value.detail == "Invalid credentials"

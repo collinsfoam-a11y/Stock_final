@@ -10,6 +10,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 interface SkeletonProps {
   width?: number | string;
@@ -230,8 +231,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   card: {
-    padding: 16,
-    borderRadius: 12,
+    padding: gap.lg,
+    borderRadius: radius.lg,
     marginBottom: 12,
   },
   cardHeader: {
@@ -246,8 +247,8 @@ const styles = StyleSheet.create({
   listItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 8,
+    padding: gap.md,
+    borderRadius: radius.sm,
     marginBottom: 8,
   },
   listItemContent: {

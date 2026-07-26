@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 from typing import Any
@@ -10,17 +11,13 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import Response
 from starlette.types import ASGIApp, Receive, Send
 
-import logging
-
 logger = logging.getLogger(__name__)
 
 API_VERSION = "2.1.0"
 
 
 class PerformanceMiddleware(BaseHTTPMiddleware):
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         start_time = time.time()
         response = await call_next(request)
         process_time = (time.time() - start_time) * 1000  # ms
@@ -37,6 +34,7 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
             },
         )
         return response
+
 
 API_VERSION = "2.1.0"
 

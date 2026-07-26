@@ -6,7 +6,7 @@ Sanitizes input to prevent XSS and injection attacks
 import html
 import logging
 import re
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import status
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -64,7 +64,7 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
 
     async def _sanitize_query_params(
         self, request: Request, request_id: str
-    ) -> Optional[JSONResponse]:
+    ) -> JSONResponse | None:
         if self.sanitize_query and request.query_params:
             for key, value in request.query_params.items():
                 if self._is_dangerous(str(value)):
@@ -84,9 +84,7 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
                         )
         return None
 
-    async def _sanitize_json_body(
-        self, request: Request, request_id: str
-    ) -> Optional[JSONResponse]:
+    async def _sanitize_json_body(self, request: Request, request_id: str) -> JSONResponse | None:
         if self.sanitize_json and request.method in ["POST", "PUT", "PATCH"]:
             try:
                 body = await request.json()
@@ -121,7 +119,7 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
                 )
         return None
 
-    def _sanitize_headers(self, request: Request, request_id: str) -> Optional[JSONResponse]:
+    def _sanitize_headers(self, request: Request, request_id: str) -> JSONResponse | None:
         if self.sanitize_headers:
             for header_name, header_value in request.headers.items():
                 if self._is_dangerous(str(header_value)):

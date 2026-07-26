@@ -6,7 +6,8 @@ delegating runtime state to ``backend.db.runtime`` as the single source of truth
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 

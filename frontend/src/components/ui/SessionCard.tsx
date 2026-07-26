@@ -228,7 +228,7 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   },
   headerInfo: {
     flex: 1,
-    gap: 2,
+    gap: gap.xxs,
   },
   name: {
     fontSize: font.size.base,
@@ -238,7 +238,7 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   locationRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: gap.xs,
   },
   location: {
     fontSize: font.size.sm,
@@ -279,7 +279,7 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   infoItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: gap.xs,
   },
   infoText: {
     fontSize: font.size.sm,
@@ -288,9 +288,9 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
   resumeButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: gap.xs,
     paddingHorizontal: gap.sm,
-    paddingVertical: 6,
+    paddingVertical: gap.sm,
     borderRadius: radius.sm,
     backgroundColor: tokens.colors.accent,
     minHeight: 44,
@@ -306,12 +306,12 @@ const createStyles = (tokens: ThemeTokens) => StyleSheet.create({
     right: gap.md,
     backgroundColor: tokens.colors.accent,
     paddingHorizontal: gap.sm,
-    paddingVertical: 4,
+    paddingVertical: gap.xs,
     borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: 3,
+    gap: gap.xs,
   },
   countText: {
     fontSize: font.size.base,

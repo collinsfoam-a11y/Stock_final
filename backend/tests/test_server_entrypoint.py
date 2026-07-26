@@ -1,7 +1,7 @@
 from pathlib import Path
 from unittest.mock import patch
 
-import backend.server as server
+from backend import server
 
 
 def test_server_main_uses_shared_runtime_bootstrap():

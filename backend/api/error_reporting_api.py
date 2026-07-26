@@ -5,7 +5,7 @@ Handles error logging, monitoring, and admin notifications
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
@@ -31,9 +31,9 @@ class ErrorReport(BaseModel):
     type: str  # NetworkError, ValidationError, AuthenticationError, etc.
     message: str
     severity: str  # low, medium, high, critical
-    context: Optional[dict] = None
-    user_id: Optional[str] = None
-    timestamp: Optional[datetime] = None
+    context: dict | None = None
+    user_id: str | None = None
+    timestamp: datetime | None = None
 
 
 class ErrorLogEntry(BaseModel):
@@ -159,8 +159,8 @@ async def report_error(
 
 @router.get("/errors")
 async def get_errors(
-    severity: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
+    severity: str | None = Query(None),
+    status: str | None = Query(None),
     limit: int = Query(50, le=100),
     current_user: dict = Depends(get_current_user),
 ) -> JSONResponse:

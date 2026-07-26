@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from scripts.approval_pipeline import (
     ApprovalError,
     append_entry,
@@ -16,7 +15,6 @@ from scripts.approval_pipeline import (
     validate_execution,
     verify_chain,
 )
-
 
 HIGH_RISK_COMMAND = (
     "./scripts/python.sh backend/scripts/backfill_session_snapshots.py --execute --limit 1"

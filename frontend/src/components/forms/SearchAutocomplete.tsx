@@ -23,6 +23,7 @@ import { localDb } from "../../db/localDb";
 
 import { scrim, shadows as uiShadows } from "@/theme/legacyCompat";
 import { zIndex as uiZIndex } from "@/theme/designTokens";
+import { font, gap, radius } from '@/theme/staffUiScale';
 interface SearchAutocompleteProps {
   onSelectItem: (item: SearchResult) => void;
   onBarcodeScan?: (barcode: string) => void;
@@ -387,8 +388,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderRadius: 12, // More rounded
-    paddingHorizontal: 14,
+    borderRadius: radius.lg, // More rounded
+    paddingHorizontal: gap.md,
     height: 50, // Taller input
     ...uiShadows.md,
     elevation: 2,
@@ -407,14 +408,14 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     marginLeft: 8,
-    padding: 4,
+    padding: gap.xs,
   },
   dropdown: {
     position: "absolute", // Ensure it floats over content
     top: 56, // Just below input
     left: 0,
     right: 0,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     borderWidth: 1,
     maxHeight: 450,
     elevation: 10,
@@ -422,17 +423,17 @@ const styles = StyleSheet.create({
     overflow: "hidden", // Clip content to border radius
   },
   loadingContainer: {
-    padding: 24,
+    padding: gap["2xl"],
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    gap: gap.md,
   },
   loadingText: {
     fontSize: 14,
     fontWeight: "500",
   },
   resultsHeader: {
-    paddingHorizontal: 16,
+    paddingHorizontal: gap.lg,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.05)",
@@ -449,14 +450,14 @@ const styles = StyleSheet.create({
   resultItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
+    padding: gap.md,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.05)",
     borderLeftWidth: 3, // Accent border on selection
   },
   resultContent: {
     flex: 1,
-    gap: 6,
+    gap: gap.sm,
   },
   resultHeader: {
     flexDirection: "row",
@@ -471,9 +472,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   matchBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
+    paddingHorizontal: gap.sm,
+    paddingVertical: gap.xxs,
+    borderRadius: radius.lg,
     borderWidth: 1,
     marginLeft: 8,
   },
@@ -486,16 +487,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: 8,
+    gap: gap.sm,
   },
   detailChip: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.05)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: gap.sm,
+    paddingVertical: gap.xs,
     borderRadius: 6,
-    gap: 4,
+    gap: gap.xs,
   },
   detailText: {
     fontSize: 13,
@@ -505,13 +506,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: 6,
+    gap: gap.sm,
     marginTop: 2,
   },
   metaWithIcon: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: gap.xs,
   },
   metaText: {
     fontSize: 12,
@@ -519,19 +520,19 @@ const styles = StyleSheet.create({
   },
   metaDivider: {
     fontSize: 10,
-    marginHorizontal: 2,
+    marginHorizontal: gap.xxs,
     opacity: 0.5,
   },
   noResultsContainer: {
-    padding: 32,
+    padding: gap["3xl"],
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    gap: gap.md,
   },
   noResultsIconCircle: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: radius["3xl"],
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
@@ -545,7 +546,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   minCharsContainer: {
-    padding: 24,
+    padding: gap["2xl"],
     alignItems: "center",
   },
   minCharsText: {

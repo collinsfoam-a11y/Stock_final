@@ -3,6 +3,7 @@ import React, { useMemo } from "react";
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import {
   COMFORTABLE_TOUCH_TARGET,
@@ -154,7 +155,7 @@ export function CountQuantitySection({
           borderRadius: 100,
           borderWidth: 1,
           borderColor: uiTokens.colors.border,
-          padding: 4,
+          padding: gap.xs,
         },
         removeButton: {
           ...getMinimumTouchTargetStyle(),

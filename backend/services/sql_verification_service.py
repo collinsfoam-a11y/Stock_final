@@ -8,10 +8,10 @@ import logging
 import math
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
-from backend.sql_server_connector import SQLServerConnector
 from backend.core.database import db
+from backend.sql_server_connector import SQLServerConnector
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +42,11 @@ class SQLVerificationService:
     def sql_connector(self) -> SQLServerConnector:
         if self._sql_connector is None:
             from backend.core.lifespan import sql_connector
+
             self._sql_connector = sql_connector
         return self._sql_connector
 
-    async def _broadcast_verification_update(self, item_code: str, result: Dict[str, Any]) -> None:
+    async def _broadcast_verification_update(self, item_code: str, result: dict[str, Any]) -> None:
         """Broadcast verification update via WebSocket to connected clients."""
         try:
             from backend.core.websocket_manager import manager
@@ -74,11 +75,11 @@ class SQLVerificationService:
         message: str,
         status_code: int,
         item_code: str,
-        context: Optional[Dict[str, Any]] = None,
-        box_status: Optional[str] = None,
-        status: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        payload: Dict[str, Any] = {
+        context: dict[str, Any] | None = None,
+        box_status: str | None = None,
+        status: str | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
             "success": False,
             "error_code": error_code,
             "message": message,
@@ -98,17 +99,17 @@ class SQLVerificationService:
         self,
         *,
         item_code: str,
-        sql_qty: Optional[float],
-        mongo_qty: Optional[float],
-        variance: Optional[float],
-        latency_ms: Optional[float],
-        seq: Optional[int],
+        sql_qty: float | None,
+        mongo_qty: float | None,
+        variance: float | None,
+        latency_ms: float | None,
+        seq: int | None,
         status: str,
-        error_info: Optional[Dict[str, Any]] = None,
+        error_info: dict[str, Any] | None = None,
     ) -> None:
         from backend.config_governance import GOVERNANCE_FINGERPRINT
 
-        event: Dict[str, Any] = {
+        event: dict[str, Any] = {
             "item_code": item_code,
             "sql_qty": sql_qty,
             "mongo_qty": mongo_qty,
@@ -128,11 +129,9 @@ class SQLVerificationService:
         try:
             await db.governance_events.insert_one(event)
         except Exception as e:
-            logger.error(f"Governance event insert failed for {item_code}: {str(e)}")
+            logger.error(f"Governance event insert failed for {item_code}: {e!s}")
 
-    def _validate_sql_qty_or_error(
-        self, item_code: str, sql_qty: float
-    ) -> Optional[Dict[str, Any]]:
+    def _validate_sql_qty_or_error(self, item_code: str, sql_qty: float) -> dict[str, Any] | None:
         if isinstance(sql_qty, bool) or not isinstance(sql_qty, (int, float)):
             raise SQLInvalidNumericError("Non-numeric SQL result")
         if not math.isfinite(sql_qty):
@@ -155,7 +154,7 @@ class SQLVerificationService:
             return
         logger.warning(f"PERFORMANCE: SQL Latency High ({latency_ms:.2f}ms) for {item_code}")
 
-    async def _load_mongo_item_snapshot(self, item_code: str) -> Optional[Dict[str, Any]]:
+    async def _load_mongo_item_snapshot(self, item_code: str) -> dict[str, Any] | None:
         mongo_item = await db.erp_items.find_one(
             {"$or": [{"item_code": item_code}, {"barcode": item_code}]}
         )
@@ -166,7 +165,7 @@ class SQLVerificationService:
 
     def _normalize_mongo_qty_or_error(
         self, item_code: str, mongo_qty: Any
-    ) -> tuple[Optional[float], Optional[Dict[str, Any]]]:
+    ) -> tuple[float | None, dict[str, Any] | None]:
         normalized_qty = 0 if mongo_qty is None else mongo_qty
         if hasattr(normalized_qty, "to_decimal"):
             try:
@@ -208,7 +207,7 @@ class SQLVerificationService:
 
     def _variance_threshold_error(
         self, *, item_code: str, variance: float, max_variance: float, strict_mode: bool
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         if abs(variance) <= max_variance:
             return None
 
@@ -254,9 +253,9 @@ class SQLVerificationService:
         *,
         item_code: str,
         sql_qty: float,
-        mongo_item: Dict[str, Any],
+        mongo_item: dict[str, Any],
         mongo_qty: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         check_item = await db.erp_items.find_one({"_id": mongo_item["_id"]})
         if check_item and check_item.get("stock_qty") != mongo_qty:
             logger.warning(
@@ -300,12 +299,12 @@ class SQLVerificationService:
         *,
         item_code: str,
         sql_qty: float,
-        mongo_item: Dict[str, Any],
+        mongo_item: dict[str, Any],
         mongo_qty: float,
         variance: float,
         latency_ms: float,
         current_seq: int,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         new_seq = current_seq + 1
         status = "MATCH" if variance == 0 else "MISMATCH"
         update_data = self._build_sql_update_data(
@@ -344,19 +343,19 @@ class SQLVerificationService:
 
     async def _verify_item_with_sql_qty(
         self, item_code: str, sql_qty: float, latency_ms: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         from backend.config_governance import (
-            SQL_VERIFY_STRICT,
-            SQL_MAX_VARIANCE,
             SQL_MAX_LATENCY_MS,
+            SQL_MAX_VARIANCE,
+            SQL_VERIFY_STRICT,
         )
 
-        error_info: Optional[Dict[str, Any]] = None
+        error_info: dict[str, Any] | None = None
         event_status = "FAILED"
-        mongo_qty: Optional[float] = None
-        variance: Optional[float] = None
-        seq: Optional[int] = None
-        result: Dict[str, Any]
+        mongo_qty: float | None = None
+        variance: float | None = None
+        seq: int | None = None
+        result: dict[str, Any]
 
         try:
             validation_error = self._validate_sql_qty_or_error(item_code, sql_qty)
@@ -424,7 +423,7 @@ class SQLVerificationService:
             return result
 
         except SQLVerificationError as e:
-            logger.error(f"Governance Error verifying {item_code}: {str(e)}")
+            logger.error(f"Governance Error verifying {item_code}: {e!s}")
             error_info = self._error_response(
                 error_code="ERP_INVALID_RESULT",
                 message="ERP returned invalid quantity",
@@ -433,7 +432,7 @@ class SQLVerificationService:
             )
             return error_info
         except Exception as e:
-            logger.error(f"Governance Error verifying {item_code}: {str(e)}")
+            logger.error(f"Governance Error verifying {item_code}: {e!s}")
             error_info = self._error_response(
                 error_code="VERIFICATION_INTERNAL_ERROR",
                 message="Verification failed due to an internal error",
@@ -453,7 +452,7 @@ class SQLVerificationService:
                 error_info=error_info,
             )
 
-    async def verify_item_quantity(self, item_code: str) -> Dict[str, Any]:
+    async def verify_item_quantity(self, item_code: str) -> dict[str, Any]:
         """
         GOVERNANCE MANDATE: Enforce authoritative stock truth from SQL Server.
         See backend/docs/SQL_VERIFICATION_GOVERNANCE.md for strict rules.
@@ -470,7 +469,7 @@ class SQLVerificationService:
         import time
 
         start_time = time.perf_counter()
-        latency_ms: Optional[float] = None
+        latency_ms: float | None = None
 
         from backend.sql_server_connector import (
             DatabaseConnectionError,
@@ -626,7 +625,7 @@ class SQLVerificationService:
             return error_info
         except Exception as e:
             latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"Governance Error verifying {item_code}: {str(e)}")
+            logger.error(f"Governance Error verifying {item_code}: {e!s}")
             error_text = str(e).lower()
             if any(
                 term in error_text for term in ["connection", "sql server", "timeout", "reconnect"]
@@ -691,7 +690,7 @@ class SQLVerificationService:
         except SQLVerificationError:
             raise
         except Exception as e:
-            logger.error(f"Error getting SQL quantity for {item_code}: {str(e)}")
+            logger.error(f"Error getting SQL quantity for {item_code}: {e!s}")
             raise
 
     @staticmethod
@@ -706,9 +705,9 @@ class SQLVerificationService:
         message: str,
         status_code: int,
         start: datetime,
-        latency_ms: Optional[float],
-        box_status: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        latency_ms: float | None,
+        box_status: str | None = None,
+    ) -> dict[str, Any]:
         errors = [
             self._error_response(
                 error_code=error_code,
@@ -748,7 +747,7 @@ class SQLVerificationService:
 
     async def _get_batch_quantities(
         self, item_codes: list[str]
-    ) -> tuple[Optional[Dict[str, float]], Optional[Dict[str, Any]], Optional[float]]:
+    ) -> tuple[dict[str, float] | None, dict[str, Any] | None, float | None]:
         from backend.sql_server_connector import (
             DatabaseConnectionError,
             DatabaseQueryError,
@@ -806,16 +805,16 @@ class SQLVerificationService:
         return None, failure, latency_ms
 
     @staticmethod
-    def _is_incomplete_batch_result(quantities: Dict[str, float], item_codes: list[str]) -> bool:
+    def _is_incomplete_batch_result(quantities: dict[str, float], item_codes: list[str]) -> bool:
         if len(quantities) != len(item_codes):
             return True
         return any(quantities.get(code) is None for code in item_codes)
 
     def _split_batch_verification_results(
         self, results: list[Any]
-    ) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
-        processed_results: list[Dict[str, Any]] = []
-        errors: list[Dict[str, Any]] = []
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        processed_results: list[dict[str, Any]] = []
+        errors: list[dict[str, Any]] = []
         for result in results:
             if isinstance(result, Exception):
                 errors.append(
@@ -834,7 +833,7 @@ class SQLVerificationService:
                 processed_results.append(result)
         return processed_results, errors
 
-    async def batch_verify_items(self, item_codes: list[str]) -> Dict[str, Any]:
+    async def batch_verify_items(self, item_codes: list[str]) -> dict[str, Any]:
         """Verify multiple items in batch (Parallelized)."""
         start = datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -895,7 +894,7 @@ class SQLVerificationService:
             "batch_duration_ms": self._batch_duration_ms(start),
         }
 
-    async def get_verification_status(self, item_code: str) -> Dict[str, Any]:
+    async def get_verification_status(self, item_code: str) -> dict[str, Any]:
         """Get verification status for an item"""
         try:
             item = await db.erp_items.find_one(
@@ -932,7 +931,7 @@ class SQLVerificationService:
             }
 
         except Exception as e:
-            logger.error(f"Error getting verification status for {item_code}: {str(e)}")
+            logger.error(f"Error getting verification status for {item_code}: {e!s}")
             return self._error_response(
                 error_code="VERIFICATION_INTERNAL_ERROR",
                 message="Failed to get verification status.",
@@ -940,7 +939,7 @@ class SQLVerificationService:
                 item_code=item_code,
             )
 
-    async def check_sql_status(self) -> Dict[str, Any]:
+    async def check_sql_status(self) -> dict[str, Any]:
         """Check SQL Server connection status"""
         try:
             # Try a simple query to check connection

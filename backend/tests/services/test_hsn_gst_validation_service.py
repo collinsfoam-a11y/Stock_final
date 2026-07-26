@@ -9,7 +9,6 @@ the service directly, without needing a full preview-generation pipeline.
 """
 
 import pytest
-
 from backend.services.hsn_gst_validation_service import PLACEHOLDER_SOURCE, HsnGstValidationService
 from backend.tests.utils.in_memory_db import InMemoryDatabase
 
@@ -22,8 +21,13 @@ async def test_valid_hsn_format_and_matching_gst_rate():
     service = HsnGstValidationService(db)
 
     result = await service.validate_hsn(
-        hsn_sac="731815", gst_percentage=18.0, sgst_percent=9.0, cgst_percent=9.0,
-        igst_percent=18.0, is_non_gst=False, current_user=ADMIN_USER,
+        hsn_sac="731815",
+        gst_percentage=18.0,
+        sgst_percent=9.0,
+        cgst_percent=9.0,
+        igst_percent=18.0,
+        is_non_gst=False,
+        current_user=ADMIN_USER,
     )
 
     assert result["hsn_validation_status"] == "VALID"
@@ -37,8 +41,13 @@ async def test_missing_hsn_reports_missing_status():
     service = HsnGstValidationService(db)
 
     result = await service.validate_hsn(
-        hsn_sac=None, gst_percentage=None, sgst_percent=None, cgst_percent=None,
-        igst_percent=None, is_non_gst=False, current_user=ADMIN_USER,
+        hsn_sac=None,
+        gst_percentage=None,
+        sgst_percent=None,
+        cgst_percent=None,
+        igst_percent=None,
+        is_non_gst=False,
+        current_user=ADMIN_USER,
     )
 
     assert result["hsn_validation_status"] == "MISSING"
@@ -50,8 +59,13 @@ async def test_invalid_hsn_format():
     service = HsnGstValidationService(db)
 
     result = await service.validate_hsn(
-        hsn_sac="ABC12", gst_percentage=18.0, sgst_percent=9.0, cgst_percent=9.0,
-        igst_percent=18.0, is_non_gst=False, current_user=ADMIN_USER,
+        hsn_sac="ABC12",
+        gst_percentage=18.0,
+        sgst_percent=9.0,
+        cgst_percent=9.0,
+        igst_percent=18.0,
+        is_non_gst=False,
+        current_user=ADMIN_USER,
     )
 
     assert result["hsn_validation_status"] == "INVALID"
@@ -63,8 +77,13 @@ async def test_gst_rate_mismatch_detected():
     service = HsnGstValidationService(db)
 
     result = await service.validate_hsn(
-        hsn_sac="731815", gst_percentage=18.0, sgst_percent=5.0, cgst_percent=5.0,
-        igst_percent=12.0, is_non_gst=False, current_user=ADMIN_USER,
+        hsn_sac="731815",
+        gst_percentage=18.0,
+        sgst_percent=5.0,
+        cgst_percent=5.0,
+        igst_percent=12.0,
+        is_non_gst=False,
+        current_user=ADMIN_USER,
     )
 
     assert result["gst_rate_mismatch"] is True
@@ -76,8 +95,13 @@ async def test_non_gst_item_is_not_applicable():
     service = HsnGstValidationService(db)
 
     result = await service.validate_hsn(
-        hsn_sac=None, gst_percentage=None, sgst_percent=None, cgst_percent=None,
-        igst_percent=None, is_non_gst=True, current_user=ADMIN_USER,
+        hsn_sac=None,
+        gst_percentage=None,
+        sgst_percent=None,
+        cgst_percent=None,
+        igst_percent=None,
+        is_non_gst=True,
+        current_user=ADMIN_USER,
     )
 
     assert result["hsn_validation_status"] == "NOT_APPLICABLE"
@@ -89,12 +113,22 @@ async def test_validation_is_cached_and_audited_once():
     service = HsnGstValidationService(db)
 
     await service.validate_hsn(
-        hsn_sac="731815", gst_percentage=18.0, sgst_percent=9.0, cgst_percent=9.0,
-        igst_percent=18.0, is_non_gst=False, current_user=ADMIN_USER,
+        hsn_sac="731815",
+        gst_percentage=18.0,
+        sgst_percent=9.0,
+        cgst_percent=9.0,
+        igst_percent=18.0,
+        is_non_gst=False,
+        current_user=ADMIN_USER,
     )
     await service.validate_hsn(
-        hsn_sac="731815", gst_percentage=18.0, sgst_percent=9.0, cgst_percent=9.0,
-        igst_percent=18.0, is_non_gst=False, current_user=ADMIN_USER,
+        hsn_sac="731815",
+        gst_percentage=18.0,
+        sgst_percent=9.0,
+        cgst_percent=9.0,
+        igst_percent=18.0,
+        is_non_gst=False,
+        current_user=ADMIN_USER,
     )
 
     cached = await db.hsn_validation_cache.find_one({"hsn_sac": "731815"})

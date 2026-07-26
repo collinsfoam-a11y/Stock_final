@@ -21,7 +21,7 @@ import csv
 import json
 import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from openpyxl import load_workbook
 
@@ -40,7 +40,7 @@ _TEMPLATE_KEY_BY_FILE_TYPE = {
 }
 
 
-def _is_unset(value: Optional[str]) -> bool:
+def _is_unset(value: str | None) -> bool:
     """True for a genuinely missing value AND for the explicit "unknown"
     sentinel a manifest scaffold uses to honestly document "not yet
     confirmed" (see docs/erpnext_templates/template_manifest.json) --
@@ -63,11 +63,11 @@ def _read_xlsx_headers(path: Path) -> list[str]:
 
 
 class ErpNextTemplateValidationService:
-    def __init__(self, template_dir: Optional[Path] = None, *, strict: bool = False) -> None:
+    def __init__(self, template_dir: Path | None = None, *, strict: bool = False) -> None:
         self.template_dir = Path(template_dir) if template_dir else DEFAULT_TEMPLATE_DIR
         self.strict = strict
 
-    def load_manifest(self) -> Optional[dict[str, Any]]:
+    def load_manifest(self) -> dict[str, Any] | None:
         manifest_path = self.template_dir / "template_manifest.json"
         if not manifest_path.exists():
             return None
@@ -100,7 +100,7 @@ class ErpNextTemplateValidationService:
         }
 
     @staticmethod
-    def _major_version(version_string: Optional[str]) -> Optional[int]:
+    def _major_version(version_string: str | None) -> int | None:
         if _is_unset(version_string):
             return None
         match = re.search(r"v?(\d+)", str(version_string))
@@ -180,7 +180,7 @@ class ErpNextTemplateValidationService:
         file_type: str,
         file_format: str,
         stock_verify_headers: list[str],
-        strict: Optional[bool] = None,
+        strict: bool | None = None,
     ) -> dict[str, Any]:
         strict = self.strict if strict is None else strict
         errors: list[dict[str, str]] = []
@@ -208,7 +208,9 @@ class ErpNextTemplateValidationService:
                 )
 
             template_key = _TEMPLATE_KEY_BY_FILE_TYPE.get(file_type)
-            template_entry = (manifest.get("templates") or {}).get(template_key) if template_key else None
+            template_entry = (
+                (manifest.get("templates") or {}).get(template_key) if template_key else None
+            )
 
             if file_type == "photo_manifest":
                 pass  # Not an ERPNext import target doctype; no template expected.
@@ -253,7 +255,9 @@ class ErpNextTemplateValidationService:
                 if header in stock_verify_headers:
                     continue
                 if header.lower() in sv_lower:
-                    case_mismatches.append({"erpnext": header, "stock_verify": sv_lower[header.lower()]})
+                    case_mismatches.append(
+                        {"erpnext": header, "stock_verify": sv_lower[header.lower()]}
+                    )
                 else:
                     missing_columns.append(header)
 
@@ -266,7 +270,10 @@ class ErpNextTemplateValidationService:
             common_in_stock_verify_order = [h for h in stock_verify_headers if h in erpnext_headers]
             if common_in_erpnext_order != common_in_stock_verify_order:
                 order_mismatches.append(
-                    {"expected_order": common_in_erpnext_order, "actual_order": common_in_stock_verify_order}
+                    {
+                        "expected_order": common_in_erpnext_order,
+                        "actual_order": common_in_stock_verify_order,
+                    }
                 )
 
             if missing_columns:

@@ -30,7 +30,6 @@ second write on every single count-line submission).
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from backend.api.count_lines_routes import create_count_line
 from backend.api.schemas import CountLineCreate
 from backend.services.governance_guard import install_db_write_guards
@@ -62,7 +61,13 @@ async def _seed_active_session(db: InMemoryDatabase, session_id: str, item_code:
 
 
 def _line(
-    *, session_id: str, item_code: str, idempotency_key: str, floor: str = "F1", rack: str = "R1", **overrides
+    *,
+    session_id: str,
+    item_code: str,
+    idempotency_key: str,
+    floor: str = "F1",
+    rack: str = "R1",
+    **overrides,
 ) -> CountLineCreate:
     payload = {
         "session_id": session_id,

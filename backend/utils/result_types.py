@@ -27,9 +27,9 @@ class Result(Generic[T, E]):
     """
 
     _type: ResultType
-    _value: Optional[T] = None
-    _error: Optional[E] = None
-    _error_message: Optional[str] = None
+    _value: T | None = None
+    _error: E | None = None
+    _error_message: str | None = None
 
     @staticmethod
     def success(value: T) -> "Result[T, E]":
@@ -37,7 +37,7 @@ class Result(Generic[T, E]):
         return Result(_type=ResultType.SUCCESS, _value=value)
 
     @staticmethod
-    def error(error: E, message: Optional[str] = None) -> "Result[T, E]":
+    def error(error: E, message: str | None = None) -> "Result[T, E]":
         """Create error result"""
         return Result(_type=ResultType.ERROR, _error=error, _error_message=message or str(error))
 
@@ -105,7 +105,7 @@ class Result(Generic[T, E]):
             return on_success(cast(T, self._value))
         return on_error(cast(E, self._error), self._error_message or "")
 
-    def to_tuple(self) -> tuple[bool, Optional[T], Optional[E]]:
+    def to_tuple(self) -> tuple[bool, T | None, E | None]:
         """Convert to tuple for compatibility"""
         return (self.is_success, self._value, self._error)
 

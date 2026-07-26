@@ -30,7 +30,7 @@ class TestLocationContext:
 
     def test_immutable(self):
         loc = LocationContext(location_id="LOC-1", floor_id="F1", rack_id="R1")
-        with pytest.raises(Exception):
+        with pytest.raises(AttributeError):
             loc.location_id = "OTHER"  # type: ignore[misc]
 
 

@@ -12,14 +12,13 @@ project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-import io
 import asyncio
+import io
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 import os
 from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta
-from typing import Any, Optional, TypedDict
+from typing import Any, TypedDict
 
 import psutil
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -34,6 +33,7 @@ from backend.services.projection_read_service import ProjectionReadService
 from backend.services.system_report_service import SystemReportService
 from backend.services.watchdog_service import WatchdogService
 from backend.sql_server_connector import sql_connector
+from backend.utils.api_utils import sanitize_for_logging
 from backend.utils.port_detector import PortDetector
 from backend.utils.service_manager import ServiceManager
 
@@ -121,18 +121,18 @@ def _get_frontend_ports() -> list[int]:
 
 
 class ServiceStatus(TypedDict, total=False):
-    running: Optional[bool]
-    port: Optional[int]
-    pid: Optional[int]
-    url: Optional[str]
-    uptime: Optional[int]
-    status: Optional[str]
+    running: bool | None
+    port: int | None
+    pid: int | None
+    url: str | None
+    uptime: int | None
+    status: str | None
 
 
 ServicesStatusMap = dict[str, ServiceStatus]
 
 
-def _safe_int(value: Any) -> Optional[int]:
+def _safe_int(value: Any) -> int | None:
     if value is None:
         return None
     try:
@@ -163,7 +163,7 @@ def _is_frontend_process(cmdline: str) -> bool:
 
 def _match_process_on_ports(
     ports: Iterable[int], matcher: Callable[[str], bool]
-) -> Optional[tuple[int, int, psutil.Process]]:
+) -> tuple[int, int, psutil.Process] | None:
     """Return (port, pid, process) for the first process whose command line matches."""
     for port in ports:
         if not ServiceManager.is_port_in_use(port):
@@ -181,7 +181,7 @@ def _match_process_on_ports(
     return None
 
 
-def _calculate_uptime(process: psutil.Process) -> Optional[int]:
+def _calculate_uptime(process: psutil.Process) -> int | None:
     try:
         return int(datetime.now().timestamp() - process.create_time())
     except (psutil.Error, OSError):
@@ -246,7 +246,7 @@ async def _get_mongodb_status() -> ServiceStatus:
 
     mongo_status = PortDetector.get_mongo_status()
     running_flag = mongo_status.get("is_running")
-    running: Optional[bool] = bool(running_flag) if running_flag is not None else None
+    running: bool | None = bool(running_flag) if running_flag is not None else None
     return {
         "running": running,
         "port": _safe_int(mongo_status.get("port")),
@@ -255,16 +255,16 @@ async def _get_mongodb_status() -> ServiceStatus:
     }
 
 
-def _test_sql_connection() -> Optional[bool]:
+async def _test_sql_connection() -> bool | None:
     try:
-        return sql_connector.test_connection()
+        return await asyncio.to_thread(sql_connector.test_connection)
     except Exception as e:
         logger.error("SQL connection test failed: %s", sanitize_for_logging(str(e)))
         return False
 
 
-def _get_sql_server_status() -> ServiceStatus:
-    is_connected = _test_sql_connection()
+async def _get_sql_server_status() -> ServiceStatus:
+    is_connected = await _test_sql_connection()
     config = sql_connector.config or {}
 
     return {
@@ -346,7 +346,7 @@ async def _gather_all_services_status() -> ServicesStatusMap:
         "backend": _get_backend_status(),
         "frontend": _get_frontend_status(),
         "mongodb": await _get_mongodb_status(),
-        "sql_server": _get_sql_server_status(),
+        "sql_server": await _get_sql_server_status(),
     }
 
 
@@ -412,11 +412,11 @@ async def get_services_status(current_user: dict = Depends(require_admin)):
         logger.error("Error getting services status: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get services status: {str(e)}",
+            detail=f"Failed to get services status: {e!s}",
         ) from e
 
 
-def _find_running_backend_process() -> Optional[dict[str, Any]]:
+def _find_running_backend_process() -> dict[str, Any] | None:
     for port in _get_backend_ports():
         if not ServiceManager.is_port_in_use(port):
             continue
@@ -458,7 +458,7 @@ async def start_backend(current_user: dict = Depends(require_admin)):
         logger.error("Error starting backend: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start backend: {str(e)}",
+            detail=f"Failed to start backend: {e!s}",
         ) from e
 
 
@@ -486,7 +486,7 @@ async def stop_backend(current_user: dict = Depends(require_admin)):
         logger.error("Error stopping backend: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to stop backend: {str(e)}",
+            detail=f"Failed to stop backend: {e!s}",
         ) from e
 
 
@@ -522,7 +522,7 @@ async def start_frontend(current_user: dict = Depends(require_admin)):
         logger.error("Error starting frontend: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start frontend: {str(e)}",
+            detail=f"Failed to start frontend: {e!s}",
         ) from e
 
 
@@ -548,7 +548,7 @@ async def stop_frontend(current_user: dict = Depends(require_admin)):
         logger.error("Error stopping frontend: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to stop frontend: {str(e)}",
+            detail=f"Failed to stop frontend: {e!s}",
         ) from e
 
 
@@ -556,8 +556,8 @@ def _categorize_issues(issues: list[dict[str, Any]]) -> dict[str, int]:
     """Categorize issues by severity"""
     return {
         "count": len(issues),
-        "critical": int(len([i for i in issues if i.get("severity") == "critical"])),
-        "warnings": int(len([i for i in issues if i.get("severity") == "medium"])),
+        "critical": len([i for i in issues if i.get("severity") == "critical"]),
+        "warnings": len([i for i in issues if i.get("severity") == "medium"]),
     }
 
 
@@ -583,7 +583,7 @@ async def get_system_issues(current_user: dict = Depends(require_admin)):
         logger.error("Error getting system issues: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get system issues: {str(e)}",
+            detail=f"Failed to get system issues: {e!s}",
         ) from e
 
 
@@ -640,7 +640,7 @@ async def get_login_devices(current_user: dict = Depends(require_admin)):
         logger.error("Error getting devices: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get devices: {str(e)}",
+            detail=f"Failed to get devices: {e!s}",
         ) from e
 
 
@@ -690,8 +690,8 @@ async def get_available_reports(current_user: dict = Depends(require_admin)):
 async def generate_report(
     report_id: str,
     format: str = "json",
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     current_user: dict = Depends(require_admin),
 ):
     """Generate a report"""
@@ -744,11 +744,11 @@ async def generate_report(
         logger.error("Error generating report: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate report: {str(e)}",
+            detail=f"Failed to generate report: {e!s}",
         ) from e
 
 
-def _parse_log_line(line: str) -> Optional[dict[str, Optional[str]]]:
+def _parse_log_line(line: str) -> dict[str, str | None] | None:
     try:
         # Parse standard format: 2023-10-27 10:00:00 - logger - LEVEL - Message
         parts = line.strip().split(" - ", 3)
@@ -765,7 +765,7 @@ def _parse_log_line(line: str) -> Optional[dict[str, Optional[str]]]:
 
 
 def _read_log_file(
-    log_path: Path, lines: int, level: Optional[str], service: str
+    log_path: Path, lines: int, level: str | None, service: str
 ) -> list[dict[str, Any]]:
     """Read and parse log file"""
     logs: list[dict[str, Any]] = []
@@ -806,7 +806,7 @@ def _read_log_file(
 async def get_service_logs(
     service: str,
     lines: int = 100,
-    level: Optional[str] = None,
+    level: str | None = None,
     current_user: dict = Depends(require_admin),
 ):
     """Get service logs"""
@@ -855,7 +855,7 @@ async def get_service_logs(
         logger.error("Error getting logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get logs: {str(e)}",
+            detail=f"Failed to get logs: {e!s}",
         ) from e
 
 
@@ -883,7 +883,7 @@ async def clear_service_logs(
         logger.error("Error clearing logs: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear logs: {str(e)}",
+            detail=f"Failed to clear logs: {e!s}",
         ) from e
 
 
@@ -936,13 +936,13 @@ async def update_sql_server_config(
         logger.error("Error updating SQL Server config: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update configuration: {str(e)}",
+            detail=f"Failed to update configuration: {e!s}",
         ) from e
 
 
 @admin_control_router.post("/sql-server/test")
 async def test_sql_server_connection(
-    config: dict[str, Optional[Any]] = None, current_user: dict = Depends(require_admin)
+    config: dict[str, Any | None] = None, current_user: dict = Depends(require_admin)
 ):
     """Test SQL Server connection"""
     try:
@@ -961,13 +961,13 @@ async def test_sql_server_connection(
             return {"success": True, "message": "Connection successful"}
         else:
             # Test existing connection
-            success = sql_connector.test_connection()
+            success = await asyncio.to_thread(sql_connector.test_connection)
             return {
                 "success": success,
                 "message": ("Connection is active" if success else "Connection is inactive"),
             }
     except Exception as e:
-        return {"success": False, "message": f"Connection failed: {str(e)}"}
+        return {"success": False, "message": f"Connection failed: {e!s}"}
 
 
 @admin_control_router.get("/system/health-score")
@@ -995,7 +995,7 @@ async def get_system_health_score(current_user: dict = Depends(require_admin)):
         logger.error("Error calculating health score: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to calculate health score: {str(e)}",
+            detail=f"Failed to calculate health score: {e!s}",
         ) from e
 
 
@@ -1040,7 +1040,7 @@ async def get_system_stats(current_user: dict = Depends(require_admin)):
         logger.error("Error getting system stats: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get system stats: {str(e)}",
+            detail=f"Failed to get system stats: {e!s}",
         ) from e
 
 
@@ -1064,5 +1064,5 @@ async def run_watchdog_checks(current_user: dict = Depends(require_admin)):
         logger.error("Error running watchdog: %s", sanitize_for_logging(str(e)))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Watchdog execution failed: {str(e)}",
+            detail=f"Watchdog execution failed: {e!s}",
         ) from e

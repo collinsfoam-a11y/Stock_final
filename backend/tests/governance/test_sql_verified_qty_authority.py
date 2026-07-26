@@ -3,7 +3,6 @@ import tokenize
 
 import pytest
 
-
 ALLOWED_RELATIVE = {
     "services/sql_verification_service.py",
     "api/schemas.py",

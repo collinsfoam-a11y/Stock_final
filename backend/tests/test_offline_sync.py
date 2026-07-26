@@ -1,6 +1,7 @@
+import uuid
+
 import pytest
 from httpx import AsyncClient
-import uuid
 
 
 async def _seed_active_session_with_snapshot(test_db, *, session_id: str, item_code: str) -> None:

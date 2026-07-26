@@ -8,7 +8,7 @@ import logging
 import sys
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 
 class NonClosingStreamHandler(logging.StreamHandler):
@@ -63,7 +63,7 @@ class JSONFormatter(logging.Formatter):
 
 
 def setup_structured_logging(
-    log_level: str = "INFO", log_format: str = "json", log_file: Optional[str] = None
+    log_level: str = "INFO", log_format: str = "json", log_file: str | None = None
 ):
     """
     Setup structured logging
@@ -112,8 +112,8 @@ class StructuredLogger:
         self,
         level: int,
         message: str,
-        extra_fields: dict[str, Optional[Any]] = None,
-        request_id: Optional[str] = None,
+        extra_fields: dict[str, Any | None] = None,
+        request_id: str | None = None,
         exc_info=None,
     ):
         """Log with additional context"""
@@ -128,8 +128,8 @@ class StructuredLogger:
     def debug(
         self,
         message: str,
-        extra_fields: dict[str, Optional[Any]] = None,
-        request_id: Optional[str] = None,
+        extra_fields: dict[str, Any | None] = None,
+        request_id: str | None = None,
     ):
         """Log debug message"""
         self._log_with_context(logging.DEBUG, message, extra_fields, request_id)
@@ -137,8 +137,8 @@ class StructuredLogger:
     def info(
         self,
         message: str,
-        extra_fields: dict[str, Optional[Any]] = None,
-        request_id: Optional[str] = None,
+        extra_fields: dict[str, Any | None] = None,
+        request_id: str | None = None,
     ):
         """Log info message"""
         self._log_with_context(logging.INFO, message, extra_fields, request_id)
@@ -146,8 +146,8 @@ class StructuredLogger:
     def warning(
         self,
         message: str,
-        extra_fields: dict[str, Optional[Any]] = None,
-        request_id: Optional[str] = None,
+        extra_fields: dict[str, Any | None] = None,
+        request_id: str | None = None,
     ):
         """Log warning message"""
         self._log_with_context(logging.WARNING, message, extra_fields, request_id)
@@ -155,8 +155,8 @@ class StructuredLogger:
     def error(
         self,
         message: str,
-        extra_fields: dict[str, Optional[Any]] = None,
-        request_id: Optional[str] = None,
+        extra_fields: dict[str, Any | None] = None,
+        request_id: str | None = None,
         exc_info=None,
     ):
         """Log error message"""
@@ -165,8 +165,8 @@ class StructuredLogger:
     def critical(
         self,
         message: str,
-        extra_fields: dict[str, Optional[Any]] = None,
-        request_id: Optional[str] = None,
+        extra_fields: dict[str, Any | None] = None,
+        request_id: str | None = None,
         exc_info=None,
     ):
         """Log critical message"""

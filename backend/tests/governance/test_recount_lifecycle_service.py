@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 
 import pytest
-
 from backend.services.governance_guard import GovernanceViolation
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.tests.utils.in_memory_db import InMemoryDatabase

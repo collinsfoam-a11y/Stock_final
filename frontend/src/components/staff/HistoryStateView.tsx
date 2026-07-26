@@ -127,7 +127,7 @@ export default function HistoryStateView({
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: { padding: 16 },
+  loadingContainer: { padding: gap.lg },
   skeletonItem: {
     flexDirection: "row",
     alignItems: "center",

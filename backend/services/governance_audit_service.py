@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import logging
 import inspect
+import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -39,14 +39,14 @@ class GovernanceAuditService:
         operation: str,
         session_id: str,
         actor: dict[str, Any],
-        item_id: Optional[str] = None,
-        location_id: Optional[str] = None,
-        version: Optional[int] = None,
-        idempotency_key: Optional[str] = None,
-        semantic_hash: Optional[str] = None,
+        item_id: str | None = None,
+        location_id: str | None = None,
+        version: int | None = None,
+        idempotency_key: str | None = None,
+        semantic_hash: str | None = None,
         status: str = "SUCCESS",
-        metadata: Optional[dict[str, Any]] = None,
-        db_session: Optional[Any] = None,
+        metadata: dict[str, Any] | None = None,
+        db_session: Any | None = None,
     ) -> None:
         """
         FIX GROUP 5: Full actor attribution for every governance event.
@@ -101,15 +101,15 @@ class GovernanceAuditService:
         event: str,
         operation: str,
         session_id: str,
-        item_id: Optional[str] = None,
-        location_id: Optional[str] = None,
-        version: Optional[int] = None,
-        idempotency_key: Optional[str] = None,
-        semantic_hash: Optional[str] = None,
-        actor_id: Optional[str] = None,
+        item_id: str | None = None,
+        location_id: str | None = None,
+        version: int | None = None,
+        idempotency_key: str | None = None,
+        semantic_hash: str | None = None,
+        actor_id: str | None = None,
         status: str = "SUCCESS",
-        metadata: Optional[dict[str, Any]] = None,
-        db_session: Optional[Any] = None,
+        metadata: dict[str, Any] | None = None,
+        db_session: Any | None = None,
     ) -> None:
         """Backwards-compatible shim that delegates to log_governance_event."""
         actor = {"user_id": actor_id or "system", "username": actor_id or "system"}

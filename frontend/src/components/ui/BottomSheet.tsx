@@ -10,6 +10,7 @@ import Animated, {
 import { flags } from "../../constants/flags";
 
 import { colors as uiColors, scrim, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { font, gap, radius } from '@/theme/staffUiScale';
 interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
     backgroundColor: uiColors.neutral[900],
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    padding: 16,
+    padding: gap.lg,
     borderWidth: 1,
     borderColor: uiSemanticColors.text.primary,
   },

@@ -4,7 +4,7 @@ Enterprise-grade reporting with MongoDB aggregations
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
@@ -28,15 +28,11 @@ class QuerySpec(BaseModel):
     """Query specification"""
 
     collection: str = Field(..., description="Collection to query")
-    filters: Optional[dict[str, Optional[Any]]] = Field(
-        default=None, description="Filter conditions"
-    )
-    group_by: Optional[list[str]] = Field(None, description="Group by fields")
-    aggregations: Optional[dict[str, Optional[str]]] = Field(
-        default=None, description="Aggregations"
-    )
-    sort: Optional[dict[str, Optional[int]]] = Field(default=None, description="Sort specification")
-    limit: Optional[int] = Field(None, description="Limit results")
+    filters: dict[str, Any | None] | None = Field(default=None, description="Filter conditions")
+    group_by: list[str] | None = Field(None, description="Group by fields")
+    aggregations: dict[str, str | None] | None = Field(default=None, description="Aggregations")
+    sort: dict[str, int | None] | None = Field(default=None, description="Sort specification")
+    limit: int | None = Field(None, description="Limit results")
 
 
 class CreateSnapshotRequest(BaseModel):
@@ -46,7 +42,7 @@ class CreateSnapshotRequest(BaseModel):
     description: str = Field(..., description="Snapshot description")
     query_spec: QuerySpec = Field(..., description="Query specification")
     snapshot_type: str = Field("custom", description="Snapshot type")
-    tags: Optional[list[str]] = Field(None, description="Tags")
+    tags: list[str] | None = Field(None, description="Tags")
 
 
 class CompareSnapshotsRequest(BaseModel):
@@ -54,7 +50,7 @@ class CompareSnapshotsRequest(BaseModel):
 
     snapshot_a_id: str = Field(..., description="First snapshot ID")
     snapshot_b_id: str = Field(..., description="Second snapshot ID")
-    comparison_name: Optional[str] = Field(None, description="Comparison name")
+    comparison_name: str | None = Field(None, description="Comparison name")
 
 
 # Endpoints
@@ -120,9 +116,9 @@ async def create_snapshot(
 
 @router.get("/snapshots")
 async def list_snapshots(
-    created_by: Optional[str] = Query(None),
-    snapshot_type: Optional[str] = Query(None),
-    tags: Optional[str] = Query(None),  # Comma-separated
+    created_by: str | None = Query(None),
+    snapshot_type: str | None = Query(None),
+    tags: str | None = Query(None),  # Comma-separated
     limit: int = Query(50, ge=1, le=200),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
@@ -302,7 +298,7 @@ async def get_comparison(
 
 @router.get("/compare")
 async def list_comparisons(
-    created_by: Optional[str] = Query(None),
+    created_by: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> list[dict[str, Any]]:

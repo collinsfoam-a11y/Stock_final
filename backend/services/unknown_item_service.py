@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from bson import ObjectId
 from fastapi import HTTPException
@@ -38,7 +38,7 @@ class UnknownItemService:
         return {"id": str(item_id)}
 
     @staticmethod
-    def _kwargs(db_session: Optional[Any]) -> dict[str, Any]:
+    def _kwargs(db_session: Any | None) -> dict[str, Any]:
         return {"session": db_session} if db_session is not None else {}
 
     async def _execute_authorized_write(self, write_call: Any) -> Any:
@@ -53,9 +53,9 @@ class UnknownItemService:
         *,
         event_type_name: str,
         entity_id: str,
-        session_id: Optional[str],
+        session_id: str | None,
         actor_id: str,
-        details: Optional[dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         """Canonical audit event alongside the existing GovernanceAuditService
         call (bridge pattern -- BSR remediation). Best-effort by contract."""
@@ -82,8 +82,8 @@ class UnknownItemService:
         unknown: dict[str, Any],
         target: dict[str, Any],
         actor_id: str,
-        resolve_notes: Optional[str],
-        db_session: Optional[Any],
+        resolve_notes: str | None,
+        db_session: Any | None,
         manual_sku_created: bool = False,
     ) -> dict[str, Any]:
         kwargs = self._kwargs(db_session)
@@ -333,7 +333,7 @@ class UnknownItemService:
         *,
         item_id: str,
         actor_id: str,
-        reason: Optional[str] = None,
+        reason: str | None = None,
     ) -> dict[str, Any]:
         async with mongo_transaction(self.db.client) as tx:
             kwargs = self._kwargs(tx)
@@ -397,7 +397,7 @@ class UnknownItemService:
         item_id: str,
         item_code: str,
         actor_id: str,
-        resolve_notes: Optional[str] = None,
+        resolve_notes: str | None = None,
     ) -> dict[str, Any]:
         async with mongo_transaction(self.db.client) as tx:
             kwargs = self._kwargs(tx)
@@ -425,11 +425,11 @@ class UnknownItemService:
         item_code: str,
         item_name: str,
         category: str,
-        subcategory: Optional[str],
+        subcategory: str | None,
         mrp: float,
         uom_code: str,
         actor_id: str,
-        resolve_notes: Optional[str] = None,
+        resolve_notes: str | None = None,
     ) -> dict[str, Any]:
         async with mongo_transaction(self.db.client) as tx:
             kwargs = self._kwargs(tx)
@@ -471,7 +471,7 @@ class UnknownItemService:
         *,
         item_id: str,
         actor_id: str,
-        reason: Optional[str] = None,
+        reason: str | None = None,
     ) -> dict[str, Any]:
         async with mongo_transaction(self.db.client) as tx:
             kwargs = self._kwargs(tx)

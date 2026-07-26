@@ -9,7 +9,6 @@ other export correction.
 from datetime import datetime, timezone
 
 import pytest
-
 from backend.services.erpnext_export_service import ErpNextExportService
 from backend.services.hsn_suggestion_selection_service import (
     HsnSuggestionSelectionError,
@@ -25,30 +24,57 @@ DEFAULT_COMPANY = "Default Co"
 
 
 async def _seed_finalized_session(db, session_id):
-    await db.sessions.insert_one({
-        "id": session_id, "session_id": session_id, "status": "COMPLETED",
-        "warehouse": DEFAULT_WAREHOUSE, "finalized_at": datetime.now(timezone.utc), "version": 1,
-    })
+    await db.sessions.insert_one(
+        {
+            "id": session_id,
+            "session_id": session_id,
+            "status": "COMPLETED",
+            "warehouse": DEFAULT_WAREHOUSE,
+            "finalized_at": datetime.now(timezone.utc),
+            "version": 1,
+        }
+    )
 
 
 async def _seed_default_mappings(db):
-    await db.erpnext_warehouse_mappings.insert_one({
-        "mapping_id": "map-wh-1", "stock_verify_warehouse_id": DEFAULT_WAREHOUSE,
-        "stock_verify_warehouse_name": DEFAULT_WAREHOUSE, "erpnext_warehouse": "Stores - CO",
-        "company": DEFAULT_COMPANY, "is_active": True, "created_by": "admin1",
-        "created_at": datetime.now(timezone.utc), "updated_by": None, "updated_at": None,
-    })
-    await db.erpnext_uom_mappings.insert_one({
-        "mapping_id": "map-uom-1", "stock_verify_uom": DEFAULT_UOM, "erpnext_uom": "Nos",
-        "conversion_factor": 1.0, "is_active": True, "created_by": "admin1",
-        "created_at": datetime.now(timezone.utc), "updated_by": None, "updated_at": None,
-    })
+    await db.erpnext_warehouse_mappings.insert_one(
+        {
+            "mapping_id": "map-wh-1",
+            "stock_verify_warehouse_id": DEFAULT_WAREHOUSE,
+            "stock_verify_warehouse_name": DEFAULT_WAREHOUSE,
+            "erpnext_warehouse": "Stores - CO",
+            "company": DEFAULT_COMPANY,
+            "is_active": True,
+            "created_by": "admin1",
+            "created_at": datetime.now(timezone.utc),
+            "updated_by": None,
+            "updated_at": None,
+        }
+    )
+    await db.erpnext_uom_mappings.insert_one(
+        {
+            "mapping_id": "map-uom-1",
+            "stock_verify_uom": DEFAULT_UOM,
+            "erpnext_uom": "Nos",
+            "conversion_factor": 1.0,
+            "is_active": True,
+            "created_by": "admin1",
+            "created_at": datetime.now(timezone.utc),
+            "updated_by": None,
+            "updated_at": None,
+        }
+    )
 
 
 async def _seed_erp_item(db, item_code, **overrides):
     doc = {
-        "item_code": item_code, "item_name": f"Item {item_code}", "warehouse": DEFAULT_WAREHOUSE,
-        "uom_code": DEFAULT_UOM, "stock_qty": 90.0, "mrp": 25.0, "last_synced": datetime.now(timezone.utc),
+        "item_code": item_code,
+        "item_name": f"Item {item_code}",
+        "warehouse": DEFAULT_WAREHOUSE,
+        "uom_code": DEFAULT_UOM,
+        "stock_qty": 90.0,
+        "mrp": 25.0,
+        "last_synced": datetime.now(timezone.utc),
     }
     doc.update(overrides)
     await db.erp_items.insert_one(doc)
@@ -56,9 +82,15 @@ async def _seed_erp_item(db, item_code, **overrides):
 
 async def _seed_approved_line(db, session_id, item_code, **overrides):
     doc = {
-        "id": f"line-{item_code}-{session_id}", "session_id": session_id, "item_code": item_code,
-        "item_name": f"Item {item_code}", "counted_qty": 100.0, "erp_qty": 100.0,
-        "approval_status": "APPROVED", "status": "approved", "uom_code": DEFAULT_UOM,
+        "id": f"line-{item_code}-{session_id}",
+        "session_id": session_id,
+        "item_code": item_code,
+        "item_name": f"Item {item_code}",
+        "counted_qty": 100.0,
+        "erp_qty": 100.0,
+        "approval_status": "APPROVED",
+        "status": "approved",
+        "uom_code": DEFAULT_UOM,
     }
     doc.update(overrides)
     await db.count_lines.insert_one(doc)
@@ -67,7 +99,10 @@ async def _seed_approved_line(db, session_id, item_code, **overrides):
 
 async def _generate_preview(db, session_id, item_code):
     return await ErpNextExportService(db).generate_preview(
-        session_id=session_id, mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id=session_id,
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
 
@@ -130,8 +165,13 @@ async def test_selection_does_not_mutate_preview():
     selection_service = HsnSuggestionSelectionService(db)
     suggestion = await _cached_suggestion(selection_service, item_code="ITM-2")
     await selection_service.select_suggestion(
-        export_id=preview["export_id"], row_key=row_key, suggestion_id=suggestion["suggestion_id"],
-        hsn_sac="853950", gst_percentage=12.0, reason="test", current_user=CURRENT_USER,
+        export_id=preview["export_id"],
+        row_key=row_key,
+        suggestion_id=suggestion["suggestion_id"],
+        hsn_sac="853950",
+        gst_percentage=12.0,
+        reason="test",
+        current_user=CURRENT_USER,
     )
 
     stored_preview = await db.erpnext_export_previews.find_one({"export_id": preview["export_id"]})
@@ -151,8 +191,13 @@ async def test_selection_does_not_mutate_sql_item_master():
     selection_service = HsnSuggestionSelectionService(db)
     suggestion = await _cached_suggestion(selection_service, item_code="ITM-3")
     await selection_service.select_suggestion(
-        export_id=preview["export_id"], row_key=row_key, suggestion_id=suggestion["suggestion_id"],
-        hsn_sac="853950", gst_percentage=12.0, reason="test", current_user=CURRENT_USER,
+        export_id=preview["export_id"],
+        row_key=row_key,
+        suggestion_id=suggestion["suggestion_id"],
+        hsn_sac="853950",
+        gst_percentage=12.0,
+        reason="test",
+        current_user=CURRENT_USER,
     )
 
     erp_item = await db.erp_items.find_one({"item_code": "ITM-3"})
@@ -173,15 +218,22 @@ async def test_approved_correction_applies_only_on_regenerated_preview():
     selection_service = HsnSuggestionSelectionService(db)
     suggestion = await _cached_suggestion(selection_service, item_code="ITM-4")
     proposal = await selection_service.select_suggestion(
-        export_id=preview["export_id"], row_key=row_key, suggestion_id=suggestion["suggestion_id"],
-        hsn_sac="853950", gst_percentage=12.0, reason="test", current_user=CURRENT_USER,
+        export_id=preview["export_id"],
+        row_key=row_key,
+        suggestion_id=suggestion["suggestion_id"],
+        hsn_sac="853950",
+        gst_percentage=12.0,
+        reason="test",
+        current_user=CURRENT_USER,
     )
 
     # Original preview's row is still unchanged before approval.
     stored_before = await db.erpnext_export_previews.find_one({"export_id": preview["export_id"]})
     assert stored_before["rows"][0]["hsn_sac"] is None
 
-    await selection_service.correction_service.approve_proposal(proposal["proposal_id"], current_user=ADMIN_USER)
+    await selection_service.correction_service.approve_proposal(
+        proposal["proposal_id"], current_user=ADMIN_USER
+    )
 
     # Regenerate the preview (same scope) -- the approved correction should apply to the NEW version only.
     new_preview = await _generate_preview(db, "s4", "ITM-4")
@@ -207,18 +259,28 @@ async def test_source_and_confidence_preserved_in_correction_metadata():
     selection_service = HsnSuggestionSelectionService(db)
     suggestion = await _cached_suggestion(selection_service, item_code="ITM-5")
     proposal = await selection_service.select_suggestion(
-        export_id=preview["export_id"], row_key=row_key, suggestion_id=suggestion["suggestion_id"],
-        hsn_sac="853950", gst_percentage=12.0, reason="test", current_user=CURRENT_USER,
+        export_id=preview["export_id"],
+        row_key=row_key,
+        suggestion_id=suggestion["suggestion_id"],
+        hsn_sac="853950",
+        gst_percentage=12.0,
+        reason="test",
+        current_user=CURRENT_USER,
     )
 
     assert proposal["metadata"]["suggestion_source"] == "MCP_INDIA_STACK_SEED"
-    assert proposal["metadata"]["suggestion_source_url"] == "https://github.com/rehan1020/MCP-India-Stack"
+    assert (
+        proposal["metadata"]["suggestion_source_url"]
+        == "https://github.com/rehan1020/MCP-India-Stack"
+    )
     assert proposal["metadata"]["suggestion_confidence"] == 0.82
     assert proposal["metadata"]["suggestion_is_official_source"] is False
     assert proposal["metadata"]["manual_verification_required"] is True
     assert proposal["metadata"]["selected_by"] == "supervisor1"
 
-    audit_entries = await db.audit_logs.find({"details.proposal_id": proposal["proposal_id"]}).to_list(length=10)
+    audit_entries = await db.audit_logs.find(
+        {"details.proposal_id": proposal["proposal_id"]}
+    ).to_list(length=10)
     assert any(e["event_type"] == "EXPORT_HSN_SUGGESTION_SELECTED" for e in audit_entries)
 
 
@@ -235,6 +297,11 @@ async def test_selection_rejects_unknown_suggestion_id():
     selection_service = HsnSuggestionSelectionService(db)
     with pytest.raises(HsnSuggestionSelectionError):
         await selection_service.select_suggestion(
-            export_id=preview["export_id"], row_key=row_key, suggestion_id="does-not-exist",
-            hsn_sac="853950", gst_percentage=12.0, reason="test", current_user=CURRENT_USER,
+            export_id=preview["export_id"],
+            row_key=row_key,
+            suggestion_id="does-not-exist",
+            hsn_sac="853950",
+            gst_percentage=12.0,
+            reason="test",
+            current_user=CURRENT_USER,
         )

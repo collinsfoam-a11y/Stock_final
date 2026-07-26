@@ -7,7 +7,7 @@ import logging
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ def sanitize_barcode(barcode: str) -> str:
 
 
 def sanitize_filter_keys(
-    filters: dict[str, Any], allowed_keys: Optional[set[str]] = None
+    filters: dict[str, Any], allowed_keys: set[str] | None = None
 ) -> dict[str, Any]:
     """
     Validate and sanitize filter keys against an allowlist.

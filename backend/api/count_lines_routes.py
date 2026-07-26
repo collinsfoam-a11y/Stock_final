@@ -1,14 +1,15 @@
+import asyncio
 import inspect
 import logging
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, NoReturn, Optional
+from typing import Any, NoReturn
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel
+from pymongo.errors import DuplicateKeyError
 
 from backend.api.item_verification_api import record_count_line_variance
 from backend.api.schemas import BulkCountLineUpdate, CountLineCreate
@@ -23,8 +24,8 @@ from backend.services.canonical_inventory import (
     extract_document_id,
     find_duplicate_count_line,
     find_session,
-    is_count_line_locked,
     is_count_line_effectively_reviewed,
+    is_count_line_locked,
     is_session_finalized,
     is_superseded_count_line,
     materialize_count_line_review_state,
@@ -43,10 +44,10 @@ from backend.services.governance_guard import GovernanceViolation
 from backend.services.lock_service import LockService, ResourceLockedError
 from backend.services.logic_guard import build_request_context, enforce_session_logic
 from backend.services.notification_service import NotificationService
-from backend.services.snapshot_service import SnapshotService
-from backend.services.session_lifecycle_service import SessionLifecycleService
-from backend.services.transaction_manager import mongo_transaction
 from backend.services.read_router import InventoryReadRouter, ProjectionReadError
+from backend.services.session_lifecycle_service import SessionLifecycleService
+from backend.services.snapshot_service import SnapshotService
+from backend.services.transaction_manager import mongo_transaction
 from backend.services.variant_service import VariantService
 from backend.utils.api_utils import sanitize_for_logging
 
@@ -54,17 +55,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-_activity_log_service: Optional[ActivityLogService] = None
-_lock_service: Optional[LockService] = None
-_snapshot_service: Optional[SnapshotService] = None
-_variant_service: Optional[VariantService] = None
+_activity_log_service: ActivityLogService | None = None
+_lock_service: LockService | None = None
+_snapshot_service: SnapshotService | None = None
+_variant_service: VariantService | None = None
 
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
     return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
-def _normalize_idempotency_key(value: Any) -> Optional[str]:
+def _normalize_idempotency_key(value: Any) -> str | None:
     if not isinstance(value, str):
         return None
     normalized = value.strip()
@@ -78,7 +79,7 @@ def _raise_count_lines_internal_error(detail: str, exc: Exception) -> NoReturn:
 class CountLineApprovalRequest(BaseModel):
     """Optional metadata for approving a count line."""
 
-    notes: Optional[str] = None
+    notes: str | None = None
     # Master data may have been re-synced after the line was counted, making
     # the recorded variance stale. Approval is blocked (409) in that case
     # unless the supervisor explicitly acknowledges the stale baseline.
@@ -88,30 +89,30 @@ class CountLineApprovalRequest(BaseModel):
 class CountLineRejectRequest(BaseModel):
     """Optional metadata for requesting a recount."""
 
-    notes: Optional[str] = None
-    assign_to: Optional[str] = None
+    notes: str | None = None
+    assign_to: str | None = None
 
 
 class AddQuantityRequest(BaseModel):
     """Payload for incrementing quantity on an existing count line."""
 
     additional_qty: float
-    batches: Optional[list[dict[str, Any]]] = None
+    batches: list[dict[str, Any]] | None = None
 
 
 class CountLineUpdateRequest(BaseModel):
     """Minimal update payload for a count line (used by bulk update tooling)."""
 
-    counted_qty: Optional[float] = None
-    mrp_counted: Optional[float] = None
-    batches: Optional[list[dict[str, Any]]] = None
+    counted_qty: float | None = None
+    mrp_counted: float | None = None
+    batches: list[dict[str, Any]] | None = None
 
 
 def init_count_lines_api(
     activity_log_service: ActivityLogService,
-    lock_service: Optional[LockService] = None,
-    snapshot_service: Optional[SnapshotService] = None,
-    variant_service: Optional[VariantService] = None,
+    lock_service: LockService | None = None,
+    snapshot_service: SnapshotService | None = None,
+    variant_service: VariantService | None = None,
 ):
     global _activity_log_service, _lock_service, _snapshot_service, _variant_service
     if snapshot_service is None:
@@ -228,7 +229,7 @@ async def _ensure_count_line_mutable(
     db: Any,
     count_line: dict[str, Any],
     *,
-    session: Optional[dict[str, Any]] = None,
+    session: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if is_count_line_locked(count_line):
         raise HTTPException(
@@ -355,10 +356,10 @@ def _build_legacy_count_line_draft_filter(
 async def _lookup_erp_item(
     db: Any,
     *,
-    barcode: Optional[str],
-    item_code: Optional[str],
+    barcode: str | None,
+    item_code: str | None,
     require_item_code_truthy: bool,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Shared barcode-then-item_code ERP item lookup used by every count-line
     path that needs to resolve an erp_items document. `require_item_code_truthy`
     preserves each call site's pre-existing behavior: some skip the item_code
@@ -376,7 +377,7 @@ async def _lookup_erp_item(
     return erp_item
 
 
-async def _resolve_item_name_for_draft(db: Any, line_data: CountLineCreate) -> Optional[str]:
+async def _resolve_item_name_for_draft(db: Any, line_data: CountLineCreate) -> str | None:
     if line_data.item_name:
         return line_data.item_name
 
@@ -394,9 +395,9 @@ async def _resolve_item_name_for_draft(db: Any, line_data: CountLineCreate) -> O
 def _build_dashboard_refresh_message(
     event: str,
     *,
-    session_id: Optional[str] = None,
-    session_ids: Optional[set[str]] = None,
-    count_line: Optional[dict[str, Any]] = None,
+    session_id: str | None = None,
+    session_ids: set[str] | None = None,
+    count_line: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "event": event,
@@ -422,14 +423,17 @@ def _build_dashboard_refresh_message(
 
 
 async def _broadcast_item_updated(item_code: str, session_id: str) -> None:
-    """Broadcast item-updated event to supervisors and admins with retries."""
+    """Broadcast item-updated event to all connected clients with retries."""
+    logger.debug("Broadcasting item-updated event for %s", item_code)
     max_retries = 2
     for attempt in range(max_retries):
         try:
-            await manager.broadcast({
-                "type": "item_updated",
-                "payload": {"item_code": item_code, "session_id": session_id},
-            })
+            await manager.broadcast_all(
+                {
+                    "type": "item_updated",
+                    "payload": {"item_code": item_code, "session_id": session_id},
+                }
+            )
             return
         except Exception as e:
             if attempt == max_retries - 1:
@@ -443,6 +447,39 @@ async def _broadcast_item_updated(item_code: str, session_id: str) -> None:
             await asyncio.sleep(0.1 * (attempt + 1))
 
 
+async def _broadcast_dashboard_refresh(
+    event: str,
+    *,
+    session_id: str | None = None,
+    session_ids: set[str] | None = None,
+    count_line: dict[str, Any] | None = None,
+) -> None:
+    """Broadcast dashboard refresh event to relevant sessions and roles."""
+    message = _build_dashboard_refresh_message(
+        event,
+        session_id=session_id,
+        session_ids=session_ids,
+        count_line=count_line,
+    )
+    try:
+        # Broadcast to specific sessions (for the user who performed the action)
+        if session_id:
+            await manager.broadcast_to_session(message, session_id)
+        elif session_ids:
+            for sid in session_ids:
+                await manager.broadcast_to_session(message, sid)
+        else:
+            await manager.broadcast_all(message)
+
+        # Also broadcast to supervisor/admin roles for dashboard visibility
+        # Dashboard events should be visible to supervisors and admins
+        await manager.broadcast_to_roles(message, {"supervisor", "admin"})
+    except Exception as exc:
+        logger.warning(
+            "Failed to broadcast dashboard refresh: %s", _safe_log_value(exc, max_length=200)
+        )
+
+
 def _ensure_session_accepts_counts(session: dict[str, Any]) -> None:
     if session.get("status") not in ["OPEN", "ACTIVE"]:
         raise HTTPException(status_code=400, detail="Session is not active")
@@ -453,7 +490,7 @@ def _ensure_session_accepts_counts(session: dict[str, Any]) -> None:
 async def _find_idempotent_count_line(
     db: Any,
     line_data: CountLineCreate,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     idempotency_key = _normalize_idempotency_key(line_data.idempotency_key)
     if not idempotency_key:
         return None
@@ -475,7 +512,7 @@ async def _audit_duplicate_scan_attempt(
     current_user: dict[str, Any],
     *,
     reason_code: str,
-    existing_count_line_id: Optional[str] = None,
+    existing_count_line_id: str | None = None,
 ) -> None:
     """Record a backend-detected duplicate/near-duplicate count submission.
 
@@ -532,10 +569,10 @@ class DuplicateCheckResult(BaseModel):
     severity: str
     reason_code: DuplicateCheckReasonCode
     message: str
-    existing_count_line_id: Optional[str] = None
-    existing_version: Optional[int] = None
-    existing_location_context: Optional[dict[str, Any]] = None
-    requested_location_context: Optional[dict[str, Any]] = None
+    existing_count_line_id: str | None = None
+    existing_version: int | None = None
+    existing_location_context: dict[str, Any] | None = None
+    requested_location_context: dict[str, Any] | None = None
     requires_supervisor_review: bool = False
 
 
@@ -553,20 +590,20 @@ class DuplicateCheckRequest(BaseModel):
 
     session_id: str
     item_code: str
-    barcode: Optional[str] = None
-    batch_id: Optional[str] = None
-    batch_no: Optional[str] = None
-    serial_no: Optional[str] = None
-    warehouse_id: Optional[str] = None
-    warehouse: Optional[str] = None
-    location_id: Optional[str] = None
-    floor: Optional[str] = None
-    zone: Optional[str] = None
-    rack: Optional[str] = None
-    shelf: Optional[str] = None
-    counted_qty: Optional[float] = None
-    version: Optional[int] = None
-    idempotency_key: Optional[str] = None
+    barcode: str | None = None
+    batch_id: str | None = None
+    batch_no: str | None = None
+    serial_no: str | None = None
+    warehouse_id: str | None = None
+    warehouse: str | None = None
+    location_id: str | None = None
+    floor: str | None = None
+    zone: str | None = None
+    rack: str | None = None
+    shelf: str | None = None
+    counted_qty: float | None = None
+    version: int | None = None
+    idempotency_key: str | None = None
 
 
 async def _evaluate_duplicate_context(
@@ -575,20 +612,20 @@ async def _evaluate_duplicate_context(
     session_id: str,
     item_code: str,
     current_user: dict[str, Any],
-    barcode: Optional[str] = None,
-    batch_id: Optional[str] = None,
-    batch_no: Optional[str] = None,
-    serial_no: Optional[str] = None,
-    warehouse_id: Optional[str] = None,
-    warehouse: Optional[str] = None,
-    location_id: Optional[str] = None,
-    floor: Optional[str] = None,
-    zone: Optional[str] = None,
-    rack: Optional[str] = None,
-    shelf: Optional[str] = None,
-    counted_qty: Optional[float] = None,
-    version: Optional[int] = None,
-    idempotency_key: Optional[str] = None,
+    barcode: str | None = None,
+    batch_id: str | None = None,
+    batch_no: str | None = None,
+    serial_no: str | None = None,
+    warehouse_id: str | None = None,
+    warehouse: str | None = None,
+    location_id: str | None = None,
+    floor: str | None = None,
+    zone: str | None = None,
+    rack: str | None = None,
+    shelf: str | None = None,
+    counted_qty: float | None = None,
+    version: int | None = None,
+    idempotency_key: str | None = None,
 ) -> dict[str, Any]:
     """Shared proactive duplicate-identity evaluation for both the legacy
     GET check endpoint and the structured POST check-duplicate endpoint.
@@ -612,7 +649,7 @@ async def _evaluate_duplicate_context(
         "batch_no": batch_no,
     }
 
-    async def _audit(reason_code: str, existing_id: Optional[str] = None) -> None:
+    async def _audit(reason_code: str, existing_id: str | None = None) -> None:
         try:
             from backend.services.audit_service import AuditService
 
@@ -637,9 +674,7 @@ async def _evaluate_duplicate_context(
                 },
             )
         except Exception as exc:
-            logger.warning(
-                "Failed to audit proactive duplicate check: %s", _safe_log_value(exc)
-            )
+            logger.warning("Failed to audit proactive duplicate check: %s", _safe_log_value(exc))
 
     def _result(
         *,
@@ -647,7 +682,7 @@ async def _evaluate_duplicate_context(
         severity: str,
         reason_code: DuplicateCheckReasonCode,
         message: str,
-        existing: Optional[dict[str, Any]] = None,
+        existing: dict[str, Any] | None = None,
         requires_supervisor_review: bool = False,
     ) -> dict[str, Any]:
         existing_location_context = None
@@ -828,7 +863,7 @@ async def _evaluate_duplicate_context(
 
 async def _find_erp_item_for_count_line(
     db: Any, line_data: CountLineCreate
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     return await _lookup_erp_item(
         db,
         barcode=line_data.barcode,
@@ -869,7 +904,7 @@ async def _get_erp_item_for_existing_count_line(
     }
 
 
-def _as_naive_utc_datetime(value: Any) -> Optional[datetime]:
+def _as_naive_utc_datetime(value: Any) -> datetime | None:
     """Normalize stored timestamps (datetime or epoch float) for comparison."""
     if isinstance(value, datetime):
         return value.replace(tzinfo=None) if value.tzinfo else value
@@ -887,7 +922,7 @@ async def _ensure_master_data_fresh_for_approval(
     *,
     acknowledged: bool,
     operation_name: str,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Server-side session-integrity enforcement (FR-M-34).
 
     The variance stored on a count line was computed against the ERP snapshot
@@ -958,7 +993,7 @@ async def _resolve_snapshot_baseline(
     line_data: CountLineCreate,
     erp_item: dict[str, Any],
     username: str,
-) -> tuple[float, str, Optional[str]]:
+) -> tuple[float, str, str | None]:
     write_service = _get_count_line_write_service(_get_db_client())
     return await write_service.resolve_baseline(
         session_id=line_data.session_id,
@@ -1021,7 +1056,7 @@ def _build_count_line_risk_context(
 def _build_count_line_lock_keys(
     line_data: CountLineCreate,
     erp_item: dict[str, Any],
-) -> tuple[str, Optional[str]]:
+) -> tuple[str, str | None]:
     item_id = erp_item.get("item_id")
     variant_lock_key = f"product:{item_id}" if item_id else None
     session_variant_lock = (
@@ -1092,8 +1127,8 @@ class _IdempotentRetryDetected(Exception):
 async def _resolve_recount_target(
     db: Any,
     line_data: CountLineCreate,
-    current_user: Optional[dict[str, Any]] = None,
-) -> Optional[dict[str, Any]]:
+    current_user: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
     line_payload = line_data.model_dump(mode="json")
     existing_count = await find_duplicate_count_line(db, line_payload)
     if existing_count and can_reuse_rejected_count_line(existing_count, line_payload):
@@ -1132,10 +1167,10 @@ def _build_count_line_document(
     risk_flags: list[str],
     financial_impact: float,
     is_misplaced: bool,
-    recount_update_target: Optional[dict[str, Any]],
+    recount_update_target: dict[str, Any] | None,
     *,
-    session: Optional[dict[str, Any]] = None,
-    baseline_snapshot_id: Optional[str] = None,
+    session: dict[str, Any] | None = None,
+    baseline_snapshot_id: str | None = None,
 ) -> tuple[dict[str, Any], datetime]:
     count_line_id = str(uuid.uuid4())
     previous_version_id = (
@@ -1288,7 +1323,7 @@ async def _persist_count_line_document(
     username: str,
     count_line: dict[str, Any],
     counted_at: datetime,
-    recount_update_target: Optional[dict[str, Any]],
+    recount_update_target: dict[str, Any] | None,
     *,
     write_service: CountLineWriteService,
     session: dict[str, Any],
@@ -1316,9 +1351,7 @@ async def _persist_count_line_document(
             "username": username,
             "db_session": tx,
             "skip_session_totals_update": True,
-            "expected_session_version": coerce_version(
-                (current_session or {}).get("version")
-            ),
+            "expected_session_version": coerce_version((current_session or {}).get("version")),
         }
 
         await write_service.process_write(
@@ -1381,8 +1414,8 @@ def _build_count_line_mutation_update(
     governance: CountLineGovernanceDecision,
     counted_qty: float,
     financial_impact: float,
-    variance_reason: Optional[str],
-    batches: Optional[list[dict[str, Any]]] = None,
+    variance_reason: str | None,
+    batches: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     update_data: dict[str, Any] = {
         "counted_qty": counted_qty,
@@ -1599,11 +1632,25 @@ async def save_count_line_draft(
         _safe_log_value(line_data.item_code),
         line_data.counted_qty,
     )
+    logger.info(
+        "Draft saved for item %s: %s",
+        _safe_log_value(line_data.item_code),
+        line_data.counted_qty,
+    )
     # insert_one() mutates draft_payload in place, adding a raw bson ObjectId
     # under "_id". Drop it so it doesn't leak into the response and break
     # FastAPI's jsonable_encoder ("'ObjectId' object is not iterable"). The
     # stringified id is already exposed as data.id.
     draft_payload.pop("_id", None)
+
+    # Broadcast item-updated event to supervisors/admins
+    logger.info("Triggering WebSocket broadcast for item: %s", line_data.item_code)
+    try:
+        await _broadcast_item_updated(line_data.item_code, line_data.session_id)
+        logger.info("WebSocket broadcast completed for item: %s", line_data.item_code)
+    except Exception as e:
+        logger.error("WebSocket broadcast failed for item %s: %s", line_data.item_code, e)
+
     return {
         "success": True,
         "message": "Draft saved successfully",
@@ -1628,8 +1675,8 @@ async def _persist_count_line_or_recover_duplicate(
     is_misplaced: bool,
     financial_impact: float,
     write_service: CountLineWriteService,
-    baseline_snapshot_id: Optional[str] = None,
-) -> tuple[dict[str, Any], Optional[datetime], bool]:
+    baseline_snapshot_id: str | None = None,
+) -> tuple[dict[str, Any], datetime | None, bool]:
     """Persist a new count line, recovering gracefully from concurrent
     duplicate races (BSR rule #17: true idempotent retry vs genuine
     duplicate). Extracted so the exact production race-handling logic can
@@ -1734,7 +1781,7 @@ async def _prepare_and_persist_count_line(
     *,
     session: dict[str, Any],
     write_service: CountLineWriteService,
-) -> tuple[dict[str, Any], Optional[datetime], bool]:
+) -> tuple[dict[str, Any], datetime | None, bool]:
     """Single source of truth for "create or recover" a count line, shared by
     both the single-submit endpoint and the batch endpoint so they behave
     identically for idempotent retries and genuine duplicates (BSR: batch
@@ -1865,7 +1912,10 @@ async def create_count_line(
                 "rack_id": line_data.rack_id,
             },
             decision=count_line.get("approval_status"),
-            after={"counted_qty": count_line.get("counted_qty"), "variance": count_line.get("variance")},
+            after={
+                "counted_qty": count_line.get("counted_qty"),
+                "variance": count_line.get("variance"),
+            },
         )
     except Exception as exc:
         logger.warning("Failed to audit count-line submission: %s", _safe_log_value(exc))
@@ -2026,7 +2076,7 @@ async def get_count_lines(
     current_user: dict,
     page: int = 1,
     page_size: int = 50,
-    verified: Optional[bool] = None,
+    verified: bool | None = None,
     *,
     db_override=None,
 ):
@@ -2087,11 +2137,11 @@ async def get_count_lines(
 @router.get("/count-lines")
 async def list_count_lines(
     current_user: dict = Depends(get_current_user),
-    session_id: Optional[str] = Query(None),
-    item_code: Optional[str] = Query(None),
+    session_id: str | None = Query(None),
+    item_code: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    limit: Optional[int] = Query(None, ge=1, le=200),
+    limit: int | None = Query(None, ge=1, le=200),
 ):
     db_client = _get_db_client()
     filter_query: dict[str, Any] = {}
@@ -2154,7 +2204,7 @@ async def get_count_line_detail(
 
 async def approve_count_line(
     line_id: str,
-    request: Optional[CountLineApprovalRequest] = None,
+    request: CountLineApprovalRequest | None = None,
     current_user: dict = Depends(get_current_user),
     *,
     http_request: Request | None = None,
@@ -2289,7 +2339,7 @@ async def approve_count_line(
 
 async def reject_count_line(
     line_id: str,
-    request: Optional[CountLineRejectRequest] = None,
+    request: CountLineRejectRequest | None = None,
     current_user: dict = Depends(get_current_user),
     *,
     http_request: Request | None = None,
@@ -2433,7 +2483,7 @@ async def reject_count_line(
 async def approve_count_line_route(
     line_id: str,
     http_request: Request,
-    request: Optional[CountLineApprovalRequest] = None,
+    request: CountLineApprovalRequest | None = None,
     current_user: dict = Depends(get_current_user),
 ):
     return await approve_count_line(
@@ -2448,7 +2498,7 @@ async def approve_count_line_route(
 async def reject_count_line_route(
     line_id: str,
     http_request: Request,
-    request: Optional[CountLineRejectRequest] = None,
+    request: CountLineRejectRequest | None = None,
     current_user: dict = Depends(get_current_user),
 ):
     return await reject_count_line(
@@ -2464,20 +2514,20 @@ async def check_item_counted(
     session_id: str,
     item_code: str,
     current_user: dict = Depends(get_current_user),
-    barcode: Optional[str] = None,
-    batch_id: Optional[str] = None,
-    batch_no: Optional[str] = None,
-    serial_no: Optional[str] = None,
-    warehouse_id: Optional[str] = None,
-    warehouse: Optional[str] = None,
-    location_id: Optional[str] = None,
-    floor: Optional[str] = None,
-    zone: Optional[str] = None,
-    rack: Optional[str] = None,
-    shelf: Optional[str] = None,
-    counted_qty: Optional[float] = None,
-    version: Optional[int] = None,
-    idempotency_key: Optional[str] = None,
+    barcode: str | None = None,
+    batch_id: str | None = None,
+    batch_no: str | None = None,
+    serial_no: str | None = None,
+    warehouse_id: str | None = None,
+    warehouse: str | None = None,
+    location_id: str | None = None,
+    floor: str | None = None,
+    zone: str | None = None,
+    rack: str | None = None,
+    shelf: str | None = None,
+    counted_qty: float | None = None,
+    version: int | None = None,
+    idempotency_key: str | None = None,
 ):
     """Check if an item has already been counted in the session.
 
@@ -2595,7 +2645,7 @@ async def check_duplicate_count_line(
 async def check_serial_uniqueness(
     session_id: str,
     serial_number: str,
-    item_code: Optional[str] = Query(None),
+    item_code: str | None = Query(None),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -2647,7 +2697,7 @@ async def get_count_lines_route(
     current_user: dict = Depends(get_current_user),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
-    verified: Optional[bool] = Query(None, description="Filter by verification status"),
+    verified: bool | None = Query(None, description="Filter by verification status"),
 ):
     return await get_count_lines(
         session_id,
@@ -2658,7 +2708,7 @@ async def get_count_lines_route(
     )
 
 
-async def _find_count_line(db, line_id: str) -> Optional[dict]:
+async def _find_count_line(db, line_id: str) -> dict | None:
     """Find a count line by id or _id."""
     count_line = await db.count_lines.find_one({"id": line_id})
     if count_line:
@@ -2754,15 +2804,17 @@ async def add_quantity_to_count_line(
         )
 
     # Broadcast WebSocket event for real-time updates
+    item_code = count_line.get("item_code")
+    session_id = str(count_line.get("session_id") or "")
     if session_id:
-        await manager.broadcast(
+        await manager.broadcast_to_session(
             {
                 "type": "item-updated",
                 "itemId": item_code,
                 "sessionId": session_id,
                 "event_id": str(uuid.uuid4()),
             },
-            room=f"session_{session_id}",
+            session_id=session_id,
         )
 
 
@@ -3102,7 +3154,7 @@ class CountLineBatchCreate(BaseModel):
 
 async def _resolve_existing_count_line_id_for_batch_error(
     db: Any, error_code: str, line_data: CountLineCreate
-) -> Optional[str]:
+) -> str | None:
     """Best-effort lookup of the existing count line an errored batch line
     collided with, for the response's `existing_count_line_id` (BSR Part A:
     "where applicable"). Read-only; never allowed to fail the response."""

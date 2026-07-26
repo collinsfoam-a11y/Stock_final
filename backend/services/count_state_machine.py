@@ -18,7 +18,7 @@ State Transitions:
 import logging
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 from backend.services.count_line_write_service import CountLineWriteService
 
@@ -220,9 +220,9 @@ class CountLineStateMachine:
         next_state: str,
         user_id: str,
         user_role: str,
-        reason: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        reason: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Transition count line to next state.
 
@@ -331,8 +331,8 @@ class CountLineStateMachine:
         to_state: str,
         user_id: str,
         user_role: str,
-        reason: Optional[str],
-        metadata: Optional[Dict[str, Any]],
+        reason: str | None,
+        metadata: dict[str, Any] | None,
     ):
         """Log state transition to audit trail"""
         await self.db.activity_logs.insert_one(
@@ -379,8 +379,8 @@ class CountLineStateMachine:
         return EditPermission.can_view(state, user_role, is_owner)
 
     async def get_allowed_actions(
-        self, count_line_id: str, user_role: str, user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, count_line_id: str, user_role: str, user_id: str | None = None
+    ) -> dict[str, Any]:
         """Get allowed actions for count line in current state"""
         count_line = await self.db.count_lines.find_one({"id": count_line_id})
         if not count_line:

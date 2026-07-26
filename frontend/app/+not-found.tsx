@@ -3,6 +3,7 @@ import { Link, Stack, usePathname, useRouter } from "expo-router";
 import { StyleSheet, View, Text } from "react-native";
 
 import { semanticColors, colors } from "@/theme/legacyCompat";
+import { font, gap, radius } from '@/theme/staffUiScale';
 export default function NotFoundScreen() {
   const pathname = usePathname();
   const router = useRouter();
@@ -36,7 +37,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
+    padding: gap.xl,
     backgroundColor: colors.neutral[950],
   },
   title: {
@@ -46,7 +47,7 @@ const styles = StyleSheet.create({
   },
   link: {
     marginTop: 15,
-    paddingVertical: 15,
+    paddingVertical: gap.lg,
   },
   linkText: {
     fontSize: 14,

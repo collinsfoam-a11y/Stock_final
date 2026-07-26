@@ -9,7 +9,7 @@ correction-proposal workflow.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -29,12 +29,12 @@ class HsnDirectoryImportRequest(BaseModel):
     hsn_sac: str
     description: str
     source: str
-    gst_percentage: Optional[float] = None
-    source_url: Optional[str] = None
-    source_file: Optional[str] = None
-    is_official_source: Optional[bool] = None
-    keywords: Optional[list[str]] = None
-    metadata: Optional[dict[str, Any]] = None
+    gst_percentage: float | None = None
+    source_url: str | None = None
+    source_file: str | None = None
+    is_official_source: bool | None = None
+    keywords: list[str] | None = None
+    metadata: dict[str, Any] | None = None
 
 
 @router.post("/api/hsn-directory/import")
@@ -64,12 +64,12 @@ async def search_hsn_directory(
 
 
 class HsnSuggestionRequest(BaseModel):
-    item_name: Optional[str] = None
-    category: Optional[str] = None
-    subcategory: Optional[str] = None
-    brand: Optional[str] = None
-    barcode: Optional[str] = None
-    photo_caption: Optional[str] = None
+    item_name: str | None = None
+    category: str | None = None
+    subcategory: str | None = None
+    brand: str | None = None
+    barcode: str | None = None
+    photo_caption: str | None = None
     limit: int = 5
 
 

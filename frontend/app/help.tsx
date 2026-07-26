@@ -1,17 +1,67 @@
 /**
- * Help Screen - App documentation and help
+ * Help Screen - Lavanya eMart
+ * App documentation and help
  */
 
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import React, { useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Platform,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import ModernCard from "@/components/ui/ModernCard";
 import ModernHeader from "@/components/ui/ModernHeader";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { colorWithAlpha } from "@/theme/themeTokens";
+import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import {
+  spacing as unifiedSpacing,
+  textStyles,
+  radius as unifiedRadius,
+} from "@/theme/legacyCompat";
 import { safeBackNavigation } from "@/utils/navigation";
+import { duration } from "@/theme/staffUiScale";
+
+// ---------------------------------------------------------------------------
+// Safe Animated View (web-compatible)
+// ---------------------------------------------------------------------------
+
+interface SafeAnimatedViewProps {
+  children: React.ReactNode;
+  style?: any;
+  entering?: any;
+  delay?: number;
+}
+
+const SafeAnimatedView: React.FC<SafeAnimatedViewProps> = ({
+  children,
+  style,
+  entering,
+  delay = 0,
+}) => {
+  if (Platform.OS === "web") {
+    return <View style={style}>{children}</View>;
+  }
+  const animationProps = entering
+    ? { entering: entering.delay(delay).duration(duration.slower).springify() }
+    : {};
+  return (
+    <Animated.View style={style} {...animationProps}>
+      {children}
+    </Animated.View>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Types & Data
+// ---------------------------------------------------------------------------
 
 interface HelpSection {
   title: string;
@@ -98,7 +148,8 @@ const helpSections: HelpSection[] = [
       },
       {
         question: "How do I view activity logs?",
-        answer: "Go to Dashboard > Activity Logs to view all user activities and system events.",
+        answer:
+          "Go to Dashboard > Activity Logs to view all user activities and system events.",
         icon: "list",
       },
     ],
@@ -127,35 +178,48 @@ const helpSections: HelpSection[] = [
       },
       {
         question: "App crashes or freezes",
-        answer: "Close and restart the app. If problem persists, clear app cache or reinstall.",
+        answer:
+          "Close and restart the app. If problem persists, clear app cache or reinstall.",
         icon: "warning",
       },
     ],
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export default function HelpScreen() {
   const router = useRouter();
   const uiTokens = useUiTokens();
-  const [expandedItems, setExpandedItems] = React.useState<Set<string>>(new Set());
+  const styles = React.useMemo(() => createStyles(uiTokens), [uiTokens]);
+  const [expandedItems, setExpandedItems] = React.useState<Set<string>>(
+    new Set()
+  );
 
-  const handleBack = React.useCallback(() => {
+  const handleBack = useCallback(() => {
     safeBackNavigation(router, { fallbackHref: "/welcome" });
   }, [router]);
 
-  const toggleItem = (sectionIndex: number, itemIndex: number) => {
-    const key = `${sectionIndex}-${itemIndex}`;
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(key)) {
-      newExpanded.delete(key);
-    } else {
-      newExpanded.add(key);
-    }
-    setExpandedItems(newExpanded);
-  };
+  const toggleItem = useCallback(
+    (sectionIndex: number, itemIndex: number) => {
+      const key = `${sectionIndex}-${itemIndex}`;
+      setExpandedItems((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) {
+          next.delete(key);
+        } else {
+          next.add(key);
+        }
+        return next;
+      });
+    },
+    []
+  );
 
   return (
-    <View style={[styles.container, { backgroundColor: uiTokens.colors.background }]}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <StatusBar style={uiTokens.mode === "dark" ? "light" : "dark"} />
       <ModernHeader
         title="Help"
@@ -170,218 +234,228 @@ export default function HelpScreen() {
         showsVerticalScrollIndicator={false}
       >
         {helpSections.map((section, sectionIndex) => (
-          <ModernCard
+          <SafeAnimatedView
             key={section.title}
-            padding={0}
-            style={[styles.section, { backgroundColor: uiTokens.colors.surfaceElevated }]}
+            entering={FadeInDown}
+            delay={sectionIndex * 80}
           >
-            <View style={styles.sectionHeader}>
-              <View
-                style={[
-                  styles.sectionIcon,
-                  {
-                    backgroundColor: colorWithAlpha(
-                      uiTokens.colors.accent,
-                      uiTokens.mode === "dark" ? 0.18 : 0.1
-                    ),
-                  },
-                ]}
-              >
-                <Ionicons name={section.icon as any} size={22} color={uiTokens.colors.accent} />
+            <ModernCard padding={0} style={styles.sectionCard}>
+              <View style={styles.sectionHeader}>
+                <View
+                  style={[
+                    styles.sectionIcon,
+                    {
+                      backgroundColor: colorWithAlpha(
+                        uiTokens.colors.accent,
+                        uiTokens.mode === "dark" ? 0.18 : 0.1
+                      ),
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={section.icon as any}
+                    size={22}
+                    color={uiTokens.colors.accent}
+                  />
+                </View>
+                <Text style={styles.sectionTitle}>{section.title}</Text>
               </View>
-              <Text style={[styles.sectionTitle, { color: uiTokens.colors.textPrimary }]}>
-                {section.title}
-              </Text>
-            </View>
 
-            {section.items.map((item, itemIndex) => {
-              const key = `${sectionIndex}-${itemIndex}`;
-              const isExpanded = expandedItems.has(key);
+              {section.items.map((item, itemIndex) => {
+                const key = `${sectionIndex}-${itemIndex}`;
+                const isExpanded = expandedItems.has(key);
 
-              return (
-                <View key={itemIndex} style={styles.itemContainer}>
-                  <TouchableOpacity
-                    style={[
-                      styles.questionContainer,
-                      isExpanded && {
-                        backgroundColor: colorWithAlpha(
-                          uiTokens.colors.accent,
-                          uiTokens.mode === "dark" ? 0.12 : 0.06
-                        ),
-                      },
-                    ]}
-                    onPress={() => toggleItem(sectionIndex, itemIndex)}
-                    activeOpacity={0.7}
-                    accessibilityRole="button"
-                    accessibilityState={{ expanded: isExpanded }}
-                  >
-                    <View style={styles.questionContent}>
-                      {item.icon && (
-                        <Ionicons
-                          name={item.icon as any}
-                          size={20}
-                          color={uiTokens.colors.textSecondary}
-                          style={styles.itemIcon}
-                        />
-                      )}
-                      <Text style={[styles.question, { color: uiTokens.colors.textPrimary }]}>
-                        {item.question}
-                      </Text>
-                    </View>
-                    <Ionicons
-                      name={isExpanded ? "chevron-up" : "chevron-down"}
-                      size={20}
-                      color={uiTokens.colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-
-                  {isExpanded && (
-                    <View
+                return (
+                  <View key={itemIndex} style={styles.itemContainer}>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded: isExpanded }}
+                      accessibilityLabel={item.question}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      activeOpacity={0.7}
+                      onPress={() => toggleItem(sectionIndex, itemIndex)}
                       style={[
-                        styles.answerContainer,
-                        {
+                        styles.questionContainer,
+                        isExpanded && {
                           backgroundColor: colorWithAlpha(
                             uiTokens.colors.accent,
-                            uiTokens.mode === "dark" ? 0.08 : 0.04
+                            uiTokens.mode === "dark" ? 0.12 : 0.06
                           ),
                         },
                       ]}
                     >
-                      <Text style={[styles.answer, { color: uiTokens.colors.textSecondary }]}>
-                        {item.answer}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </ModernCard>
+                      <View style={styles.questionContent}>
+                        {item.icon && (
+                          <Ionicons
+                            name={item.icon as any}
+                            size={20}
+                            color={uiTokens.colors.textSecondary}
+                            style={styles.itemIcon}
+                          />
+                        )}
+                        <Text style={styles.question}>{item.question}</Text>
+                      </View>
+                      <Ionicons
+                        name={isExpanded ? "chevron-up" : "chevron-down"}
+                        size={20}
+                        color={uiTokens.colors.textSecondary}
+                      />
+                    </TouchableOpacity>
+
+                    {isExpanded && (
+                      <View
+                        style={[
+                          styles.answerContainer,
+                          {
+                            backgroundColor: colorWithAlpha(
+                              uiTokens.colors.accent,
+                              uiTokens.mode === "dark" ? 0.08 : 0.04
+                            ),
+                          },
+                        ]}
+                      >
+                        <Text style={styles.answer}>{item.answer}</Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </ModernCard>
+          </SafeAnimatedView>
         ))}
 
         {/* Contact Support */}
-        <ModernCard
-          padding={24}
-          style={[styles.contactSection, { backgroundColor: uiTokens.colors.surfaceElevated }]}
-        >
-          <View
-            style={[
-              styles.contactIcon,
-              {
-                backgroundColor: colorWithAlpha(
-                  uiTokens.colors.info,
-                  uiTokens.mode === "dark" ? 0.18 : 0.1
-                ),
-              },
-            ]}
-          >
-            <Ionicons name="mail" size={24} color={uiTokens.colors.info} />
-          </View>
-          <Text style={[styles.contactTitle, { color: uiTokens.colors.textPrimary }]}>
-            Need More Help?
-          </Text>
-          <Text style={[styles.contactText, { color: uiTokens.colors.textSecondary }]}>
-            Contact your system administrator or IT support team for additional assistance.
-          </Text>
-        </ModernCard>
+        <SafeAnimatedView entering={FadeInDown} delay={400}>
+          <ModernCard padding={unifiedSpacing.lg} style={styles.contactCard}>
+            <View
+              style={[
+                styles.contactIcon,
+                {
+                  backgroundColor: colorWithAlpha(
+                    uiTokens.colors.info,
+                    uiTokens.mode === "dark" ? 0.18 : 0.1
+                  ),
+                },
+              ]}
+            >
+              <Ionicons
+                name="mail"
+                size={24}
+                color={uiTokens.colors.info}
+              />
+            </View>
+            <Text style={styles.contactTitle}>Need More Help?</Text>
+            <Text style={styles.contactText}>
+              Contact your system administrator or IT support team for
+              additional assistance.
+            </Text>
+          </ModernCard>
+        </SafeAnimatedView>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
-    gap: 16,
-  },
-  section: {
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 10,
-    gap: 12,
-  },
-  sectionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sectionTitle: {
-    flex: 1,
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: "700",
-  },
-  itemContainer: {
-    paddingHorizontal: 10,
-    paddingBottom: 8,
-  },
-  questionContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    minHeight: 48,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  questionContent: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  itemIcon: {
-    marginRight: 4,
-  },
-  question: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: "600",
-  },
-  answerContainer: {
-    padding: 14,
-    borderRadius: 8,
-    marginTop: 6,
-  },
-  answer: {
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  contactSection: {
-    alignItems: "center",
-  },
-  contactIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  contactTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: "700",
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  contactText: {
-    fontSize: 15,
-    textAlign: "center",
-    lineHeight: 22,
-  },
-});
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
+const createStyles = (tokens: ThemeTokens) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: tokens.colors.background,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: unifiedSpacing.lg,
+      paddingBottom: unifiedSpacing["2xl"],
+      gap: unifiedSpacing.lg,
+    },
+    sectionCard: {
+      borderRadius: unifiedRadius.lg,
+      overflow: "hidden",
+      backgroundColor: tokens.colors.surfaceElevated,
+    },
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: unifiedSpacing.lg,
+      paddingTop: unifiedSpacing.lg,
+      paddingBottom: unifiedSpacing.md,
+      gap: unifiedSpacing.md,
+    },
+    sectionIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: unifiedRadius.md,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    sectionTitle: {
+      ...textStyles.h6,
+      color: tokens.colors.textPrimary,
+      flex: 1,
+    },
+    itemContainer: {
+      paddingHorizontal: unifiedSpacing.sm,
+      paddingBottom: unifiedSpacing.sm,
+    },
+    questionContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      minHeight: 48,
+      paddingVertical: unifiedSpacing.sm,
+      paddingHorizontal: unifiedSpacing.md,
+      borderRadius: unifiedRadius.sm,
+    },
+    questionContent: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: unifiedSpacing.sm,
+    },
+    itemIcon: {
+      marginRight: unifiedSpacing.xs,
+    },
+    question: {
+      flex: 1,
+      ...textStyles.body,
+      fontWeight: "600",
+    },
+    answerContainer: {
+      padding: unifiedSpacing.md,
+      borderRadius: unifiedRadius.sm,
+      marginTop: unifiedSpacing.xs,
+    },
+    answer: {
+      ...textStyles.caption,
+      lineHeight: 21,
+    },
+    contactCard: {
+      alignItems: "center",
+      backgroundColor: tokens.colors.surfaceElevated,
+      borderRadius: unifiedRadius.lg,
+    },
+    contactIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: unifiedRadius.md,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    contactTitle: {
+      ...textStyles.h6,
+      color: tokens.colors.textPrimary,
+      marginTop: unifiedSpacing.md,
+      marginBottom: unifiedSpacing.sm,
+    },
+    contactText: {
+      ...textStyles.body,
+      color: tokens.colors.textSecondary,
+      textAlign: "center",
+    },
+  });

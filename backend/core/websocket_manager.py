@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from fastapi import WebSocket
 
@@ -20,9 +19,9 @@ class WebSocketManager:
         websocket: WebSocket,
         user_id: str,
         session_id: str = None,
-        role: Optional[str] = None,
+        role: str | None = None,
         *,
-        subprotocol: Optional[str] = None,
+        subprotocol: str | None = None,
     ):
         if subprotocol:
             await websocket.accept(subprotocol=subprotocol)

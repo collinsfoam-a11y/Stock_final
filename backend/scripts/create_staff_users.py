@@ -1,9 +1,8 @@
 import asyncio
 import logging
-import sys
 import os
+import sys
 from datetime import datetime, timezone
-from typing import List
 
 # Add root directory to path for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -17,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-async def create_users(usernames: List[str], password: str):
+async def create_users(usernames: list[str], password: str):
     logger.info(f"Connecting to MongoDB at {settings.MONGO_URL}")
 
     async with lifespan_db(settings.MONGO_URL, settings.DB_NAME) as (client, db):

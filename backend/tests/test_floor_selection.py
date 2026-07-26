@@ -61,8 +61,9 @@ def mock_current_user():
 @pytest.mark.asyncio
 async def test_create_count_line_saves_floor_no(mock_db, mock_current_user):
     """Test that creating a count line saves the floor_no correctly"""
-    from fastapi import Request
     from unittest.mock import patch
+
+    from fastapi import Request
 
     from backend.api.count_lines_routes import create_count_line
 

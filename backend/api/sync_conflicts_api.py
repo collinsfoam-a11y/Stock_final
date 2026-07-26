@@ -3,7 +3,7 @@ Sync Conflicts API
 Endpoints for managing synchronization conflicts
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -21,13 +21,13 @@ sync_conflicts_router = APIRouter(prefix="/sync/conflicts", tags=["sync_conflict
 
 class ConflictResolutionRequest(BaseModel):
     resolution: str  # "accept_server", "accept_local", "merge", "ignore"
-    merged_data: Optional[dict[str, Optional[Any]]] = None
+    merged_data: dict[str, Any | None] | None = None
 
 
 class BatchConflictResolutionRequest(BaseModel):
     conflict_ids: list[str]
     resolution: str
-    resolution_note: Optional[str] = None
+    resolution_note: str | None = None
 
 
 async def get_sync_service() -> SyncConflictsService:
@@ -41,10 +41,10 @@ async def get_sync_service() -> SyncConflictsService:
 
 @sync_conflicts_router.get("")
 async def list_conflicts(
-    status: Optional[str] = None,
-    session_id: Optional[str] = None,
-    user: Optional[str] = None,
-    entity_type: Optional[str] = None,
+    status: str | None = None,
+    session_id: str | None = None,
+    user: str | None = None,
+    entity_type: str | None = None,
     limit: int = 100,
     sync_service: SyncConflictsService = Depends(get_sync_service),
     current_user: dict = require_permission(Permission.SYNC_RESOLVE_CONFLICT),
@@ -135,7 +135,7 @@ async def resolve_conflict(
             detail={
                 "success": False,
                 "error": {
-                    "message": f"Failed to resolve conflict: {str(e)}",
+                    "message": f"Failed to resolve conflict: {e!s}",
                     "code": "INTERNAL_ERROR",
                 },
             },
@@ -193,7 +193,7 @@ async def batch_resolve_conflicts(
             detail={
                 "success": False,
                 "error": {
-                    "message": f"Failed to batch resolve: {str(e)}",
+                    "message": f"Failed to batch resolve: {e!s}",
                     "code": "INTERNAL_ERROR",
                 },
             },

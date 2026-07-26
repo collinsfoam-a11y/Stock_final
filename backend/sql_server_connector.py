@@ -6,8 +6,9 @@ import re
 import sys
 import threading
 import unittest.mock
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any
 
 try:
     import pyodbc
@@ -35,31 +36,21 @@ logger = logging.getLogger(__name__)
 class DatabaseConnectionError(Exception):
     """Raised when database connection fails after all retry attempts."""
 
-    pass
-
 
 class DatabaseQueryError(Exception):
     """Raised when database query execution fails."""
-
-    pass
 
 
 class ERPReadOnlyViolation(DatabaseQueryError):
     """Raised when a non-read-only SQL query is blocked."""
 
-    pass
-
 
 class ERPQueryParameterError(DatabaseQueryError):
     """Raised when SQL query parameterization is invalid."""
 
-    pass
-
 
 class ItemNotFoundError(Exception):
     """Raised when requested item is not found in database."""
-
-    pass
 
 
 # Constants
@@ -126,7 +117,7 @@ class SQLServerConnector:
             self._metadata_loaded = True
             logger.info("✓ Dynamic SQL metadata initialized")
         except Exception as e:
-            logger.warning(f"Could not load dynamic SQL metadata: {str(e)}")
+            logger.warning(f"Could not load dynamic SQL metadata: {e!s}")
             # Fallback to basic queries
             self._optional_selects = ""
             self._optional_joins = ""
@@ -140,7 +131,7 @@ class SQLServerConnector:
         finally:
             cursor.close()
 
-    def _get_table_columns(self, table_name: Optional[str]) -> dict[str, str]:
+    def _get_table_columns(self, table_name: str | None) -> dict[str, str]:
         """Return column map for table (lowercase -> actual)."""
         if not table_name or table_name.upper() not in self._available_tables:
             return {}
@@ -156,13 +147,13 @@ class SQLServerConnector:
         finally:
             cursor.close()
 
-    def _resolve_table_name(self, candidates: list[str]) -> Optional[str]:
+    def _resolve_table_name(self, candidates: list[str]) -> str | None:
         for name in candidates:
             if name.upper() in self._available_tables:
                 return name
         return None
 
-    def _resolve_column_name(self, columns: dict[str, str], candidates: list[str]) -> Optional[str]:
+    def _resolve_column_name(self, columns: dict[str, str], candidates: list[str]) -> str | None:
         for name in candidates:
             if name.lower() in columns:
                 return columns[name.lower()]
@@ -170,7 +161,7 @@ class SQLServerConnector:
 
     def _get_column_reference(
         self, alias: str, columns: dict[str, str], candidates: list[str]
-    ) -> Optional[str]:
+    ) -> str | None:
         col = self._resolve_column_name(columns, candidates)
         return f"{alias}.{col}" if col else None
 
@@ -322,7 +313,7 @@ class SQLServerConnector:
             "ERP read-only violation: SELECT INTO blocked",
         )
 
-    def _validate_params(self, query: str, params: Optional[Sequence[Any]] = None) -> None:
+    def _validate_params(self, query: str, params: Sequence[Any] | None = None) -> None:
         """Ensure parameterized queries use positional placeholders safely."""
         if params is None:
             if "?" in query:
@@ -343,7 +334,7 @@ class SQLServerConnector:
         if placeholder_count != param_count:
             raise ERPQueryParameterError("SQL parameter count mismatch for parameterized query")
 
-    def _execute_readonly(self, cursor, query: str, params: Optional[Sequence[Any]] = None) -> None:
+    def _execute_readonly(self, cursor, query: str, params: Sequence[Any] | None = None) -> None:
         """Execute a read-only SQL query with strict guards."""
         self._assert_read_only_query(query)
         self._validate_params(query, params)
@@ -369,12 +360,12 @@ class SQLServerConnector:
             cols.append(f"I.[{actual}] as [{alias}]")
         return ", ".join(cols)
 
-    async def refresh_mapping(self, db: Optional[Any] = None) -> None:
+    async def refresh_mapping(self, db: Any | None = None) -> None:
         """Reload table/column mapping, applying any admin-saved overrides from Mongo."""
         self.mapping = await load_active_mapping(db)
 
     async def get_item_quantities_only_async(
-        self, item_codes: list[str], db: Optional[Any] = None
+        self, item_codes: list[str], db: Any | None = None
     ) -> dict[str, float]:
         """Async-friendly wrapper: refresh mapping, then run the sync lookup off-thread."""
         await self.refresh_mapping(db)
@@ -390,8 +381,8 @@ class SQLServerConnector:
         host: str,
         port: int,
         database: str,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
+        user: str | None = None,
+        password: str | None = None,
     ) -> bool:
         """
         Connect to SQL Server (Polosys ERP)
@@ -433,8 +424,8 @@ class SQLServerConnector:
         host: str,
         port: int,
         database: str,
-        user: Optional[str],
-        password: Optional[str],
+        user: str | None,
+        password: str | None,
     ) -> list[dict[str, Any]]:
         """Build list of connection methods to try"""
         host_variants = [host, host.upper(), host.lower(), host.capitalize()]
@@ -544,7 +535,7 @@ class SQLServerConnector:
             )
             return False
 
-    def _normalize_port_value(self, port_value: Any) -> Optional[int]:
+    def _normalize_port_value(self, port_value: Any) -> int | None:
         """Normalize port value to proper type"""
         if port_value is None:
             return None
@@ -577,7 +568,7 @@ class SQLServerConnector:
             }
         )
 
-    def _get_last_error_from_method(self, method: dict[str, Any]) -> Optional[str]:
+    def _get_last_error_from_method(self, method: dict[str, Any]) -> str | None:
         """Get last error from connection methods history"""
         for conn_method in reversed(self.connection_methods):
             if conn_method.get("method") == method["name"] and not conn_method.get("success"):
@@ -667,14 +658,14 @@ class SQLServerConnector:
         result = dict(zip(columns, row, strict=False))
 
         # Synthesize image URL if item_name exists
-        if "item_name" in result and result["item_name"]:
+        if result.get("item_name"):
             # Use placehold.co for dynamic placeholder
             safe_name = result["item_name"].replace(" ", "+")
             result["image_url"] = f"https://placehold.co/400x400/e2e8f0/1e293b?text={safe_name}"
 
         return result
 
-    def get_item_by_barcode(self, barcode: str) -> Optional[dict[str, Optional[Any]]]:
+    def get_item_by_barcode(self, barcode: str) -> dict[str, Any | None] | None:
         """
         Fetch item from E_MART_KITCHEN_CARE ERP by barcode
         Searches in ProductBarcodes, ProductBatches, and Products tables
@@ -706,8 +697,8 @@ class SQLServerConnector:
                     return None
 
         except Exception as e:
-            logger.error(f"Error fetching item by barcode: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch item by barcode: {str(e)}") from e
+            logger.error(f"Error fetching item by barcode: {e!s}")
+            raise DatabaseQueryError(f"Failed to fetch item by barcode: {e!s}") from e
 
     def get_all_items(self) -> list[dict[str, Any]]:
         """
@@ -734,8 +725,8 @@ class SQLServerConnector:
             return results
 
         except Exception as e:
-            logger.error(f"Error fetching all items: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch all items: {str(e)}") from e
+            logger.error(f"Error fetching all items: {e!s}")
+            raise DatabaseQueryError(f"Failed to fetch all items: {e!s}") from e
 
     def get_all_items_aggregate(self) -> list[dict[str, Any]]:
         """
@@ -761,8 +752,8 @@ class SQLServerConnector:
             return results
 
         except Exception as e:
-            logger.error(f"Error fetching aggregated items: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch aggregated items: {str(e)}") from e
+            logger.error(f"Error fetching aggregated items: {e!s}")
+            raise DatabaseQueryError(f"Failed to fetch aggregated items: {e!s}") from e
 
     def search_items(self, search_term: str) -> list[dict[str, Any]]:
         """
@@ -809,8 +800,8 @@ class SQLServerConnector:
                 return results
 
         except Exception as e:
-            logger.error(f"Error searching items: {str(e)}")
-            raise DatabaseQueryError(f"Failed to search items: {str(e)}") from e
+            logger.error(f"Error searching items: {e!s}")
+            raise DatabaseQueryError(f"Failed to search items: {e!s}") from e
 
     def get_item_batches(self, item_identifier: str) -> list[dict[str, Any]]:
         """
@@ -836,10 +827,10 @@ class SQLServerConnector:
                 return results
 
         except Exception as e:
-            logger.error(f"Error fetching item batches: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch item batches: {str(e)}") from e
+            logger.error(f"Error fetching item batches: {e!s}")
+            raise DatabaseQueryError(f"Failed to fetch item batches: {e!s}") from e
 
-    def get_item_by_code(self, item_code: str) -> Optional[dict[str, Optional[Any]]]:
+    def get_item_by_code(self, item_code: str) -> dict[str, Any | None] | None:
         """
         Fetch item by item code using SQL template
         """
@@ -869,10 +860,10 @@ class SQLServerConnector:
                     return None
 
         except Exception as e:
-            logger.error(f"Error fetching item by code: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch item by code: {str(e)}") from e
+            logger.error(f"Error fetching item by code: {e!s}")
+            raise DatabaseQueryError(f"Failed to fetch item by code: {e!s}") from e
 
-    def get_item_by_code_aggregate(self, item_code: str) -> Optional[dict[str, Optional[Any]]]:
+    def get_item_by_code_aggregate(self, item_code: str) -> dict[str, Any | None] | None:
         """
         Fetch item by item code aggregated at item level (SUM of all batch stocks).
         Returns one row per ProductCode with total stock_qty across all batches.
@@ -896,10 +887,10 @@ class SQLServerConnector:
                     return None
 
         except Exception as e:
-            logger.error(f"Error fetching aggregated item by code: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch aggregated item by code: {str(e)}") from e
+            logger.error(f"Error fetching aggregated item by code: {e!s}")
+            raise DatabaseQueryError(f"Failed to fetch aggregated item by code: {e!s}") from e
 
-    def get_item_by_barcode_aggregate(self, barcode: str) -> Optional[dict[str, Optional[Any]]]:
+    def get_item_by_barcode_aggregate(self, barcode: str) -> dict[str, Any | None] | None:
         """
         Fetch item by barcode aggregated at item level (SUM of all batch stocks).
         Returns one row per barcode with total stock_qty across all batches.
@@ -923,8 +914,8 @@ class SQLServerConnector:
                     return None
 
         except Exception as e:
-            logger.error(f"Error fetching aggregated item by barcode: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch aggregated item by barcode: {str(e)}") from e
+            logger.error(f"Error fetching aggregated item by barcode: {e!s}")
+            raise DatabaseQueryError(f"Failed to fetch aggregated item by barcode: {e!s}") from e
 
     def get_all_warehouses(self) -> list[dict[str, Any]]:
         """Fetch all warehouses from ERP"""
@@ -941,8 +932,8 @@ class SQLServerConnector:
                 cursor.close()
                 return results
         except Exception as e:
-            logger.error(f"Error fetching warehouses: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch warehouses: {str(e)}") from e
+            logger.error(f"Error fetching warehouses: {e!s}")
+            raise DatabaseQueryError(f"Failed to fetch warehouses: {e!s}") from e
 
     def get_all_zones(self) -> list[dict[str, Any]]:
         """Fetch all zones (floors) from ERP"""
@@ -959,8 +950,8 @@ class SQLServerConnector:
                 cursor.close()
                 return results
         except Exception as e:
-            logger.error(f"Error fetching zones: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch zones: {str(e)}") from e
+            logger.error(f"Error fetching zones: {e!s}")
+            raise DatabaseQueryError(f"Failed to fetch zones: {e!s}") from e
 
     def get_items_by_codes(self, item_codes: list[str]) -> list[dict[str, Any]]:
         """
@@ -1013,12 +1004,14 @@ class SQLServerConnector:
                 results = [self._cursor_to_dict(cursor, row) for row in rows]
                 cursor.close()
 
-                logger.info(f"Retrieved {len(results)} items by codes (requested: {len(item_codes)})")
+                logger.info(
+                    f"Retrieved {len(results)} items by codes (requested: {len(item_codes)})"
+                )
                 return results
 
         except Exception as e:
-            logger.error(f"Error fetching items by codes: {str(e)}")
-            raise DatabaseQueryError(f"Failed to fetch items by codes: {str(e)}") from e
+            logger.error(f"Error fetching items by codes: {e!s}")
+            raise DatabaseQueryError(f"Failed to fetch items by codes: {e!s}") from e
 
     def get_item_quantities_only(self, item_codes: list[str]) -> dict[str, float]:
         """
@@ -1089,13 +1082,11 @@ class SQLServerConnector:
             return results
 
         except Exception as e:
-            logger.error(f"Error fetching item quantities by item code: {str(e)}")
-            raise DatabaseQueryError(
-                f"Failed to fetch item quantities by item code: {str(e)}"
-            ) from e
+            logger.error(f"Error fetching item quantities by item code: {e!s}")
+            raise DatabaseQueryError(f"Failed to fetch item quantities by item code: {e!s}") from e
 
     async def execute_query(
-        self, query: str, params: Optional[list[Any]] = None
+        self, query: str, params: list[Any] | None = None
     ) -> list[dict[str, Any]]:
         """
         Execute an arbitrary SQL query and return results as a list of dictionaries.
@@ -1150,8 +1141,8 @@ class SQLServerConnector:
                 return await loop.run_in_executor(None, _execute)
 
             except Exception as e:
-                logger.error(f"Error executing custom query: {str(e)}")
-                raise DatabaseQueryError(f"Failed to execute custom query: {str(e)}") from e
+                logger.error(f"Error executing custom query: {e!s}")
+                raise DatabaseQueryError(f"Failed to execute custom query: {e!s}") from e
 
     @staticmethod
     def _strip_sql_comments(query: str) -> str:

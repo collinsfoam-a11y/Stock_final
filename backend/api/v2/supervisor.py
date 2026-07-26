@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from backend.api.response_models import ApiResponse
-from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.auth.dependencies import require_role
 from backend.db.runtime import get_db
 from backend.services.ai_variance import ai_variance_service
@@ -46,5 +45,5 @@ async def get_session_predictions(
     except Exception as e:
         return ApiResponse.error_response(
             error_code="PREDICTION_ERROR",
-            error_message=f"Failed to generate predictions: {str(e)}",
+            error_message=f"Failed to generate predictions: {e!s}",
         )

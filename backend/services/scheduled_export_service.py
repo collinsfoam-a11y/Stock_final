@@ -4,13 +4,13 @@ Automated periodic exports of data to CSV/Excel
 """
 
 import asyncio
+import base64
 import csv
 import io
 import logging
-import base64
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 from bson import ObjectId
@@ -39,7 +39,7 @@ class ScheduledExportService:
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
         self._running = False
-        self._task: Optional[asyncio.Task[None]] = None
+        self._task: asyncio.Task[None] | None = None
 
     async def create_export_schedule(
         self,
@@ -47,9 +47,9 @@ class ScheduledExportService:
         export_type: str,  # "sessions", "count_lines", "variance_report", "activity_logs"
         frequency: ExportFrequency,
         format: ExportFormat,
-        filters: dict[str, Optional[Any]] = None,
-        email_recipients: Optional[list[str]] = None,
-        created_by: Optional[str] = None,
+        filters: dict[str, Any | None] = None,
+        email_recipients: list[str] | None = None,
+        created_by: str | None = None,
     ) -> str:
         """Create a new export schedule"""
         schedule_doc = {
@@ -183,7 +183,7 @@ class ScheduledExportService:
             }
 
         except Exception as e:
-            logger.error(f"Export failed for {schedule['name']}: {str(e)}")
+            logger.error(f"Export failed for {schedule['name']}: {e!s}")
 
             # Update error count
             await self.db.export_schedules.update_one(
@@ -233,7 +233,7 @@ class ScheduledExportService:
 
         if "session_id" in filters:
             query["session_id"] = filters["session_id"]
-        if "has_variance" in filters and filters["has_variance"]:
+        if filters.get("has_variance"):
             query["variance"] = {"$ne": 0}
 
         cursor = self.db.count_lines.find(query).sort("counted_at", -1)
@@ -400,7 +400,7 @@ class ScheduledExportService:
                 await asyncio.sleep(60)
 
             except Exception as e:
-                logger.error(f"Error in export scheduler: {str(e)}")
+                logger.error(f"Error in export scheduler: {e!s}")
                 await asyncio.sleep(60)
 
     def start(self):

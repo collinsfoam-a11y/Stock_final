@@ -5,7 +5,7 @@ Supports multi-user concurrency with Redis-based locking
 
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -15,8 +15,8 @@ from backend.db.runtime import get_db
 from backend.services.governance_guard import normalize_session_status
 from backend.services.lock_manager import get_lock_manager
 from backend.services.pubsub_service import get_pubsub_service
-from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.redis_service import get_redis
+from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
@@ -37,9 +37,9 @@ class RackStatus(BaseModel):
     rack_id: str
     floor: str
     status: str  # available, claimed, active, paused, completed
-    claimed_by: Optional[str] = None
-    session_id: Optional[str] = None
-    lock_expires_at: Optional[float] = None
+    claimed_by: str | None = None
+    session_id: str | None = None
+    lock_expires_at: float | None = None
     updated_at: float
 
 
@@ -47,7 +47,7 @@ class RackClaimRequest(BaseModel):
     """Rack claim request"""
 
     floor: str = Field(..., description="Floor where rack is located")
-    warehouse: Optional[str] = Field(
+    warehouse: str | None = Field(
         None, description="Warehouse where rack is located (defaults to floor if omitted)"
     )
 
@@ -113,9 +113,9 @@ async def update_rack_status(
     db,
     rack_id: str,
     status: str,
-    claimed_by: Optional[str] = None,
-    session_id: Optional[str] = None,
-    lock_expires_at: Optional[float] = None,
+    claimed_by: str | None = None,
+    session_id: str | None = None,
+    lock_expires_at: float | None = None,
 ) -> None:
     """Update rack status in database"""
     update_data = {
@@ -134,7 +134,7 @@ async def update_rack_status(
 
 @router.get("/available", response_model=list[AvailableRack])
 async def get_available_racks(
-    floor: Optional[str] = Query(None, description="Filter by floor"),
+    floor: str | None = Query(None, description="Filter by floor"),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> list[AvailableRack]:
     """
@@ -322,7 +322,7 @@ async def claim_rack(
             _safe_log_value(rack_id),
             _safe_log_value(e, max_length=200),
         )
-        raise HTTPException(status_code=500, detail=f"Failed to claim rack: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Failed to claim rack: {e!s}") from e
 
 
 @router.post("/{rack_id}/release", response_model=RackReleaseResponse)

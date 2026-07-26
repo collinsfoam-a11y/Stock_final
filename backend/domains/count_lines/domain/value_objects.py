@@ -12,7 +12,6 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -31,10 +30,10 @@ class LocationContext:
     location_id: str
     floor_id: str
     rack_id: str
-    floor_no: Optional[str] = None
-    rack_no: Optional[str] = None
-    zone: Optional[str] = None
-    shelf: Optional[str] = None
+    floor_no: str | None = None
+    rack_no: str | None = None
+    zone: str | None = None
+    shelf: str | None = None
 
     def __post_init__(self) -> None:
         if not self.location_id or not self.floor_id or not self.rack_id:
@@ -55,12 +54,12 @@ class UomContext:
     concern, not modeled here.
     """
 
-    input_uom: Optional[str] = None
-    base_uom: Optional[str] = None
-    uom_code: Optional[str] = None
-    uom_name: Optional[str] = None
+    input_uom: str | None = None
+    base_uom: str | None = None
+    uom_code: str | None = None
+    uom_name: str | None = None
     conversion_factor: float = 1.0
-    quantity_precision: Optional[int] = None
+    quantity_precision: int | None = None
 
 
 @dataclass(frozen=True)
@@ -71,11 +70,11 @@ class ItemIdentity:
     item_code), so it stays None for current production data."""
 
     item_code: str
-    item_id: Optional[str] = None
-    barcode: Optional[str] = None
-    batch_id: Optional[str] = None
-    batch_no: Optional[str] = None
-    serial_no: Optional[str] = None
+    item_id: str | None = None
+    barcode: str | None = None
+    batch_id: str | None = None
+    batch_no: str | None = None
+    serial_no: str | None = None
 
 
 @dataclass(frozen=True)
@@ -107,17 +106,17 @@ class SemanticIdentity:
     item_code: str
     counted_qty: float
     version: int
-    location_id: Optional[str] = None
-    item_id: Optional[str] = None
-    barcode: Optional[str] = None
-    batch_id: Optional[str] = None
-    batch_no: Optional[str] = None
-    serial_no: Optional[str] = None
-    warehouse_id: Optional[str] = None
-    floor: Optional[str] = None
-    zone: Optional[str] = None
-    rack: Optional[str] = None
-    shelf: Optional[str] = None
+    location_id: str | None = None
+    item_id: str | None = None
+    barcode: str | None = None
+    batch_id: str | None = None
+    batch_no: str | None = None
+    serial_no: str | None = None
+    warehouse_id: str | None = None
+    floor: str | None = None
+    zone: str | None = None
+    rack: str | None = None
+    shelf: str | None = None
 
     def hash_key(self) -> str:
         """Byte-for-byte identical algorithm to

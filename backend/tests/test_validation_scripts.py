@@ -1,10 +1,9 @@
-from pathlib import Path
 import os
-import threading
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import subprocess
 import sys
-
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, cast
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
@@ -16,9 +16,9 @@ from backend.api.schemas import (
     UserLogin,
     UserRegister,
 )
+from backend.auth.cookies import set_auth_cookies
 from backend.auth.dependencies import auth_deps, get_current_user, optional_get_current_user
 from backend.auth.permissions import get_user_permissions
-from backend.auth.cookies import set_auth_cookies
 from backend.config import settings
 from backend.db.runtime import get_db
 from backend.error_messages import get_error_message
@@ -49,11 +49,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _get_request_user_agent(request: Request) -> Optional[str]:
+def _get_request_user_agent(request: Request) -> str | None:
     return request.headers.get("user-agent")
 
 
-def _get_request_device_id(request: Request) -> Optional[str]:
+def _get_request_device_id(request: Request) -> str | None:
     return request.headers.get("x-device-id")
 
 
@@ -140,7 +140,7 @@ async def find_user_by_username(username: str) -> Result[dict[str, Any], Excepti
 
 
 def _build_password_reset_query(
-    username: Optional[str] = None, phone_number: Optional[str] = None
+    username: str | None = None, phone_number: str | None = None
 ) -> dict[str, Any]:
     if username:
         return {"username": username}
@@ -306,7 +306,7 @@ async def _ensure_single_session_for_login(
 
 
 async def log_failed_login_attempt(
-    username: str, ip_address: str, user_agent: Optional[str], error: str
+    username: str, ip_address: str, user_agent: str | None, error: str
 ) -> None:
     """Log a failed login attempt."""
     db = get_db()
@@ -383,7 +383,7 @@ async def log_successful_login(user: dict[str, Any], ip_address: str, request: R
 async def register(
     user: UserRegister,
     response: Response,
-    current_user: Optional[dict] = Depends(optional_get_current_user),
+    current_user: dict | None = Depends(optional_get_current_user),
 ):
     """
     Register a new user.
@@ -424,7 +424,7 @@ async def register(
 
         # Create user
         hashed_password = get_password_hash(user.password)
-        user_dict: Dict[str, Any] = {
+        user_dict: dict[str, Any] = {
             "username": user.username,
             "hashed_password": hashed_password,
             "full_name": user.full_name,
@@ -489,14 +489,14 @@ async def register(
             status_code=error["status_code"],
             detail={
                 "message": error["message"],
-                "detail": f"{error['detail']} Original error: {str(e)}",
+                "detail": f"{error['detail']} Original error: {e!s}",
                 "code": error["code"],
                 "category": error["category"],
             },
         ) from e
 
 
-async def _check_login_rate_limit(client_ip: str) -> Optional[Result[Any, Exception]]:
+async def _check_login_rate_limit(client_ip: str) -> Result[Any, Exception] | None:
     logger.debug("Checking rate limit for IP: %s", sanitize_for_logging(client_ip))
     rate_limit_result = await check_rate_limit(client_ip)
     if rate_limit_result.is_err:
@@ -647,9 +647,7 @@ async def login(
         return Fail(e)
 
 
-async def _find_user_by_fast_lookup(
-    db: Any, pin: str, lookup_hash: str
-) -> Optional[dict[str, Any]]:
+async def _find_user_by_fast_lookup(db: Any, pin: str, lookup_hash: str) -> dict[str, Any] | None:
     """Find user via O(1) fast PIN lookup hash."""
     found_user = await db.users.find_one({"pin_lookup_hash": lookup_hash})
     if not found_user:
@@ -663,9 +661,7 @@ async def _find_user_by_fast_lookup(
     return found_user
 
 
-async def _find_user_by_legacy_scan(
-    db: Any, pin: str, lookup_hash: str
-) -> Optional[dict[str, Any]]:
+async def _find_user_by_legacy_scan(db: Any, pin: str, lookup_hash: str) -> dict[str, Any] | None:
     """Find user via O(N) legacy PIN scan with opportunistic migration."""
     users_with_pin = await db.users.find({"pin_hash": {"$exists": True}}).to_list(length=1000)
     for user in users_with_pin:
@@ -687,8 +683,8 @@ async def _find_user_by_legacy_scan(
 
 
 async def _find_user_by_pin(
-    db: Any, pin: str, username: Optional[str] = None
-) -> Optional[dict[str, Any]]:
+    db: Any, pin: str, username: str | None = None
+) -> dict[str, Any] | None:
     """Find user by PIN using scoped lookup or fast lookup with legacy fallback."""
     if username:
         # Strategy 0: Username-scoped O(1) Lookup (Most secure)
@@ -711,7 +707,7 @@ async def _find_user_by_pin(
 
 def _validate_pin_login_payload(
     credentials: PinLogin, client_ip: str
-) -> Optional[Result[dict[str, Any], Exception]]:
+) -> Result[dict[str, Any], Exception] | None:
     pin = credentials.pin
     if not pin or len(pin) != 4 or not pin.isdigit():
         logger.warning("Invalid PIN format", extra={"client_ip": client_ip})
@@ -1015,7 +1011,7 @@ WEAK_PINS = {
 }
 
 
-def _validate_new_pin_value(new_pin: Optional[str]) -> str:
+def _validate_new_pin_value(new_pin: str | None) -> str:
     if not new_pin:
         raise HTTPException(
             status_code=400,
@@ -1051,7 +1047,7 @@ async def _load_user_for_pin_change(username: str) -> dict[str, Any]:
 
 
 def _validate_pin_change_identity(
-    user: dict[str, Any], current_pin: Optional[str], current_password: Optional[str]
+    user: dict[str, Any], current_pin: str | None, current_password: str | None
 ) -> None:
     if current_password:
         if "hashed_password" not in user:

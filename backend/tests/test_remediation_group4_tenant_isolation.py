@@ -4,16 +4,17 @@ FIX GROUP 4 — Regression tests: Tenant isolation (org_id boundary enforcement)
 Validates that Org A users cannot read or modify Org B data.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 from backend.middleware.tenant_isolation import (
-    TenantScopedQuery,
-    inject_org_filter,
-    set_request_org_id,
-    get_request_org_id,
-    require_org_id,
     TENANT_SCOPED_COLLECTIONS,
+    TenantScopedQuery,
+    get_request_org_id,
+    inject_org_filter,
+    require_org_id,
+    set_request_org_id,
 )
 
 

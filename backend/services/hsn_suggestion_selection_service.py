@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from backend.services.erpnext_export_correction_service import (
     ErpNextExportCorrectionError,
@@ -44,7 +44,12 @@ class HsnSuggestionSelectionService:
         enriched: list[dict[str, Any]] = []
         for suggestion in suggestions:
             suggestion_id = str(uuid.uuid4())
-            doc = {**suggestion, "suggestion_id": suggestion_id, "item_code": item_code, "generated_at": now}
+            doc = {
+                **suggestion,
+                "suggestion_id": suggestion_id,
+                "item_code": item_code,
+                "generated_at": now,
+            }
             await self.db.hsn_suggestion_cache.insert_one(doc)
             enriched.append({**suggestion, "suggestion_id": suggestion_id})
         return enriched
@@ -56,7 +61,7 @@ class HsnSuggestionSelectionService:
         row_key: str,
         suggestion_id: str,
         hsn_sac: str,
-        gst_percentage: Optional[float],
+        gst_percentage: float | None,
         reason: str,
         current_user: dict[str, Any],
     ) -> dict[str, Any]:

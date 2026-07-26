@@ -1,5 +1,4 @@
 import pytest
-
 from backend.sql_server_connector import DatabaseQueryError, SQLServerConnector
 
 

@@ -13,7 +13,7 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -32,7 +32,7 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _write_report(report_file: Optional[str], report: dict[str, Any]) -> None:
+def _write_report(report_file: str | None, report: dict[str, Any]) -> None:
     if not report_file:
         return
     path = Path(report_file)
@@ -99,7 +99,7 @@ def _diff_snapshots(first: dict[str, Any], second: dict[str, Any]) -> list[dict[
     return differences
 
 
-async def _run(*, execute: bool, session_id: Optional[str]) -> dict[str, Any]:
+async def _run(*, execute: bool, session_id: str | None) -> dict[str, Any]:
     if not execute:
         return {
             "mode": "dry_run",

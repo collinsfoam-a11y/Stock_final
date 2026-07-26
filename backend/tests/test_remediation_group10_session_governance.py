@@ -8,6 +8,7 @@ Validates server-side enforcement that sessions cannot be finalized with:
 """
 
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from backend.services.governance_guard import GovernanceViolation

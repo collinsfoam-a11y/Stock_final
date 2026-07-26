@@ -1,8 +1,7 @@
 import pytest
-from httpx import AsyncClient
-
 from backend.server import app
 from backend.utils.auth_utils import create_access_token
+from httpx import AsyncClient
 
 # Test Data
 TEST_USERNAME = "testuser_settings"

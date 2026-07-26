@@ -1,5 +1,6 @@
+import asyncio
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends  # type: ignore
 
@@ -52,7 +53,7 @@ _GODOWN_DEFAULTS: list[dict[str, str]] = [
 _ALL_WAREHOUSE_DEFAULTS: list[dict[str, str]] = [*_SHOWROOM_DEFAULTS, *_GODOWN_DEFAULTS]
 
 
-def _defaults_for_zone(zone: Optional[str]) -> list[dict[str, str]]:
+def _defaults_for_zone(zone: str | None) -> list[dict[str, str]]:
     if not zone:
         return [dict(item) for item in _ALL_WAREHOUSE_DEFAULTS]
 
@@ -75,7 +76,7 @@ def _sanitize_warehouse_docs(docs: list[dict[str, Any]]) -> list[dict[str, Any]]
 
 
 def _filter_sql_warehouses(
-    warehouses: list[dict[str, Any]], zone: Optional[str]
+    warehouses: list[dict[str, Any]], zone: str | None
 ) -> list[dict[str, Any]]:
     if not zone:
         return warehouses
@@ -89,14 +90,14 @@ def _filter_sql_warehouses(
     return filtered
 
 
-def _get_mongo_db_or_none() -> Optional[Any]:
+def _get_mongo_db_or_none() -> Any | None:
     try:
         return get_db()
     except RuntimeError:
         return None
 
 
-async def _fetch_mongo_warehouses(db: Any, zone: Optional[str]) -> list[dict[str, Any]]:
+async def _fetch_mongo_warehouses(db: Any, zone: str | None) -> list[dict[str, Any]]:
     query: dict[str, Any] = {}
     if zone:
         query["zone"] = {"$regex": zone, "$options": "i"}
@@ -104,7 +105,7 @@ async def _fetch_mongo_warehouses(db: Any, zone: Optional[str]) -> list[dict[str
 
 
 async def _seed_default_warehouses(
-    db: Any, defaults: list[dict[str, str]], zone: Optional[str]
+    db: Any, defaults: list[dict[str, str]], zone: str | None
 ) -> list[dict[str, Any]]:
     # insert_many modifies defaults in-place adding '_id'
     await db["warehouses"].insert_many(defaults)
@@ -117,7 +118,7 @@ async def _seed_default_warehouses(
 
 @router.get("/warehouses", response_model=list[dict[str, Any]])
 async def get_warehouses(
-    zone: Optional[str] = None,
+    zone: str | None = None,
     current_user: dict = Depends(get_current_user),
 ):
     """Fetch warehouses with priority.
@@ -126,8 +127,9 @@ async def get_warehouses(
     """
     defaults = _defaults_for_zone(zone)
     try:
-        if sql_connector.test_connection():
-            warehouses = _filter_sql_warehouses(sql_connector.get_all_warehouses(), zone)
+        if await asyncio.to_thread(sql_connector.test_connection):
+            sql_warehouses = await asyncio.to_thread(sql_connector.get_all_warehouses)
+            warehouses = _filter_sql_warehouses(sql_warehouses, zone)
             if warehouses:
                 return warehouses
 

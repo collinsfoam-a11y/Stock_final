@@ -6,7 +6,7 @@ import sys
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Generic, Optional, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 
 from fastapi import FastAPI
 from fastapi.security import HTTPBearer
@@ -48,7 +48,9 @@ from backend.services.change_detection_sync import ChangeDetectionSyncService
 from backend.services.database_health import DatabaseHealthService
 from backend.services.database_optimizer import DatabaseOptimizer
 from backend.services.error_log import ErrorLogService
+from backend.services.governance_guard import install_db_write_guards
 from backend.services.lock_manager import get_lock_manager
+from backend.services.lock_service import LockService
 from backend.services.mdns_service import start_mdns, stop_mdns
 from backend.services.monitoring_service import MonitoringService
 from backend.services.pubsub_service import get_pubsub_service
@@ -59,9 +61,7 @@ from backend.services.runtime import set_cache_service, set_refresh_token_servic
 from backend.services.scheduled_export_service import ScheduledExportService
 from backend.services.sql_sync_service import SQLSyncService
 from backend.services.sync_conflicts_service import SyncConflictsService
-from backend.services.lock_service import LockService
 from backend.services.variant_service import VariantService
-from backend.services.governance_guard import install_db_write_guards
 from backend.sql_server_connector import SQLServerConnector
 from backend.utils.port_detector import PortDetector, save_backend_info
 
@@ -122,8 +122,8 @@ R = TypeVar("R")
 
 class ApiResponse(BaseModel, Generic[T]):
     success: bool
-    data: Optional[T] = None
-    error: Optional[dict[str, Optional[Any]]] = None
+    data: T | None = None
+    error: dict[str, Any | None] | None = None
 
     @classmethod
     def success_response(cls, data: T):
@@ -287,7 +287,7 @@ try:
     set_erp_sync_service(erp_sync_service)
     from backend.services import item_refresh_service
 
-    item_refresh_service.sql_sync_service = erp_sync_service
+    item_refresh_service.sql_sync_service = erp_sync_service  # type: ignore[assignment]
 except Exception as e:
     logger.warning("ERP sync service initialization failed: %s", str(e))
 
@@ -416,7 +416,7 @@ async def lifespan(app: FastAPI):
         try:
             from backend.api.count_lines_api import router as count_lines_router
 
-            count_lines_router.sql_connector = sql_connector
+            count_lines_router.sql_connector = sql_connector  # type: ignore[attr-defined]
             logger.info("✓ SQL connector attached to count_lines_router")
         except Exception as e:
             logger.warning("Failed to attach SQL connector to count_lines_router: %s", str(e))
@@ -540,7 +540,7 @@ async def lifespan(app: FastAPI):
             logger.info("Mock ERP data seeding disabled")
     except Exception as e:
         logger.warning(
-            f"Could not initialize optional seed data (may be due to MongoDB unavailability): {str(e)}"
+            f"Could not initialize optional seed data (may be due to MongoDB unavailability): {e!s}"
         )
 
     # Run migrations
@@ -550,7 +550,7 @@ async def lifespan(app: FastAPI):
         logger.info("OK: Migrations completed")
     except DatabaseError as e:
         logger.warning(
-            f"Database error during migrations (may be due to MongoDB unavailability): {str(e)}"
+            f"Database error during migrations (may be due to MongoDB unavailability): {e!s}"
         )
     except Exception as e:
         # Catch-all for migration errors (index creation failures, etc.)
@@ -942,13 +942,12 @@ async def lifespan(app: FastAPI):
     if getattr(settings, "ERP_EVENT_SYNC_ENABLED", False):
         try:
             if redis_service is not None and redis_service.is_connected:
-                from backend.services.erp_event_sync import ErpSyncEventConsumer
-
                 # Broadcast to the SAME manager the /ws/updates endpoint uses
                 # (core.websocket_manager), not services.websocket_service —
                 # the latter has no connected clients, so ERP-sync notifications
                 # would silently reach no one.
                 from backend.core.websocket_manager import manager as ws_manager
+                from backend.services.erp_event_sync import ErpSyncEventConsumer
 
                 erp_event_consumer = ErpSyncEventConsumer(
                     redis_service.client,

@@ -6,17 +6,17 @@ Adds user and session context to all log messages for protected endpoints
 import logging
 import time
 from contextvars import ContextVar
-from typing import Any, Optional
+from typing import Any
 
 from starlette.requests import Request
 
 logger = logging.getLogger(__name__)
 
 # Context variables for session info (thread-safe)
-current_user_id: ContextVar[Optional[str]] = ContextVar("current_user_id", default=None)
-current_username: ContextVar[Optional[str]] = ContextVar("current_username", default=None)
-current_session_id: ContextVar[Optional[str]] = ContextVar("current_session_id", default=None)
-current_request_id: ContextVar[Optional[str]] = ContextVar("current_request_id", default=None)
+current_user_id: ContextVar[str | None] = ContextVar("current_user_id", default=None)
+current_username: ContextVar[str | None] = ContextVar("current_username", default=None)
+current_session_id: ContextVar[str | None] = ContextVar("current_session_id", default=None)
+current_request_id: ContextVar[str | None] = ContextVar("current_request_id", default=None)
 
 
 class SessionContextFilter(logging.Filter):
@@ -44,7 +44,7 @@ class SessionContextLoggingMiddleware:
     def __init__(
         self,
         app,
-        exclude_paths: Optional[list[str]] = None,
+        exclude_paths: list[str] | None = None,
         log_request_body: bool = False,
     ):
         self.app = app
@@ -120,7 +120,7 @@ class SessionContextLoggingMiddleware:
             self._clear_context()
             raise e
 
-    async def _extract_user_context(self, request: Request) -> Optional[dict[str, Any]]:
+    async def _extract_user_context(self, request: Request) -> dict[str, Any] | None:
         """Extract user context from JWT token without full validation"""
         auth_header = request.headers.get("Authorization", "")
 
@@ -158,7 +158,7 @@ class SessionContextLoggingMiddleware:
             # If we can't decode, just continue without context
             return None
 
-    def _log_request_start(self, request: Request, user_info: Optional[dict[str, Any]]) -> None:
+    def _log_request_start(self, request: Request, user_info: dict[str, Any] | None) -> None:
         """Log request start with context"""
         method = request.method
         path = request.url.path
@@ -181,7 +181,7 @@ class SessionContextLoggingMiddleware:
         request: Request,
         response,
         duration_ms: float,
-        user_info: Optional[dict[str, Any]],
+        user_info: dict[str, Any] | None,
     ) -> None:
         """Log request completion with duration"""
         method = request.method
@@ -214,7 +214,7 @@ class SessionContextLoggingMiddleware:
 
 
 def setup_session_context_logging(
-    logger_instance: Optional[logging.Logger] = None,
+    logger_instance: logging.Logger | None = None,
 ) -> SessionContextFilter:
     """
     Setup session context filter on a logger
@@ -234,7 +234,7 @@ def setup_session_context_logging(
 
 
 # Convenience function to get current context as dict
-def get_current_context() -> dict[str, Optional[str]]:
+def get_current_context() -> dict[str, str | None]:
     """Get current session context as a dictionary"""
     return {
         "user_id": current_user_id.get(),

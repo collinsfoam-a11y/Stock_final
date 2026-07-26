@@ -15,7 +15,7 @@ Scoring Algorithm:
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from rapidfuzz import fuzz
@@ -29,21 +29,21 @@ class SearchResult:
 
     id: str
     item_name: str
-    item_code: Optional[str]
-    barcode: Optional[str]
+    item_code: str | None
+    barcode: str | None
     stock_qty: float
-    mrp: Optional[float]
-    category: Optional[str]
-    subcategory: Optional[str]
-    warehouse: Optional[str]
-    uom_name: Optional[str]
+    mrp: float | None
+    category: str | None
+    subcategory: str | None
+    warehouse: str | None
+    uom_name: str | None
     relevance_score: float
     match_type: str  # 'exact_barcode', 'partial_barcode', 'exact_code', 'name_prefix', 'name_contains', 'fuzzy'
-    sale_price: Optional[float] = None
-    manual_barcode: Optional[str] = None
-    unit2_barcode: Optional[str] = None
-    unit_m_barcode: Optional[str] = None
-    batch_id: Optional[Union[int, str]] = None
+    sale_price: float | None = None
+    manual_barcode: str | None = None
+    unit2_barcode: str | None = None
+    unit_m_barcode: str | None = None
+    batch_id: int | str | None = None
 
 
 @dataclass
@@ -80,7 +80,7 @@ class SearchService:
     MAX_CANDIDATES = 200  # Max items to fetch for scoring
     MIN_QUERY_LENGTH = 2  # Minimum chars before search
 
-    def __init__(self, db: AsyncIOMotorDatabase, cache: Optional[Any] = None):
+    def __init__(self, db: AsyncIOMotorDatabase, cache: Any | None = None):
         self.db = db
         self.cache = cache  # Optional Redis cache
 
@@ -89,7 +89,7 @@ class SearchService:
         query: str,
         page: int = 1,
         page_size: int = 20,
-        search_fields: Optional[list[str]] = None,
+        search_fields: list[str] | None = None,
     ) -> SearchResponse:
         """
         Execute optimized search with relevance scoring.
@@ -170,7 +170,7 @@ class SearchService:
         self,
         query: str,
         is_barcode: bool,
-        search_fields: Optional[list[str]] = None,
+        search_fields: list[str] | None = None,
     ) -> dict:
         """Build MongoDB query for candidate fetching"""
 
@@ -364,7 +364,7 @@ class SearchService:
 
 
 # Singleton instance (initialized with db in server startup)
-_search_service: Optional[SearchService] = None
+_search_service: SearchService | None = None
 
 
 def get_search_service() -> SearchService:
@@ -393,7 +393,7 @@ def get_search_service() -> SearchService:
     return _search_service
 
 
-def init_search_service(db: AsyncIOMotorDatabase, cache: Optional[Any] = None) -> SearchService:
+def init_search_service(db: AsyncIOMotorDatabase, cache: Any | None = None) -> SearchService:
     """Initialize the search service singleton"""
     global _search_service
     _search_service = SearchService(db, cache)

@@ -1,9 +1,8 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from fastapi import HTTPException
-
 from backend.app_factory import unverify_stock, verify_stock
+from fastapi import HTTPException
 
 
 @pytest.mark.asyncio
@@ -75,7 +74,7 @@ async def test_verify_stock_allows_supervisor_and_updates(monkeypatch):
     mock_db.count_lines.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
     mock_db.sessions.find_one = AsyncMock(return_value={"id": "sess-1", "status": "ACTIVE"})
 
-    import backend.app_factory as app_factory
+    from backend import app_factory
 
     monkeypatch.setattr(app_factory, "activity_log_service", None)
 

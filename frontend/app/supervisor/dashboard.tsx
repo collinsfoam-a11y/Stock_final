@@ -49,6 +49,7 @@ import { useUiTokens } from "@/hooks/useUiTokens";
 import { createSession, getSessions, getWarehouses, getZones } from "@/services/api/api";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 import { Session } from "@/types";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 export default function SupervisorDashboard() {
   const router = useRouter();
@@ -642,7 +643,7 @@ const createStyles = ({ spacing, radius }: ThemeTokens) =>
   },
   recommendationCopy: {
     flex: 1,
-    gap: 2,
+    gap: gap.xxs,
   },
   recommendationTitle: {
     fontSize: 13,

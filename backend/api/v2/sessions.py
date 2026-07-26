@@ -4,7 +4,7 @@ Upgraded session endpoints with standardized responses
 """
 
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -27,7 +27,7 @@ class SessionResponse(BaseModel):
     type: str
     created_by: str
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
 
 def _normalized_datetime_expression(field_name: str) -> dict[str, Any]:
@@ -81,7 +81,7 @@ def _watchtower_recent_activity_payload(rows: list[dict[str, Any]]) -> list[dict
 async def get_sessions_v2(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    status: Optional[str] = Query(None, description="Filter by status"),
+    status: str | None = Query(None, description="Filter by status"),
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -142,7 +142,7 @@ async def get_sessions_v2(
     except Exception as e:
         return ApiResponse.error_response(
             error_code="SESSIONS_FETCH_ERROR",
-            error_message=f"Failed to fetch sessions: {str(e)}",
+            error_message=f"Failed to fetch sessions: {e!s}",
         )
 
 
@@ -251,7 +251,7 @@ async def get_rack_progress(
     except Exception as e:
         return ApiResponse.error_response(
             error_code="PROGRESS_CALC_ERROR",
-            error_message=f"Failed to calculate progress: {str(e)}",
+            error_message=f"Failed to calculate progress: {e!s}",
         )
 
 
@@ -375,5 +375,5 @@ async def get_watchtower_stats(
     except Exception as e:
         return ApiResponse.error_response(
             error_code="WATCHTOWER_ERROR",
-            error_message=f"Failed to fetch stats: {str(e)}",
+            error_message=f"Failed to fetch stats: {e!s}",
         )

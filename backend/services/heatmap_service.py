@@ -3,7 +3,8 @@ Heatmap Service - Calculates zone-wise accuracy KPIs (Rule 10)
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
+
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ class HeatmapService:
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
 
-    async def get_accuracy_heatmap(self, session_id: str = None) -> List[Dict[str, Any]]:
+    async def get_accuracy_heatmap(self, session_id: str = None) -> list[dict[str, Any]]:
         """
         Calculate accuracy heatmap data.
         Returns accuracy percentage and variance counts per floor/zone.

@@ -87,7 +87,7 @@ async def restore_backup(backup_dir: Path, db_name: str = DB_NAME):
         await client.admin.command("ping")
         print("✅ MongoDB connection successful")
         print(f"📊 Database: {db_name}")
-        print("")
+        print()
 
         # Find all JSON files
         json_files = list(backup_dir.glob("*.json"))
@@ -104,7 +104,7 @@ async def restore_backup(backup_dir: Path, db_name: str = DB_NAME):
         print(f"📁 Found {len(collection_files)} collections to restore:")
         for f in collection_files:
             print(f"   - {f.name}")
-        print("")
+        print()
 
         # Restore each collection
         total_restored = 0
@@ -113,7 +113,7 @@ async def restore_backup(backup_dir: Path, db_name: str = DB_NAME):
             count = await restore_collection(client, db_name, collection_name, json_file)
             total_restored += count
 
-        print("")
+        print()
         print(f"✅ Restore complete! Total documents restored: {total_restored}")
 
         # Verify
@@ -157,7 +157,7 @@ if __name__ == "__main__":
     print("🔄 Starting MongoDB Restore...")
     print(f"📁 Backup Directory: {backup_path}")
     print(f"💾 Database: {args.db_name}")
-    print("")
+    print()
 
     success = asyncio.run(restore_backup(backup_path, args.db_name))
 

@@ -2,8 +2,6 @@
 Basic tests for backend functionality
 """
 
-from typing import Optional
-
 import pytest
 
 
@@ -23,7 +21,7 @@ def test_pydantic_models():
 
         class TestModel(BaseModel):
             name: str
-            age: Optional[int] = None
+            age: int | None = None
 
         model = TestModel(name="test", age=25)
         assert model.name == "test"

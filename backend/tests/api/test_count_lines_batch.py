@@ -9,8 +9,6 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from pymongo.errors import DuplicateKeyError
-
 from backend.api.count_lines_routes import (
     CountLineBatchCreate,
     create_count_lines_batch,
@@ -19,6 +17,7 @@ from backend.api.schemas import CountLineCreate
 from backend.models.audit import AuditEventType
 from backend.services.governance_guard import install_db_write_guards
 from backend.tests.utils.in_memory_db import InMemoryDatabase
+from pymongo.errors import DuplicateKeyError
 
 CURRENT_USER = {"username": "staff1", "role": "staff"}
 
@@ -27,7 +26,9 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-async def _seed_active_session(db: InMemoryDatabase, session_id: str, item_codes: list[str]) -> None:
+async def _seed_active_session(
+    db: InMemoryDatabase, session_id: str, item_codes: list[str]
+) -> None:
     await db.sessions.insert_one(
         {
             "id": session_id,
@@ -55,7 +56,9 @@ async def _seed_active_session(db: InMemoryDatabase, session_id: str, item_codes
     )
 
 
-def _batch_line(*, item_code: str, idempotency_key: str, counted_qty: float = 100.0) -> CountLineCreate:
+def _batch_line(
+    *, item_code: str, idempotency_key: str, counted_qty: float = 100.0
+) -> CountLineCreate:
     return CountLineCreate(
         session_id="placeholder",
         location_id="LOC-1",
@@ -231,7 +234,9 @@ async def test_batch_mixed_success_and_duplicate_preserves_partial_results():
 
     # The successful line's document must exist and be untouched by the
     # failure of the other line.
-    persisted_b = await db.count_lines.find_one({"session_id": "sess-batch-4", "item_code": "ITEM-B"})
+    persisted_b = await db.count_lines.find_one(
+        {"session_id": "sess-batch-4", "item_code": "ITEM-B"}
+    )
     assert persisted_b is not None
 
 

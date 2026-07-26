@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -14,7 +14,7 @@ class VarianceAssistantRequest(BaseModel):
     item_code: str = Field(..., min_length=1)
     expected_qty: float
     counted_qty: float
-    session_id: Optional[str] = None
+    session_id: str | None = None
 
 
 @router.post("/variance/assistant")

@@ -518,7 +518,13 @@ export function DashboardDiagnosisPanel({
                   <Text style={styles.issueTitle}>{issue.title || issue.type}</Text>
                   <Text style={styles.issueDesc}>{issue.description || issue.message}</Text>
                   {issue.auto_fix_available && (
-                    <TouchableOpacity style={styles.autoFixButton} onPress={() => onAutoFix(issue)}>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={`Auto-fix ${issue.title || issue.type}`}
+                      style={styles.autoFixButton}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      onPress={() => onAutoFix(issue)}
+                    >
                       <Ionicons
                         name="build-outline"
                         size={14}

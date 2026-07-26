@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Generic, Literal, Optional, TypeVar, Union
+from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -10,9 +10,9 @@ T = TypeVar("T")
 
 class ApiResponse(BaseModel, Generic[T]):
     success: bool
-    data: Optional[T] = None
-    error: Union[dict[str, Any], None] = Field(default=None)
-    message: Optional[str] = None
+    data: T | None = None
+    error: dict[str, Any] | None = Field(default=None)
+    message: str | None = None
     payload_version: str = "1.0"
 
     model_config = {
@@ -21,7 +21,7 @@ class ApiResponse(BaseModel, Generic[T]):
     }
 
     @classmethod
-    def success_response(cls, data: T, message: Optional[str] = None):
+    def success_response(cls, data: T, message: str | None = None):
         return cls(success=True, data=data, error=None, message=message)
 
     @classmethod
@@ -37,75 +37,75 @@ class ERPItem(BaseModel):
     barcode: str = ""
     stock_qty: float = 0.0
     mrp: float = 0.0
-    category: Optional[str] = None
-    subcategory: Optional[str] = None
-    warehouse: Optional[str] = None
-    location: Optional[str] = None
-    uom_code: Optional[str] = None
-    uom_name: Optional[str] = None
-    hsn_code: Optional[str] = None
-    gst_category: Optional[str] = None
-    gst_percent: Optional[float] = None
-    sgst_percent: Optional[float] = None
-    cgst_percent: Optional[float] = None
-    igst_percent: Optional[float] = None
-    floor: Optional[str] = None
-    rack: Optional[str] = None
-    verified: Optional[bool] = False
-    verified_by: Optional[str] = None
-    verified_at: Optional[datetime] = None
-    last_scanned_at: Optional[datetime] = None
-    verified_qty: Optional[float] = None
-    variance: Optional[float] = None
-    damaged_qty: Optional[float] = None
-    non_returnable_damaged_qty: Optional[float] = None
-    item_condition: Optional[str] = None
-    manual_barcode: Optional[str] = None
-    serial_number: Optional[str] = None
-    is_serialized: Optional[bool] = None
-    verified_floor: Optional[str] = None
-    verified_rack: Optional[str] = None
-    image_url: Optional[str] = None
+    category: str | None = None
+    subcategory: str | None = None
+    warehouse: str | None = None
+    location: str | None = None
+    uom_code: str | None = None
+    uom_name: str | None = None
+    hsn_code: str | None = None
+    gst_category: str | None = None
+    gst_percent: float | None = None
+    sgst_percent: float | None = None
+    cgst_percent: float | None = None
+    igst_percent: float | None = None
+    floor: str | None = None
+    rack: str | None = None
+    verified: bool | None = False
+    verified_by: str | None = None
+    verified_at: datetime | None = None
+    last_scanned_at: datetime | None = None
+    verified_qty: float | None = None
+    variance: float | None = None
+    damaged_qty: float | None = None
+    non_returnable_damaged_qty: float | None = None
+    item_condition: str | None = None
+    manual_barcode: str | None = None
+    serial_number: str | None = None
+    is_serialized: bool | None = None
+    verified_floor: str | None = None
+    verified_rack: str | None = None
+    image_url: str | None = None
     # Sales / pricing metadata
-    sales_price: Optional[float] = None
-    sale_price: Optional[float] = None
-    standard_rate: Optional[float] = None
-    last_purchase_rate: Optional[float] = None
-    last_purchase_price: Optional[float] = None
+    sales_price: float | None = None
+    sale_price: float | None = None
+    standard_rate: float | None = None
+    last_purchase_rate: float | None = None
+    last_purchase_price: float | None = None
     # Brand metadata
-    brand_id: Optional[str] = None
-    brand_name: Optional[str] = None
-    brand_code: Optional[str] = None
+    brand_id: str | None = None
+    brand_name: str | None = None
+    brand_code: str | None = None
     # Supplier metadata
-    supplier_id: Optional[str] = None
-    supplier_code: Optional[str] = None
-    supplier_name: Optional[str] = None
-    last_purchase_supplier: Optional[str] = None
-    supplier_phone: Optional[str] = None
-    supplier_city: Optional[str] = None
-    supplier_state: Optional[str] = None
-    supplier_gst: Optional[str] = None
+    supplier_id: str | None = None
+    supplier_code: str | None = None
+    supplier_name: str | None = None
+    last_purchase_supplier: str | None = None
+    supplier_phone: str | None = None
+    supplier_city: str | None = None
+    supplier_state: str | None = None
+    supplier_gst: str | None = None
     # Purchase info
-    purchase_price: Optional[float] = None
-    last_purchase_qty: Optional[float] = None
-    purchase_qty: Optional[float] = None
-    purchase_invoice_no: Optional[str] = None
-    purchase_reference: Optional[str] = None
-    last_purchase_date: Optional[datetime] = None
-    last_purchase_cost: Optional[float] = None
-    purchase_voucher_type: Optional[str] = None
-    purchase_type: Optional[str] = None
-    batch_id: Optional[Union[int, str]] = None
-    batch_no: Optional[str] = None
-    manufacturing_date: Optional[str] = None
-    expiry_date: Optional[str] = None
+    purchase_price: float | None = None
+    last_purchase_qty: float | None = None
+    purchase_qty: float | None = None
+    purchase_invoice_no: str | None = None
+    purchase_reference: str | None = None
+    last_purchase_date: datetime | None = None
+    last_purchase_cost: float | None = None
+    purchase_voucher_type: str | None = None
+    purchase_type: str | None = None
+    batch_id: int | str | None = None
+    batch_no: str | None = None
+    manufacturing_date: str | None = None
+    expiry_date: str | None = None
 
     # SQL Verification fields
-    sql_verified_qty: Optional[float] = None
-    last_sql_verified_at: Optional[datetime] = None
-    mongo_cached_qty_previous: Optional[float] = None
-    sql_qty_mismatch_flag: Optional[bool] = None
-    sql_verification_status: Optional[str] = None
+    sql_verified_qty: float | None = None
+    last_sql_verified_at: datetime | None = None
+    mongo_cached_qty_previous: float | None = None
+    sql_qty_mismatch_flag: bool | None = None
+    sql_verification_status: str | None = None
 
 
 class UserInfo(BaseModel):
@@ -113,9 +113,9 @@ class UserInfo(BaseModel):
     username: str
     full_name: str
     role: str
-    email: Optional[str] = None
-    employee_id: Optional[str] = None
-    phone: Optional[str] = None
+    email: str | None = None
+    employee_id: str | None = None
+    phone: str | None = None
     is_active: bool = True
     permissions: list[str] = Field(default_factory=list)
     has_pin: bool = False
@@ -134,8 +134,8 @@ class UserRegister(BaseModel):
     password: str
     full_name: str
     role: Literal["staff", "supervisor", "admin"] = "staff"
-    employee_id: Optional[str] = None
-    phone: Optional[str] = None
+    employee_id: str | None = None
+    phone: str | None = None
 
 
 class UserLogin(BaseModel):
@@ -147,7 +147,7 @@ class PinLogin(BaseModel):
     """PIN-based login for staff users (4-digit numeric PIN)."""
 
     pin: str
-    username: Optional[str] = None
+    username: str | None = None
 
 
 class PinSetup(BaseModel):
@@ -192,9 +192,9 @@ class PhotoProof(BaseModel):
 
 class CorrectionMetadata(BaseModel):
     reason_code: str
-    notes: Optional[str] = None
-    approved_by: Optional[str] = None
-    approved_at: Optional[datetime] = None
+    notes: str | None = None
+    approved_by: str | None = None
+    approved_at: datetime | None = None
 
 
 class DateFormatType(str, Enum):
@@ -210,11 +210,11 @@ class SerialEntry(BaseModel):
     """Enhanced serial entry with per-serial attributes"""
 
     serial_number: str
-    mrp: Optional[float] = None
-    manufacturing_date: Optional[str] = None
-    mfg_date_format: Optional[DateFormatType] = None
-    expiry_date: Optional[str] = None
-    expiry_date_format: Optional[DateFormatType] = None
+    mrp: float | None = None
+    manufacturing_date: str | None = None
+    mfg_date_format: DateFormatType | None = None
+    expiry_date: str | None = None
+    expiry_date_format: DateFormatType | None = None
 
 
 class RelocationStatus(str, Enum):
@@ -225,63 +225,63 @@ class RelocationStatus(str, Enum):
 
 class CountLineCreate(BaseModel):
     session_id: str
-    location_id: Optional[str] = None
-    floor_id: Optional[str] = None
-    rack_id: Optional[str] = None
+    location_id: str | None = None
+    floor_id: str | None = None
+    rack_id: str | None = None
     item_code: str
-    item_name: Optional[str] = None
-    idempotency_key: Optional[str] = None
-    recount_of_id: Optional[str] = None
-    barcode: Optional[str] = None
-    batch_id: Optional[str] = None
-    batches: Optional[list[dict[str, Any]]] = None
-    variant_id: Optional[str] = None
-    variant_barcode: Optional[str] = None
-    mrp_source: Optional[str] = None
-    condition_details: Optional[str] = None
+    item_name: str | None = None
+    idempotency_key: str | None = None
+    recount_of_id: str | None = None
+    barcode: str | None = None
+    batch_id: str | None = None
+    batches: list[dict[str, Any]] | None = None
+    variant_id: str | None = None
+    variant_barcode: str | None = None
+    mrp_source: str | None = None
+    condition_details: str | None = None
     counted_qty: float
-    input_qty: Optional[float] = None
-    input_uom: Optional[str] = None
-    base_uom: Optional[str] = None
-    uom_code: Optional[str] = None
-    uom_name: Optional[str] = None
-    conversion_factor: Optional[float] = 1.0
-    quantity_precision: Optional[int] = None
-    damaged_qty: Optional[float] = 0
-    non_returnable_damaged_qty: Optional[float] = 0
-    damage_included: Optional[bool] = None
-    item_condition: Optional[str] = None
-    floor_no: Optional[str] = None
-    rack_no: Optional[str] = None
-    mark_location: Optional[str] = None
-    sr_no: Optional[str] = None
-    manufacturing_date: Optional[str] = None
-    mfg_date_format: Optional[DateFormatType] = None
-    expiry_date: Optional[str] = None
-    expiry_date_format: Optional[DateFormatType] = None
-    variance_reason: Optional[str] = None
-    variance_note: Optional[str] = None
-    remark: Optional[str] = None
-    photo_base64: Optional[str] = None
-    mrp_counted: Optional[float] = None
-    split_section: Optional[str] = None
-    serial_numbers: Optional[list[str]] = None
-    serial_entries: Optional[list[SerialEntry]] = None
-    correction_reason: Optional[CorrectionReason] = None
-    photo_proofs: Optional[list[PhotoProof]] = None
-    correction_metadata: Optional[CorrectionMetadata] = None
-    category_correction: Optional[str] = None
-    subcategory_correction: Optional[str] = None
+    input_qty: float | None = None
+    input_uom: str | None = None
+    base_uom: str | None = None
+    uom_code: str | None = None
+    uom_name: str | None = None
+    conversion_factor: float | None = 1.0
+    quantity_precision: int | None = None
+    damaged_qty: float | None = 0
+    non_returnable_damaged_qty: float | None = 0
+    damage_included: bool | None = None
+    item_condition: str | None = None
+    floor_no: str | None = None
+    rack_no: str | None = None
+    mark_location: str | None = None
+    sr_no: str | None = None
+    manufacturing_date: str | None = None
+    mfg_date_format: DateFormatType | None = None
+    expiry_date: str | None = None
+    expiry_date_format: DateFormatType | None = None
+    variance_reason: str | None = None
+    variance_note: str | None = None
+    remark: str | None = None
+    photo_base64: str | None = None
+    mrp_counted: float | None = None
+    split_section: str | None = None
+    serial_numbers: list[str] | None = None
+    serial_entries: list[SerialEntry] | None = None
+    correction_reason: CorrectionReason | None = None
+    photo_proofs: list[PhotoProof] | None = None
+    correction_metadata: CorrectionMetadata | None = None
+    category_correction: str | None = None
+    subcategory_correction: str | None = None
 
     # Misplaced Stock Fields
-    is_misplaced: Optional[bool] = False
-    expected_location: Optional[str] = None
-    found_location: Optional[str] = None
-    relocation_status: Optional[RelocationStatus] = None
+    is_misplaced: bool | None = False
+    expected_location: str | None = None
+    found_location: str | None = None
+    relocation_status: RelocationStatus | None = None
 
     # Lineage / Conflict Governance Fields
     version: int = 1
-    previous_version_id: Optional[str] = None
+    previous_version_id: str | None = None
 
     @model_validator(mode="after")
     def normalize_location_context(self) -> "CountLineCreate":
@@ -306,7 +306,7 @@ class CountLineCreate(BaseModel):
 
 class BulkCountLineUpdate(BaseModel):
     count_line_ids: list[str]
-    notes: Optional[str] = None
+    notes: str | None = None
     # See CountLineApprovalRequest: required to approve lines whose ERP item
     # was re-synced after counting (stale variance baseline).
     acknowledge_stale_master_data: bool = False
@@ -315,11 +315,11 @@ class BulkCountLineUpdate(BaseModel):
 class Session(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     warehouse: str
-    location_id: Optional[str] = None
-    location_key: Optional[str] = None
-    location_type: Optional[str] = None
-    location_name: Optional[str] = None
-    rack_no: Optional[str] = None
+    location_id: str | None = None
+    location_key: str | None = None
+    location_type: str | None = None
+    location_name: str | None = None
+    rack_no: str | None = None
     staff_user: str
     staff_name: str
     status: str = "OPEN"  # OPEN, ACTIVE, CLOSED
@@ -327,26 +327,26 @@ class Session(BaseModel):
     started_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
     )
-    last_heartbeat: Optional[datetime] = None
-    closed_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    reconciled_at: Optional[datetime] = None
-    finalized_at: Optional[datetime] = None
-    finalized_by: Optional[str] = None
-    finalization_status: Optional[str] = None
+    last_heartbeat: datetime | None = None
+    closed_at: datetime | None = None
+    completed_at: datetime | None = None
+    reconciled_at: datetime | None = None
+    finalized_at: datetime | None = None
+    finalized_by: str | None = None
+    finalization_status: str | None = None
     total_items: int = 0
     total_variance: float = 0
     verified_items: int = 0
     pending_items: int = 0
     damage_items: int = 0
-    notes: Optional[str] = None
-    barcode: Optional[str] = None
+    notes: str | None = None
+    barcode: str | None = None
 
     # Governance Fields
-    config_version_id: Optional[str] = None
-    snapshot_hash: Optional[str] = None
+    config_version_id: str | None = None
+    snapshot_hash: str | None = None
     # Reference to external storage if too large
-    snapshot_items_ref: Optional[str] = None
+    snapshot_items_ref: str | None = None
 
     @field_validator(
         "last_heartbeat",
@@ -387,48 +387,48 @@ class Session(BaseModel):
 
 class SessionCreate(BaseModel):
     warehouse: str
-    type: Optional[str] = "STANDARD"
-    location_type: Optional[str] = None
-    location_name: Optional[str] = None
-    rack_no: Optional[str] = None
+    type: str | None = "STANDARD"
+    location_type: str | None = None
+    location_name: str | None = None
+    rack_no: str | None = None
 
 
 class UnknownItem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     session_id: str
-    barcode: Optional[str] = None
+    barcode: str | None = None
     description: str
     counted_qty: float
-    photo_base64: Optional[str] = None
-    remark: Optional[str] = None
+    photo_base64: str | None = None
+    remark: str | None = None
     reported_by: str
     reported_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
     )
-    item_name: Optional[str] = None
-    mrp: Optional[float] = None
-    stock: Optional[float] = None
-    serial: Optional[str] = None
+    item_name: str | None = None
+    mrp: float | None = None
+    stock: float | None = None
+    serial: str | None = None
 
 
 class UnknownItemCreate(BaseModel):
     session_id: str
-    barcode: Optional[str] = None
+    barcode: str | None = None
     description: str
-    counted_qty: Optional[float] = 0
-    photo_base64: Optional[str] = None
-    remark: Optional[str] = None
-    item_name: Optional[str] = None
-    mrp: Optional[float] = None
-    stock: Optional[float] = None
-    serial: Optional[str] = None
+    counted_qty: float | None = 0
+    photo_base64: str | None = None
+    remark: str | None = None
+    item_name: str | None = None
+    mrp: float | None = None
+    stock: float | None = None
+    serial: str | None = None
 
 
 class PasswordResetRequest(BaseModel):
     """Request for a password reset OTP."""
 
-    username: Optional[str] = None
-    phone_number: Optional[str] = None
+    username: str | None = None
+    phone_number: str | None = None
 
     @model_validator(mode="after")
     def validate_identifier(self) -> "PasswordResetRequest":
@@ -440,8 +440,8 @@ class PasswordResetRequest(BaseModel):
 class PasswordResetVerify(BaseModel):
     """Verify OTP and get a reset token."""
 
-    username: Optional[str] = None
-    phone_number: Optional[str] = None
+    username: str | None = None
+    phone_number: str | None = None
     otp: str
 
     @model_validator(mode="after")

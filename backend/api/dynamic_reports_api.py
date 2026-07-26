@@ -5,8 +5,7 @@ Endpoints for creating and generating custom reports
 
 import io
 import logging
-from backend.utils.api_utils import sanitize_for_logging
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -15,6 +14,7 @@ from pydantic import BaseModel, Field
 from backend.auth import get_current_user
 from backend.db.runtime import get_db
 from backend.services.dynamic_report_service import DynamicReportService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 dynamic_reports_router = APIRouter(prefix="/api/dynamic-reports", tags=["dynamic-reports"])
 
 # Global service instance
-_dynamic_report_service: Optional[DynamicReportService] = None
+_dynamic_report_service: DynamicReportService | None = None
 
 
 def get_dynamic_report_service() -> DynamicReportService:
@@ -36,9 +36,9 @@ def get_dynamic_report_service() -> DynamicReportService:
 # Pydantic Models
 class ReportField(BaseModel):
     name: str = Field(..., description="Field name")
-    label: Optional[str] = Field(None, description="Display label")
+    label: str | None = Field(None, description="Display label")
     source: str = Field("database", description="Source: database or dynamic")
-    format: Optional[str] = Field(None, description="Format specification")
+    format: str | None = Field(None, description="Format specification")
 
 
 class ReportTemplate(BaseModel):
@@ -46,21 +46,21 @@ class ReportTemplate(BaseModel):
     description: str = Field(..., description="Template description")
     report_type: str = Field(..., description="Report type")
     fields: list[ReportField] = Field(..., description="Fields to include")
-    filters: dict[str, Optional[Any]] = Field(default_factory=dict, description="Filter criteria")
-    grouping: Optional[list[str]] = Field(None, description="Group by fields")
-    sorting: list[dict[str, Optional[str]]] = Field(
+    filters: dict[str, Any | None] = Field(default_factory=dict, description="Filter criteria")
+    grouping: list[str] | None = Field(None, description="Group by fields")
+    sorting: list[dict[str, str | None]] = Field(
         default_factory=list, description="Sort configuration"
     )
-    aggregations: dict[str, Optional[str]] = Field(
+    aggregations: dict[str, str | None] = Field(
         default_factory=dict, description="Aggregation functions"
     )
     format: str = Field("excel", description="Output format")
 
 
 class ReportGeneration(BaseModel):
-    template_id: Optional[str] = Field(None, description="Template ID")
-    template_data: Optional[ReportTemplate] = Field(None, description="Custom template")
-    runtime_filters: Optional[dict[str, Optional[Any]]] = Field(None, description="Runtime filters")
+    template_id: str | None = Field(None, description="Template ID")
+    template_data: ReportTemplate | None = Field(None, description="Custom template")
+    runtime_filters: dict[str, Any | None] | None = Field(None, description="Runtime filters")
 
 
 @dynamic_reports_router.post("/templates")
@@ -136,7 +136,7 @@ async def create_report_template(
 
 @dynamic_reports_router.get("/templates")
 async def get_report_templates(
-    report_type: Optional[str] = None,
+    report_type: str | None = None,
     current_user: dict = Depends(get_current_user),
     service: DynamicReportService = Depends(get_dynamic_report_service),
 ):
@@ -200,7 +200,7 @@ async def generate_report(
     **Returns:** Report metadata with download link
     """
     try:
-        template_dict: Optional[dict[str, Any]] = None
+        template_dict: dict[str, Any] | None = None
         if generation_data.template_data:
             template_dict = generation_data.template_data.model_dump()
             template_dict["fields"] = [f.model_dump() for f in generation_data.template_data.fields]
@@ -337,7 +337,7 @@ async def quick_report_items_with_fields(
         }
 
         report = await service.generate_report(
-            template_data=cast(dict[str, Optional[Any]], template_data),
+            template_data=cast(dict[str, Any | None], template_data),
             generated_by=current_user.get("username"),
         )
 
@@ -357,9 +357,9 @@ async def quick_report_items_with_fields(
 
 @dynamic_reports_router.get("/quick/variance-summary")
 async def quick_report_variance_summary(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    warehouse: Optional[str] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    warehouse: str | None = None,
     format: str = "excel",
     current_user: dict = Depends(get_current_user),
     service: DynamicReportService = Depends(get_dynamic_report_service),
@@ -402,7 +402,7 @@ async def quick_report_variance_summary(
         }
 
         report = await service.generate_report(
-            template_data=cast(dict[str, Optional[Any]], template_data),
+            template_data=cast(dict[str, Any | None], template_data),
             generated_by=current_user.get("username"),
         )
 

@@ -9,6 +9,7 @@ import { View, StyleSheet, ViewStyle } from "react-native";
 import { Skeleton, SkeletonListItem, SkeletonCard } from "./Skeleton";
 import { FadeIn } from "./FadeIn";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 interface SkeletonListProps {
   count?: number;
@@ -177,12 +178,12 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-    padding: 16,
+    padding: gap.lg,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 16,
+    paddingVertical: gap.lg,
     marginBottom: 16,
   },
   tabs: {

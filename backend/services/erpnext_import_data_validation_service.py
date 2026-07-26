@@ -14,9 +14,11 @@ comments below for the reasoning behind each choice.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
-from backend.services.erp_sql_item_master_enrichment_service import ErpSqlItemMasterEnrichmentService
+from backend.services.erp_sql_item_master_enrichment_service import (
+    ErpSqlItemMasterEnrichmentService,
+)
 from backend.services.hsn_gst_validation_service import HsnGstValidationService
 from backend.services.purchase_history_lookup_service import PurchaseHistoryLookupService
 
@@ -65,7 +67,7 @@ class ErpNextImportDataValidationService:
         self,
         *,
         item_code: str,
-        item_name: Optional[str],
+        item_name: str | None,
         current_user: dict[str, Any],
         require_validation: bool = False,
     ) -> dict[str, Any]:

@@ -29,10 +29,9 @@ rationale):
 from datetime import datetime, timezone
 
 import pytest
-
+from backend.services.erpnext_export_file_service import ErpNextExportFileService
 from backend.services.erpnext_export_service import ErpNextExportService
 from backend.services.erpnext_export_settings_service import ErpNextExportSettingsService
-from backend.services.erpnext_export_file_service import ErpNextExportFileService
 from backend.services.hsn_gst_validation_service import PLACEHOLDER_SOURCE
 from backend.tests.utils.in_memory_db import InMemoryDatabase
 
@@ -44,30 +43,57 @@ DEFAULT_COMPANY = "Default Co"
 
 
 async def _seed_finalized_session(db: InMemoryDatabase, session_id: str) -> None:
-    await db.sessions.insert_one({
-        "id": session_id, "session_id": session_id, "status": "COMPLETED",
-        "warehouse": DEFAULT_WAREHOUSE, "finalized_at": datetime.now(timezone.utc), "version": 1,
-    })
+    await db.sessions.insert_one(
+        {
+            "id": session_id,
+            "session_id": session_id,
+            "status": "COMPLETED",
+            "warehouse": DEFAULT_WAREHOUSE,
+            "finalized_at": datetime.now(timezone.utc),
+            "version": 1,
+        }
+    )
 
 
 async def _seed_default_mappings(db: InMemoryDatabase) -> None:
-    await db.erpnext_warehouse_mappings.insert_one({
-        "mapping_id": "map-wh-1", "stock_verify_warehouse_id": DEFAULT_WAREHOUSE,
-        "stock_verify_warehouse_name": DEFAULT_WAREHOUSE, "erpnext_warehouse": "Stores - CO",
-        "company": DEFAULT_COMPANY, "is_active": True, "created_by": "admin1",
-        "created_at": datetime.now(timezone.utc), "updated_by": None, "updated_at": None,
-    })
-    await db.erpnext_uom_mappings.insert_one({
-        "mapping_id": "map-uom-1", "stock_verify_uom": DEFAULT_UOM, "erpnext_uom": "Nos",
-        "conversion_factor": 1.0, "is_active": True, "created_by": "admin1",
-        "created_at": datetime.now(timezone.utc), "updated_by": None, "updated_at": None,
-    })
+    await db.erpnext_warehouse_mappings.insert_one(
+        {
+            "mapping_id": "map-wh-1",
+            "stock_verify_warehouse_id": DEFAULT_WAREHOUSE,
+            "stock_verify_warehouse_name": DEFAULT_WAREHOUSE,
+            "erpnext_warehouse": "Stores - CO",
+            "company": DEFAULT_COMPANY,
+            "is_active": True,
+            "created_by": "admin1",
+            "created_at": datetime.now(timezone.utc),
+            "updated_by": None,
+            "updated_at": None,
+        }
+    )
+    await db.erpnext_uom_mappings.insert_one(
+        {
+            "mapping_id": "map-uom-1",
+            "stock_verify_uom": DEFAULT_UOM,
+            "erpnext_uom": "Nos",
+            "conversion_factor": 1.0,
+            "is_active": True,
+            "created_by": "admin1",
+            "created_at": datetime.now(timezone.utc),
+            "updated_by": None,
+            "updated_at": None,
+        }
+    )
 
 
 async def _seed_erp_item(db: InMemoryDatabase, item_code: str, **overrides) -> None:
     doc = {
-        "item_code": item_code, "item_name": f"Item {item_code}", "warehouse": DEFAULT_WAREHOUSE,
-        "uom_code": DEFAULT_UOM, "stock_qty": 90.0, "mrp": 25.0, "last_synced": datetime.now(timezone.utc),
+        "item_code": item_code,
+        "item_name": f"Item {item_code}",
+        "warehouse": DEFAULT_WAREHOUSE,
+        "uom_code": DEFAULT_UOM,
+        "stock_qty": 90.0,
+        "mrp": 25.0,
+        "last_synced": datetime.now(timezone.utc),
     }
     doc.update(overrides)
     await db.erp_items.insert_one(doc)
@@ -75,9 +101,15 @@ async def _seed_erp_item(db: InMemoryDatabase, item_code: str, **overrides) -> N
 
 async def _seed_approved_line(db: InMemoryDatabase, session_id: str, item_code: str, **overrides):
     doc = {
-        "id": f"line-{item_code}-{session_id}", "session_id": session_id, "item_code": item_code,
-        "item_name": f"Item {item_code}", "counted_qty": 100.0, "erp_qty": 100.0,
-        "approval_status": "APPROVED", "status": "approved", "uom_code": DEFAULT_UOM,
+        "id": f"line-{item_code}-{session_id}",
+        "session_id": session_id,
+        "item_code": item_code,
+        "item_name": f"Item {item_code}",
+        "counted_qty": 100.0,
+        "erp_qty": 100.0,
+        "approval_status": "APPROVED",
+        "status": "approved",
+        "uom_code": DEFAULT_UOM,
     }
     doc.update(overrides)
     await db.count_lines.insert_one(doc)
@@ -86,9 +118,17 @@ async def _seed_approved_line(db: InMemoryDatabase, session_id: str, item_code: 
 
 def _full_gst_item_kwargs(**overrides) -> dict:
     kwargs = dict(
-        category="Hardware", subcategory="Fasteners", hsn_code="731815", gst_percent=18.0,
-        sgst_percent=9.0, cgst_percent=9.0, igst_percent=18.0, last_purchase_cost=10.0,
-        last_purchase_date=datetime.now(timezone.utc), supplier_id="SUP-1", supplier_name="Acme Supplies",
+        category="Hardware",
+        subcategory="Fasteners",
+        hsn_code="731815",
+        gst_percent=18.0,
+        sgst_percent=9.0,
+        cgst_percent=9.0,
+        igst_percent=18.0,
+        last_purchase_cost=10.0,
+        last_purchase_date=datetime.now(timezone.utc),
+        supplier_id="SUP-1",
+        supplier_name="Acme Supplies",
         purchase_voucher_type="PI",
     )
     kwargs.update(overrides)
@@ -97,7 +137,10 @@ def _full_gst_item_kwargs(**overrides) -> dict:
 
 async def _generate_preview(db, session_id, item_code):
     return await ErpNextExportService(db).generate_preview(
-        session_id=session_id, mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id=session_id,
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
 
 
@@ -160,7 +203,11 @@ async def test_hsn_missing_blocks_only_when_item_opted_into_validation():
     await settings.upsert_item_flags(
         "ITM-3B", updates={"requires_item_master_validation": True}, current_user=ADMIN_USER
     )
-    await _seed_erp_item(db, "ITM-3B", **_full_gst_item_kwargs(hsn_code=None, category="Hardware", subcategory="Fasteners"))
+    await _seed_erp_item(
+        db,
+        "ITM-3B",
+        **_full_gst_item_kwargs(hsn_code=None, category="Hardware", subcategory="Fasteners"),
+    )
     await _seed_approved_line(db, "s3b", "ITM-3B")
     preview_b = await _generate_preview(db, "s3b", "ITM-3B")
     row_b = preview_b["rows"][0]
@@ -198,8 +245,11 @@ async def test_gst_rate_mismatch_blocks_when_opted_in():
     await _seed_default_mappings(db)
     # gst_percent=18 but sgst+cgst=10 and igst=12 -- matches neither.
     await _seed_erp_item(
-        db, "ITM-5",
-        **_full_gst_item_kwargs(gst_percent=18.0, sgst_percent=5.0, cgst_percent=5.0, igst_percent=12.0),
+        db,
+        "ITM-5",
+        **_full_gst_item_kwargs(
+            gst_percent=18.0, sgst_percent=5.0, cgst_percent=5.0, igst_percent=12.0
+        ),
     )
     await _seed_approved_line(db, "s5", "ITM-5")
 
@@ -220,10 +270,17 @@ async def test_non_gst_purchase_estimate_item_does_not_falsely_block_on_gst_fiel
     await _seed_default_mappings(db)
     # PE = Purchase Estimate (non-GST local purchase); no HSN/GST expected.
     await _seed_erp_item(
-        db, "ITM-6",
-        category="Hardware", subcategory="Fasteners", hsn_code=None, gst_percent=None,
-        purchase_voucher_type="PE", last_purchase_cost=5.0, last_purchase_date=datetime.now(timezone.utc),
-        supplier_id="SUP-2", supplier_name="Local Vendor",
+        db,
+        "ITM-6",
+        category="Hardware",
+        subcategory="Fasteners",
+        hsn_code=None,
+        gst_percent=None,
+        purchase_voucher_type="PE",
+        last_purchase_cost=5.0,
+        last_purchase_date=datetime.now(timezone.utc),
+        supplier_id="SUP-2",
+        supplier_name="Local Vendor",
     )
     await _seed_approved_line(db, "s6", "ITM-6")
 
@@ -253,7 +310,9 @@ async def test_category_subcategory_missing_creates_appropriate_signals():
     row = preview["rows"][0]
 
     assert "ITEM_CATEGORY_MISSING" in row["blockers"]  # Required field, opted-in item -> blocker
-    assert "CATEGORY_OR_SUBCATEGORY_MISSING" in row["warnings"]  # Conditional field -> always a warning
+    assert (
+        "CATEGORY_OR_SUBCATEGORY_MISSING" in row["warnings"]
+    )  # Conditional field -> always a warning
 
 
 @pytest.mark.asyncio
@@ -295,9 +354,14 @@ async def test_missing_supplier_and_purchase_history_creates_warnings_not_blocke
     await _seed_finalized_session(db, "s10")
     await _seed_default_mappings(db)
     await _seed_erp_item(
-        db, "ITM-10",
-        category="Hardware", subcategory="Fasteners", hsn_code="731815", gst_percent=18.0,
-        sgst_percent=9.0, cgst_percent=9.0,
+        db,
+        "ITM-10",
+        category="Hardware",
+        subcategory="Fasteners",
+        hsn_code="731815",
+        gst_percent=18.0,
+        sgst_percent=9.0,
+        cgst_percent=9.0,
         # No last_purchase_cost/date/qty, no supplier, no voucher type at all.
     )
     await _seed_approved_line(db, "s10", "ITM-10")
@@ -333,7 +397,11 @@ async def test_hsn_suggestion_requires_human_approval_and_never_mutates_row():
     db = InMemoryDatabase()
     await _seed_finalized_session(db, "s12")
     await _seed_default_mappings(db)
-    await _seed_erp_item(db, "ITM-12", **_full_gst_item_kwargs(hsn_code=None, category="Hardware", subcategory="Fasteners"))
+    await _seed_erp_item(
+        db,
+        "ITM-12",
+        **_full_gst_item_kwargs(hsn_code=None, category="Hardware", subcategory="Fasteners"),
+    )
     await _seed_approved_line(db, "s12", "ITM-12")
 
     preview = await _generate_preview(db, "s12", "ITM-12")
@@ -393,14 +461,22 @@ async def test_existing_csv_xlsx_generation_unaffected_by_new_enrichment_fields(
     await _seed_erp_item(db, "ITM-14", **_full_gst_item_kwargs())
     await _seed_approved_line(db, "s14", "ITM-14")
     preview = await _generate_preview(db, "s14", "ITM-14")
-    await ErpNextExportService(db).approve_preview(export_id=preview["export_id"], current_user=ADMIN_USER)
+    await ErpNextExportService(db).approve_preview(
+        export_id=preview["export_id"], current_user=ADMIN_USER
+    )
 
     file_service = ErpNextExportFileService(db)
     csv_result = await file_service.generate_file(
-        export_id=preview["export_id"], file_type="stock_entry", file_format="csv", current_user=ADMIN_USER
+        export_id=preview["export_id"],
+        file_type="stock_entry",
+        file_format="csv",
+        current_user=ADMIN_USER,
     )
     xlsx_result = await file_service.generate_file(
-        export_id=preview["export_id"], file_type="stock_entry", file_format="xlsx", current_user=ADMIN_USER
+        export_id=preview["export_id"],
+        file_type="stock_entry",
+        file_format="xlsx",
+        current_user=ADMIN_USER,
     )
 
     assert b"ITM-14" in csv_result["content"]

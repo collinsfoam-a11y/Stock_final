@@ -13,6 +13,7 @@ credential pool across many virtual users causes login/session contention and
 skews results. Seed enough accounts (LOADTEST_USERS) to cover the target
 concurrency; a warning is emitted at test start when credentials < virtual users.
 """
+
 import logging
 import os
 import random
@@ -90,9 +91,7 @@ class SearchUser(HttpUser):
         if response.status_code == 200:
             payload = response.json()
             # Login returns {"success": true, "data": {"access_token": ...}}.
-            self.token = payload.get("data", {}).get("access_token") or payload.get(
-                "access_token"
-            )
+            self.token = payload.get("data", {}).get("access_token") or payload.get("access_token")
             if not self.token:
                 log.warning("Login succeeded but no access token found: %s", payload)
         else:

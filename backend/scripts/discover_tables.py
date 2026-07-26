@@ -220,7 +220,7 @@ def _analyze_priority_tables(
     """Analyze high-priority tables and print detailed info."""
     priority_tables = [
         t
-        for t in discovered_tables.keys()
+        for t in discovered_tables
         if any(keyword in t.lower() for keyword in ["stock", "item", "count", "onhand"])
     ]
 

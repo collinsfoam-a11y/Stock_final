@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 
 def _as_float(value: Any) -> float:
@@ -14,14 +14,14 @@ def _as_float(value: Any) -> float:
         return 0.0
 
 
-def _normalize_string(value: Any) -> Optional[str]:
+def _normalize_string(value: Any) -> str | None:
     if value is None:
         return None
     normalized = str(value).strip()
     return normalized or None
 
 
-def _normalize_serials(document: Optional[dict[str, Any]]) -> list[str]:
+def _normalize_serials(document: dict[str, Any] | None) -> list[str]:
     if not isinstance(document, dict):
         return []
     serials: list[str] = []
@@ -45,7 +45,7 @@ def _normalize_serials(document: Optional[dict[str, Any]]) -> list[str]:
     return serials
 
 
-def _normalize_batches(document: Optional[dict[str, Any]]) -> dict[str, Any]:
+def _normalize_batches(document: dict[str, Any] | None) -> dict[str, Any]:
     if not isinstance(document, dict):
         return {
             "batches": {
@@ -124,7 +124,7 @@ def _is_superseded_count_line(line: dict[str, Any]) -> bool:
 async def _build_legacy_state(
     db: Any,
     *,
-    session_id: Optional[str] = None,
+    session_id: str | None = None,
     limit: int = 0,
 ) -> dict[str, Any]:
     query: dict[str, Any] = {}
@@ -210,7 +210,7 @@ async def _build_legacy_state(
 async def _build_projection_state(
     db: Any,
     *,
-    session_id: Optional[str] = None,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
     item_query = {"session_id": session_id} if session_id else {}
     batch_query = {"session_id": session_id} if session_id else {}
@@ -309,7 +309,7 @@ def _serialize_projection_state(state: dict[str, Any]) -> dict[str, Any]:
 async def build_projection_state_snapshot(
     db: Any,
     *,
-    session_id: Optional[str] = None,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
     return _serialize_projection_state(await _build_projection_state(db, session_id=session_id))
 
@@ -317,7 +317,7 @@ async def build_projection_state_snapshot(
 async def build_projection_validation_report(
     db: Any,
     *,
-    session_id: Optional[str] = None,
+    session_id: str | None = None,
     limit: int = 0,
 ) -> dict[str, Any]:
     legacy = await _build_legacy_state(db, session_id=session_id, limit=limit)

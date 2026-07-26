@@ -15,6 +15,7 @@ import { ModernCard } from "./ModernCard";
 import { FontSizeSlider, FontStylePicker } from "../settings";
 import { flags } from "../../constants/flags";
 import { fontFamily } from "@/theme/legacyCompat";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 interface AppearanceSettingsProps {
   showTitle?: boolean;
@@ -215,8 +216,8 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   container: {
-    gap: 16,
-    padding: 16,
+    gap: gap.lg,
+    padding: gap.lg,
   },
   header: {
     marginBottom: 8,
@@ -240,41 +241,41 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   previewBox: {
-    borderRadius: 12,
+    borderRadius: radius.lg,
     overflow: "hidden",
-    padding: 12,
+    padding: gap.md,
     gap: 10,
   },
   previewHeader: {
     flexDirection: "row",
     alignItems: "center",
     padding: 10,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     gap: 10,
   },
   previewDot: {
     width: 10,
     height: 10,
-    borderRadius: 5,
+    borderRadius: radius.xs,
   },
   previewLine: {
     height: 8,
-    borderRadius: 4,
+    borderRadius: radius.xs,
     opacity: 0.8,
   },
   previewContent: {
-    gap: 8,
+    gap: gap.sm,
   },
   previewCard: {
-    padding: 12,
-    borderRadius: 8,
-    gap: 6,
+    padding: gap.md,
+    borderRadius: radius.sm,
+    gap: gap.sm,
   },
   previewButton: {
     alignItems: "center",
     justifyContent: "center",
-    padding: 12,
-    borderRadius: 8,
+    padding: gap.md,
+    borderRadius: radius.sm,
   },
   previewSampleText: {
     marginTop: 4,
@@ -286,8 +287,8 @@ const styles = StyleSheet.create({
   motionPreview: {
     marginTop: 8,
     borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: radius.md,
+    padding: gap.md,
   },
   motionPreviewAccent: {
     height: 8,

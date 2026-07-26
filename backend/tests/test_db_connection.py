@@ -1,6 +1,8 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from backend.utils.db_connection import SQLServerConnectionBuilder, ConnectionStringOptimizer
+
+from backend.utils.db_connection import ConnectionStringOptimizer, SQLServerConnectionBuilder
 
 
 class TestSQLServerConnectionBuilder:

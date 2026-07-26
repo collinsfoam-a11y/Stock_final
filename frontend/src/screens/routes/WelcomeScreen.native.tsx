@@ -16,13 +16,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
-import { colors, spacing, radius, gradients } from "@/theme/legacyCompat";
+import { colors, spacing, gradients } from "@/theme/legacyCompat";
 import { useAuthStore } from "@/store/authStore";
 import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 
 import { semanticColors } from "@/theme/legacyCompat";
 import { getFlag } from "@/constants/flags";
+import { font, gap, radius } from '@/theme/staffUiScale';
 const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
   if (Platform.OS === "web") {
     return (
@@ -144,7 +145,7 @@ export function WelcomeScreen() {
                 {
                   width: logoCardWidth,
                   height: logoCardHeight,
-                  borderRadius: 32,
+                  borderRadius: radius["3xl"],
                 },
               ]}
               start={{ x: 0, y: 0 }}
@@ -174,7 +175,7 @@ export function WelcomeScreen() {
                 {
                   width: logoCardWidth,
                   height: logoCardHeight,
-                  borderRadius: 32,
+                  borderRadius: radius["3xl"],
                 },
               ]}
             />
@@ -262,7 +263,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   logoBackground: {
-    padding: 3,
+    padding: gap.xs,
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",

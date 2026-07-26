@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional, TypedDict, cast
+from typing import Literal, TypedDict, cast
 
 from fastapi import Request, Response
 
@@ -19,7 +19,7 @@ class _CookieKwargs(TypedDict, total=False):
     domain: str
 
 
-def _cookie_domain() -> Optional[str]:
+def _cookie_domain() -> str | None:
     domain = getattr(settings, "AUTH_COOKIE_DOMAIN", None)
     return domain or None
 
@@ -83,7 +83,7 @@ def clear_auth_cookies(response: Response) -> None:
     )
 
 
-def _normalize_cookie_token(value: Optional[str]) -> Optional[str]:
+def _normalize_cookie_token(value: str | None) -> str | None:
     if value is None:
         return None
     normalized = value.strip()
@@ -92,13 +92,13 @@ def _normalize_cookie_token(value: Optional[str]) -> Optional[str]:
     return normalized or None
 
 
-def get_access_token_cookie(request: Request) -> Optional[str]:
+def get_access_token_cookie(request: Request) -> str | None:
     return _normalize_cookie_token(
         request.cookies.get(getattr(settings, "AUTH_ACCESS_COOKIE_NAME", "sv_access_token"))
     )
 
 
-def get_refresh_token_cookie(request: Request) -> Optional[str]:
+def get_refresh_token_cookie(request: Request) -> str | None:
     return _normalize_cookie_token(
         request.cookies.get(getattr(settings, "AUTH_REFRESH_COOKIE_NAME", "sv_refresh_token"))
     )

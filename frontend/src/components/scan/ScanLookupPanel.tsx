@@ -9,6 +9,7 @@ import { borderRadius, colors, spacing, typography } from "@/theme/legacyCompat"
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 export type ScanLookupNotice = {
   actionLabel?: string;
@@ -349,7 +350,7 @@ export function ScanLookupPanel({
                       style={{
                         width: 44,
                         height: 44,
-                        borderRadius: 12,
+                        borderRadius: radius.lg,
                         ...skeletonSurface,
                       }}
                     />
@@ -358,7 +359,7 @@ export function ScanLookupPanel({
                         style={{
                           width: "80%",
                           height: 16,
-                          borderRadius: 4,
+                          borderRadius: radius.xs,
                           ...skeletonSurface,
                         }}
                       />
@@ -367,7 +368,7 @@ export function ScanLookupPanel({
                           width: "50%",
                           height: 12,
                           marginTop: 6,
-                          borderRadius: 4,
+                          borderRadius: radius.xs,
                           ...skeletonSurface,
                         }}
                       />

@@ -11,8 +11,6 @@ from backend.utils.result import Fail, Left, Ok, Result, Right, UnwrapError, res
 class CustomError(Exception):
     """Custom error type for testing."""
 
-    pass
-
 
 class TestResult:
     """Test cases for the Result type."""
@@ -96,7 +94,7 @@ class TestResult:
         failure = Fail(ValueError("error"))
 
         def handle(result: Result[int, Exception]) -> str:
-            return result.match(ok=lambda x: f"Success: {x}", err=lambda e: f"Error: {str(e)}")
+            return result.match(ok=lambda x: f"Success: {x}", err=lambda e: f"Error: {e!s}")
 
         assert handle(success) == "Success: 42"
         assert handle(failure) == "Error: error"
@@ -109,9 +107,8 @@ class TestResult:
 
     def test_context_manager_failure(self):
         """Test using Result as a context manager with failure."""
-        with pytest.raises(ValueError):
-            with Fail(ValueError("test")) as result:
-                result.unwrap()
+        with pytest.raises(ValueError), Fail(ValueError("test")) as result:
+            result.unwrap()
 
     def test_from_callable_success(self):
         """Test creating a result from a successful callable."""

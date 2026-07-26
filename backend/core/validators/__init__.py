@@ -11,7 +11,7 @@ from backend.core.validators.pin_validator import (
 )
 
 __all__ = [
+    "PinValidationResult",
     "validate_pin",
     "validate_pin_change",
-    "PinValidationResult",
 ]

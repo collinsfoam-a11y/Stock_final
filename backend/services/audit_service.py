@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -21,26 +21,26 @@ class AuditService:
         self,
         event_type: AuditEventType,
         status: AuditLogStatus = AuditLogStatus.SUCCESS,
-        actor_id: Optional[str] = None,
-        actor_username: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        resource_id: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        actor_id: str | None = None,
+        actor_username: str | None = None,
+        ip_address: str | None = None,
+        resource_id: str | None = None,
+        details: dict[str, Any] | None = None,
         *,
-        entity_type: Optional[str] = None,
-        entity_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        count_line_id: Optional[str] = None,
-        item_code: Optional[str] = None,
-        location_context: Optional[Dict[str, Any]] = None,
-        actor_role: Optional[str] = None,
-        decision: Optional[str] = None,
-        reason: Optional[str] = None,
-        before: Optional[Dict[str, Any]] = None,
-        after: Optional[Dict[str, Any]] = None,
-        request_id: Optional[str] = None,
-        device_id: Optional[str] = None,
-    ) -> Optional[str]:
+        entity_type: str | None = None,
+        entity_id: str | None = None,
+        session_id: str | None = None,
+        count_line_id: str | None = None,
+        item_code: str | None = None,
+        location_context: dict[str, Any] | None = None,
+        actor_role: str | None = None,
+        decision: str | None = None,
+        reason: str | None = None,
+        before: dict[str, Any] | None = None,
+        after: dict[str, Any] | None = None,
+        request_id: str | None = None,
+        device_id: str | None = None,
+    ) -> str | None:
         """
         Create a new audit log entry.
 
@@ -83,11 +83,11 @@ class AuditService:
 
     async def get_logs(
         self,
-        user_id: Optional[str] = None,
-        event_type: Optional[AuditEventType] = None,
+        user_id: str | None = None,
+        event_type: AuditEventType | None = None,
         limit: int = 50,
         skip: int = 0,
-    ) -> List[AuditLog]:
+    ) -> list[AuditLog]:
         """
         Retrieve audit logs with optional filtering.
         """

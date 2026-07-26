@@ -8,7 +8,6 @@ password-reset flows look healthy even when nothing was actually delivered.
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Optional
 
 import httpx
 
@@ -29,7 +28,7 @@ class WhatsAppService:
     - twilio: send via Twilio WhatsApp API
     """
 
-    def __init__(self, config: Optional[dict] = None):
+    def __init__(self, config: dict | None = None):
         env_config = {
             "WHATSAPP_PROVIDER": os.getenv("WHATSAPP_PROVIDER", "disabled"),
             "TWILIO_ACCOUNT_SID": os.getenv("TWILIO_ACCOUNT_SID"),

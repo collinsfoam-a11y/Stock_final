@@ -182,6 +182,15 @@ const normalizeApiInventoryItem = (itemData: any, responseData: any): InventoryI
     is_misplaced: itemData.is_misplaced,
     expected_location: itemData.expected_location,
     _source: dataSource,
+    sql_verified_qty: itemData.sql_verified_qty,
+    sql_available: itemData.sql_available,
+    sql_verification_in_progress: itemData.sql_verification_in_progress,
+    quantity_source: itemData.quantity_source,
+    cached_stock_qty: itemData.cached_stock_qty,
+    verified_at: itemData.verified_at,
+    last_sync_at: itemData.last_sync_at,
+    sync_age_seconds: itemData.sync_age_seconds,
+    sync_stale: itemData.sync_stale,
   };
 };
 

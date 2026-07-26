@@ -25,6 +25,7 @@ import { zIndex as uiZIndex } from "@/theme/designTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha, getTokenShadowStyle, type ThemeTokens } from "@/theme/themeTokens";
 import { semanticColors } from "@/theme/legacyCompat";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 export interface SpeedDialAction {
   icon: keyof typeof Ionicons.glyphMap;
@@ -335,7 +336,7 @@ const styles = StyleSheet.create({
   iconButton: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: radius["2xl"],
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
@@ -346,10 +347,10 @@ const styles = StyleSheet.create({
     right: -4,
     minWidth: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: radius.md,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 6,
+    paddingHorizontal: gap.sm,
     borderWidth: 2,
   },
   badgeText: {

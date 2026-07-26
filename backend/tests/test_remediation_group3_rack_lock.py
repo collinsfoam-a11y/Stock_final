@@ -9,6 +9,7 @@ Validates:
 """
 
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from backend.services.lock_manager import LockManager

@@ -75,6 +75,7 @@ import { useAuthStore } from "@/store/authStore";
 
 import { colorWithAlpha, getTokenShadowStyle } from "@/theme/themeTokens";
 import { flags } from "@/constants/flags";
+import { duration } from "@/theme/staffUiScale";
 const SCAN_BUFFER_TIMEOUT = 2000; // 2 seconds
 const SCAN_BUFFER_MAX_SIZE = 10;
 const SCAN_CONFIDENCE_THRESHOLD = 2;
@@ -311,7 +312,7 @@ const ScanScreen = React.memo(function ScanScreen() {
         true
       );
       cornerOpacity.value = withRepeat(
-        withSequence(withTiming(0.5, { duration: 1000 }), withTiming(1, { duration: 1000 })),
+        withSequence(withTiming(0.5, { duration: duration.slowest }), withTiming(1, { duration: duration.slowest })),
         -1,
         false
       );

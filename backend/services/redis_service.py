@@ -4,8 +4,9 @@ Provides connection pooling, health checks, and utility methods
 """
 
 import asyncio
+import builtins
 import logging
-from typing import Any, Optional, Set, Union
+from typing import Any
 
 from redis.asyncio import Redis
 from redis.asyncio.connection import ConnectionPool
@@ -25,7 +26,7 @@ class RedisService:
         host: str = None,
         port: int = None,
         db: int = 0,
-        password: Optional[str] = None,
+        password: str | None = None,
         max_connections: int = 50,
         decode_responses: bool = True,
     ):
@@ -36,8 +37,8 @@ class RedisService:
         self.max_connections = max_connections
         self.decode_responses = decode_responses
 
-        self._pool: Optional[ConnectionPool] = None
-        self._client: Optional[Redis] = None
+        self._pool: ConnectionPool | None = None
+        self._client: Redis | None = None
         self._is_connected = False
 
     async def connect(self) -> None:
@@ -67,7 +68,7 @@ class RedisService:
             )
 
         except Exception as e:
-            logger.warning(f"Failed to connect to Redis: {str(e)}")
+            logger.warning(f"Failed to connect to Redis: {e!s}")
             self._is_connected = False
             raise
 
@@ -103,7 +104,7 @@ class RedisService:
             }
 
         except Exception as e:
-            logger.error(f"Redis health check failed: {str(e)}")
+            logger.error(f"Redis health check failed: {e!s}")
             return {"status": "unhealthy", "error": str(e)}
 
     @property
@@ -120,16 +121,16 @@ class RedisService:
 
     # Utility methods
 
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         """Get value by key"""
         return await self.client.get(key)
 
     async def set(
         self,
         key: str,
-        value: Union[str, int, float],
-        ex: Optional[int] = None,
-        px: Optional[int] = None,
+        value: str | float,
+        ex: int | None = None,
+        px: int | None = None,
         nx: bool = False,
         xx: bool = False,
     ) -> bool:
@@ -170,11 +171,11 @@ class RedisService:
         """Decrement key value"""
         return await self.client.decr(key)
 
-    async def hget(self, name: str, key: str) -> Optional[str]:
+    async def hget(self, name: str, key: str) -> str | None:
         """Get hash field value"""
         return await self.client.hget(name, key)  # type: ignore
 
-    async def hset(self, name: str, key: str, value: Union[str, int, float]) -> int:
+    async def hset(self, name: str, key: str, value: str | float) -> int:
         """Set hash field value"""
         return await self.client.hset(name, key, value)  # type: ignore
 
@@ -190,7 +191,7 @@ class RedisService:
         """Add members to set"""
         return await self.client.sadd(name, *values)  # type: ignore
 
-    async def smembers(self, name: str) -> Set[str]:
+    async def smembers(self, name: str) -> builtins.set[str]:
         """Get all set members"""
         return await self.client.smembers(name)  # type: ignore
 

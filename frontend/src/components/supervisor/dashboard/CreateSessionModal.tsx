@@ -65,7 +65,7 @@ export function CreateSessionModal({
       <View style={[styles.modalOverlay, { backgroundColor: uiTokens.colors.overlay }]}>
         <Pressable
           style={styles.modalBackdrop}
-          onPress={onClose}
+           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={onClose}
           accessibilityRole="button"
           accessibilityLabel="Close create session dialog"
         />
@@ -110,7 +110,7 @@ export function CreateSessionModal({
                               : uiTokens.colors.surface,
                           },
                         ]}
-                        onPress={() => onChangeLocationType(zone.zone_name)}
+                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={() => onChangeLocationType(zone.zone_name)}
                         accessibilityRole="button"
                         accessibilityState={{ selected: isSelected }}
                         accessibilityLabel={`Location type ${zone.zone_name}`}
@@ -155,7 +155,7 @@ export function CreateSessionModal({
                                   : uiTokens.colors.surface,
                               },
                             ]}
-                            onPress={() => onChangeSelectedFloor(warehouse.warehouse_name)}
+                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={() => onChangeSelectedFloor(warehouse.warehouse_name)}
                             accessibilityRole="button"
                             accessibilityState={{ selected: isSelected }}
                             accessibilityLabel={`Floor or area ${warehouse.warehouse_name}`}
@@ -203,7 +203,7 @@ export function CreateSessionModal({
                   (!locationType || !selectedFloor || !rackName.trim() || isCreatingSession) &&
                     styles.createButtonDisabled,
                 ]}
-                onPress={onSubmit}
+                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={onSubmit}
                 disabled={!locationType || !selectedFloor || !rackName.trim() || isCreatingSession}
                 accessibilityRole="button"
                 accessibilityLabel="Start session"

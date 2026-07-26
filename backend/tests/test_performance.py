@@ -8,7 +8,6 @@ import logging
 import random
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 import pytest
 import pytest_asyncio
@@ -25,8 +24,8 @@ class PerformanceMetric:
     name: str
     value: float
     unit: str
-    baseline: Optional[float] = None
-    threshold: Optional[float] = None
+    baseline: float | None = None
+    threshold: float | None = None
     passed: bool = True
 
 
@@ -36,7 +35,7 @@ class PerformanceBenchmark:
     def __init__(self):
         self.metrics = []
 
-    def record_metric(self, name: str, value: float, unit: str, threshold: Optional[float] = None):
+    def record_metric(self, name: str, value: float, unit: str, threshold: float | None = None):
         """Record a performance metric"""
         passed = True
         if threshold and value > threshold:

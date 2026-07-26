@@ -10,21 +10,20 @@ import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
-from typing import cast
+from typing import Any, cast
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile, Response
-from backend.services.observability import request_id_ctx
-from backend.core.globals import auto_sync_manager
-import time
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from pydantic import BaseModel
 
 from backend.api.response_models import ApiResponse, PaginatedResponse
 from backend.auth.dependencies import get_current_user_async as get_current_user
+from backend.core.globals import auto_sync_manager
+from backend.core.websocket_manager import manager
 from backend.db.runtime import get_db
 from backend.services.ai_search import ai_search_service
-from backend.services.sql_verification_service import sql_verification_service
 from backend.services.item_refresh_service import item_refresh_service
+from backend.services.observability import request_id_ctx
+from backend.services.sql_verification_service import sql_verification_service
 from backend.utils.erp_utils import _get_barcode_variations
 
 # Add project root to path for direct execution (debugging)
@@ -41,42 +40,44 @@ router = APIRouter()
 
 ITEM_RESPONSE_SCHEMA_VERSION = 2
 
+
 class ItemResponse(BaseModel):
     """Item response model"""
 
     id: str
     name: str
-    item_code: Optional[str] = None
-    barcode: Optional[str] = None
+    item_code: str | None = None
+    barcode: str | None = None
     stock_qty: float
-    mrp: Optional[float] = None
-    category: Optional[str] = None
-    subcategory: Optional[str] = None
-    warehouse: Optional[str] = None
-    uom_name: Optional[str] = None
+    mrp: float | None = None
+    category: str | None = None
+    subcategory: str | None = None
+    warehouse: str | None = None
+    uom_name: str | None = None
     # SQL verification fields
-    sql_verified_qty: Optional[float] = None
-    last_sql_verified_at: Optional[str] = None
-    variance: Optional[float] = None
-    mongo_cached_qty_previous: Optional[float] = None
-    sql_qty_mismatch_flag: Optional[bool] = None
-    sql_verification_status: Optional[str] = None
+    sql_verified_qty: float | None = None
+    last_sql_verified_at: str | None = None
+    variance: float | None = None
+    mongo_cached_qty_previous: float | None = None
+    sql_qty_mismatch_flag: bool | None = None
+    sql_verification_status: str | None = None
     # Source indicators
-    quantity_source: Optional[str] = None
-    cached_stock_qty: Optional[float] = None
-    verified_at: Optional[str] = None
-    last_sync_at: Optional[str] = None
-    sync_age_seconds: Optional[int] = None
-    sync_stale: Optional[bool] = None
-    sql_available: Optional[bool] = None
-    mrp_variants: Optional[list[Any]] = None
-    components: Optional[list[Any]] = None
-    
+    quantity_source: str | None = None
+    cached_stock_qty: float | None = None
+    verified_at: str | None = None
+    last_sync_at: str | None = None
+    sync_age_seconds: int | None = None
+    sync_stale: bool | None = None
+    sql_available: bool | None = None
+    sql_verification_in_progress: bool | None = None
+    mrp_variants: list[Any] | None = None
+    components: list[Any] | None = None
+
     # Versioning & Monitoring
-    request_id: Optional[str] = None
-    response_version: Optional[int] = None
-    background_sync_running: Optional[bool] = None
-    sync_state: Optional[str] = None
+    request_id: str | None = None
+    response_version: int | None = None
+    background_sync_running: bool | None = None
+    sync_state: str | None = None
 
 
 async def _background_sync_selected_item(item_code: str) -> None:
@@ -90,7 +91,40 @@ async def _background_sync_selected_item(item_code: str) -> None:
         logger.debug("Background item sync failed for %s: %s", item_code, exc)
 
 
-async def _resolve_item_document(db: Any, item_identifier: str) -> Optional[dict[str, Any]]:
+async def _verify_sql_in_background(item_code: str, item_doc: dict[str, Any]) -> None:
+    """Fire-and-forget SQL verification for item detail page load."""
+    try:
+        verification_result = await sql_verification_service.verify_item_quantity(item_code)
+        if verification_result.get("success"):
+            # Invalidate caches
+            from backend.core.globals import cache_service
+
+            if cache_service:
+                barcode_to_clear = item_doc.get("barcode")
+                if barcode_to_clear:
+                    await cache_service.delete("items", f"enhanced_{barcode_to_clear}")
+                await cache_service.delete("items", f"enhanced_{item_code}")
+                await cache_service.clear_pattern("search:*")
+                logger.info("Background SQL verification cache invalidated for %s", item_code)
+
+            # Broadcast update to connected clients
+            try:
+                await manager.broadcast_all(
+                    {
+                        "type": "item-updated",
+                        "itemId": item_code,
+                        "barcode": item_doc.get("barcode"),
+                    }
+                )
+            except Exception:
+                pass
+        else:
+            logger.warning("Background SQL verification failed for %s", item_code)
+    except Exception as exc:
+        logger.debug("Background SQL verification error for %s: %s", item_code, exc)
+
+
+async def _resolve_item_document(db: Any, item_identifier: str) -> dict[str, Any] | None:
     """Resolve an ERP item deterministically.
 
     Business identifiers take priority over the legacy Mongo ``_id`` fallback so
@@ -221,7 +255,7 @@ async def _lookup_identified_items(
 
 @router.get("/", response_model=ApiResponse[PaginatedResponse[ItemResponse]])
 async def get_items_v2(
-    search: Optional[str] = Query(None, description="Search by name or barcode"),
+    search: str | None = Query(None, description="Search by name or barcode"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: dict[str, Any] = Depends(get_current_user),
@@ -329,7 +363,7 @@ async def get_items_v2(
     except Exception as e:
         return ApiResponse.error_response(
             error_code="ITEMS_FETCH_ERROR",
-            error_message=f"Failed to fetch items: {str(e)}",
+            error_message=f"Failed to fetch items: {e!s}",
         )
 
 
@@ -390,7 +424,7 @@ async def search_items_semantic(
     except Exception as e:
         return ApiResponse.error_response(
             error_code="SEMANTIC_SEARCH_ERROR",
-            error_message=f"Semantic search failed: {str(e)}",
+            error_message=f"Semantic search failed: {e!s}",
         )
 
 
@@ -442,7 +476,7 @@ async def get_item_v2(
     except Exception as e:
         return ApiResponse.error_response(
             error_code="ITEM_FETCH_ERROR",
-            error_message=f"Failed to fetch item: {str(e)}",
+            error_message=f"Failed to fetch item: {e!s}",
         )
 
 
@@ -504,7 +538,7 @@ async def identify_item(
     except Exception as e:
         return ApiResponse.error_response(
             error_code="VISUAL_SEARCH_ERROR",
-            error_message=f"Identification failed: {str(e)}",
+            error_message=f"Identification failed: {e!s}",
         )
 
 
@@ -533,45 +567,17 @@ async def get_item_details(
         item_doc = cast(dict[str, Any], item)
         canonical_item_code = str(item_doc.get("item_code") or item_code)
 
-        asyncio.create_task(_background_sync_selected_item(canonical_item_code))
+        _ = asyncio.create_task(_background_sync_selected_item(canonical_item_code))  # noqa: RUF006
 
-        sql_available: Optional[bool] = None
+        sql_available: bool | None = None
+        sql_verification_in_progress: bool | None = None
 
         # Trigger SQL verification if requested
         if verify_sql:
-            try:
-                verification_result = await sql_verification_service.verify_item_quantity(
-                    canonical_item_code
-                )
-                if verification_result["success"]:
-                    sql_available = True
-                    # Invalidate caches
-                    from backend.core.globals import cache_service
-                    if cache_service:
-                        barcode_to_clear = item_doc.get("barcode")
-                        if barcode_to_clear:
-                            await cache_service.delete("items", f"enhanced_{barcode_to_clear}")
-                        await cache_service.delete("items", f"enhanced_{canonical_item_code}")
-                        await cache_service.clear_pattern("search:*")
-                        logger.info(f"Successfully invalidated cache for {canonical_item_code}")
-                    else:
-                        logger.warning("Cache service not available for invalidation")
-                        
-                    # Refresh item data after verification
-                    refreshed_item = await db.erp_items.find_one({"item_code": canonical_item_code})
-                    if refreshed_item:
-                        item = refreshed_item
-                        item_doc = cast(dict[str, Any], item)
-                else:
-                    sql_available = False
-            except Exception as e:
-                sql_available = False
-                # Log error but don't fail the request
-                from backend.utils.api_utils import sanitize_for_logging
+            sql_verification_in_progress = True
+            _ = asyncio.create_task(_verify_sql_in_background(canonical_item_code, item_doc))  # noqa: RUF006
 
-                logger.warning(
-                    f"SQL verification failed for {sanitize_for_logging(canonical_item_code)}: {sanitize_for_logging(str(e))}"
-                )
+            # Return immediately with cached data; frontend will refresh via WebSocket when done
 
         last_sql_verified_at = item_doc.get("last_sql_verified_at")
         last_synced_at = item_doc.get("last_synced")
@@ -583,18 +589,18 @@ async def get_item_details(
         # Determine effective quantities and freshness
         sql_verified_qty = item_doc.get("sql_verified_qty")
         cached_stock_qty = item_doc.get("stock_qty", 0.0)
-        
+
         effective_stock_qty = cached_stock_qty
         quantity_source = "sync_cache"
-        
+
         if verify_sql and sql_verified_qty is not None:
             effective_stock_qty = sql_verified_qty
             quantity_source = "sql_verification"
-            
+
         now = datetime.now(timezone.utc).replace(tzinfo=None)
         sync_age_seconds = None
         sync_stale = False
-        
+
         if last_synced_at:
             sync_age_seconds = int((now - last_synced_at).total_seconds())
             if sync_age_seconds > 3600:
@@ -603,16 +609,16 @@ async def get_item_details(
             sync_stale = True
 
         # Convert to response
-        
+
         sync_status = {}
         if auto_sync_manager:
             sync_status = auto_sync_manager.get_status()
-            
+
         sync_running = sync_status.get("running")
         sync_state = "healthy" if sync_running else "stopped"
         if not sync_status.get("sql_available"):
             sync_state = "sql_offline"
-            
+
         request_id = request_id_ctx.get()
 
         item_response = ItemResponse(
@@ -639,18 +645,19 @@ async def get_item_details(
             sql_qty_mismatch_flag=item_doc.get("sql_qty_mismatch_flag"),
             sql_verification_status=item_doc.get("sql_verification_status"),
             sql_available=sql_available,
+            sql_verification_in_progress=sql_verification_in_progress,
             mrp_variants=item_doc.get("mrp_variants"),
             components=item_doc.get("components"),
             request_id=request_id,
             response_version=ITEM_RESPONSE_SCHEMA_VERSION,
             background_sync_running=sync_running,
-            sync_state=sync_state
+            sync_state=sync_state,
         )
 
         if verify_sql:
             response.headers["Cache-Control"] = "no-cache, private"
             response.headers["Vary"] = "Authorization"
-            
+
             # Audit log
             logger.info(
                 "sql_refresh",
@@ -664,7 +671,7 @@ async def get_item_details(
                     "cached_stock_qty": cached_stock_qty,
                     "returned_qty": effective_stock_qty,
                     "request_id": request_id,
-                }
+                },
             )
 
         return ApiResponse.success_response(
@@ -675,5 +682,5 @@ async def get_item_details(
     except Exception as e:
         return ApiResponse.error_response(
             error_code="INTERNAL_ERROR",
-            error_message=f"Failed to get item details: {str(e)}",
+            error_message=f"Failed to get item details: {e!s}",
         )

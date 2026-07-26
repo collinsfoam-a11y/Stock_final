@@ -421,7 +421,7 @@ const createStyles = (tokens: ThemeTokens) =>
       gap: gap.xs,
     },
     retakeButton: {
-      backgroundColor: "#4B5563",
+      backgroundColor: uiSemanticColors.background.secondary,
     },
     confirmButton: {
       backgroundColor: tokens.colors.success,

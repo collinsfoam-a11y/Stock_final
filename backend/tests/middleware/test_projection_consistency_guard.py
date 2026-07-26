@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import time
 
-from fastapi import FastAPI
-
 from backend.middleware.projection_consistency_guard import ProjectionConsistencyGuardMiddleware
+from fastapi import FastAPI
 
 
 def _reset_guard_state() -> None:

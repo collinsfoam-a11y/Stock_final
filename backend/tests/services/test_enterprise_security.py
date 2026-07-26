@@ -7,7 +7,6 @@ implement and is covered separately where feasible.
 """
 
 import pytest
-
 from backend.services.enterprise_security import (
     EnterpriseSecurityService,
     IPListType,

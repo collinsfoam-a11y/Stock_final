@@ -41,6 +41,7 @@ import { useAuthStore } from "../../store/authStore";
 import { useThemeContext } from "../../context/ThemeContext";
 import { safeBackNavigation } from "../../utils/navigation";
 import type { UserRole } from "../../utils/roleNavigation";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 // ============================================================================
 // Types
@@ -392,14 +393,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingBottom: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: gap.lg,
     minHeight: 56,
   },
   leftSection: {
     flexDirection: "row",
     alignItems: "center",
     flexShrink: 0,
-    gap: 12,
+    gap: gap.md,
   },
   centerOverlay: {
     position: "absolute",
@@ -419,7 +420,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-end",
     flexShrink: 0,
-    gap: 8,
+    gap: gap.sm,
   },
   userSection: {
     flexDirection: "row",
@@ -466,7 +467,7 @@ const styles = StyleSheet.create({
   actionButton: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     alignItems: "center",
     justifyContent: "center",
   },

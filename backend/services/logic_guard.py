@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from fastapi import HTTPException, Request
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -26,12 +26,12 @@ ScopeSource = Literal["global", "warehouse", "user_id", "session_id"]
 
 
 class RequestContext(BaseModel):
-    request_id: Optional[str] = None
-    session_id: Optional[str] = None
-    user_id: Optional[str] = None
-    username: Optional[str] = None
-    role: Optional[str] = None
-    warehouse: Optional[str] = None
+    request_id: str | None = None
+    session_id: str | None = None
+    user_id: str | None = None
+    username: str | None = None
+    role: str | None = None
+    warehouse: str | None = None
     endpoint_name: str
     operation_name: str
 
@@ -43,14 +43,14 @@ class LogicExecutionContext(BaseModel):
     scope_source: ScopeSource
     is_kill_switch_active: bool
     should_persist_pin: bool = False
-    pin_logic_version: Optional[LogicVersion] = None
-    pin_scope_source: Optional[ScopeSource] = None
+    pin_logic_version: LogicVersion | None = None
+    pin_scope_source: ScopeSource | None = None
     resolved_flags: dict[str, Any]
 
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
-    def validate_pin_contract(self) -> "LogicExecutionContext":
+    def validate_pin_contract(self) -> LogicExecutionContext:
         if self.should_persist_pin:
             if self.pin_logic_version is None or self.pin_scope_source is None:
                 raise ValueError("pin persistence requires both pin fields")
@@ -69,9 +69,9 @@ class LogicGuardConflictError(RuntimeError):
         reason: str,
         *,
         request_context: RequestContext,
-        resolved_flags: Optional[dict[str, Any]] = None,
-        stored_pin: Optional[dict[str, Any]] = None,
-        attempted_logic: Optional[str] = None,
+        resolved_flags: dict[str, Any] | None = None,
+        stored_pin: dict[str, Any] | None = None,
+        attempted_logic: str | None = None,
     ) -> None:
         super().__init__(reason)
         self.reason = reason
@@ -93,11 +93,11 @@ class LogicGuardConflictError(RuntimeError):
 def build_request_context(
     *,
     request: Request | None,
-    current_user: Optional[dict[str, Any]],
+    current_user: dict[str, Any] | None,
     endpoint_name: str,
     operation_name: str,
-    session_id: Optional[str] = None,
-    warehouse: Optional[str] = None,
+    session_id: str | None = None,
+    warehouse: str | None = None,
 ) -> RequestContext:
     request_id = None
     if request is not None:
@@ -301,12 +301,9 @@ async def persist_pin_if_needed(*, db, session, context: LogicExecutionContext) 
         session["logic_scope_source"] = pinned_scope_source
         session["version"] = bumped_version
     else:
-        setattr(session, "logic_version", pinned_logic_version)
-        setattr(session, "logic_scope_source", pinned_scope_source)
-        setattr(session, "version", bumped_version)
-
-
-
+        session.logic_version = pinned_logic_version
+        session.logic_scope_source = pinned_scope_source
+        session.version = bumped_version
 
 
 def _extract_stored_pin(
@@ -314,7 +311,7 @@ def _extract_stored_pin(
     *,
     request_context: RequestContext,
     resolved_flags: dict[str, Any],
-) -> Optional[dict[str, ScopeSource | LogicVersion]]:
+) -> dict[str, ScopeSource | LogicVersion] | None:
     if not session:
         return None
 
@@ -355,7 +352,7 @@ def _extract_stored_pin(
     }
 
 
-def _maybe_stored_pin(session: Any) -> Optional[dict[str, Any]]:
+def _maybe_stored_pin(session: Any) -> dict[str, Any] | None:
     if not session:
         return None
     return {
@@ -386,7 +383,7 @@ def _scope_to_pin_source(scope: str) -> ScopeSource:
     return mapping[scope]
 
 
-def _session_identifier(session: Any) -> Optional[str]:
+def _session_identifier(session: Any) -> str | None:
     for key in ("id", "session_id"):
         value = _read_field(session, key)
         if value:

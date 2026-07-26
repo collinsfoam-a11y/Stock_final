@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
 import inspect
 import logging
 import os
-from typing import Any, Optional
+from datetime import datetime, timezone
+from typing import Any
 
 from backend.services.concurrency import coerce_version
 from backend.services.lock_service import LockService, ResourceLockedError
@@ -35,7 +35,7 @@ def _as_float(value: Any) -> float:
         return 0.0
 
 
-def _as_datetime(value: Any) -> Optional[datetime]:
+def _as_datetime(value: Any) -> datetime | None:
     if value is None:
         return None
     if isinstance(value, datetime):
@@ -96,13 +96,13 @@ def _requires_supervisor_review_for_variance(variance: Any) -> bool:
         return False
 
 
-def _count_line_requires_supervisor_review(count_line: Optional[dict[str, Any]]) -> bool:
+def _count_line_requires_supervisor_review(count_line: dict[str, Any] | None) -> bool:
     if not count_line:
         return False
     return _requires_supervisor_review_for_variance(count_line.get("variance"))
 
 
-def is_count_line_effectively_reviewed(count_line: Optional[dict[str, Any]]) -> bool:
+def is_count_line_effectively_reviewed(count_line: dict[str, Any] | None) -> bool:
     if not count_line:
         return False
     line_status = _normalize_count_line_status(count_line.get("status"))
@@ -115,7 +115,7 @@ def is_count_line_effectively_reviewed(count_line: Optional[dict[str, Any]]) -> 
     return not _count_line_requires_supervisor_review(count_line) and line_status != "rejected"
 
 
-def get_effective_count_line_status(count_line: Optional[dict[str, Any]]) -> str:
+def get_effective_count_line_status(count_line: dict[str, Any] | None) -> str:
     if not count_line:
         return "pending"
     line_status = _normalize_count_line_status(count_line.get("status"))
@@ -126,7 +126,7 @@ def get_effective_count_line_status(count_line: Optional[dict[str, Any]]) -> str
     return line_status
 
 
-def get_effective_approval_status(count_line: Optional[dict[str, Any]]) -> str:
+def get_effective_approval_status(count_line: dict[str, Any] | None) -> str:
     if not count_line:
         return "PENDING"
     approval_status = _normalize_approval_status(count_line.get("approval_status"))
@@ -137,7 +137,7 @@ def get_effective_approval_status(count_line: Optional[dict[str, Any]]) -> str:
     return approval_status
 
 
-def is_superseded_count_line(count_line: Optional[dict[str, Any]]) -> bool:
+def is_superseded_count_line(count_line: dict[str, Any] | None) -> bool:
     if not count_line:
         return False
     if _normalize_count_line_status(count_line.get("status")) in SUPERSEDED_COUNT_LINE_STATUSES:
@@ -170,7 +170,7 @@ class ProjectionWriteService:
         self.lock_owner_prefix = f"projection-write:{os.getpid()}:{id(self)}"
 
     @staticmethod
-    def _kwargs(db_session: Optional[Any]) -> dict[str, Any]:
+    def _kwargs(db_session: Any | None) -> dict[str, Any]:
         return {"session": db_session} if db_session is not None else {}
 
     def _collection(self, name: str) -> Any:
@@ -197,9 +197,9 @@ class ProjectionWriteService:
         *,
         trigger: str,
         actor: str,
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
         rebuild_item_projections: bool = True,
-        item_projection_scopes: Optional[set[str]] = None,
+        item_projection_scopes: set[str] | None = None,
         skip_session_lock: bool = False,
     ) -> None:
         if not session_ids:
@@ -280,9 +280,9 @@ class ProjectionWriteService:
         trigger: str,
         actor: str,
         now_dt: datetime,
-        db_session: Optional[Any],
+        db_session: Any | None,
         rebuild_item_projections: bool,
-        item_projection_scopes: Optional[set[str]],
+        item_projection_scopes: set[str] | None,
     ) -> None:
         kwargs = self._kwargs(db_session)
         source_updated_at = self._resolve_source_updated_at(session_doc) or now_dt
@@ -394,7 +394,7 @@ class ProjectionWriteService:
         self,
         session_id: str,
         *,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> list[dict[str, Any]]:
         kwargs = self._kwargs(db_session)
         cursor = self.db.count_lines.find(
@@ -432,7 +432,7 @@ class ProjectionWriteService:
         total_variance = 0.0
         positive_variance = 0.0
         negative_variance = 0.0
-        last_activity: Optional[datetime] = None
+        last_activity: datetime | None = None
 
         for line in lines:
             total_items += 1
@@ -481,8 +481,8 @@ class ProjectionWriteService:
         session_doc: dict[str, Any],
         active_lines: list[dict[str, Any]],
         now_dt: datetime,
-        db_session: Optional[Any],
-        item_projection_scopes: Optional[set[str]],
+        db_session: Any | None,
+        item_projection_scopes: set[str] | None,
     ) -> None:
         kwargs = self._kwargs(db_session)
         verified_projection = self._collection("verified_items_projection")
@@ -639,7 +639,7 @@ class ProjectionWriteService:
             await self._resolve_result(financial_projection.insert_one(financial_doc, **kwargs))
 
     @staticmethod
-    def _resolve_source_updated_at(session_doc: dict[str, Any]) -> Optional[datetime]:
+    def _resolve_source_updated_at(session_doc: dict[str, Any]) -> datetime | None:
         for key in ("updated_at", "completed_at", "closed_at", "last_activity", "started_at"):
             parsed = _as_datetime(session_doc.get(key))
             if parsed is not None:

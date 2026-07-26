@@ -22,6 +22,7 @@ import {
   type OperationalStyleBridge,
 } from "@/theme/operationalStyleBridge";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 interface ActivityLog {
   id: string;
@@ -201,7 +202,7 @@ export default function ActivityLogsScreen() {
               marginTop: operationalTheme.spacing.sm,
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
+              gap: gap.sm,
               borderColor: operationalTheme.colors.error[500],
               backgroundColor: colorWithAlpha(operationalTheme.colors.error[500], 0.1),
             }}
@@ -311,7 +312,7 @@ export default function ActivityLogsScreen() {
               }
               ListFooterComponent={
                 loading && logs.length > 0 ? (
-                  <View style={{ padding: 20 }}>
+                  <View style={{ padding: gap.xl }}>
                     <ActivityIndicator color={operationalTheme.colors.primary[500]} />
                   </View>
                 ) : null

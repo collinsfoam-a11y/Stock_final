@@ -2,7 +2,7 @@ import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 from passlib.context import CryptContext
 
@@ -82,7 +82,7 @@ def _is_bcrypt_hash(hashed_password: str) -> bool:
     return hashed_password.startswith(("$2a$", "$2b$", "$2x$", "$2y$"))
 
 
-def identify_password_hash(hashed_password: Optional[str]) -> str:
+def identify_password_hash(hashed_password: str | None) -> str:
     if not hashed_password:
         return "unknown"
     try:
@@ -112,7 +112,7 @@ def get_password_hash_metadata(hashed_password: str) -> dict[str, str]:
     return {"password_hash_algorithm": identify_password_hash(hashed_password)}
 
 
-def password_hash_needs_upgrade(hashed_password: Optional[str]) -> bool:
+def password_hash_needs_upgrade(hashed_password: str | None) -> bool:
     if not hashed_password:
         return False
     if identify_password_hash(hashed_password) == "bcrypt":
@@ -123,7 +123,7 @@ def password_hash_needs_upgrade(hashed_password: Optional[str]) -> bool:
         return False
 
 
-def _verify_secret(plain_secret: Optional[str], hashed_secret: Optional[str]) -> bool:
+def _verify_secret(plain_secret: str | None, hashed_secret: str | None) -> bool:
     if not plain_secret or not hashed_secret:
         logger.warning("Empty password or hash provided")
         return False
@@ -141,7 +141,7 @@ def _verify_secret(plain_secret: Optional[str], hashed_secret: Optional[str]) ->
             logger.debug("Password verified using passlib CryptContext")
         return bool(result)
     except Exception as e:
-        logger.debug(f"Passlib verification failed: {type(e).__name__}: {str(e)}")
+        logger.debug(f"Passlib verification failed: {type(e).__name__}: {e!s}")
 
     # Strategy 2: Direct bcrypt verification (fallback)
     if hash_algorithm == "bcrypt":
@@ -149,7 +149,7 @@ def _verify_secret(plain_secret: Optional[str], hashed_secret: Optional[str]) ->
     return False
 
 
-def verify_password(plain_password: Optional[str], hashed_password: Optional[str]) -> bool:
+def verify_password(plain_password: str | None, hashed_password: str | None) -> bool:
     """
     Verify a password against a hash using multiple fallback strategies.
 
@@ -167,7 +167,7 @@ def verify_password(plain_password: Optional[str], hashed_password: Optional[str
     return _verify_secret(plain_password, hashed_password)
 
 
-def verify_pin_hash(pin: Optional[str], hashed_pin: Optional[str]) -> bool:
+def verify_pin_hash(pin: str | None, hashed_pin: str | None) -> bool:
     try:
         validate_pin(pin)  # type: ignore[arg-type]
     except (TypeError, ValueError):
@@ -225,9 +225,9 @@ def get_pin_hash(pin: str) -> str:
 
 def create_access_token(
     data: dict[str, Any],
-    secret_key: Optional[str] = None,
-    algorithm: Optional[str] = None,
-    expires_delta: Optional[timedelta] = None,
+    secret_key: str | None = None,
+    algorithm: str | None = None,
+    expires_delta: timedelta | None = None,
 ) -> str:
     """Create a JWT access token from user data"""
     # Use settings.JWT_SECRET directly to ensure we get the latest value (e.g. during tests)

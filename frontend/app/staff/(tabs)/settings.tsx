@@ -33,6 +33,22 @@ import { flags } from "@/constants/flags";
 import { toastService } from "@/services/toastService";
 import { safeBackNavigation } from "@/utils/navigation";
 
+// ─── Web-Safe Animation Wrapper ───────────────────────────────────────────────
+const SafeAnimatedView: React.FC<{
+  entering?: any;
+  style?: any;
+  children?: React.ReactNode;
+}> = ({ entering, style, children }) => {
+  if (Platform.OS === "web") {
+    return <View style={style}>{children}</View>;
+  }
+  return (
+    <Animated.View entering={entering} style={style}>
+      {children}
+    </Animated.View>
+  );
+};
+
 export default function StaffSettingsScreen() {
   const router = useRouter();
   const { logout, user } = useAuthStore();
@@ -91,7 +107,7 @@ export default function StaffSettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* User Info Card */}
-        <Animated.View entering={FadeInDown.delay(100).springify()}>
+        <SafeAnimatedView entering={FadeInDown.delay(100).springify()}>
           <ModernCard
             testID="settings-user-card"
             style={[
@@ -142,13 +158,13 @@ export default function StaffSettingsScreen() {
               <Text style={[styles.roleBadgeText, { color: uiTokens.colors.accent }]}>Staff</Text>
             </View>
           </ModernCard>
-        </Animated.View>
+        </SafeAnimatedView>
 
-        <Animated.View entering={FadeInDown.delay(150).springify()}>
+        <SafeAnimatedView entering={FadeInDown.delay(150).springify()}>
           <SettingsSyncStatus />
-        </Animated.View>
+        </SafeAnimatedView>
 
-        <Animated.View entering={FadeInDown.delay(250).springify()}>
+        <SafeAnimatedView entering={FadeInDown.delay(250).springify()}>
           <SettingsActionSection title="Security">
             <SettingsActionRow
               icon="shield-checkmark-outline"
@@ -158,21 +174,21 @@ export default function StaffSettingsScreen() {
               onPress={handleSecurity}
             />
           </SettingsActionSection>
-        </Animated.View>
+        </SafeAnimatedView>
 
-        <Animated.View entering={FadeInDown.delay(350).springify()}>
+        <SafeAnimatedView entering={FadeInDown.delay(350).springify()}>
           <SettingsSectionHeading title="Appearance" />
           <View style={styles.settingsCard}>
             <AppearanceSettings showTitle={false} scrollable={false} compact={true} />
           </View>
-        </Animated.View>
+        </SafeAnimatedView>
 
-        <Animated.View entering={FadeInDown.delay(450).springify()}>
+        <SafeAnimatedView entering={FadeInDown.delay(450).springify()}>
           <SettingsSectionHeading title="Preferences" />
           <UserSettingsSections />
-        </Animated.View>
+        </SafeAnimatedView>
 
-        <Animated.View entering={FadeInDown.delay(550).springify()}>
+        <SafeAnimatedView entering={FadeInDown.delay(550).springify()}>
           <SettingsActionSection title="Support">
             <SettingsActionRow
               icon="notifications-outline"
@@ -190,9 +206,9 @@ export default function StaffSettingsScreen() {
               type="navigation"
             />
           </SettingsActionSection>
-        </Animated.View>
+        </SafeAnimatedView>
 
-        <Animated.View entering={FadeInDown.delay(650).springify()}>
+        <SafeAnimatedView entering={FadeInDown.delay(650).springify()}>
           <SettingsActionSection title="Account">
             <SettingsActionRow
               icon="log-out-outline"
@@ -203,10 +219,10 @@ export default function StaffSettingsScreen() {
               destructive
             />
           </SettingsActionSection>
-        </Animated.View>
+        </SafeAnimatedView>
 
         {/* Version Info */}
-        <Animated.View entering={FadeInDown.delay(700).springify()} style={styles.versionContainer}>
+        <SafeAnimatedView entering={FadeInDown.delay(700).springify()} style={styles.versionContainer}>
           <Text style={[styles.versionText, { color: uiTokens.colors.textSecondary }]}>
             Stock Verify v{version}
           </Text>
@@ -216,7 +232,7 @@ export default function StaffSettingsScreen() {
           <Text style={[styles.versionSubtext, { color: uiTokens.colors.textMuted }]}>
             © 2026 Lavanya Mart
           </Text>
-        </Animated.View>
+        </SafeAnimatedView>
       </ScrollView>
     </View>
   );

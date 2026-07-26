@@ -104,7 +104,7 @@ const createStyles = (tokens: ThemeTokens) =>
       marginBottom: gap.lg,
       padding: gap.lg,
       backgroundColor: colorWithAlpha(tokens.colors.error, 0.1),
-      borderRadius: 50,
+      borderRadius: radius["3xl"],
     },
     title: {
       fontSize: font.size.xl,

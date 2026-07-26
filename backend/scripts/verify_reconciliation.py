@@ -2,11 +2,12 @@
 Script to verify Multi-Location Reconciliation Logic.
 """
 
-import sys
 import asyncio
-from pathlib import Path
-from motor.motor_asyncio import AsyncIOMotorClient
+import sys
 import uuid
+from pathlib import Path
+
+from motor.motor_asyncio import AsyncIOMotorClient
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -81,8 +82,9 @@ async def run_verification():
 
     # Using HTTP Test Client
     from fastapi.testclient import TestClient
-    from backend.server import app
+
     from backend.auth.dependencies import get_current_user
+    from backend.server import app
 
     # Override auth to skip login
     app.dependency_overrides[get_current_user] = lambda: {"username": "test_user", "role": "admin"}

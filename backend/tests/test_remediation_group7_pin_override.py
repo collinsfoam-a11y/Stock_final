@@ -15,8 +15,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from backend.services.pin_auth_service import (
-    PINAuthService,
     OVERRIDE_REQUIRED_ACTIONS,
+    PINAuthService,
     _sign_token,
 )
 

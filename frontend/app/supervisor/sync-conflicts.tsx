@@ -32,6 +32,7 @@ import {
 import { ModernCard, StatsCard, AnimatedPressable } from "@/components/ui";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { font, gap, radius } from "@/theme/staffUiScale";
 import {
   createOperationalStyleBridge,
   type OperationalStyleBridge,
@@ -583,7 +584,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
   },
   batchButton: {
     paddingHorizontal: operationalTheme.spacing.md,
-    paddingVertical: 8,
+    paddingVertical: gap.sm,
     borderRadius: operationalTheme.borderRadius.full,
   },
   // White regardless of theme: sits on semantic success/error batch-button fills.
@@ -622,8 +623,8 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
   conflictTypeContainer: {
     alignSelf: "flex-start",
     backgroundColor: operationalTheme.statusBackground.warning,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: gap.sm,
+    paddingVertical: gap.xs,
     borderRadius: operationalTheme.borderRadius.full,
     marginTop: 4,
   },
@@ -688,7 +689,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: gap.xl,
     backgroundColor: operationalTheme.colors.overlay,
   },
   modalContent: {
@@ -712,8 +713,8 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
   },
   modalTypeBadge: {
     backgroundColor: operationalTheme.statusBackground.warning,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: gap.md,
+    paddingVertical: gap.sm,
     borderRadius: operationalTheme.borderRadius.full,
     alignSelf: "flex-start",
     marginBottom: operationalTheme.spacing.lg,
@@ -741,7 +742,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
   modalInput: {
     backgroundColor: operationalTheme.colors.background.secondary,
     color: operationalTheme.colors.text.primary,
-    padding: 12,
+    padding: gap.md,
     borderRadius: operationalTheme.borderRadius.md,
     fontSize: operationalTheme.typography.fontSize.md,
     marginBottom: operationalTheme.spacing.lg,
@@ -759,7 +760,7 @@ const createStyles = (operationalTheme: OperationalStyleBridge) => StyleSheet.cr
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: gap.md,
     borderRadius: operationalTheme.borderRadius.full,
     alignItems: "center",
   },

@@ -27,7 +27,7 @@ No suggestion source may auto-approve HSN/GST; every suggestion carries
 from __future__ import annotations
 
 import re
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from backend.services.hsn_directory_service import HsnDirectoryService
 
@@ -48,7 +48,7 @@ _CATEGORY_MATCH_BOOST = 0.1
 DEFAULT_ENABLED_SOURCES = frozenset({"sql_item_master", "hsn_directory", "mcp_india_stack"})
 
 
-def _tokenize(*parts: Optional[str]) -> set[str]:
+def _tokenize(*parts: str | None) -> set[str]:
     text = " ".join(str(p) for p in parts if p)
     return {tok for tok in re.findall(r"[a-z0-9]+", text.lower()) if len(tok) > 1}
 
@@ -72,8 +72,7 @@ class McpIndiaStackSeedSource(Protocol):
     environment). Every record is always source-tagged `MCP_INDIA_STACK_SEED`
     regardless of which implementation is plugged in."""
 
-    def search(self, tokens: set[str], *, limit: int = 10) -> list[dict[str, Any]]:
-        ...
+    def search(self, tokens: set[str], *, limit: int = 10) -> list[dict[str, Any]]: ...
 
 
 # Curated from the real, public hsn_master.csv shipped in
@@ -84,16 +83,66 @@ class McpIndiaStackSeedSource(Protocol):
 # `gst_percentage` is left `None` for every entry here exactly as the real
 # source has it. HSN codes and descriptions are the genuine, real values.
 _MCP_INDIA_STACK_SEED_DATA: list[dict[str, Any]] = [
-    {"hsn_sac": "731815", "description": "OTHER SCREWS AND BOLTS, WHETHER OR NOT WITH THEIR NUTS OR WASHERS", "gst_percentage": None, "keywords": ["screw", "bolt", "nut", "washer", "fastener", "hardware"]},
-    {"hsn_sac": "854140", "description": "Photosensitive semi-conductor devices, including photo voltaic cells whether or not assembled in modules or made up into panels; light-emitting diodes (LED)", "gst_percentage": None, "keywords": ["led", "light", "emitting", "diode", "semiconductor"]},
-    {"hsn_sac": "853910", "description": "SEALED BEAM LAMP UNITS", "gst_percentage": None, "keywords": ["lamp", "bulb", "lighting", "sealed", "beam"]},
-    {"hsn_sac": "85392990", "description": "OTHER (bulbs)", "gst_percentage": None, "keywords": ["bulb", "lamp", "lighting"]},
-    {"hsn_sac": "854460", "description": "OTHER ELECTRIC CONDUCTORS, FOR A VOLTAGE NOT EXCEEDING 1,000V", "gst_percentage": None, "keywords": ["cable", "wire", "conductor", "electrical"]},
-    {"hsn_sac": "854420", "description": "CO-AXIAL CABLE AND OTHER CO-AXIAL ELECTRIC CONDUCTORS", "gst_percentage": None, "keywords": ["cable", "coaxial", "wire", "conductor"]},
-    {"hsn_sac": "732393", "description": "OF STAINLESS STEEL (table, kitchen or household articles)", "gst_percentage": None, "keywords": ["kitchen", "steel", "stainless", "utensil", "cookware", "household"]},
-    {"hsn_sac": "853650", "description": "OTHER SWITCHES", "gst_percentage": None, "keywords": ["switch", "electrical", "socket"]},
-    {"hsn_sac": "853661", "description": "LAMPHOLDERS", "gst_percentage": None, "keywords": ["lampholder", "lamp", "fitting", "lighting"]},
-    {"hsn_sac": "850680", "description": "OTHER PRIMARY CELLS AND PRIMARY BATTERIES", "gst_percentage": None, "keywords": ["battery", "cell", "power"]},
+    {
+        "hsn_sac": "731815",
+        "description": "OTHER SCREWS AND BOLTS, WHETHER OR NOT WITH THEIR NUTS OR WASHERS",
+        "gst_percentage": None,
+        "keywords": ["screw", "bolt", "nut", "washer", "fastener", "hardware"],
+    },
+    {
+        "hsn_sac": "854140",
+        "description": "Photosensitive semi-conductor devices, including photo voltaic cells whether or not assembled in modules or made up into panels; light-emitting diodes (LED)",
+        "gst_percentage": None,
+        "keywords": ["led", "light", "emitting", "diode", "semiconductor"],
+    },
+    {
+        "hsn_sac": "853910",
+        "description": "SEALED BEAM LAMP UNITS",
+        "gst_percentage": None,
+        "keywords": ["lamp", "bulb", "lighting", "sealed", "beam"],
+    },
+    {
+        "hsn_sac": "85392990",
+        "description": "OTHER (bulbs)",
+        "gst_percentage": None,
+        "keywords": ["bulb", "lamp", "lighting"],
+    },
+    {
+        "hsn_sac": "854460",
+        "description": "OTHER ELECTRIC CONDUCTORS, FOR A VOLTAGE NOT EXCEEDING 1,000V",
+        "gst_percentage": None,
+        "keywords": ["cable", "wire", "conductor", "electrical"],
+    },
+    {
+        "hsn_sac": "854420",
+        "description": "CO-AXIAL CABLE AND OTHER CO-AXIAL ELECTRIC CONDUCTORS",
+        "gst_percentage": None,
+        "keywords": ["cable", "coaxial", "wire", "conductor"],
+    },
+    {
+        "hsn_sac": "732393",
+        "description": "OF STAINLESS STEEL (table, kitchen or household articles)",
+        "gst_percentage": None,
+        "keywords": ["kitchen", "steel", "stainless", "utensil", "cookware", "household"],
+    },
+    {
+        "hsn_sac": "853650",
+        "description": "OTHER SWITCHES",
+        "gst_percentage": None,
+        "keywords": ["switch", "electrical", "socket"],
+    },
+    {
+        "hsn_sac": "853661",
+        "description": "LAMPHOLDERS",
+        "gst_percentage": None,
+        "keywords": ["lampholder", "lamp", "fitting", "lighting"],
+    },
+    {
+        "hsn_sac": "850680",
+        "description": "OTHER PRIMARY CELLS AND PRIMARY BATTERIES",
+        "gst_percentage": None,
+        "keywords": ["battery", "cell", "power"],
+    },
 ]
 
 
@@ -117,24 +166,26 @@ class HsnSuggestionService:
         self,
         db: Any,
         *,
-        mcp_source: Optional[McpIndiaStackSeedSource] = None,
-        enabled_sources: Optional[frozenset[str]] = None,
+        mcp_source: McpIndiaStackSeedSource | None = None,
+        enabled_sources: frozenset[str] | None = None,
     ) -> None:
         self.db = db
         self.directory_service = HsnDirectoryService(db)
         self.mcp_source = mcp_source or StaticMcpIndiaStackSeedSource()
-        self.enabled_sources = enabled_sources if enabled_sources is not None else DEFAULT_ENABLED_SOURCES
+        self.enabled_sources = (
+            enabled_sources if enabled_sources is not None else DEFAULT_ENABLED_SOURCES
+        )
 
     async def suggest(
         self,
         *,
         item_code: str,
-        item_name: Optional[str] = None,
-        category: Optional[str] = None,
-        subcategory: Optional[str] = None,
-        brand: Optional[str] = None,
-        barcode: Optional[str] = None,
-        photo_caption: Optional[str] = None,
+        item_name: str | None = None,
+        category: str | None = None,
+        subcategory: str | None = None,
+        brand: str | None = None,
+        barcode: str | None = None,
+        photo_caption: str | None = None,
         limit: int = 5,
     ) -> dict[str, Any]:
         suggestions: list[dict[str, Any]] = []
@@ -144,7 +195,9 @@ class HsnSuggestionService:
         category_tokens = _tokenize(category, subcategory)
         combined_tokens = name_tokens | photo_tokens
         # A genuine conflict requires both signals present and disagreeing.
-        photo_conflicts_with_name = bool(name_tokens) and bool(photo_tokens) and not (name_tokens & photo_tokens)
+        photo_conflicts_with_name = (
+            bool(name_tokens) and bool(photo_tokens) and not (name_tokens & photo_tokens)
+        )
 
         if "sql_item_master" in self.enabled_sources and item_code:
             erp_item = await self.db.erp_items.find_one({"item_code": item_code})
@@ -175,7 +228,8 @@ class HsnSuggestionService:
                     source=record["source"],
                     source_url=record.get("source_url"),
                     is_official_source=bool(record.get("is_official_source")),
-                    record_tokens=set(record.get("keywords") or []) | _tokenize(record.get("description")),
+                    record_tokens=set(record.get("keywords") or [])
+                    | _tokenize(record.get("description")),
                     name_tokens=name_tokens,
                     photo_tokens=photo_tokens,
                     combined_tokens=combined_tokens,
@@ -185,7 +239,9 @@ class HsnSuggestionService:
 
         if "mcp_india_stack" in self.enabled_sources:
             for entry in self.mcp_source.search(combined_tokens, limit=limit * 2):
-                record_tokens = set(entry.get("keywords") or []) | _tokenize(entry.get("description"))
+                record_tokens = set(entry.get("keywords") or []) | _tokenize(
+                    entry.get("description")
+                )
                 self._score_and_append(
                     suggestions,
                     hsn_sac=entry["hsn_sac"],
@@ -210,10 +266,10 @@ class HsnSuggestionService:
         suggestions: list[dict[str, Any]],
         *,
         hsn_sac: str,
-        description: Optional[str],
-        gst_percentage: Optional[float],
+        description: str | None,
+        gst_percentage: float | None,
         source: str,
-        source_url: Optional[str],
+        source_url: str | None,
         is_official_source: bool,
         record_tokens: set[str],
         name_tokens: set[str],

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -9,7 +9,7 @@ class SnapshotItem(BaseModel):
     item_code: str
     stock_qty: float
     warehouse: str
-    source_data: Dict[str, Any]  # Minimal ERP fields needed to reconstruct the frozen baseline
+    source_data: dict[str, Any]  # Minimal ERP fields needed to reconstruct the frozen baseline
 
 
 class SessionSnapshot(BaseModel):
@@ -22,7 +22,7 @@ class SessionSnapshot(BaseModel):
     session_id: str
     warehouse: str
     snapshot_hash: str = Field(..., description="SHA256 hash of the items payload")
-    items: List[SnapshotItem]
+    items: list[SnapshotItem]
     item_count: int
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)

@@ -1,9 +1,8 @@
 import pytest
-from fastapi import status
-from httpx import AsyncClient
-
 from backend.auth.dependencies import get_current_user
 from backend.server import app
+from fastapi import status
+from httpx import AsyncClient
 
 
 async def mock_get_current_staff():

@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 
 import pytest
 from bson import ObjectId
-
 from fastapi.encoders import jsonable_encoder
 
 from backend.api.exports_api import download_export_result, list_export_results

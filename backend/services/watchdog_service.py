@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -98,7 +98,7 @@ class WatchdogService:
             logger.exception("DB Health Check Failed")
             await self._raise_alert(f"DB Health Check Failed: {type(e).__name__}: {e}")
 
-    async def _raise_alert(self, message: str, details: Dict[str, Any] = None):
+    async def _raise_alert(self, message: str, details: dict[str, Any] = None):
         """
         Log a system alert.
         """

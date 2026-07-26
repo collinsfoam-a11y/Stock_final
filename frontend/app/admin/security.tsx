@@ -27,6 +27,7 @@ import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
+import { font, gap, radius } from '@/theme/staffUiScale';
 
 const { width } = Dimensions.get("window");
 const isWeb = Platform.OS === "web";
@@ -546,7 +547,7 @@ const createStyles = (uiTokens: SecurityTokens) =>
   metricIcon: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: radius["2xl"],
     justifyContent: "center",
     alignItems: "center",
     marginBottom: uiTokens.spacing.md,
@@ -586,7 +587,7 @@ const createStyles = (uiTokens: SecurityTokens) =>
   eventDot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: radius.xs,
     backgroundColor: uiTokens.colors.accent,
     marginTop: uiTokens.spacing.xs,
   },
@@ -628,7 +629,7 @@ const createStyles = (uiTokens: SecurityTokens) =>
   listItemIcon: {
     width: 40,
     height: 40,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -698,7 +699,7 @@ const createStyles = (uiTokens: SecurityTokens) =>
   sessionAvatar: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: radius["2xl"],
     backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.18),
     justifyContent: "center",
     alignItems: "center",
@@ -727,7 +728,7 @@ const createStyles = (uiTokens: SecurityTokens) =>
   pulseDot: {
     width: 6,
     height: 6,
-    borderRadius: 3,
+    borderRadius: radius.xs,
     backgroundColor: uiTokens.colors.success,
   },
   activeLabel: {

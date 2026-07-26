@@ -6,9 +6,9 @@ Provides Prometheus-compatible metrics
 
 import asyncio
 import logging
-from collections import deque, defaultdict
+from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ class MonitoringService:
                 self._error_count += 1
 
     async def track_error(
-        self, endpoint: str, error: Exception, context: dict[str, Optional[Any]] = None
+        self, endpoint: str, error: Exception, context: dict[str, Any | None] = None
     ):
         """Track error occurrence"""
         async with self._lock:

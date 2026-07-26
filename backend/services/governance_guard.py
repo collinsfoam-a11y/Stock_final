@@ -5,17 +5,18 @@ Central governance guard for write-path invariants.
 from __future__ import annotations
 
 import inspect
+from collections.abc import Callable
 from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import wraps
-from typing import Any, Callable, NoReturn, Optional
+from typing import Any, NoReturn
 
 
 class GovernanceViolation(RuntimeError):
     """Raised when a write violates mandatory business invariants."""
 
 
-_WRITE_AUTHORITY: ContextVar[Optional[str]] = ContextVar(
+_WRITE_AUTHORITY: ContextVar[str | None] = ContextVar(
     "governance_write_authority",
     default=None,
 )
@@ -122,7 +123,7 @@ def _extract_session_id(context: dict[str, Any]) -> str:
 
 def _extract_context_fields(
     context: dict[str, Any],
-) -> tuple[Optional[str], Optional[str], Optional[str]]:
+) -> tuple[str | None, str | None, str | None]:
     source = context.get("document")
     if not isinstance(source, dict):
         source = context.get("count_line")

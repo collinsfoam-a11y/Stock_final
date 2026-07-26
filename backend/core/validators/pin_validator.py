@@ -4,8 +4,6 @@ PIN Validation Module
 Validates PIN format and security requirements.
 """
 
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 
@@ -13,8 +11,8 @@ class PinValidationResult(BaseModel):
     """Result of PIN validation."""
 
     is_valid: bool = Field(description="Whether the PIN is valid")
-    error_message: Optional[str] = Field(default=None, description="Error message if invalid")
-    error_code: Optional[str] = Field(default=None, description="Error code for frontend handling")
+    error_message: str | None = Field(default=None, description="Error message if invalid")
+    error_code: str | None = Field(default=None, description="Error code for frontend handling")
 
 
 def validate_pin(pin: str, min_length: int = 4, max_length: int = 6) -> PinValidationResult:
@@ -145,7 +143,7 @@ def _is_sequential(pin: str) -> bool:
 
 
 def validate_pin_change(
-    current_pin: str, new_pin: str, confirm_pin: Optional[str] = None
+    current_pin: str, new_pin: str, confirm_pin: str | None = None
 ) -> PinValidationResult:
     """
     Validate a PIN change request.

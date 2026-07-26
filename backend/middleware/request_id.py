@@ -11,25 +11,24 @@ Follows ASGI Correlation ID pattern from awesome-fastapi best practices:
 import contextvars
 import logging
 import uuid
-from typing import Optional
 
 from starlette.requests import Request
 
 # Context variables for correlation IDs (async-safe, accessible anywhere)
-request_id_ctx: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+request_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "request_id", default=None
 )
-correlation_id_ctx: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+correlation_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "correlation_id", default=None
 )
 
 
-def get_request_id() -> Optional[str]:
+def get_request_id() -> str | None:
     """Get current request ID from context (accessible from any async code)"""
     return request_id_ctx.get()
 
 
-def get_correlation_id() -> Optional[str]:
+def get_correlation_id() -> str | None:
     """Get current correlation ID from context (accessible from any async code)"""
     return correlation_id_ctx.get()
 

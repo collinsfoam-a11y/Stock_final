@@ -6,7 +6,7 @@ Pydantic models for audit logging of user actions.
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -58,14 +58,14 @@ class AuditLogCreate(BaseModel):
     user_id: str = Field(description="ID of the user performing the action")
     username: str = Field(description="Username of the user")
     action: AuditAction = Field(description="Type of action performed")
-    resource_type: Optional[str] = Field(
+    resource_type: str | None = Field(
         default=None,
         description="Type of resource affected (e.g., 'user', 'item', 'session')",
     )
-    resource_id: Optional[str] = Field(default=None, description="ID of the affected resource")
-    details: Optional[dict[str, Any]] = Field(default=None, description="Additional action details")
-    ip_address: Optional[str] = Field(default=None, description="IP address of the request")
-    user_agent: Optional[str] = Field(default=None, description="User agent string")
+    resource_id: str | None = Field(default=None, description="ID of the affected resource")
+    details: dict[str, Any] | None = Field(default=None, description="Additional action details")
+    ip_address: str | None = Field(default=None, description="IP address of the request")
+    user_agent: str | None = Field(default=None, description="User agent string")
 
     model_config = ConfigDict(
         json_schema_extra={

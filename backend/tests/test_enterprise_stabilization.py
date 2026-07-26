@@ -1,8 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
+
+from backend.config import settings
 from backend.server import app
 from backend.tests.utils.in_memory_db import setup_server_with_in_memory_db
-from backend.config import settings
 
 
 @pytest.fixture
@@ -91,8 +92,9 @@ def test_sql_verification_logic_enforcement(client, fake_environment, monkeypatc
         }
     )
 
-    from backend.services.sql_verification_service import sql_verification_service
     from unittest.mock import AsyncMock
+
+    from backend.services.sql_verification_service import sql_verification_service
 
     monkeypatch.setattr(sql_verification_service, "_get_sql_quantity", AsyncMock(return_value=15.0))
 
@@ -127,8 +129,9 @@ def test_sql_down_behavior_blocked(client, fake_environment, monkeypatch):
         {"_id": "item001", "item_code": item_code, "item_name": "Test Item", "stock_qty": 10.0}
     )
 
-    from backend.services.sql_verification_service import sql_verification_service
     from unittest.mock import AsyncMock
+
+    from backend.services.sql_verification_service import sql_verification_service
 
     monkeypatch.setattr(
         sql_verification_service,

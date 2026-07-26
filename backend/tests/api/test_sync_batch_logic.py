@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from backend.api.sync_batch_api import (
     SyncRecord,
     _process_count_line_op,

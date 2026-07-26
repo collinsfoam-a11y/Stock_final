@@ -1,9 +1,9 @@
 """Tests for the event-driven ERP sync pipeline (v2.2 Priority 1)."""
 
 import json
+from unittest.mock import AsyncMock
 
 import pytest
-from unittest.mock import AsyncMock
 
 from backend.services.erp_event_sync import (
     DLQ_STREAM_KEY,
@@ -57,9 +57,7 @@ class FakeRedis:
         return list(self.streams.get(key, []))[:count]
 
     async def xdel(self, key, message_id):
-        self.streams[key] = [
-            (mid, f) for mid, f in self.streams.get(key, []) if mid != message_id
-        ]
+        self.streams[key] = [(mid, f) for mid, f in self.streams.get(key, []) if mid != message_id]
         return 1
 
     async def xpending(self, key, group):
@@ -127,9 +125,7 @@ async def test_producer_appends_event_with_deterministic_id():
 async def test_producer_rejects_invalid_change_type():
     producer = ErpSyncEventProducer(FakeRedis())
     with pytest.raises(ValueError):
-        await producer.publish(
-            change_type="upsert", item_code="X", payload={}, source_version="1"
-        )
+        await producer.publish(change_type="upsert", item_code="X", payload={}, source_version="1")
 
 
 @pytest.mark.asyncio
@@ -245,9 +241,17 @@ async def test_requeue_dead_letters_moves_events_back():
     redis = FakeRedis()
     await redis.xadd(
         DLQ_STREAM_KEY,
-        {"event_id": "e1", "item_code": "ITEM001", "retries": "3", "error": "x",
-         "failed_at": "0", "change_type": "update", "payload": "{}",
-         "source_version": "v1", "produced_at": "0"},
+        {
+            "event_id": "e1",
+            "item_code": "ITEM001",
+            "retries": "3",
+            "error": "x",
+            "failed_at": "0",
+            "change_type": "update",
+            "payload": "{}",
+            "source_version": "v1",
+            "produced_at": "0",
+        },
     )
 
     moved = await requeue_dead_letters(redis)
@@ -284,7 +288,9 @@ async def test_stale_version_event_is_skipped_not_applied():
     db = make_db(stored_version=5)
     consumer = ErpSyncEventConsumer(redis, db)
     await ErpSyncEventProducer(redis).publish(
-        change_type="update", item_code="ITEM001", payload={"stock_qty": 1},
+        change_type="update",
+        item_code="ITEM001",
+        payload={"stock_qty": 1},
         source_version="3",
     )
 
@@ -301,7 +307,9 @@ async def test_newer_version_event_applies_over_older_stored():
     db = make_db(stored_version=3)
     consumer = ErpSyncEventConsumer(redis, db)
     await ErpSyncEventProducer(redis).publish(
-        change_type="update", item_code="ITEM001", payload={"stock_qty": 9},
+        change_type="update",
+        item_code="ITEM001",
+        payload={"stock_qty": 9},
         source_version="7",
     )
 
@@ -321,7 +329,9 @@ async def test_unversioned_event_preserves_existing_numeric_version():
     db = make_db(stored_version=7)
     consumer = ErpSyncEventConsumer(redis, db)
     await ErpSyncEventProducer(redis).publish(
-        change_type="update", item_code="ITEM001", payload={"stock_qty": 99},
+        change_type="update",
+        item_code="ITEM001",
+        payload={"stock_qty": 99},
         source_version="",  # unparseable -> version is None
     )
 

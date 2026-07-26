@@ -11,7 +11,7 @@ import hashlib
 import logging
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
@@ -42,7 +42,7 @@ class SecurityEvent(BaseModel):
     )
     event_type: str
     ip_address: str
-    username: Optional[str] = None
+    username: str | None = None
     details: dict[str, Any] = Field(default_factory=dict)
     severity: str = "info"
 
@@ -160,9 +160,9 @@ class EnterpriseSecurityService:
         self,
         ip_address: str,
         list_type: IPListType,
-        reason: Optional[str] = None,
-        added_by: Optional[str] = None,
-        expires_at: Optional[datetime] = None,
+        reason: str | None = None,
+        added_by: str | None = None,
+        expires_at: datetime | None = None,
     ) -> bool:
         """Add IP to whitelist or blacklist"""
         try:
@@ -370,8 +370,8 @@ class EnterpriseSecurityService:
         user_id: str,
         username: str,
         ip_address: str,
-        user_agent: Optional[str] = None,
-        device_info: dict[str, Optional[Any]] = None,
+        user_agent: str | None = None,
+        device_info: dict[str, Any | None] = None,
     ) -> str:
         """Create a new session and enforce session limits"""
         now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -412,7 +412,7 @@ class EnterpriseSecurityService:
 
         return session_id
 
-    async def validate_session(self, session_id: str) -> Optional[dict[str, Optional[Any]]]:
+    async def validate_session(self, session_id: str) -> dict[str, Any | None] | None:
         """Validate and refresh session"""
         now = datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -437,9 +437,7 @@ class EnterpriseSecurityService:
         result = await self.session_collection.delete_one({"session_id": session_id})
         return result.deleted_count > 0
 
-    async def terminate_all_sessions(
-        self, user_id: str, except_session: Optional[str] = None
-    ) -> int:
+    async def terminate_all_sessions(self, user_id: str, except_session: str | None = None) -> int:
         """Terminate all sessions for a user"""
         # Note: values in this query may be strings or nested dicts (e.g., {"$ne": ...})
         query: dict[str, Any] = {"user_id": user_id}
@@ -477,9 +475,9 @@ class EnterpriseSecurityService:
         self,
         event_type: str,
         ip_address: str,
-        username: Optional[str] = None,
+        username: str | None = None,
         severity: str = "info",
-        details: dict[str, Optional[Any]] = None,
+        details: dict[str, Any | None] = None,
     ):
         """Log a security event"""
         try:
@@ -499,9 +497,9 @@ class EnterpriseSecurityService:
     async def get_security_events(
         self,
         limit: int = 100,
-        event_type: Optional[str] = None,
-        severity: Optional[str] = None,
-        start_date: Optional[datetime] = None,
+        event_type: str | None = None,
+        severity: str | None = None,
+        start_date: datetime | None = None,
     ) -> list[dict[str, Any]]:
         """Get recent security events"""
         query: dict[str, Any] = {}

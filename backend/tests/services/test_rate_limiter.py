@@ -3,7 +3,6 @@
 import time
 
 import pytest
-
 from backend.services.rate_limiter import ConcurrentRequestHandler, RateLimiter
 
 

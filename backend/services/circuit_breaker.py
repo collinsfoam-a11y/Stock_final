@@ -9,7 +9,7 @@ import time
 from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
@@ -59,7 +59,7 @@ class CircuitBreaker:
         self._state = CircuitState.CLOSED
         self._failure_count = 0
         self._success_count = 0
-        self._last_failure_time: Optional[float] = None
+        self._last_failure_time: float | None = None
         self._half_open_calls = 0
         self._lock = asyncio.Lock()
 
@@ -197,7 +197,7 @@ class CircuitBreakerRegistry:
                 self._breakers[name] = CircuitBreaker(name, config)
             return self._breakers[name]
 
-    def get(self, name: str) -> Optional[CircuitBreaker]:
+    def get(self, name: str) -> CircuitBreaker | None:
         """Get circuit breaker by name"""
         return self._breakers.get(name)
 
@@ -207,7 +207,7 @@ class CircuitBreakerRegistry:
 
 
 # Decorator for circuit breaker protection
-def with_circuit_breaker(breaker: CircuitBreaker, fallback: Optional[Callable] = None):
+def with_circuit_breaker(breaker: CircuitBreaker, fallback: Callable | None = None):
     """
     Decorator to protect a function with circuit breaker
 
@@ -247,15 +247,13 @@ def with_circuit_breaker(breaker: CircuitBreaker, fallback: Optional[Callable] =
 class CircuitOpenError(Exception):
     """Raised when circuit breaker is open"""
 
-    pass
-
 
 # Global registry instance
 circuit_breaker_registry = CircuitBreakerRegistry()
 
 
 async def get_circuit_breaker(
-    name: str, config: Optional[CircuitBreakerConfig] = None
+    name: str, config: CircuitBreakerConfig | None = None
 ) -> CircuitBreaker:
     """
     Get or create a circuit breaker from the global registry

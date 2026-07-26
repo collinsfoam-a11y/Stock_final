@@ -3,7 +3,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from backend.services.database_health import DatabaseHealthService
 
 pytestmark = pytest.mark.asyncio

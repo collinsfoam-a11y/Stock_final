@@ -4,7 +4,7 @@ Shared dependencies for authentication across all routers
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -22,9 +22,9 @@ class AuthDependencies:
     """Thread-safe authentication dependencies container"""
 
     def __init__(self):
-        self._db: Optional[AsyncIOMotorDatabase] = None
-        self._secret_key: Optional[str] = None
-        self._algorithm: Optional[str] = None
+        self._db: AsyncIOMotorDatabase | None = None
+        self._secret_key: str | None = None
+        self._algorithm: str | None = None
         # auto_error=True to force 403 if missing (for debugging)
         self._security = HTTPBearer(auto_error=False)
         self._initialized = False
@@ -98,7 +98,7 @@ class JWTValidator:
     """Handles JWT token validation and decoding"""
 
     @staticmethod
-    def extract_token(request: Request, credentials: Optional[HTTPAuthorizationCredentials]) -> str:
+    def extract_token(request: Request, credentials: HTTPAuthorizationCredentials | None) -> str:
         """Extract JWT token from request credentials or headers"""
         if credentials:
             return credentials.credentials
@@ -163,14 +163,14 @@ class UserRepository:
     """Handles user database operations"""
 
     @staticmethod
-    async def get_user_by_username(username: str) -> Optional[dict[str, Any]]:
+    async def get_user_by_username(username: str) -> dict[str, Any] | None:
         """Retrieve user from database by username"""
         return await auth_deps.db.users.find_one({"username": username})
 
 
 async def get_current_user(
     request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(auth_deps.security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(auth_deps.security),
 ) -> dict[str, Any]:
     """
     Get current authenticated user from JWT token
@@ -239,8 +239,8 @@ get_current_user_async = get_current_user
 
 async def optional_get_current_user(
     request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(auth_deps.security),
-) -> Optional[dict[str, Any]]:
+    credentials: HTTPAuthorizationCredentials | None = Depends(auth_deps.security),
+) -> dict[str, Any] | None:
     """
     Like get_current_user, but returns None instead of raising 401
     when no credentials are provided. Used for endpoints that are

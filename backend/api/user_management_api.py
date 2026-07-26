@@ -5,7 +5,7 @@ Full CRUD endpoints for managing users - Admin only
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, NoReturn, Optional, cast
+from typing import Any, NoReturn, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, EmailStr, Field
@@ -32,12 +32,12 @@ class UserListItem(BaseModel):
 
     id: str
     username: str
-    email: Optional[str] = None
-    full_name: Optional[str] = None
+    email: str | None = None
+    full_name: str | None = None
     role: str = "staff"
     is_active: bool = True
-    created_at: Optional[datetime] = None
-    last_login: Optional[datetime] = None
+    created_at: datetime | None = None
+    last_login: datetime | None = None
     permissions_count: int = 0
 
 
@@ -56,12 +56,12 @@ class UserDetailResponse(BaseModel):
 
     id: str
     username: str
-    email: Optional[str] = None
-    full_name: Optional[str] = None
+    email: str | None = None
+    full_name: str | None = None
     role: str = "staff"
     is_active: bool = True
-    created_at: Optional[datetime] = None
-    last_login: Optional[datetime] = None
+    created_at: datetime | None = None
+    last_login: datetime | None = None
     permissions: list[str] = []
     custom_permissions: list[str] = []
     disabled_permissions: list[str] = []
@@ -72,7 +72,7 @@ class AssignableUserItem(BaseModel):
     """User item for supervisor recount assignment."""
 
     username: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
 
 
 class CreateUserRequest(BaseModel):
@@ -84,35 +84,35 @@ class CreateUserRequest(BaseModel):
         max_length=50,
         pattern=r"^[a-zA-Z0-9_-]+$",
     )
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = Field(None, max_length=100)
+    email: EmailStr | None = None
+    full_name: str | None = Field(None, max_length=100)
     password: str = Field(..., min_length=6, max_length=128)
-    pin: Optional[str] = Field(None, pattern=r"^\d{4}$")
+    pin: str | None = Field(None, pattern=r"^\d{4}$")
     role: str = Field(
         default="staff",
         pattern=r"^(staff|supervisor|admin)$",
     )
-    permissions: Optional[list[str]] = None
+    permissions: list[str] | None = None
 
 
 class UpdateUserRequest(BaseModel):
     """Request to update a user"""
 
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = Field(None, max_length=100)
-    password: Optional[str] = Field(
+    email: EmailStr | None = None
+    full_name: str | None = Field(None, max_length=100)
+    password: str | None = Field(
         None,
         min_length=6,
         max_length=128,
     )
-    pin: Optional[str] = Field(None, pattern=r"^\d{4}$")
-    role: Optional[str] = Field(
+    pin: str | None = Field(None, pattern=r"^\d{4}$")
+    role: str | None = Field(
         None,
         pattern=r"^(staff|supervisor|admin)$",
     )
-    is_active: Optional[bool] = None
-    permissions: Optional[list[str]] = None
-    disabled_permissions: Optional[list[str]] = None
+    is_active: bool | None = None
+    permissions: list[str] | None = None
+    disabled_permissions: list[str] | None = None
 
 
 class BulkUserAction(BaseModel):
@@ -123,7 +123,7 @@ class BulkUserAction(BaseModel):
         ...,
         pattern=r"^(activate|deactivate|delete|change_role)$",
     )
-    role: Optional[str] = Field(None, pattern=r"^(staff|supervisor|admin)$")
+    role: str | None = Field(None, pattern=r"^(staff|supervisor|admin)$")
 
 
 class BulkActionResult(BaseModel):
@@ -312,12 +312,12 @@ async def _resolve_user_or_raise(db: Any, user_id: str) -> tuple[Any, dict[str, 
 async def list_users(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    search: Optional[str] = Query(
+    search: str | None = Query(
         None,
         description="Search by username, email, or name",
     ),
-    role: Optional[str] = Query(None, description="Filter by role"),
-    is_active: Optional[bool] = Query(
+    role: str | None = Query(None, description="Filter by role"),
+    is_active: bool | None = Query(
         None,
         description="Filter by active status",
     ),
@@ -626,9 +626,11 @@ async def update_user(
                 before={"role": existing_doc.get("role")},
                 after={"role": update["role"]},
             )
-        if "is_active" in update and update["is_active"] is False and existing_doc.get(
-            "is_active"
-        ) is not False:
+        if (
+            "is_active" in update
+            and update["is_active"] is False
+            and existing_doc.get("is_active") is not False
+        ):
             await audit_service.log_event(
                 event_type=AuditEventType.USER_DISABLED,
                 actor_id=current_user.get("username"),
@@ -840,8 +842,8 @@ async def get_available_roles(
 @user_management_router.post("/{user_id}/reset-password")
 async def reset_user_password(
     user_id: str,
-    payload: Optional[ResetPasswordRequest] = None,
-    new_password: Optional[str] = Query(None, min_length=6, max_length=128),
+    payload: ResetPasswordRequest | None = None,
+    new_password: str | None = Query(None, min_length=6, max_length=128),
     current_user: dict = Depends(require_admin),
 ):
     """
@@ -877,8 +879,8 @@ async def reset_user_password(
 @user_management_router.post("/{user_id}/reset-pin")
 async def reset_user_pin(
     user_id: str,
-    payload: Optional[ResetPinRequest] = None,
-    new_pin: Optional[str] = Query(None, pattern=r"^\d{4}$"),
+    payload: ResetPinRequest | None = None,
+    new_pin: str | None = Query(None, pattern=r"^\d{4}$"),
     current_user: dict = Depends(require_admin),
 ):
     """

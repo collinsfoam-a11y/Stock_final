@@ -56,9 +56,7 @@ async def test_resolve_conflict_handles_non_object_id_entity_ids():
 @pytest.mark.asyncio
 async def test_detect_conflict_writes_canonical_audit_event():
     db = MagicMock()
-    db.sync_conflicts.insert_one = AsyncMock(
-        return_value=MagicMock(inserted_id="conflict-id-1")
-    )
+    db.sync_conflicts.insert_one = AsyncMock(return_value=MagicMock(inserted_id="conflict-id-1"))
 
     service = SyncConflictsService(db)
     service.event_service.record_sync_queue_event = AsyncMock(return_value=None)
@@ -158,7 +156,9 @@ async def test_get_conflicts_paginates_beyond_limit():
     all_conflicts = [{"_id": f"id{i}", "status": "pending"} for i in range(250)]
 
     db = MagicMock()
-    db.sync_conflicts.find = MagicMock(side_effect=lambda *_a, **_k: _FakeCursor(list(all_conflicts)))
+    db.sync_conflicts.find = MagicMock(
+        side_effect=lambda *_a, **_k: _FakeCursor(list(all_conflicts))
+    )
     db.sync_conflicts.count_documents = AsyncMock(return_value=len(all_conflicts))
 
     service = SyncConflictsService(db)

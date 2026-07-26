@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any
 
 from bson import ObjectId
 
@@ -12,8 +13,8 @@ from backend.services.concurrency import ConcurrencyError, build_version_filter,
 from backend.services.governance_audit_service import GovernanceAuditService
 from backend.services.governance_guard import (
     GovernanceViolation,
-    assert_valid_write,
     assert_valid_transition,
+    assert_valid_write,
     normalize_session_status,
     write_authority,
 )
@@ -45,10 +46,10 @@ class SessionLifecycleService:
         self,
         db: Any,
         *,
-        validation_service: Optional[ValidationService] = None,
-        audit_service: Optional[GovernanceAuditService] = None,
-        projection_service: Optional[ProjectionWriteService] = None,
-        count_line_finalizer: Optional[Callable[..., Awaitable[int]]] = None,
+        validation_service: ValidationService | None = None,
+        audit_service: GovernanceAuditService | None = None,
+        projection_service: ProjectionWriteService | None = None,
+        count_line_finalizer: Callable[..., Awaitable[int]] | None = None,
     ) -> None:
         self.db = db
         self.validation_service = validation_service or ValidationService(db)
@@ -61,7 +62,7 @@ class SessionLifecycleService:
         return {"$or": [{"id": session_id}, {"session_id": session_id}]}
 
     @staticmethod
-    def _kwargs(db_session: Optional[Any]) -> dict[str, Any]:
+    def _kwargs(db_session: Any | None) -> dict[str, Any]:
         return {"session": db_session} if db_session is not None else {}
 
     async def _execute_authorized_write(self, write_call: Any) -> Any:
@@ -75,15 +76,15 @@ class SessionLifecycleService:
         self,
         session_id: str,
         *,
-        db_session: Optional[Any] = None,
-    ) -> Optional[dict[str, Any]]:
+        db_session: Any | None = None,
+    ) -> dict[str, Any] | None:
         return await self.db.sessions.find_one(self._lookup(session_id), **self._kwargs(db_session))
 
     async def ensure_session_exists(
         self,
         session_id: str,
         *,
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
     ) -> dict[str, Any]:
         session = await self.get_session(session_id, db_session=db_session)
         if not session:
@@ -94,7 +95,7 @@ class SessionLifecycleService:
         self,
         session_id: str,
         *,
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
     ) -> dict[str, Any]:
         session = await self.ensure_session_exists(session_id, db_session=db_session)
         canonical = normalize_session_status(session.get("status"))
@@ -106,7 +107,7 @@ class SessionLifecycleService:
         self,
         session_id: str,
         *,
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
     ) -> dict[str, Any]:
         session = await self.ensure_session_not_finalized(session_id, db_session=db_session)
         canonical = normalize_session_status(session.get("status"))
@@ -122,7 +123,7 @@ class SessionLifecycleService:
         session_id: str,
         set_doc: dict[str, Any],
         expected_version: int,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> None:
         filter_doc = {
             "$and": [
@@ -147,7 +148,7 @@ class SessionLifecycleService:
         self,
         session_id: str,
         *,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> dict[str, Any]:
         from backend.services.canonical_inventory import (
             is_count_line_effectively_reviewed,
@@ -158,7 +159,7 @@ class SessionLifecycleService:
         total_variance = 0.0
         verified_items = 0
         damage_items = 0
-        last_activity: Optional[datetime] = None
+        last_activity: datetime | None = None
         kwargs = self._kwargs(db_session)
 
         cursor = self.db.count_lines.find({"session_id": session_id}, **kwargs)
@@ -200,7 +201,7 @@ class SessionLifecycleService:
         session_id: str,
         trigger: str,
         actor: str,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> None:
         await self.projection_service.sync_for_sessions(
             [session_id],
@@ -216,7 +217,7 @@ class SessionLifecycleService:
         session_id: str,
         snapshot_doc: dict[str, Any],
         actor: str,
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
     ) -> dict[str, Any]:
         if not isinstance(snapshot_doc, dict) or not snapshot_doc:
             raise GovernanceViolation("CRITICAL: snapshot_doc is required")
@@ -256,7 +257,7 @@ class SessionLifecycleService:
         *,
         session_doc: dict[str, Any],
         username: str,
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
         _transaction_started: bool = False,
     ) -> dict[str, Any]:
         if db_session is None and not _transaction_started:
@@ -340,9 +341,9 @@ class SessionLifecycleService:
         session_id: str,
         target_status: str,
         actor: str,
-        note: Optional[str] = None,
-        db_session: Optional[Any] = None,
-        expected_version: Optional[int] = None,
+        note: str | None = None,
+        db_session: Any | None = None,
+        expected_version: int | None = None,
         _transaction_started: bool = False,
     ) -> dict[str, Any]:
         if db_session is None and not _transaction_started:
@@ -465,8 +466,8 @@ class SessionLifecycleService:
         session_id: str,
         totals: dict[str, Any],
         *,
-        db_session: Optional[Any] = None,
-        expected_version: Optional[int] = None,
+        db_session: Any | None = None,
+        expected_version: int | None = None,
         actor: str = "system",
         sync_projection: bool = True,
     ) -> None:
@@ -509,7 +510,7 @@ class SessionLifecycleService:
         self,
         session_id: str,
         *,
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
     ) -> None:
         """
         FIX GROUP 10: Server-side pre-finalization gate.
@@ -559,8 +560,8 @@ class SessionLifecycleService:
         session_id: str,
         fields: dict[str, Any],
         *,
-        db_session: Optional[Any] = None,
-        expected_version: Optional[int] = None,
+        db_session: Any | None = None,
+        expected_version: int | None = None,
         actor: str = "system",
     ) -> None:
         if not isinstance(fields, dict) or not fields:
@@ -603,10 +604,10 @@ class SessionLifecycleService:
         self,
         *,
         session_id: str,
-        logic_version: Optional[str],
-        logic_scope_source: Optional[str],
-        db_session: Optional[Any] = None,
-        expected_version: Optional[int] = None,
+        logic_version: str | None,
+        logic_scope_source: str | None,
+        db_session: Any | None = None,
+        expected_version: int | None = None,
         actor: str = "system",
     ) -> None:
         await self.update_session_fields(
@@ -634,8 +635,8 @@ class SessionLifecycleService:
         self,
         recount_id: str,
         *,
-        db_session: Optional[Any] = None,
-    ) -> Optional[dict[str, Any]]:
+        db_session: Any | None = None,
+    ) -> dict[str, Any] | None:
         return await self.db.recount_requests.find_one(
             self._recount_lookup(recount_id),
             **self._kwargs(db_session),
@@ -646,7 +647,7 @@ class SessionLifecycleService:
         *,
         recount_doc: dict[str, Any],
         actor: str,
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
         _transaction_started: bool = False,
     ) -> dict[str, Any]:
         if db_session is None and not _transaction_started:
@@ -709,8 +710,8 @@ class SessionLifecycleService:
         recount_id: str,
         target_status: str,
         actor: str,
-        fields: Optional[dict[str, Any]] = None,
-        db_session: Optional[Any] = None,
+        fields: dict[str, Any] | None = None,
+        db_session: Any | None = None,
         _transaction_started: bool = False,
     ) -> dict[str, Any]:
         if db_session is None and not _transaction_started:
@@ -780,8 +781,8 @@ class SessionLifecycleService:
         *,
         session_id: str,
         actor: str,
-        note: Optional[str],
-        db_session: Optional[Any],
+        note: str | None,
+        db_session: Any | None,
     ) -> dict[str, Any]:
         from backend.services.canonical_inventory import is_blocking_finalization
 
@@ -926,8 +927,8 @@ class SessionLifecycleService:
         *,
         session_id: str,
         actor: str,
-        note: Optional[str] = None,
-        db_session: Optional[Any] = None,
+        note: str | None = None,
+        db_session: Any | None = None,
     ) -> dict[str, Any]:
         if db_session is not None:
             return await self._finalize_session_canonical_core(

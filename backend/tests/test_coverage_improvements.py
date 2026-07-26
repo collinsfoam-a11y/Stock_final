@@ -4,31 +4,31 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from backend.utils.auth_utils import (
-    verify_password,
-    get_password_hash,
-    _verify_bcrypt_fallback,
-)
-from backend.utils.api_utils import (
-    sanitize_for_logging,
-    create_safe_error_response,
-    handle_result,
-)
-from backend.utils.result import Result
 from backend.exceptions import (
-    StockVerifyException,
     AuthenticationError,
     AuthorizationError,
-    ValidationError,
     NotFoundError,
     RateLimitError,
+    StockVerifyException,
+    ValidationError,
 )
-from backend.services.search_service import SearchService, SearchResponse
 from backend.services.scheduled_export_service import (
-    ScheduledExportService,
-    ExportFrequency,
     ExportFormat,
+    ExportFrequency,
+    ScheduledExportService,
 )
+from backend.services.search_service import SearchResponse, SearchService
+from backend.utils.api_utils import (
+    create_safe_error_response,
+    handle_result,
+    sanitize_for_logging,
+)
+from backend.utils.auth_utils import (
+    _verify_bcrypt_fallback,
+    get_password_hash,
+    verify_password,
+)
+from backend.utils.result import Result
 
 # --- Tests for auth_utils.py ---
 

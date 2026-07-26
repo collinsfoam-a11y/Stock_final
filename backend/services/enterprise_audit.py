@@ -9,7 +9,7 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
@@ -18,15 +18,15 @@ logger = logging.getLogger(__name__)
 
 
 def _build_audit_search_query(
-    event_types: Optional[list] = None,
-    actor_username: Optional[str] = None,
-    resource_type: Optional[str] = None,
-    resource_id: Optional[str] = None,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
-    severity: Optional[Any] = None,
-    outcome: Optional[str] = None,
-    correlation_id: Optional[str] = None,
+    event_types: list | None = None,
+    actor_username: str | None = None,
+    resource_type: str | None = None,
+    resource_id: str | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    severity: Any | None = None,
+    outcome: str | None = None,
+    correlation_id: str | None = None,
 ) -> dict[str, Any]:
     """Build MongoDB query for audit log search."""
     query: dict[str, Any] = {}
@@ -58,8 +58,8 @@ def _build_audit_search_query(
 def _add_date_range_filter(
     query: dict[str, Any],
     field: str,
-    start_date: Optional[datetime],
-    end_date: Optional[datetime],
+    start_date: datetime | None,
+    end_date: datetime | None,
 ) -> None:
     """Add date range filter to query if dates provided."""
     if not start_date and not end_date:
@@ -122,7 +122,7 @@ class AuditSeverity(str, Enum):
 class AuditEntry(BaseModel):
     """Immutable audit log entry"""
 
-    id: Optional[str] = None
+    id: str | None = None
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
     )
@@ -130,16 +130,16 @@ class AuditEntry(BaseModel):
     severity: AuditSeverity = AuditSeverity.INFO
 
     # Actor information
-    actor_id: Optional[str] = None
-    actor_username: Optional[str] = None
-    actor_role: Optional[str] = None
-    actor_ip: Optional[str] = None
-    actor_user_agent: Optional[str] = None
+    actor_id: str | None = None
+    actor_username: str | None = None
+    actor_role: str | None = None
+    actor_ip: str | None = None
+    actor_user_agent: str | None = None
 
     # Resource information
-    resource_type: Optional[str] = None
-    resource_id: Optional[str] = None
-    resource_name: Optional[str] = None
+    resource_type: str | None = None
+    resource_id: str | None = None
+    resource_name: str | None = None
 
     # Event details
     action: str
@@ -147,17 +147,17 @@ class AuditEntry(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
 
     # Change tracking (for updates)
-    old_value: Optional[dict[str, Optional[Any]]] = None
-    new_value: Optional[dict[str, Optional[Any]]] = None
+    old_value: dict[str, Any | None] | None = None
+    new_value: dict[str, Any | None] | None = None
 
     # Integrity
-    previous_hash: Optional[str] = None
-    entry_hash: Optional[str] = None
+    previous_hash: str | None = None
+    entry_hash: str | None = None
 
     # Compliance metadata
-    correlation_id: Optional[str] = None
-    session_id: Optional[str] = None
-    request_id: Optional[str] = None
+    correlation_id: str | None = None
+    session_id: str | None = None
+    request_id: str | None = None
 
 
 class EnterpriseAuditService:
@@ -180,7 +180,7 @@ class EnterpriseAuditService:
         self.collection = mongo_db.enterprise_audit_logs
         self.retention_days = retention_days
         self.enable_hash_chain = enable_hash_chain
-        self._last_hash: Optional[str] = None
+        self._last_hash: str | None = None
 
     async def initialize(self):
         """Initialize indexes and load last hash"""
@@ -200,7 +200,7 @@ class EnterpriseAuditService:
 
         logger.info("Enterprise audit service initialized")
 
-    def _compute_hash(self, entry: dict[str, Any], previous_hash: Optional[str]) -> str:
+    def _compute_hash(self, entry: dict[str, Any], previous_hash: str | None) -> str:
         """Compute SHA-256 hash for tamper detection"""
         data = {
             "timestamp": str(entry.get("timestamp")),
@@ -218,22 +218,22 @@ class EnterpriseAuditService:
         self,
         event_type: AuditEventType,
         action: str,
-        actor_id: Optional[str] = None,
-        actor_username: Optional[str] = None,
-        actor_role: Optional[str] = None,
-        actor_ip: Optional[str] = None,
-        actor_user_agent: Optional[str] = None,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[str] = None,
-        resource_name: Optional[str] = None,
+        actor_id: str | None = None,
+        actor_username: str | None = None,
+        actor_role: str | None = None,
+        actor_ip: str | None = None,
+        actor_user_agent: str | None = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        resource_name: str | None = None,
         outcome: str = "success",
         severity: AuditSeverity = AuditSeverity.INFO,
-        details: dict[str, Optional[Any]] = None,
-        old_value: dict[str, Optional[Any]] = None,
-        new_value: dict[str, Optional[Any]] = None,
-        correlation_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        details: dict[str, Any | None] = None,
+        old_value: dict[str, Any | None] = None,
+        new_value: dict[str, Any | None] = None,
+        correlation_id: str | None = None,
+        session_id: str | None = None,
+        request_id: str | None = None,
     ) -> str:
         """
         Create an immutable audit log entry
@@ -289,14 +289,14 @@ class EnterpriseAuditService:
     async def search(
         self,
         event_types: list[AuditEventType] = None,
-        actor_username: Optional[str] = None,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        actor_username: str | None = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         severity: AuditSeverity = None,
-        outcome: Optional[str] = None,
-        correlation_id: Optional[str] = None,
+        outcome: str | None = None,
+        correlation_id: str | None = None,
         limit: int = 100,
         skip: int = 0,
     ) -> dict[str, Any]:
@@ -324,7 +324,7 @@ class EnterpriseAuditService:
         return {"total": total, "limit": limit, "skip": skip, "entries": entries}
 
     async def verify_integrity(
-        self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None
+        self, start_date: datetime | None = None, end_date: datetime | None = None
     ) -> dict[str, Any]:
         """Verify hash chain integrity for tamper detection"""
         if not self.enable_hash_chain:

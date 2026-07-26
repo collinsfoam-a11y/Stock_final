@@ -15,7 +15,7 @@ import argparse
 import asyncio
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -141,7 +141,7 @@ async def _backfill(
     execute: bool,
     rebuild_projections: bool,
     limit: int,
-    session_id: Optional[str],
+    session_id: str | None,
 ) -> dict[str, Any]:
     client = AsyncIOMotorClient(settings.MONGO_URL.rstrip("/"))
     db = client[settings.DB_NAME]
@@ -237,7 +237,7 @@ async def _has_index(
     collection: Any,
     *,
     expected_key: list[tuple[str, int]],
-    unique: Optional[bool] = None,
+    unique: bool | None = None,
 ) -> bool:
     cursor = collection.list_indexes()
     async for index in cursor:
@@ -249,7 +249,7 @@ async def _has_index(
     return False
 
 
-async def _projection_collection_counts(db: Any, *, session_id: Optional[str]) -> dict[str, int]:
+async def _projection_collection_counts(db: Any, *, session_id: str | None) -> dict[str, int]:
     query = {"session_id": session_id} if session_id else {}
     counts: dict[str, int] = {}
     for collection_name in (*PROJECTION_COLLECTIONS, "event_applied"):
@@ -260,7 +260,7 @@ async def _projection_collection_counts(db: Any, *, session_id: Optional[str]) -
 async def _build_readiness_report(
     db: Any,
     *,
-    session_id: Optional[str],
+    session_id: str | None,
     validation_report: dict[str, Any],
     estimated_event_volume: int,
 ) -> dict[str, Any]:
@@ -288,7 +288,7 @@ async def _build_readiness_report(
     }
 
 
-def _write_report(report_file: Optional[str], report: dict[str, Any]) -> None:
+def _write_report(report_file: str | None, report: dict[str, Any]) -> None:
     if not report_file:
         return
     path = Path(report_file)

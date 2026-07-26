@@ -4,7 +4,7 @@ Provides endpoints for verifying item quantities against SQL Server
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/v2/verification", tags=["SQL Verification"])
 
 
 class BatchVerifyRequest(BaseModel):
-    item_codes: List[str]
+    item_codes: list[str]
 
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
@@ -28,8 +28,8 @@ def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
 
 @router.post("/items/{item_code}/verify-qty")
 async def verify_item_quantity(
-    item_code: str, current_user: Dict[str, Any] = Depends(get_current_user)
-) -> ApiResponse[Dict[str, Any]]:
+    item_code: str, current_user: dict[str, Any] = Depends(get_current_user)
+) -> ApiResponse[dict[str, Any]]:
     """
     Verify item quantity against SQL Server
 
@@ -77,8 +77,8 @@ async def verify_item_quantity(
 
 @router.post("/items/batch-verify-qty")
 async def batch_verify_items(
-    request: BatchVerifyRequest, current_user: Dict[str, Any] = Depends(get_current_user)
-) -> ApiResponse[Dict[str, Any]]:
+    request: BatchVerifyRequest, current_user: dict[str, Any] = Depends(get_current_user)
+) -> ApiResponse[dict[str, Any]]:
     """
     Batch verify item quantities against SQL Server
 

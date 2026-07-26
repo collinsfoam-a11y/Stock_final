@@ -9,7 +9,7 @@ import os
 import socket
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ class PortDetector:
             return False
 
     @staticmethod
-    def find_available_port(preferred_port: int, port_range: Optional[range] = None) -> int:
+    def find_available_port(preferred_port: int, port_range: range | None = None) -> int:
         """Find an available port starting from preferred"""
 
         # Try preferred port first
@@ -179,7 +179,7 @@ class PortDetector:
         return mongo_url
 
     @staticmethod
-    def get_mongo_status() -> Dict[str, Any]:
+    def get_mongo_status() -> dict[str, Any]:
         """Get MongoDB port and running status"""
         port, is_running = PortDetector.find_mongo_port()
         return {

@@ -103,7 +103,7 @@ async def init_default_users(db):
                 logger.info("Added PIN to existing user: admin")
 
     except Exception as e:
-        logger.error(f"Error creating default users: {str(e)}")
+        logger.error(f"Error creating default users: {e!s}")
         raise
 
 
@@ -215,4 +215,4 @@ async def init_mock_erp_data(db):
             await db.erp_items.insert_many(mock_items)
             logging.info("Mock ERP data initialized")
     except Exception as e:
-        logger.error(f"Error initializing mock ERP data: {str(e)}")
+        logger.error(f"Error initializing mock ERP data: {e!s}")

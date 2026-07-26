@@ -1,7 +1,8 @@
 import logging
 import os
+from collections.abc import Sequence
 from datetime import date, datetime, timezone
-from typing import Any, Optional, Sequence
+from typing import Any
 
 from fastapi import HTTPException
 
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 # --------------------------------------------------------------------------- #
 # Module-level helpers for _map_erp_item_to_schema (reduce cyclomatic complexity)
 # --------------------------------------------------------------------------- #
-def _safe_float(val: Any, default: Optional[float] = None) -> Optional[float]:
+def _safe_float(val: Any, default: float | None = None) -> float | None:
     """Safely convert a value to float."""
     if val is None:
         return default
@@ -31,14 +32,14 @@ def _safe_str(val: Any, default: str = "") -> str:
     return str(val)
 
 
-def _safe_optional_str(val: Any) -> Optional[str]:
+def _safe_optional_str(val: Any) -> str | None:
     """Safely convert a value to optional string (None if empty)."""
     if val is None or val == "":
         return None
     return str(val)
 
 
-def _safe_date_str(val: Any) -> Optional[str]:
+def _safe_date_str(val: Any) -> str | None:
     """Convert date/datetime to ISO string."""
     if val is None:
         return None
@@ -129,7 +130,7 @@ async def _ensure_sql_connection(sql_connector: Any, db: Any) -> bool:
             sql_connector.connect(host, port, database, user, password)
             return True
     except Exception as e:
-        logger.warning(f"Failed to establish SQL Server connection: {str(e)}")
+        logger.warning(f"Failed to establish SQL Server connection: {e!s}")
 
     return False
 
@@ -292,12 +293,12 @@ async def fetch_item_from_erp(
             raise
         except Exception as e:
             error = get_error_message("ERP_QUERY_FAILED", {"barcode": barcode, "error": str(e)})
-            logger.error(f"ERP query error for barcode {barcode}: {str(e)}", exc_info=True)
+            logger.error(f"ERP query error for barcode {barcode}: {e!s}", exc_info=True)
             raise HTTPException(
                 status_code=error["status_code"],
                 detail={
                     "message": error["message"],
-                    "detail": f"{error['detail']} Barcode: {barcode}. Error: {str(e)}",
+                    "detail": f"{error['detail']} Barcode: {barcode}. Error: {e!s}",
                     "code": error["code"],
                     "category": error["category"],
                     "barcode": barcode,
@@ -374,12 +375,12 @@ async def refresh_stock_from_erp(
             raise
         except Exception as e:
             error = get_error_message("ERP_CONNECTION_ERROR", {"error": str(e)})
-            logger.error(f"Failed to refresh stock from ERP: {str(e)}")
+            logger.error(f"Failed to refresh stock from ERP: {e!s}")
             raise HTTPException(
                 status_code=error["status_code"],
                 detail={
                     "message": error["message"],
-                    "detail": f"Failed to refresh stock: {str(e)}",
+                    "detail": f"Failed to refresh stock: {e!s}",
                     "code": error["code"],
                     "category": error["category"],
                 },
@@ -412,9 +413,8 @@ async def search_items_in_erp(search_term: str, sql_connector: Any, db: Any) -> 
             logger.info(f"Search in ERP returned {len(result_items)} items for '{search_term}'")
             return [ERPItem(**item) for item in result_items]
         except Exception as e:
-            logger.error(f"ERP search error: {str(e)}")
+            logger.error(f"ERP search error: {e!s}")
             # Fallback to MongoDB
-            pass
 
     # Fallback: Search in MongoDB
     query = {

@@ -22,6 +22,22 @@ import { useUiTokens } from "@/hooks/useUiTokens";
 import { ScreenContainer } from "@/components/ui";
 import HistoryStateView from "@/components/staff/HistoryStateView";
 
+// ─── Web-Safe Animation Wrapper ───────────────────────────────────────────────
+const SafeAnimatedView: React.FC<{
+  entering?: any;
+  style?: any;
+  children?: React.ReactNode;
+}> = ({ entering, style, children }) => {
+  if (Platform.OS === "web") {
+    return <View style={style}>{children}</View>;
+  }
+  return (
+    <Animated.View entering={entering} style={style}>
+      {children}
+    </Animated.View>
+  );
+};
+
 interface CountLine {
   id: string;
   item_code: string;
@@ -342,9 +358,9 @@ export default function HistoryScreen() {
     );
 
     const AnimatedCard = flags.enableAnimations ? (
-      <Animated.View entering={FadeInUp.springify().damping(12)}>
+      <SafeAnimatedView entering={FadeInUp.springify().damping(12)}>
         {CardContent}
-      </Animated.View>
+      </SafeAnimatedView>
     ) : (
       CardContent
     );
@@ -390,6 +406,7 @@ export default function HistoryScreen() {
           data={countLines}
           renderItem={renderCountLine}
           keyExtractor={(item) => item.id}
+          // @ts-ignore - FlashList estimatedItemSize type mismatch in v2.0.2
           estimatedItemSize={140}
           contentContainerStyle={styles.list}
           ListHeaderComponent={

@@ -64,7 +64,7 @@ async def optimize_indexes():
         logger.info("\n✅ Session Indexes Optimized!")
 
     except Exception as e:
-        logger.error(f"Error: {str(e)}")
+        logger.error(f"Error: {e!s}")
     finally:
         client.close()
 

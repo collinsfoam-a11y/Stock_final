@@ -5,7 +5,7 @@ Centralized validators for security-critical input validation
 
 import logging
 import re
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +204,7 @@ class MongoSaveError(Exception):
         message: str,
         operation: str,
         collection: str,
-        details: Optional[dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.operation = operation
@@ -215,7 +215,7 @@ class MongoSaveError(Exception):
 def verify_insert_result(
     result: Any,
     collection_name: str,
-    document_id: Optional[str] = None,
+    document_id: str | None = None,
 ) -> str:
     """Verify that an insert_one operation was successful.
 
@@ -433,7 +433,7 @@ async def verify_document_exists(
     except Exception as e:
         logger.error(f"Error verifying document in {collection_name}: {e}")
         raise MongoSaveError(
-            f"Failed to verify document: {str(e)}",
+            f"Failed to verify document: {e!s}",
             "verify",
             collection_name,
         ) from e
@@ -476,7 +476,7 @@ async def save_with_verification(
     except Exception as e:
         logger.error(f"Error saving document to {collection_name}: {e}")
         raise MongoSaveError(
-            f"Failed to save document: {str(e)}",
+            f"Failed to save document: {e!s}",
             "save_with_verification",
             collection_name,
         ) from e
@@ -522,7 +522,7 @@ async def update_with_verification(
     except Exception as e:
         logger.error(f"Error updating document in {collection_name}: {e}")
         raise MongoSaveError(
-            f"Failed to update document: {str(e)}",
+            f"Failed to update document: {e!s}",
             "update_with_verification",
             collection_name,
         ) from e

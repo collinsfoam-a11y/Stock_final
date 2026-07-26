@@ -2,6 +2,7 @@
 Comprehensive Database Manager - Handles all database operations with enhanced features
 """
 
+import asyncio
 import logging
 import time
 from datetime import datetime, timezone
@@ -133,7 +134,7 @@ class DatabaseManager:
             }
 
         except Exception as e:
-            logger.error(f"MongoDB health check failed: {str(e)}")
+            logger.error(f"MongoDB health check failed: {e!s}")
             return {"status": "error", "error": str(e), "response_time_ms": 0}
 
     async def _check_sql_server_health(self) -> dict[str, Any]:
@@ -142,7 +143,7 @@ class DatabaseManager:
             start = time.time()
 
             # Test connection
-            connected = self.sql_connector.test_connection()
+            connected = await asyncio.to_thread(self.sql_connector.test_connection)
 
             if not connected:
                 return {
@@ -172,7 +173,7 @@ class DatabaseManager:
             }
 
         except Exception as e:
-            logger.error(f"SQL Server health check failed: {str(e)}")
+            logger.error(f"SQL Server health check failed: {e!s}")
             return {"status": "error", "error": str(e), "response_time_ms": 0}
 
     async def _check_data_consistency(self) -> dict[str, Any]:
@@ -181,7 +182,7 @@ class DatabaseManager:
             # Get counts from both databases
             mongo_count = await self.mongo_db.erp_items.count_documents({})
 
-            if not self.sql_connector.test_connection():
+            if not await asyncio.to_thread(self.sql_connector.test_connection):
                 return {"status": "error", "error": "SQL Server not connected"}
 
             cursor = self.sql_connector.connection.cursor()
@@ -213,7 +214,7 @@ class DatabaseManager:
             }
 
         except Exception as e:
-            logger.error(f"Data consistency check failed: {str(e)}")
+            logger.error(f"Data consistency check failed: {e!s}")
             return {"status": "error", "error": str(e)}
 
     async def _get_performance_metrics(self) -> dict[str, Any]:
@@ -242,7 +243,7 @@ class DatabaseManager:
             }
 
         except Exception as e:
-            logger.error(f"Performance metrics failed: {str(e)}")
+            logger.error(f"Performance metrics failed: {e!s}")
             return {"error": str(e)}
 
     async def _get_index_info(self) -> dict[str, Any]:
@@ -262,7 +263,7 @@ class DatabaseManager:
 
             return index_info
         except Exception as e:
-            logger.error(f"Index info collection failed: {str(e)}")
+            logger.error(f"Index info collection failed: {e!s}")
             return {"error": str(e)}
 
     async def optimize_database_performance(self) -> dict[str, Any]:
@@ -288,7 +289,7 @@ class DatabaseManager:
                             f"Created index {index_spec['name']} on {collection}"
                         )
                     except Exception as e:
-                        logger.warning(f"Index creation failed: {str(e)}")
+                        logger.warning(f"Index creation failed: {e!s}")
 
             # Compact collections if needed
             large_collections = await self._identify_large_collections()
@@ -298,12 +299,12 @@ class DatabaseManager:
                     await self.mongo_db.command("compact", collection)
                     optimizations["maintenance_tasks"].append(f"Compacted collection {collection}")
                 except Exception as e:
-                    logger.warning(f"Collection compaction failed for {collection}: {str(e)}")
+                    logger.warning(f"Collection compaction failed for {collection}: {e!s}")
 
             return optimizations
 
         except Exception as e:
-            logger.error(f"Database optimization failed: {str(e)}")
+            logger.error(f"Database optimization failed: {e!s}")
             return {"error": str(e)}
 
     async def _detect_missing_indexes(self) -> dict[str, list[dict]]:
@@ -350,7 +351,7 @@ class DatabaseManager:
                     missing[collection] = missing_for_collection
 
             except Exception as e:
-                logger.warning(f"Could not check indexes for {collection}: {str(e)}")
+                logger.warning(f"Could not check indexes for {collection}: {e!s}")
 
         return missing
 
@@ -375,7 +376,7 @@ class DatabaseManager:
                     continue  # Skip collections that can't be analyzed
 
         except Exception as e:
-            logger.warning(f"Collection analysis failed: {str(e)}")
+            logger.warning(f"Collection analysis failed: {e!s}")
 
         return large_collections
 
@@ -392,7 +393,7 @@ class DatabaseManager:
             await self._analyze_mongo_collections(insights)
             self._analyze_sql_server(insights)
         except Exception as e:
-            logger.error(f"Database insights failed: {str(e)}")
+            logger.error(f"Database insights failed: {e!s}")
             insights["error"] = str(e)
 
         return insights
@@ -457,7 +458,7 @@ class DatabaseManager:
                     }
                 )
         except Exception as e:
-            logger.warning(f"SQL Server analysis failed: {str(e)}")
+            logger.warning(f"SQL Server analysis failed: {e!s}")
 
     async def verify_data_flow(self) -> dict[str, Any]:
         """Verify complete data flow from SQL Server to Frontend"""
@@ -469,7 +470,7 @@ class DatabaseManager:
 
         try:
             # Step 1: SQL Server data fetch
-            if self.sql_connector.test_connection():
+            if await asyncio.to_thread(self.sql_connector.test_connection):
                 test_item = self.sql_connector.get_item_by_barcode("528120")
                 flow_test["steps"]["sql_server_fetch"] = {
                     "status": "success" if test_item else "no_data",
@@ -510,7 +511,7 @@ class DatabaseManager:
             flow_test["overall_status"] = "success" if all_success else "partial_failure"
 
         except Exception as e:
-            logger.error(f"Data flow verification failed: {str(e)}")
+            logger.error(f"Data flow verification failed: {e!s}")
             flow_test["overall_status"] = "error"
             flow_test["error"] = str(e)
 

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -12,7 +12,7 @@ class StockSnapshot(BaseModel):
     id: str = Field(..., description="Unique snapshot ID")
     session_id: str = Field(..., description="Related count session ID")
     item_code: str = Field(..., description="ERP Item Code")
-    barcode: Optional[str] = None
+    barcode: str | None = None
     erp_qty: float = Field(..., description="Frozen ERP quantity at time of snapshot")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     baseline_hash: str = Field(..., description="SHA256 hash of (item_code + erp_qty + timestamp)")

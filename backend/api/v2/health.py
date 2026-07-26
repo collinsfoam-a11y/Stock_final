@@ -118,7 +118,7 @@ async def _get_health_data() -> ApiResponse[HealthCheckResponse]:
     except Exception as e:
         return ApiResponse.error_response(
             error_code="HEALTH_CHECK_FAILED",
-            error_message=f"Health check failed: {str(e)}",
+            error_message=f"Health check failed: {e!s}",
         )
 
 
@@ -157,5 +157,5 @@ async def detailed_health_check(
     except Exception as e:
         return ApiResponse.error_response(
             error_code="DETAILED_HEALTH_CHECK_FAILED",
-            error_message=f"Detailed health check failed: {str(e)}",
+            error_message=f"Detailed health check failed: {e!s}",
         )

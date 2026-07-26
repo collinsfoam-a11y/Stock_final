@@ -7,10 +7,9 @@ import asyncio
 import json
 import logging
 import time
-from collections.abc import Awaitable
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import datetime
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from bson import ObjectId
 
@@ -43,7 +42,7 @@ class CacheService:
 
     def __init__(
         self,
-        redis_url: Optional[str] = None,
+        redis_url: str | None = None,
         default_ttl: int = 3600,  # 1 hour default
         max_memory_size: int = 100,  # Max items in memory cache
         socket_timeout: float = 5.0,
@@ -67,7 +66,7 @@ class CacheService:
                 self.use_redis = True
                 logger.info("Redis client created (pending connection verification)")
             except Exception as e:
-                logger.warning(f"Redis client creation failed, using in-memory cache: {str(e)}")
+                logger.warning(f"Redis client creation failed, using in-memory cache: {e!s}")
                 self.use_redis = False
         else:
             self.use_redis = False
@@ -83,14 +82,14 @@ class CacheService:
                 logger.warning("Redis connection timed out, using in-memory cache")
                 self.use_redis = False
             except Exception as e:
-                logger.warning(f"Redis connection failed: {str(e)}")
+                logger.warning(f"Redis connection failed: {e!s}")
                 self.use_redis = False
 
     def _get_key(self, prefix: str, key: str) -> str:
         """Generate cache key"""
         return f"{prefix}:{key}"
 
-    async def get(self, prefix: str, key: str) -> Optional[Any]:
+    async def get(self, prefix: str, key: str) -> Any | None:
         """Get value from cache"""
         cache_key = self._get_key(prefix, key)
 
@@ -100,7 +99,7 @@ class CacheService:
                 if value:
                     return json.loads(value)
             except Exception as e:
-                logger.error(f"Redis get error: {str(e)}")
+                logger.error(f"Redis get error: {e!s}")
                 return None
         else:
             # In-memory cache
@@ -116,7 +115,7 @@ class CacheService:
 
         return None
 
-    async def set(self, prefix: str, key: str, value: Any, ttl: Optional[int] = None) -> bool:
+    async def set(self, prefix: str, key: str, value: Any, ttl: int | None = None) -> bool:
         """Set value in cache"""
         cache_key = self._get_key(prefix, key)
         ttl = ttl or self.default_ttl
@@ -124,7 +123,7 @@ class CacheService:
         try:
             serialized = json.dumps(value, cls=CustomJSONEncoder)
         except (TypeError, ValueError) as e:
-            logger.error(f"Failed to serialize value: {str(e)}")
+            logger.error(f"Failed to serialize value: {e!s}")
             return False
 
         if self.use_redis:
@@ -132,7 +131,7 @@ class CacheService:
                 await self.redis_client.setex(cache_key, ttl, serialized)
                 return True
             except Exception as e:
-                logger.error(f"Redis set error: {str(e)}")
+                logger.error(f"Redis set error: {e!s}")
                 return False
         else:
             # In-memory cache
@@ -161,7 +160,7 @@ class CacheService:
                 count = await self.redis_client.delete(cache_key)
                 return count > 0
             except Exception as e:
-                logger.error(f"Redis delete error: {str(e)}")
+                logger.error(f"Redis delete error: {e!s}")
                 return False
         else:
             if cache_key in self._memory_cache:
@@ -183,7 +182,7 @@ class CacheService:
                     count = await self.redis_client.delete(*keys)
                     return int(count)
             except Exception as e:
-                logger.error(f"Redis clear error: {str(e)}")
+                logger.error(f"Redis clear error: {e!s}")
         else:
             # In-memory clear
             keys_to_delete = [k for k in self._memory_cache.keys() if k.startswith(f"{prefix}:")]
@@ -237,7 +236,7 @@ class CacheService:
                     count = await self.redis_client.delete(*keys)
                     return int(count)
             except Exception as e:
-                logger.error(f"Redis clear_pattern error: {str(e)}")
+                logger.error(f"Redis clear_pattern error: {e!s}")
                 return 0
 
             return 0
@@ -254,7 +253,7 @@ class CacheService:
         prefix: str,
         key: str,
         factory: Callable[[], Any],
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
     ) -> Any:
         """
         Get from cache or set using factory function
@@ -272,7 +271,7 @@ class CacheService:
             await self.set(prefix, key, value, ttl)
             return value
         except Exception as e:
-            logger.error(f"Factory error: {str(e)}")
+            logger.error(f"Factory error: {e!s}")
             raise
 
     async def get_stats(self) -> dict[str, Any]:
@@ -298,7 +297,7 @@ async def cache_on_demand(prefix: str, ttl: int = 300):
             if not cache_service:
                 return await func(*args, **kwargs)
 
-            cache_key = f"{prefix}:{str(args)}:{str(kwargs)}"
+            cache_key = f"{prefix}:{args!s}:{kwargs!s}"
             safe_key = cache_key.replace(":", "_").replace(" ", "")[:200]
             cached = await cache_service.get(prefix, safe_key)
             if cached:

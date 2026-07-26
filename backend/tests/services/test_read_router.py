@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pytest
-
 from backend.services.observability import metrics
 from backend.services.read_router import InventoryReadRouter, ProjectionReadError
 from backend.tests.utils.in_memory_db import InMemoryDatabase

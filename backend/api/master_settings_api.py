@@ -3,15 +3,14 @@ Master Settings API - Centralized system configuration
 """
 
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from backend.auth.dependencies import require_admin
 from backend.db.runtime import get_db
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +116,7 @@ async def update_system_parameters(
         # Create a new version snapshot
         import hashlib
         import json
+
         from backend.core.schemas.config_version import ConfigVersion
 
         # Sort keys to ensure consistent hash
@@ -232,7 +232,7 @@ async def get_settings_categories(current_user: dict = Depends(require_admin)):
 
 @master_settings_router.post("/reset")
 async def reset_to_defaults(
-    category: Optional[str] = None, current_user: dict = Depends(require_admin)
+    category: str | None = None, current_user: dict = Depends(require_admin)
 ):
     """Reset settings to defaults"""
     try:
@@ -286,9 +286,7 @@ async def reset_to_defaults(
                 details={"category": category or "all"},
             )
         except Exception as exc:
-            logger.warning(
-                "Failed to audit settings reset: %s", sanitize_for_logging(str(exc))
-            )
+            logger.warning("Failed to audit settings reset: %s", sanitize_for_logging(str(exc)))
 
         return {
             "success": True,

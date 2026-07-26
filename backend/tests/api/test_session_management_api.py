@@ -9,13 +9,12 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-from pydantic import ValidationError
-
-from backend.api.session_management_api import _collect_snapshot_items
 from backend.api.schemas import SessionCreate
+from backend.api.session_management_api import _collect_snapshot_items
 from backend.server import app
 from backend.tests.utils.in_memory_db import InMemoryDatabase
+from httpx import ASGITransport, AsyncClient
+from pydantic import ValidationError
 
 
 class _AsyncCursor:
@@ -250,9 +249,10 @@ class TestCreateSessionEndpoint:
         mock_refresh_service = AsyncMock()
         mock_refresh_service.revoke_all_user_tokens = AsyncMock(return_value=0)
 
+        from unittest.mock import patch
+
         from backend.auth.dependencies import get_current_user_async
         from backend.db.runtime import get_db
-        from unittest.mock import patch
 
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_current_user_async] = override_get_current_user
@@ -1076,10 +1076,11 @@ class TestSessionIdentifierFallbacks:
         async def override_get_redis():
             return mock_redis
 
+        from unittest.mock import patch
+
         from backend.auth.dependencies import get_current_user_async
         from backend.db.runtime import get_db
         from backend.services.redis_service import get_redis
-        from unittest.mock import patch
 
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_current_user_async] = override_get_current_user
@@ -1155,10 +1156,11 @@ class TestSessionIdentifierFallbacks:
         async def override_get_redis():
             return mock_redis
 
+        from unittest.mock import patch
+
         from backend.auth.dependencies import get_current_user_async
         from backend.db.runtime import get_db
         from backend.services.redis_service import get_redis
-        from unittest.mock import patch
 
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_current_user_async] = override_get_current_user

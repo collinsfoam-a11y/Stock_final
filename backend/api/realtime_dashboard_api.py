@@ -6,16 +6,15 @@ Server-Sent Events (SSE) and WebSocket endpoints for live data updates
 import asyncio
 import json
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from backend.auth.dependencies import get_current_user, require_role
 from backend.api.websocket_api import _extract_jwt_from_websocket
+from backend.auth.dependencies import get_current_user, require_role
 from backend.auth.jwt_provider import decode
 from backend.config import settings
 from backend.db.runtime import get_db
@@ -27,6 +26,7 @@ from backend.services.advanced_report_service import (
     SortOrder,
 )
 from backend.services.projection_read_service import ProjectionReadService
+from backend.utils.api_utils import sanitize_for_logging
 from backend.utils.tracing import trace_dashboard_query, trace_span
 
 logger = logging.getLogger(__name__)
@@ -49,12 +49,12 @@ class DashboardColumnPreference(BaseModel):
 class DashboardConfig(BaseModel):
     """Dashboard configuration from frontend."""
 
-    columns: Optional[list[DashboardColumnPreference]] = None
+    columns: list[DashboardColumnPreference] | None = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=50, ge=10, le=200)
-    sort_by: Optional[str] = None
+    sort_by: str | None = None
     sort_order: str = "desc"
-    filters: Optional[dict[str, Any]] = None
+    filters: dict[str, Any] | None = None
     auto_refresh: bool = True
     refresh_interval_seconds: int = Field(default=10, ge=5, le=300)
 
@@ -65,25 +65,25 @@ class ItemDetails(BaseModel):
     id: str
     item_code: str
     item_name: str
-    barcode: Optional[str]
-    category: Optional[str]
-    warehouse: Optional[str]
-    floor: Optional[str]
-    rack_id: Optional[str]
+    barcode: str | None
+    category: str | None
+    warehouse: str | None
+    floor: str | None
+    rack_id: str | None
     stock_qty: float
     counted_qty: float
     variance: float
     variance_percentage: float
     mrp: float
     verified: bool
-    verified_by: Optional[str]
-    verified_at: Optional[datetime]
+    verified_by: str | None
+    verified_at: datetime | None
     counted_by: str
     counted_at: datetime
     session_id: str
-    notes: Optional[str]
-    correction_reason: Optional[dict]
-    photo_proofs: Optional[list[dict]]
+    notes: str | None
+    correction_reason: dict | None
+    photo_proofs: list[dict] | None
     audit_trail: list[dict] = []
 
 
@@ -131,7 +131,7 @@ class ConnectionManager:
     def set_config(self, user_id: str, config: DashboardConfig):
         self.user_configs[user_id] = config
 
-    def get_config(self, user_id: str) -> Optional[DashboardConfig]:
+    def get_config(self, user_id: str) -> DashboardConfig | None:
         return self.user_configs.get(user_id)
 
 
@@ -143,7 +143,7 @@ manager = ConnectionManager()
 # ==========================================
 
 
-def parse_filters(filters: Optional[dict[str, Any]]) -> ReportFilters:
+def parse_filters(filters: dict[str, Any] | None) -> ReportFilters:
     """Parse frontend filters to ReportFilters."""
     if not filters:
         return ReportFilters()
@@ -577,9 +577,7 @@ async def _ws_process_message(
 
 
 @realtime_dashboard_router.websocket("/ws")
-async def websocket_endpoint(
-    websocket: WebSocket, token: Optional[str] = Query(None)
-):
+async def websocket_endpoint(websocket: WebSocket, token: str | None = Query(None)):
     """WebSocket endpoint for bidirectional real-time communication.
 
     The JWT is taken from the ``Sec-WebSocket-Protocol`` header (preferred) or a

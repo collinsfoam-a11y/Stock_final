@@ -6,7 +6,6 @@ Dynamic feature toggling for gradual rollouts and A/B testing
 import logging
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
@@ -29,7 +28,7 @@ class FeatureFlag(BaseModel):
 
     key: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     state: FeatureState = FeatureState.DISABLED
     enabled: bool = False
 
@@ -45,8 +44,8 @@ class FeatureFlag(BaseModel):
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
     )
-    created_by: Optional[str] = None
-    updated_by: Optional[str] = None
+    created_by: str | None = None
+    updated_by: str | None = None
 
     # Environment-specific
     environments: list[str] = Field(
@@ -76,7 +75,7 @@ class FeatureFlagService:
 
         # In-memory cache
         self._cache: dict[str, FeatureFlag] = {}
-        self._cache_time: Optional[datetime] = None
+        self._cache_time: datetime | None = None
 
     async def initialize(self):
         """Initialize indexes"""
@@ -109,9 +108,9 @@ class FeatureFlagService:
     async def is_enabled(
         self,
         key: str,
-        user_id: Optional[str] = None,
-        username: Optional[str] = None,
-        role: Optional[str] = None,
+        user_id: str | None = None,
+        username: str | None = None,
+        role: str | None = None,
     ) -> bool:
         """
         Check if a feature is enabled for a user/context
@@ -163,8 +162,8 @@ class FeatureFlagService:
         self,
         key: str,
         name: str,
-        description: Optional[str] = None,
-        created_by: Optional[str] = None,
+        description: str | None = None,
+        created_by: str | None = None,
         **kwargs,
     ) -> FeatureFlag:
         """Create a new feature flag"""
@@ -179,8 +178,8 @@ class FeatureFlagService:
         return flag
 
     async def update_flag(
-        self, key: str, updated_by: Optional[str] = None, **updates
-    ) -> Optional[FeatureFlag]:
+        self, key: str, updated_by: str | None = None, **updates
+    ) -> FeatureFlag | None:
         """Update a feature flag"""
         updates["updated_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
         updates["updated_by"] = updated_by
@@ -208,7 +207,7 @@ class FeatureFlagService:
             return True
         return False
 
-    async def get_flag(self, key: str) -> Optional[FeatureFlag]:
+    async def get_flag(self, key: str) -> FeatureFlag | None:
         """Get a feature flag by key"""
         if not self._is_cache_valid():
             await self._load_cache()
@@ -220,14 +219,14 @@ class FeatureFlagService:
             await self._load_cache()
         return list(self._cache.values())
 
-    async def enable_flag(self, key: str, updated_by: Optional[str] = None) -> bool:
+    async def enable_flag(self, key: str, updated_by: str | None = None) -> bool:
         """Enable a feature flag globally"""
         result = await self.update_flag(
             key, state=FeatureState.ENABLED.value, enabled=True, updated_by=updated_by
         )
         return result is not None
 
-    async def disable_flag(self, key: str, updated_by: Optional[str] = None) -> bool:
+    async def disable_flag(self, key: str, updated_by: str | None = None) -> bool:
         """Disable a feature flag globally"""
         result = await self.update_flag(
             key, state=FeatureState.DISABLED.value, enabled=False, updated_by=updated_by
@@ -235,7 +234,7 @@ class FeatureFlagService:
         return result is not None
 
     async def set_rollout_percentage(
-        self, key: str, percentage: int, updated_by: Optional[str] = None
+        self, key: str, percentage: int, updated_by: str | None = None
     ) -> bool:
         """Set rollout percentage for gradual release"""
         if not 0 <= percentage <= 100:
@@ -251,9 +250,9 @@ class FeatureFlagService:
 
     async def get_enabled_flags_for_user(
         self,
-        user_id: Optional[str] = None,
-        username: Optional[str] = None,
-        role: Optional[str] = None,
+        user_id: str | None = None,
+        username: str | None = None,
+        role: str | None = None,
     ) -> list[str]:
         """Get all enabled feature flags for a user"""
         enabled = []

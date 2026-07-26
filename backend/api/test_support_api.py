@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 import re
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -54,22 +54,22 @@ class SyntheticErpItemRequest(ScopedTestSupportRequest):
     warehouse: str = SYNTHETIC_WAREHOUSE_PREFIX + "main"
     floor: str = "E2E-F1"
     rack: str = "E2E-R1"
-    sales_price: Optional[float] = None
+    sales_price: float | None = None
     uom_name: str = "PCS"
-    manual_barcode: Optional[str] = None
+    manual_barcode: str | None = None
 
 
 class SyntheticErpItemPatchRequest(ScopedTestSupportRequest):
-    item_name: Optional[str] = None
-    stock_qty: Optional[float] = None
-    mrp: Optional[float] = None
-    category: Optional[str] = None
-    subcategory: Optional[str] = None
-    warehouse: Optional[str] = None
-    floor: Optional[str] = None
-    rack: Optional[str] = None
-    sales_price: Optional[float] = None
-    manual_barcode: Optional[str] = None
+    item_name: str | None = None
+    stock_qty: float | None = None
+    mrp: float | None = None
+    category: str | None = None
+    subcategory: str | None = None
+    warehouse: str | None = None
+    floor: str | None = None
+    rack: str | None = None
+    sales_price: float | None = None
+    manual_barcode: str | None = None
 
 
 class SyntheticVarianceRequest(ScopedTestSupportRequest):
@@ -77,7 +77,7 @@ class SyntheticVarianceRequest(ScopedTestSupportRequest):
     item_name: str
     system_qty: float
     verified_qty: float
-    variance: Optional[float] = None
+    variance: float | None = None
     verified_by: str = "supervisor"
     category: str = "E2E"
     subcategory: str = "Business"
@@ -85,8 +85,8 @@ class SyntheticVarianceRequest(ScopedTestSupportRequest):
     rack: str = "E2E-R1"
     warehouse: str = SYNTHETIC_WAREHOUSE_PREFIX + "main"
     session_id: str = "e2e-session"
-    count_line_id: Optional[str] = None
-    verified_at: Optional[datetime] = None
+    count_line_id: str | None = None
+    verified_at: datetime | None = None
 
 
 class SyntheticCleanupRequest(ScopedTestSupportRequest):
@@ -105,7 +105,7 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _serialize_document(document: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+def _serialize_document(document: dict[str, Any] | None) -> dict[str, Any] | None:
     if not document:
         return None
 
@@ -220,9 +220,9 @@ def _assert_test_support_access(request: Request, current_user: dict[str, Any]) 
 
 async def _invalidate_fixture_item_cache(
     *,
-    barcode: Optional[str],
-    item_code: Optional[str],
-    manual_barcode: Optional[str] = None,
+    barcode: str | None,
+    item_code: str | None,
+    manual_barcode: str | None = None,
 ) -> None:
     try:
         cache = get_cache_service()
@@ -462,7 +462,7 @@ async def _fetch_collection_documents(
     collection_name: str,
     query: dict[str, Any],
     *,
-    sort_field: Optional[str] = None,
+    sort_field: str | None = None,
     limit: int = 25,
 ) -> list[dict[str, Any]]:
     if not query:

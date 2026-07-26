@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { font, gap, radius } from '@/theme/staffUiScale';
 type Props = {
   children: React.ReactNode;
   leftLabel?: string;
@@ -72,10 +73,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   action: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginHorizontal: 12,
+    paddingHorizontal: gap.lg,
+    paddingVertical: gap.md,
+    borderRadius: radius.sm,
+    marginHorizontal: gap.md,
   },
   actionText: {
     color: uiSemanticColors.text.inverse,

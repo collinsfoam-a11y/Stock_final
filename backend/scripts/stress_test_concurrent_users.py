@@ -24,7 +24,7 @@ import statistics
 import sys
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 try:
     import aiohttp
@@ -49,8 +49,8 @@ class UserSession:
     user_id: str
     username: str
     pin: str
-    access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
+    access_token: str | None = None
+    refresh_token: str | None = None
     requests_made: int = 0
     successful_requests: int = 0
     failed_requests: int = 0
@@ -186,12 +186,12 @@ class ConcurrentUserStressTester:
                     return False
         except aiohttp.ClientError as e:
             user.failed_requests += 1
-            user.errors.append(f"Login connection error: {str(e)}")
+            user.errors.append(f"Login connection error: {e!s}")
             self.results.connection_errors += 1
             return False
         except Exception as e:
             user.failed_requests += 1
-            user.errors.append(f"Login error: {str(e)}")
+            user.errors.append(f"Login error: {e!s}")
             return False
 
     async def _make_authenticated_request(
@@ -200,8 +200,8 @@ class ConcurrentUserStressTester:
         user: UserSession,
         method: str,
         path: str,
-        json_data: Optional[dict] = None,
-    ) -> tuple[bool, Optional[dict]]:
+        json_data: dict | None = None,
+    ) -> tuple[bool, dict | None]:
         """Make an authenticated API request."""
         if not user.access_token:
             return False, None
@@ -239,12 +239,12 @@ class ConcurrentUserStressTester:
 
         except aiohttp.ClientError as e:
             user.failed_requests += 1
-            user.errors.append(f"Request connection error: {str(e)}")
+            user.errors.append(f"Request connection error: {e!s}")
             self.results.connection_errors += 1
             return False, None
         except Exception as e:
             user.failed_requests += 1
-            user.errors.append(f"Request error: {str(e)}")
+            user.errors.append(f"Request error: {e!s}")
             return False, None
 
     async def _verify_session_isolation(

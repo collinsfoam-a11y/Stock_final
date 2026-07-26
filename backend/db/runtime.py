@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from backend.services.governance_guard import install_db_write_guards
 
-_MONGO_CLIENT: Optional[AsyncIOMotorClient] = None
-_DATABASE: Optional[AsyncIOMotorDatabase] = None
+_MONGO_CLIENT: AsyncIOMotorClient | None = None
+_DATABASE: AsyncIOMotorDatabase | None = None
 
 
 @asynccontextmanager

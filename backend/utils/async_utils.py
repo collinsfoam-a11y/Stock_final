@@ -10,7 +10,7 @@ from collections.abc import Callable, Coroutine
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from functools import wraps
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, TypeVar
 
 from backend.utils.result_types import Result
 
@@ -52,7 +52,7 @@ class AsyncExecutor:
                   Must be re-executable for retries.
             operation_name: Name for logging and circuit breaker
         """
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         for attempt in range(self.retry_attempts):
             try:
@@ -80,7 +80,7 @@ class AsyncExecutor:
 
             except Exception as e:
                 last_error = e
-                logger.warning(f"{operation_name} attempt {attempt + 1} failed: {str(e)}")
+                logger.warning(f"{operation_name} attempt {attempt + 1} failed: {e!s}")
 
                 # Record failure for circuit breaker
                 self._record_failure(operation_name)
@@ -163,7 +163,7 @@ _async_executor = AsyncExecutor(
 )
 
 
-def with_async_executor(operation_name: Optional[str] = None, timeout: Optional[float] = None):
+def with_async_executor(operation_name: str | None = None, timeout: float | None = None):
     """
     Decorator for automatic async execution with retry and error handling
     """
@@ -184,9 +184,9 @@ def with_async_executor(operation_name: Optional[str] = None, timeout: Optional[
 
 
 async def safe_async_execute(
-    func: Union[Callable[[], Coroutine[Any, Any, T]], Coroutine[Any, Any, T]],
+    func: Callable[[], Coroutine[Any, Any, T]] | Coroutine[Any, Any, T],
     operation_name: str = "operation",
-    timeout: Optional[float] = None,
+    timeout: float | None = None,
 ) -> Result[T, Exception]:
     """
     Safely execute async operation with automatic error handling.
@@ -257,7 +257,7 @@ class AsyncCache:
         self._expiry_times: dict[str, float] = {}
         self._lock = asyncio.Lock()
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """Get from cache"""
         async with self._lock:
             if key not in self._cache:
@@ -275,7 +275,7 @@ class AsyncCache:
             self._access_times[key] = time.time()
             return self._cache[key]
 
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None):
+    async def set(self, key: str, value: Any, ttl: int | None = None):
         """Set in cache with TTL"""
         async with self._lock:
             # Evict if at capacity
@@ -315,7 +315,7 @@ class AsyncCache:
 _async_cache = AsyncCache(max_size=5000, default_ttl=1800)
 
 
-def cached_async(key_func: Callable[..., Optional[str]] = None, ttl: int = 1800):
+def cached_async(key_func: Callable[..., str | None] = None, ttl: int = 1800):
     """
     Decorator for automatic caching of async function results
     """

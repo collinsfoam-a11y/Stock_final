@@ -7,7 +7,7 @@ import asyncio
 import json
 import logging
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any
 
 from redis.asyncio.client import PubSub
 
@@ -34,9 +34,9 @@ class PubSubService:
 
     def __init__(self, redis_service: RedisService):
         self.redis = redis_service
-        self.pubsub: Optional[PubSub] = None
+        self.pubsub: PubSub | None = None
         self.subscribers: dict[str, list] = {}
-        self._listen_task: Optional[asyncio.Task[None]] = None
+        self._listen_task: asyncio.Task[None] | None = None
         self._is_listening = False
 
     async def start(self) -> None:
@@ -52,7 +52,7 @@ class PubSubService:
             logger.info("✓ Pub/Sub service started")
 
         except Exception as e:
-            logger.error(f"Failed to start Pub/Sub: {str(e)}")
+            logger.error(f"Failed to start Pub/Sub: {e!s}")
             raise
 
     async def stop(self) -> None:
@@ -85,10 +85,10 @@ class PubSubService:
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    logger.error(f"Error in pub/sub listener: {str(e)}")
+                    logger.error(f"Error in pub/sub listener: {e!s}")
                     await asyncio.sleep(1)
         except Exception as e:
-            logger.error(f"Pub/Sub listener crashed: {str(e)}")
+            logger.error(f"Pub/Sub listener crashed: {e!s}")
         finally:
             self._is_listening = False
 
@@ -128,7 +128,7 @@ class PubSubService:
                 else:
                     handler(channel, data)
             except Exception as e:
-                logger.error(f"Error in message handler for {channel}: {str(e)}")
+                logger.error(f"Error in message handler for {channel}: {e!s}")
 
     async def subscribe(self, channel: str, handler: Callable) -> None:
         """
@@ -150,7 +150,7 @@ class PubSubService:
         await self.pubsub.subscribe(channel)
         logger.info(f"✓ Subscribed to channel: {channel}")
 
-    async def unsubscribe(self, channel: str, handler: Optional[Callable] = None) -> None:
+    async def unsubscribe(self, channel: str, handler: Callable | None = None) -> None:
         """
         Unsubscribe from a channel
 
@@ -223,7 +223,7 @@ class PubSubService:
         return await self.publish(channel, message)
 
     async def publish_global_notification(
-        self, notification_type: str, message: str, data: Optional[dict] = None
+        self, notification_type: str, message: str, data: dict | None = None
     ) -> int:
         """
         Publish global notification to all users
@@ -258,7 +258,7 @@ class PubSubService:
 
 
 # Global instance
-_pubsub_service: Optional[PubSubService] = None
+_pubsub_service: PubSubService | None = None
 
 
 def get_pubsub_service(redis_service):

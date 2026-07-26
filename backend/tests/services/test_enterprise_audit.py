@@ -1,7 +1,6 @@
 """Tests for EnterpriseAuditService tamper-evident hash chaining."""
 
 import pytest
-
 from backend.services.enterprise_audit import (
     AuditEventType,
     EnterpriseAuditService,

@@ -264,7 +264,7 @@ export function EvidenceNotesSection({
                   styles.damageTypeButton,
                   damageType === "returnable" && styles.damageTypeSelected,
                 ]}
-                onPress={() => onDamageTypeChange("returnable")}
+                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={() => onDamageTypeChange("returnable")}
               >
                 <Text
                   style={[
@@ -281,7 +281,7 @@ export function EvidenceNotesSection({
                   styles.damageTypeButton,
                   damageType === "nonreturnable" && styles.damageTypeSelected,
                 ]}
-                onPress={() => onDamageTypeChange("nonreturnable")}
+                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={() => onDamageTypeChange("nonreturnable")}
               >
                 <Text
                   style={[
@@ -311,7 +311,7 @@ export function EvidenceNotesSection({
             <View style={styles.photoContainer}>
               <TouchableOpacity
                 style={[styles.photoButton, damagePhoto && styles.photoButtonSuccess]}
-                onPress={onTakeDamagePhoto}
+                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={onTakeDamagePhoto}
               >
                 <Ionicons
                   {...decorativeIconProps}
@@ -354,7 +354,7 @@ export function EvidenceNotesSection({
         {itemPhotos.length < 3 && (
           <TouchableOpacity 
             style={[styles.addPhotoCard, { marginBottom: itemPhotos.length > 0 ? uiTokens.spacing.md : 0 }]} 
-            onPress={onAddItemPhoto}
+             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={onAddItemPhoto}
           >
             <Ionicons
               {...decorativeIconProps}
@@ -379,7 +379,7 @@ export function EvidenceNotesSection({
                   />
                   <TouchableOpacity
                     style={styles.removePhotoBadge}
-                    onPress={() => onRemoveItemPhoto(index)}
+                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}onPress={() => onRemoveItemPhoto(index)}
                     accessibilityRole="button"
                     accessibilityLabel={`Remove item photo ${index + 1}`}
                   >

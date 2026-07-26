@@ -7,7 +7,6 @@ import base64
 from datetime import datetime, timezone
 
 import pytest
-
 from backend.services.erpnext_export_file_service import ErpNextExportFileService
 from backend.services.erpnext_export_photo_manifest_service import (
     ErpNextExportPhotoManifestError,
@@ -105,7 +104,10 @@ async def _approve_preview(
     await _seed_erp_item(db, item_code)
     await _seed_approved_line(db, session_id, item_code, **(line_overrides or {}))
     preview = await ErpNextExportService(db).generate_preview(
-        session_id=session_id, mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id=session_id,
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     await ErpNextExportService(db).approve_preview(
         export_id=preview["export_id"], current_user=ADMIN_USER
@@ -122,7 +124,11 @@ async def test_create_manifest_from_approved_preview_photo_references():
         "ITEM-1",
         line_overrides={
             "photo_proofs": [
-                {"id": "photo-1", "url": "https://example.com/p1.jpg", "timestamp": "2026-01-01T00:00:00Z"}
+                {
+                    "id": "photo-1",
+                    "url": "https://example.com/p1.jpg",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                }
             ]
         },
     )
@@ -150,7 +156,10 @@ async def test_cannot_create_manifest_for_non_approved_preview():
     await _seed_erp_item(db, "ITEM-2")
     await _seed_approved_line(db, "sess-2", "ITEM-2")
     preview = await ErpNextExportService(db).generate_preview(
-        session_id="sess-2", mode="STOCK_ADJUSTMENT", company=DEFAULT_COMPANY, current_user=CURRENT_USER
+        session_id="sess-2",
+        mode="STOCK_ADJUSTMENT",
+        company=DEFAULT_COMPANY,
+        current_user=CURRENT_USER,
     )
     service = ErpNextExportPhotoManifestService(db)
 
@@ -167,7 +176,11 @@ async def test_manifest_hash_is_deterministic():
         "ITEM-3",
         line_overrides={
             "photo_proofs": [
-                {"id": "photo-1", "url": "https://example.com/p1.jpg", "timestamp": "2026-01-01T00:00:00Z"}
+                {
+                    "id": "photo-1",
+                    "url": "https://example.com/p1.jpg",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                }
             ]
         },
     )
@@ -220,7 +233,11 @@ async def test_missing_photo_bytes_do_not_crash():
         "ITEM-5",
         line_overrides={
             "photo_proofs": [
-                {"id": "photo-1", "url": "https://example.com/p1.jpg", "timestamp": "2026-01-01T00:00:00Z"}
+                {
+                    "id": "photo-1",
+                    "url": "https://example.com/p1.jpg",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                }
             ]
         },
     )
@@ -261,7 +278,11 @@ async def test_photo_manifest_csv_includes_manifest_and_content_hash_fields():
         "ITEM-6",
         line_overrides={
             "photo_proofs": [
-                {"id": "photo-1", "url": "https://example.com/p1.jpg", "timestamp": "2026-01-01T00:00:00Z"}
+                {
+                    "id": "photo-1",
+                    "url": "https://example.com/p1.jpg",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                }
             ],
             "photo_base64": photo_base64,
         },
@@ -292,7 +313,11 @@ async def test_repeated_manifest_snapshot_is_idempotent():
         "ITEM-7",
         line_overrides={
             "photo_proofs": [
-                {"id": "photo-1", "url": "https://example.com/p1.jpg", "timestamp": "2026-01-01T00:00:00Z"}
+                {
+                    "id": "photo-1",
+                    "url": "https://example.com/p1.jpg",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                }
             ]
         },
     )
@@ -303,9 +328,9 @@ async def test_repeated_manifest_snapshot_is_idempotent():
 
     assert first["photo_manifest_id"] == second["photo_manifest_id"]
     assert first["manifest_version"] == second["manifest_version"]
-    stored = await db.erpnext_photo_manifests.find(
-        {"export_id": approved["export_id"]}
-    ).to_list(length=10)
+    stored = await db.erpnext_photo_manifests.find({"export_id": approved["export_id"]}).to_list(
+        length=10
+    )
     assert len(stored) == 1  # no duplicate version created
 
 
@@ -318,7 +343,11 @@ async def test_audit_event_is_written_on_manifest_snapshot():
         "ITEM-8",
         line_overrides={
             "photo_proofs": [
-                {"id": "photo-1", "url": "https://example.com/p1.jpg", "timestamp": "2026-01-01T00:00:00Z"}
+                {
+                    "id": "photo-1",
+                    "url": "https://example.com/p1.jpg",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                }
             ]
         },
     )
@@ -329,7 +358,10 @@ async def test_audit_event_is_written_on_manifest_snapshot():
     )
 
     entry = await db.audit_logs.find_one(
-        {"entity_id": manifest["photo_manifest_id"], "event_type": "EXPORT_PHOTO_MANIFEST_SNAPSHOTTED"}
+        {
+            "entity_id": manifest["photo_manifest_id"],
+            "event_type": "EXPORT_PHOTO_MANIFEST_SNAPSHOTTED",
+        }
     )
     assert entry is not None
     assert entry["details"]["manifest_hash"] == manifest["manifest_hash"]
@@ -345,7 +377,11 @@ async def test_approved_preview_remains_immutable_after_manifest_snapshot():
         "ITEM-9",
         line_overrides={
             "photo_proofs": [
-                {"id": "photo-1", "url": "https://example.com/p1.jpg", "timestamp": "2026-01-01T00:00:00Z"}
+                {
+                    "id": "photo-1",
+                    "url": "https://example.com/p1.jpg",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                }
             ]
         },
     )

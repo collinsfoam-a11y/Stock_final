@@ -23,6 +23,7 @@ import { authApi } from "../../services/api/authApi";
 import * as Haptics from "expo-haptics";
 
 import { semanticColors as uiSemanticColors, shadows as uiShadows } from "@/theme/legacyCompat";
+import { font, gap, radius } from '@/theme/staffUiScale';
 interface ChangePinModalProps {
   visible: boolean;
   onClose: () => void;
@@ -139,8 +140,8 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
     },
     container: {
       backgroundColor: colors.surface,
-      borderRadius: 16,
-      padding: 24,
+      borderRadius: radius.xl,
+      padding: gap["2xl"],
       width: "90%",
       maxWidth: 400,
       ...uiShadows.md,
@@ -170,8 +171,8 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
     },
     input: {
       backgroundColor: colors.background,
-      borderRadius: 8,
-      padding: 12,
+      borderRadius: radius.sm,
+      padding: gap.md,
       fontSize: typography.fontSize.md,
       color: colors.text,
       borderWidth: 1,
@@ -187,19 +188,19 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
       color: colors.danger,
       textAlign: "center",
       marginBottom: 16,
-      padding: 8,
+      padding: gap.sm,
       backgroundColor: `${colors.danger}15`,
-      borderRadius: 8,
+      borderRadius: radius.sm,
     },
     buttonContainer: {
       flexDirection: "row",
-      gap: 12,
+      gap: gap.md,
       marginTop: 8,
     },
     button: {
       flex: 1,
-      padding: 14,
-      borderRadius: 8,
+      padding: gap.md,
+      borderRadius: radius.sm,
       alignItems: "center",
     },
     cancelButton: {

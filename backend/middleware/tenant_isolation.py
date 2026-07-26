@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import logging
 from contextvars import ContextVar
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # Thread-local org_id set by authentication middleware for every request.
-_REQUEST_ORG_ID: ContextVar[Optional[str]] = ContextVar("request_org_id", default=None)
+_REQUEST_ORG_ID: ContextVar[str | None] = ContextVar("request_org_id", default=None)
 
 # Collections that are scoped per tenant.
 TENANT_SCOPED_COLLECTIONS: frozenset[str] = frozenset(
@@ -37,12 +37,12 @@ TENANT_SCOPED_COLLECTIONS: frozenset[str] = frozenset(
 )
 
 
-def set_request_org_id(org_id: Optional[str]) -> None:
+def set_request_org_id(org_id: str | None) -> None:
     """Called by authentication middleware after token validation."""
     _REQUEST_ORG_ID.set(str(org_id).strip() if org_id is not None else None)
 
 
-def get_request_org_id() -> Optional[str]:
+def get_request_org_id() -> str | None:
     """Return the org_id bound to the current request context."""
     return _REQUEST_ORG_ID.get()
 
@@ -62,7 +62,7 @@ def require_org_id() -> str:
 
 def inject_org_filter(
     query: dict[str, Any],
-    org_id: Optional[str] = None,
+    org_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Inject ``org_id`` into a MongoDB query dict.
@@ -83,7 +83,7 @@ class TenantScopedQuery:
     filter into all read operations (find / find_one / count_documents / aggregate).
     """
 
-    def __init__(self, collection: Any, org_id: Optional[str] = None) -> None:
+    def __init__(self, collection: Any, org_id: str | None = None) -> None:
         self._collection = collection
         self._org_id = org_id or get_request_org_id()
         if not self._org_id:

@@ -14,7 +14,7 @@ behind the same interface later.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class VarianceAssistant:
         item_code: str,
         expected_qty: float,
         counted_qty: float,
-        session_id: Optional[str] = None,
+        session_id: str | None = None,
     ) -> dict[str, Any]:
         variance = counted_qty - expected_qty
         variance_pct = (variance / expected_qty) if expected_qty else None
@@ -160,7 +160,9 @@ class VarianceAssistant:
         if variance == 0:
             return "Approve - no variance."
         if top_cause == "similar_barcode":
-            return "Verify the physical barcode against the listed lookalike SKUs before recounting."
+            return (
+                "Verify the physical barcode against the listed lookalike SKUs before recounting."
+            )
         if top_cause == "misplaced_stock":
             return "Check neighbouring rack positions for misplaced stock, then recount."
         if top_cause == "recurring_variance":
@@ -213,7 +215,7 @@ class VarianceAssistant:
             return []
 
 
-def _to_float(value: Any) -> Optional[float]:
+def _to_float(value: Any) -> float | None:
     try:
         return float(value) if value is not None else None
     except (TypeError, ValueError):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from pymongo.errors import DuplicateKeyError
 
@@ -42,14 +42,14 @@ def _as_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
-def _normalize_string(value: Any) -> Optional[str]:
+def _normalize_string(value: Any) -> str | None:
     if value is None:
         return None
     normalized = str(value).strip()
     return normalized or None
 
 
-def _normalize_serials(document: Optional[dict[str, Any]]) -> list[str]:
+def _normalize_serials(document: dict[str, Any] | None) -> list[str]:
     if not isinstance(document, dict):
         return []
     normalized: list[str] = []
@@ -73,7 +73,7 @@ def _normalize_serials(document: Optional[dict[str, Any]]) -> list[str]:
     return normalized
 
 
-def _normalize_batches(document: Optional[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+def _normalize_batches(document: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
     if not isinstance(document, dict):
         return {}
 
@@ -148,7 +148,7 @@ def _variance_pending(document: dict[str, Any]) -> bool:
     } or approval_status in {"", "PENDING", "NEEDS_REVIEW", "RECOUNT_REQUESTED", "REJECTED"}
 
 
-def _resolve_unit_value(document: Optional[dict[str, Any]]) -> float:
+def _resolve_unit_value(document: dict[str, Any] | None) -> float:
     if not isinstance(document, dict):
         return 0.0
     for field_name in (
@@ -174,7 +174,7 @@ class ProjectionService:
         self.db = db
 
     @staticmethod
-    def _kwargs(db_session: Optional[Any]) -> dict[str, Any]:
+    def _kwargs(db_session: Any | None) -> dict[str, Any]:
         return {"session": db_session} if db_session is not None else {}
 
     @staticmethod
@@ -196,7 +196,7 @@ class ProjectionService:
         return True
 
     @staticmethod
-    def _line_identifier(document: Optional[dict[str, Any]]) -> Optional[str]:
+    def _line_identifier(document: dict[str, Any] | None) -> str | None:
         if not isinstance(document, dict):
             return None
         return _normalize_string(document.get("id") or document.get("_id"))
@@ -230,7 +230,7 @@ class ProjectionService:
         self,
         event: dict[str, Any],
         *,
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
     ) -> bool:
         if not self._projection_backend_available():
             logger.debug(
@@ -307,9 +307,9 @@ class ProjectionService:
     async def rebuild_from_event_log(
         self,
         *,
-        session_id: Optional[str] = None,
+        session_id: str | None = None,
         clear_existing: bool = False,
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
     ) -> dict[str, Any]:
         kwargs = self._kwargs(db_session)
         if clear_existing:
@@ -349,7 +349,7 @@ class ProjectionService:
         event_id: str,
         event: dict[str, Any],
         payload: dict[str, Any],
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> bool:
         kwargs = self._kwargs(db_session)
         existing = await self.db.event_applied.find_one({"event_id": event_id}, **kwargs)
@@ -381,7 +381,7 @@ class ProjectionService:
         event_id: str,
         event: dict[str, Any],
         payload: dict[str, Any],
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> None:
         await self.db.event_applied.update_one(
             {"event_id": event_id},
@@ -403,8 +403,8 @@ class ProjectionService:
     async def _clear_projection_state(
         self,
         *,
-        session_id: Optional[str],
-        db_session: Optional[Any],
+        session_id: str | None,
+        db_session: Any | None,
     ) -> None:
         kwargs = self._kwargs(db_session)
         if not session_id:
@@ -421,7 +421,7 @@ class ProjectionService:
         event: dict[str, Any],
         payload: dict[str, Any],
         *,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> None:
         session_id = _normalize_string(payload.get("session_id") or event.get("aggregate_id"))
         if not session_id:
@@ -533,7 +533,7 @@ class ProjectionService:
         self,
         *,
         session_id: str,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> None:
         kwargs = self._kwargs(db_session)
         session_doc = await self.db.session_dashboard_projection.find_one(
@@ -548,7 +548,7 @@ class ProjectionService:
         total_variance = 0.0
         positive_variance = 0.0
         negative_variance = 0.0
-        latest_counted_at: Optional[datetime] = None
+        latest_counted_at: datetime | None = None
 
         async for row in self.db.verified_items_projection.find(
             {"session_id": session_id}, **kwargs
@@ -608,7 +608,7 @@ class ProjectionService:
         self,
         *,
         session_id: str,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> None:
         kwargs = self._kwargs(db_session)
         total_counted_qty = 0.0
@@ -683,7 +683,7 @@ class ProjectionService:
         event: dict[str, Any],
         payload: dict[str, Any],
         *,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> None:
         after = payload.get("after") if isinstance(payload.get("after"), dict) else None
         before = payload.get("before") if isinstance(payload.get("before"), dict) else None
@@ -829,7 +829,7 @@ class ProjectionService:
         event: dict[str, Any],
         payload: dict[str, Any],
         *,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> None:
         after = payload.get("after") if isinstance(payload.get("after"), dict) else None
         before = payload.get("before") if isinstance(payload.get("before"), dict) else None
@@ -1065,7 +1065,7 @@ class ProjectionService:
         event: dict[str, Any],
         payload: dict[str, Any],
         *,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> None:
         line = payload.get("after") or payload.get("count_line") or payload.get("before")
         if not isinstance(line, dict):
@@ -1105,7 +1105,7 @@ class ProjectionService:
         event: dict[str, Any],
         payload: dict[str, Any],
         *,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> None:
         line = payload.get("after") or payload.get("count_line") or payload.get("before")
         if not isinstance(line, dict):
@@ -1141,7 +1141,7 @@ class ProjectionService:
         event: dict[str, Any],
         payload: dict[str, Any],
         *,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> None:
         line = payload.get("after") or payload.get("count_line") or payload.get("before")
         if not isinstance(line, dict):
@@ -1175,7 +1175,7 @@ class ProjectionService:
         event: dict[str, Any],
         payload: dict[str, Any],
         *,
-        db_session: Optional[Any],
+        db_session: Any | None,
     ) -> None:
         queue_id = _normalize_string(payload.get("queue_id") or event.get("_id") or event.get("id"))
         if not queue_id:

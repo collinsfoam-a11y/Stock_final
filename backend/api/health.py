@@ -7,7 +7,7 @@ import logging
 import os
 import re
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
 
@@ -515,7 +515,7 @@ def _compare_versions(
     is_latest = client >= current
 
     # Determine update type if update is available
-    update_type: Optional[str] = None
+    update_type: str | None = None
     if not is_latest:
         if current[0] > client[0]:
             update_type = "major"

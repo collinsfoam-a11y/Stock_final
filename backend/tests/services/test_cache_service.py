@@ -8,9 +8,8 @@ from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from bson import ObjectId
-
 from backend.services.cache_service import CacheService, CustomJSONEncoder
+from bson import ObjectId
 
 
 class TestCustomJSONEncoder:

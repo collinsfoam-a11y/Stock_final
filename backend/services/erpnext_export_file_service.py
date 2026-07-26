@@ -19,7 +19,7 @@ import hashlib
 import io
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from openpyxl import Workbook
 
@@ -87,7 +87,7 @@ def sanitize_cell_value(value: Any) -> Any:
 
 def safe_sheet_name(name: str) -> str:
     """Excel worksheet names: max 31 chars, no `: \\ / ? * [ ]`, not blank."""
-    cleaned = "".join(ch for ch in name if ch not in ':\\/?*[]')
+    cleaned = "".join(ch for ch in name if ch not in ":\\/?*[]")
     cleaned = cleaned.strip() or "Sheet1"
     return cleaned[:31]
 
@@ -183,7 +183,15 @@ def _stock_reconciliation_rows(preview: dict[str, Any]) -> tuple[list[str], list
 
 
 def _serials_rows(preview: dict[str, Any]) -> tuple[list[str], list[dict[str, Any]]]:
-    fieldnames = ["Serial No", "Item Code", "Warehouse", "Batch No", "Company", "Purchase Rate", "Status"]
+    fieldnames = [
+        "Serial No",
+        "Item Code",
+        "Warehouse",
+        "Batch No",
+        "Company",
+        "Purchase Rate",
+        "Status",
+    ]
     company = preview.get("company")
     rows: list[dict[str, Any]] = []
     for row in preview.get("rows") or []:
@@ -225,7 +233,7 @@ def _batches_rows(preview: dict[str, Any]) -> tuple[list[str], list[dict[str, An
 
 
 def _photo_manifest_rows(
-    preview: dict[str, Any], photo_manifest: Optional[dict[str, Any]] = None
+    preview: dict[str, Any], photo_manifest: dict[str, Any] | None = None
 ) -> tuple[list[str], list[dict[str, Any]]]:
     """Sourced exclusively from `erpnext_photo_manifests.photos` -- never
     from `preview.rows[].photo_proofs`/live count_lines -- so every
@@ -288,7 +296,7 @@ _ROW_BUILDERS = {
 
 
 def build_rows(
-    file_type: str, preview: dict[str, Any], photo_manifest: Optional[dict[str, Any]] = None
+    file_type: str, preview: dict[str, Any], photo_manifest: dict[str, Any] | None = None
 ) -> tuple[list[str], list[dict[str, Any]]]:
     """Single source of truth for a file type's columns/rows, shared by CSV
     generation, XLSX generation, and import-template validation."""
@@ -320,7 +328,9 @@ def render_xlsx(fieldnames: list[str], rows: list[dict[str, Any]], sheet_name: s
     return buffer.getvalue()
 
 
-def render_file(file_type: str, file_format: str, preview: dict[str, Any], photo_manifest=None) -> bytes:
+def render_file(
+    file_type: str, file_format: str, preview: dict[str, Any], photo_manifest=None
+) -> bytes:
     fieldnames, rows = build_rows(file_type, preview, photo_manifest)
     if file_format == "csv":
         return render_csv(fieldnames, rows)
@@ -435,7 +445,9 @@ class ErpNextExportFileService:
                     }
                 },
             )
-            await self._audit_file_generated(current_user, preview, file_type, file_format, file_hash)
+            await self._audit_file_generated(
+                current_user, preview, file_type, file_format, file_hash
+            )
 
         return {
             "content": content,
