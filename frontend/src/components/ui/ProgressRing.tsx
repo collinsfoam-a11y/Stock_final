@@ -60,8 +60,24 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
     };
   });
 
+  const clampedProgress = Math.min(Math.max(progress, 0), 100);
+
   return (
-    <View style={[styles.container, { width: size, height: size }]}>
+    <View
+      style={[styles.container, { width: size, height: size }]}
+      accessible={true}
+      accessibilityRole="progressbar"
+      accessibilityValue={{
+        min: 0,
+        max: 100,
+        now: clampedProgress,
+      }}
+      accessibilityLabel={
+        label
+          ? `Progress: ${label} (${Math.round(clampedProgress)}%)`
+          : `Progress: ${Math.round(clampedProgress)}%`
+      }
+    >
       <Svg width={size} height={size}>
         <Defs>
           <SvgLinearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
