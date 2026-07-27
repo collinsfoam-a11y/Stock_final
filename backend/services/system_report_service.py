@@ -3,7 +3,7 @@ import io
 import logging
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any
+from typing import Any, Optional
 
 import pandas as pd
 import psutil
@@ -256,7 +256,7 @@ class SystemReportService:
         return rows[:100]
 
     async def _build_live_system_snapshot(
-        self, now: datetime, start_dt: datetime | None, end_dt: datetime | None
+        self, now: datetime, start_dt: Optional[datetime], end_dt: Optional[datetime]
     ) -> dict[str, Any]:
         error_window_start = start_dt or (now - timedelta(hours=24))
         error_window_end = end_dt or now
@@ -299,8 +299,8 @@ class SystemReportService:
         self,
         collection_name: str,
         timestamp_field: str,
-        start_dt: datetime | None,
-        end_dt: datetime | None,
+        start_dt: Optional[datetime],
+        end_dt: Optional[datetime],
     ) -> int:
         count = 0
         for row in await self._fetch_collection_documents(collection_name, limit=5000):
@@ -312,8 +312,8 @@ class SystemReportService:
     def _aggregate_api_metrics(
         self,
         metrics: list[dict[str, Any]],
-        start_dt: datetime | None,
-        end_dt: datetime | None,
+        start_dt: Optional[datetime],
+        end_dt: Optional[datetime],
     ) -> list[dict[str, Any]]:
         buckets: dict[datetime, dict[str, Any]] = defaultdict(
             lambda: {"request_count": 0, "error_count": 0, "latency_total": 0.0, "latency_count": 0}
@@ -369,10 +369,10 @@ class SystemReportService:
 
     def _normalize_date_range(
         self, start_date: Any, end_date: Any
-    ) -> tuple[datetime | None, datetime | None]:
+    ) -> tuple[Optional[datetime], Optional[datetime]]:
         return self._parse_datetime(start_date), self._parse_datetime(end_date, end_of_day=True)
 
-    def _parse_datetime(self, value: Any, end_of_day: bool = False) -> datetime | None:
+    def _parse_datetime(self, value: Any, end_of_day: bool = False) -> Optional[datetime]:
         if value is None:
             return None
         if isinstance(value, datetime):
@@ -402,7 +402,7 @@ class SystemReportService:
             parsed = datetime.combine(parsed.date(), time.max)
         return parsed
 
-    def _extract_timestamp(self, row: dict[str, Any], *field_names: str) -> datetime | None:
+    def _extract_timestamp(self, row: dict[str, Any], *field_names: str) -> Optional[datetime]:
         for field_name in field_names:
             if field_name not in row:
                 continue
@@ -413,9 +413,9 @@ class SystemReportService:
 
     def _is_in_range(
         self,
-        timestamp: datetime | None,
-        start_dt: datetime | None,
-        end_dt: datetime | None,
+        timestamp: Optional[datetime],
+        start_dt: Optional[datetime],
+        end_dt: Optional[datetime],
     ) -> bool:
         if timestamp is None:
             return False
