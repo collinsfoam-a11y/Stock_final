@@ -3,7 +3,16 @@ jest.mock("@/services/httpClient", () => ({
   default: {
     post: jest.fn(),
     put: jest.fn(),
+    get: jest.fn(),
   },
+}));
+
+jest.mock("@/data/repositories/inventoryControlPlaneRepository", () => ({
+  getPendingInventoryEvents: jest.fn(),
+}));
+
+jest.mock("@/data/repositories/countLineReviewControlPlaneRepository", () => ({
+  getPendingCountLineReviewEvents: jest.fn(),
 }));
 
 jest.mock("@/store/authStore", () => ({
@@ -67,8 +76,14 @@ jest.mock("@/services/control-plane/controlPlaneEventBus", () => ({
 
 import api from "@/services/httpClient";
 import { getNetworkStatus } from "@/utils/network";
-import { findActiveProjectedSessionForLocation } from "@/data/repositories/sessionControlPlaneRepository";
-import { createSessionCommand } from "../sessionControlPlane";
+import {
+  findActiveProjectedSessionForLocation,
+  getPendingSessionEvents,
+  resolveLocalSessionId,
+} from "@/data/repositories/sessionControlPlaneRepository";
+import { getPendingInventoryEvents } from "@/data/repositories/inventoryControlPlaneRepository";
+import { getPendingCountLineReviewEvents } from "@/data/repositories/countLineReviewControlPlaneRepository";
+import { createSessionCommand, getSessionFinalizationReadiness } from "../sessionControlPlane";
 
 describe("createSessionCommand", () => {
   beforeEach(() => {
@@ -124,5 +139,40 @@ describe("createSessionCommand", () => {
         },
       })
     );
+  });
+});
+
+describe("getSessionFinalizationReadiness", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getNetworkStatus as jest.Mock).mockReturnValue({ status: "ONLINE" });
+    (resolveLocalSessionId as jest.Mock).mockResolvedValue("local-session-1");
+    (getPendingSessionEvents as jest.Mock).mockResolvedValue([]);
+    (getPendingInventoryEvents as jest.Mock).mockResolvedValue([]);
+    (getPendingCountLineReviewEvents as jest.Mock).mockResolvedValue([]);
+  });
+
+  it("blocks a server session when inventory work is queued under its local ID", async () => {
+    (getPendingInventoryEvents as jest.Mock).mockResolvedValue([
+      { payload: { session_id: "local-session-1" } },
+    ]);
+
+    const result = await getSessionFinalizationReadiness("server-session-1");
+
+    expect(result.ready).toBe(false);
+    expect(result.blockers[0]?.code).toBe("PENDING_LOCAL_SYNC");
+    expect(api.get).not.toHaveBeenCalled();
+  });
+
+  it("blocks a server session when review work is queued under its local ID", async () => {
+    (getPendingCountLineReviewEvents as jest.Mock).mockResolvedValue([
+      { payload: { session_id: "local-session-1" } },
+    ]);
+
+    const result = await getSessionFinalizationReadiness("server-session-1");
+
+    expect(result.ready).toBe(false);
+    expect(result.blockers[0]?.count).toBe(1);
+    expect(api.get).not.toHaveBeenCalled();
   });
 });

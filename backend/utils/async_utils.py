@@ -256,6 +256,12 @@ class AsyncCache:
         self._access_times: dict[str, float] = {}
         self._expiry_times: dict[str, float] = {}
         self._lock = asyncio.Lock()
+        self._access_sequence = 0
+
+    def _touch(self, key: str) -> None:
+        """Record deterministic LRU order even on coarse-resolution clocks."""
+        self._access_sequence += 1
+        self._access_times[key] = float(self._access_sequence)
 
     async def get(self, key: str) -> Optional[Any]:
         """Get from cache"""
@@ -272,7 +278,7 @@ class AsyncCache:
                     return None
 
             # Update access time (LRU)
-            self._access_times[key] = time.time()
+            self._touch(key)
             return self._cache[key]
 
     async def set(self, key: str, value: Any, ttl: Optional[int] = None):
@@ -283,7 +289,7 @@ class AsyncCache:
                 self._evict_lru()
 
             self._cache[key] = value
-            self._access_times[key] = time.time()
+            self._touch(key)
             self._expiry_times[key] = time.time() + (ttl or self.default_ttl)
 
     async def delete(self, key: str):
@@ -299,6 +305,7 @@ class AsyncCache:
             self._cache.clear()
             self._access_times.clear()
             self._expiry_times.clear()
+            self._access_sequence = 0
 
     def _evict_lru(self):
         """Evict least recently used item"""

@@ -10,6 +10,7 @@ import argparse
 import asyncio
 import logging
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -116,7 +117,14 @@ async def repair_item_names(
     limit: Optional[int] = None,
     session_id: Optional[str] = None,
     collections: tuple[str, ...] = TARGET_COLLECTIONS,
+    repair_actor: Optional[str] = None,
+    repair_reason: Optional[str] = None,
+    change_reference: Optional[str] = None,
 ) -> dict[str, Any]:
+    if not dry_run and not all((repair_actor, repair_reason, change_reference)):
+        raise ValueError(
+            "Executing repairs requires repair_actor, repair_reason, and change_reference"
+        )
     stats: dict[str, Any] = {
         "scanned": 0,
         "candidates": 0,
@@ -204,15 +212,27 @@ async def repair_item_names(
                             },
                             context={
                                 "session_id": session_id_value,
-                                "username": "system_repair_item_names",
+                                "username": repair_actor,
                                 "governance_mode": "repair",
                                 "validation_mode": "repair_skip",
+                                "repair_authorized": True,
+                                "repair_actor": repair_actor,
+                                "repair_reason": repair_reason,
+                                "repair_change_reference": change_reference,
                             },
                         )
                     else:
                         result = await collection.update_one(
                             {"_id": doc["_id"]},
-                            {"$set": {"item_name": repaired_name}},
+                            {
+                                "$set": {
+                                    "item_name": repaired_name,
+                                    "repair_actor": repair_actor,
+                                    "repair_reason": repair_reason,
+                                    "repair_change_reference": change_reference,
+                                    "repaired_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                                }
+                            },
                         )
                     if result.modified_count:
                         stats["repaired"] += 1
@@ -251,6 +271,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             limit=args.limit,
             session_id=args.session_id,
             collections=target_collections,
+            repair_actor=args.actor,
+            repair_reason=args.reason,
+            change_reference=args.change_reference,
         )
 
 
@@ -277,6 +300,13 @@ def _build_parser() -> argparse.ArgumentParser:
         "--collections",
         default="count_lines,count_line_drafts",
         help="Comma-separated Mongo collections to inspect.",
+    )
+    parser.add_argument("--actor", help="Named operator authorizing an executed repair.")
+    parser.add_argument("--reason", help="Business reason for an executed repair.")
+    parser.add_argument(
+        "--change-reference",
+        dest="change_reference",
+        help="Ticket, incident, or approved change reference.",
     )
     return parser
 

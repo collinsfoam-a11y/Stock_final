@@ -49,12 +49,12 @@ The **Supervisor** role includes all Staff permissions, plus elevated privileges
 
 ### A. Team Oversight & Session Management
 1. **View All Sessions:** Supervisors can read all sessions across the warehouse, not just their own (`SESSION_READ_ALL`).
-2. **Manage Staff Sessions:** Supervisors can update or forcefully delete staff sessions (`SESSION_UPDATE`, `SESSION_DELETE`) if a staff member forgot to close one or made a critical error.
+2. **Manage Staff Sessions:** Supervisors can update sessions and use an audited void workflow (`SESSION_UPDATE`, `SESSION_VOID`) when a session was opened in error. Finalized history is immutable.
 
 ### B. Count Line Approval & Rejection
 1. **Review Counts:** Supervisors review count lines submitted by staff.
 2. **Approve/Reject:** They can approve valid counts (`COUNT_LINE_APPROVE`) or reject invalid ones (`COUNT_LINE_REJECT`), which may require staff to recount.
-3. **Delete Count Lines:** Supervisors have the authority to completely delete erroneous count lines (`COUNT_LINE_DELETE`).
+3. **Void Count Lines:** Supervisors may void an erroneous mutable count line (`COUNT_LINE_VOID`) only with a reason. The original record remains in immutable history and is excluded from active totals.
 
 ### C. Bulk Operations & Sync Resolution
 1. **Bulk MRP Updates:** Supervisors can perform bulk updates to item MRPs (`MRP_BULK_UPDATE`) saving time over individual updates.

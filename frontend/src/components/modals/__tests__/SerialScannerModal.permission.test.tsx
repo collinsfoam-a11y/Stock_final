@@ -1,14 +1,18 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
-import { Linking } from "react-native";
 
 import SerialScannerModal from "../SerialScannerModal";
 
 const mockRequestPermission = jest.fn();
 const mockUseCameraPermissions = jest.fn();
 
-jest.mock("expo-camera", () => ({
-  CameraView: "CameraView",
-  useCameraPermissions: () => mockUseCameraPermissions(),
+jest.mock("@/services/device/visionCamera", () => ({
+  Camera: "Camera",
+  useCameraDevice: () => ({ id: "back-camera" }),
+  useCodeScanner: () => ({}),
+  useCameraPermission: () => {
+    const [permission, requestPermission] = mockUseCameraPermissions();
+    return { hasPermission: permission?.granted === true, requestPermission };
+  },
 }));
 
 describe("SerialScannerModal permission handling", () => {
@@ -40,11 +44,7 @@ describe("SerialScannerModal permission handling", () => {
     expect(mockRequestPermission).toHaveBeenCalledTimes(2);
   });
 
-  it("offers open settings when permission is permanently denied", () => {
-    const openSettingsSpy = jest
-      .spyOn(Linking, "openSettings")
-      .mockResolvedValue();
-
+  it("keeps permission retry and manual entry available when denied", () => {
     mockUseCameraPermissions.mockReturnValue([
       { granted: false, canAskAgain: false },
       mockRequestPermission,
@@ -59,9 +59,7 @@ describe("SerialScannerModal permission handling", () => {
       />,
     );
 
-    fireEvent.press(getByText("Open Settings"));
-
-    expect(openSettingsSpy).toHaveBeenCalledTimes(1);
-    expect(mockRequestPermission).not.toHaveBeenCalled();
+    expect(getByText("Grant Permission")).toBeTruthy();
+    expect(getByText("Use Manual Entry")).toBeTruthy();
   });
 });

@@ -282,6 +282,48 @@ class CountLineWriteService:
             result = write_call()
             return await self._resolve_awaitable(result)
 
+    async def void_count_line(
+        self,
+        *,
+        count_line: dict[str, Any],
+        actor: str,
+        reason: str,
+        db_session: Optional[Any] = None,
+    ) -> Any:
+        """Remove a line from active truth without destroying its history."""
+        normalized_reason = _normalize_reason(reason)
+        if not normalized_reason:
+            raise GovernanceViolation("CRITICAL: A reason is required to void a count line")
+        if _is_superseded_count_line(count_line):
+            raise GovernanceViolation("CRITICAL: Count line is already voided or superseded")
+
+        line_id = count_line.get("_id")
+        filter_query = {"_id": line_id} if line_id is not None else {"id": count_line.get("id")}
+        timestamp = _utc_now()
+        update = {
+            "$set": {
+                "status": "SUPERSEDED",
+                "disposition": "VOIDED",
+                "void_reason": normalized_reason,
+                "voided_at": timestamp,
+                "voided_by": actor,
+                "superseded_at": timestamp,
+                "superseded_by": actor,
+                "supersede_reason": normalized_reason,
+                "updated_at": timestamp,
+                "updated_by": actor,
+            }
+        }
+        return await self.process_write(
+            {"operation": "update_one", "filter": filter_query, "update": update},
+            context={
+                "session_id": str(count_line.get("session_id") or ""),
+                "governance_mode": "mutable_session",
+                "db_session": db_session,
+                "username": actor,
+            },
+        )
+
     async def finalize_session_count_lines(
         self,
         *,
@@ -359,7 +401,41 @@ class CountLineWriteService:
         profile = GOVERNANCE_MODE_PROFILES.get(mode_name)
         if profile is None:
             raise GovernanceViolation(f"CRITICAL: Unsupported governance_mode '{mode_name}'")
+        if mode_name == "repair":
+            required = {
+                "repair_authorized": context.get("repair_authorized") is True,
+                "repair_actor": bool(_normalize_reason(context.get("repair_actor"))),
+                "repair_reason": bool(_normalize_reason(context.get("repair_reason"))),
+                "repair_change_reference": bool(
+                    _normalize_reason(context.get("repair_change_reference"))
+                ),
+            }
+            missing = [name for name, present in required.items() if not present]
+            if missing:
+                raise GovernanceViolation(
+                    "CRITICAL: repair mode requires explicit authorization metadata: "
+                    + ", ".join(missing)
+                )
         return profile
+
+    @staticmethod
+    def _stamp_repair_metadata(payload: dict[str, Any], context: dict[str, Any]) -> None:
+        if str(context.get("governance_mode") or "").strip().lower() != "repair":
+            return
+        update = payload.get("update")
+        if not isinstance(update, dict):
+            return
+        set_doc = update.setdefault("$set", {})
+        if not isinstance(set_doc, dict):
+            raise GovernanceViolation("CRITICAL: repair updates require a '$set' document")
+        set_doc.update(
+            {
+                "repair_actor": str(context["repair_actor"]).strip(),
+                "repair_reason": str(context["repair_reason"]).strip(),
+                "repair_change_reference": str(context["repair_change_reference"]).strip(),
+                "repaired_at": _utc_now(),
+            }
+        )
 
     @staticmethod
     def _should_run_runtime_validation(context: dict[str, Any]) -> bool:
@@ -665,6 +741,8 @@ class CountLineWriteService:
 
         ctx = dict(context)
         ctx["db_session"] = db_session
+        self._resolve_governance_mode_profile(ctx)
+        self._stamp_repair_metadata(payload, ctx)
 
         await self._assert_snapshot_integrity_for_write(payload, ctx)
         await self._assert_mandatory_write_invariants(payload, ctx)
@@ -779,9 +857,7 @@ class CountLineWriteService:
                 # counted_qty/input_qty) when an actual UOM identity field
                 # changed, so the common no-UOM-context submission doesn't
                 # pay for a second write.
-                uom_changed = any(
-                    document.get(key) != before[key] for key in _UOM_IDENTITY_FIELDS
-                )
+                uom_changed = any(document.get(key) != before[key] for key in _UOM_IDENTITY_FIELDS)
                 sync_fields: dict[str, Any] = {}
                 if uom_changed:
                     sync_fields.update(
@@ -1167,7 +1243,11 @@ class CountLineWriteService:
                     item_index[indexed_item_code] = _as_float(item.get("stock_qty"))
                 self._session_snapshot_item_index[session_id] = item_index
             if normalized_item_code in item_index:
-                return item_index[normalized_item_code], snapshot_hash or "SESSION_SNAPSHOT", snapshot_id
+                return (
+                    item_index[normalized_item_code],
+                    snapshot_hash or "SESSION_SNAPSHOT",
+                    snapshot_id,
+                )
             # Item absent in frozen baseline: treat baseline as zero, never live ERP qty.
             return 0.0, snapshot_hash or "SESSION_SNAPSHOT_MISS", snapshot_id
 

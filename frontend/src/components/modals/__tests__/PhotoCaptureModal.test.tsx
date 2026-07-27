@@ -1,5 +1,5 @@
-import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import { AppState, Linking } from "react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
+import { AppState } from "react-native";
 
 import { PhotoCaptureModal } from "../PhotoCaptureModal";
 
@@ -8,9 +8,13 @@ const mockUseCameraPermissions = jest.fn();
 const mockGetPermission = jest.fn();
 const mockAppStateAddEventListener = jest.fn();
 
-jest.mock("expo-camera", () => ({
-  CameraView: "CameraView",
-  useCameraPermissions: () => mockUseCameraPermissions(),
+jest.mock("@/services/device/visionCamera", () => ({
+  Camera: "Camera",
+  useCameraDevice: () => ({ id: "back-camera" }),
+  useCameraPermission: () => {
+    const [permission, requestPermission] = mockUseCameraPermissions();
+    return { hasPermission: permission?.granted === true, requestPermission };
+  },
 }));
 
 describe("PhotoCaptureModal permission handling", () => {
@@ -46,11 +50,7 @@ describe("PhotoCaptureModal permission handling", () => {
     expect(mockRequestPermission).toHaveBeenCalledTimes(2);
   });
 
-  it("offers open settings when permission is permanently denied", async () => {
-    const openSettingsSpy = jest
-      .spyOn(Linking, "openSettings")
-      .mockResolvedValue();
-
+  it("keeps a manual retry available when camera permission is denied", async () => {
     mockUseCameraPermissions.mockReturnValue([
       { granted: false, canAskAgain: false },
       mockRequestPermission,
@@ -65,12 +65,8 @@ describe("PhotoCaptureModal permission handling", () => {
       />,
     );
 
-    await act(async () => {
-      fireEvent.press(getByText("Open Settings"));
-    });
-
-    expect(openSettingsSpy).toHaveBeenCalledTimes(1);
-    expect(mockRequestPermission).not.toHaveBeenCalled();
+    expect(getByText("Grant Permission")).toBeTruthy();
+    expect(mockRequestPermission).toHaveBeenCalledTimes(1);
   });
 
   it("refreshes permission state when the app becomes active again", async () => {
@@ -79,18 +75,13 @@ describe("PhotoCaptureModal permission handling", () => {
       onAppStateChange = listener as (status: string) => void;
       return { remove: jest.fn() };
     });
-    mockGetPermission.mockResolvedValue({
-      granted: true,
-      canAskAgain: false,
-    });
-
     mockUseCameraPermissions.mockReturnValue([
       { granted: false, canAskAgain: false },
       mockRequestPermission,
       mockGetPermission,
     ]);
 
-    const { getByText, getByTestId, queryByText } = render(
+    const { getByText, getByTestId } = render(
       <PhotoCaptureModal
         visible
         onClose={jest.fn()}
@@ -99,15 +90,11 @@ describe("PhotoCaptureModal permission handling", () => {
       />,
     );
 
-    fireEvent.press(getByText("Open Settings"));
-
     await act(async () => {
       onAppStateChange?.("active");
     });
 
-    await waitFor(() => {
-      expect(queryByText("Open Settings")).toBeNull();
-      expect(getByTestId("photo-capture-capture")).toBeTruthy();
-    });
+    expect(getByText("Grant Permission")).toBeTruthy();
+    expect(getByTestId("photo-capture")).toBeTruthy();
   });
 });

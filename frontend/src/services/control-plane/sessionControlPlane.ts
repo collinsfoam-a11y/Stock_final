@@ -28,6 +28,8 @@ import {
   resolveLocalSessionId,
   resolveServerSessionId,
 } from "@/data/repositories/sessionControlPlaneRepository";
+import { getPendingInventoryEvents } from "@/data/repositories/inventoryControlPlaneRepository";
+import { getPendingCountLineReviewEvents } from "@/data/repositories/countLineReviewControlPlaneRepository";
 import {
   cacheSession,
   removeSessionFromCache,
@@ -48,6 +50,67 @@ const readErrorMessage = (error: unknown, fallback: string): string =>
 
 const isMutationSafeOnline = () => getNetworkStatus().status === "ONLINE";
 const shouldAttemptSessionApi = () => getNetworkStatus().shouldAttemptApi;
+
+export type FinalizationReadiness = {
+  session_id: string;
+  status: string;
+  ready: boolean;
+  blockers: Array<{ code: string; count: number; message: string }>;
+  checked_at: string;
+};
+
+export const getSessionFinalizationReadiness = async (
+  sessionId: string
+): Promise<FinalizationReadiness> => {
+  if (!isMutationSafeOnline()) {
+    throw new Error("Session finalization requires an online connection and a completed sync.");
+  }
+
+  const localSessionId = await resolveLocalSessionId(sessionId);
+  const [sessionEvents, inventoryEvents, reviewEvents] = await Promise.all([
+    getPendingSessionEvents(500),
+    getPendingInventoryEvents(500),
+    getPendingCountLineReviewEvents(500),
+  ]);
+  const localPending =
+    sessionEvents.filter((event) => event.aggregateId === localSessionId).length +
+    inventoryEvents.filter(
+      (event) =>
+        event.payload.session_id === sessionId || event.payload.session_id === localSessionId
+    ).length +
+    reviewEvents.filter(
+      (event) =>
+        event.payload.session_id === sessionId || event.payload.session_id === localSessionId
+    ).length;
+
+  if (localPending > 0) {
+    return {
+      session_id: sessionId,
+      status: "LOCAL_SYNC_PENDING",
+      ready: false,
+      blockers: [
+        {
+          code: "PENDING_LOCAL_SYNC",
+          count: localPending,
+          message: `${localPending} local change(s) must sync before finalization`,
+        },
+      ],
+      checked_at: new Date().toISOString(),
+    };
+  }
+
+  const response = await api.get<FinalizationReadiness>(
+    `/api/sessions/${sessionId}/finalization-readiness`
+  );
+  return response.data;
+};
+
+export const assertSessionFinalizationReady = async (sessionId: string): Promise<void> => {
+  const readiness = await getSessionFinalizationReadiness(sessionId);
+  if (!readiness.ready) {
+    throw new Error(readiness.blockers.map((blocker) => blocker.message).join("; "));
+  }
+};
 
 const getCurrentActor = () => {
   const user = useAuthStore.getState().user;
@@ -128,6 +191,9 @@ const buildSessionStartEvent = (
       location_type: params.location_type,
       location_name: params.location_name,
       rack_no: params.rack_no,
+      location_id: params.location_id,
+      location_path_ids: params.location_path_ids,
+      location_path_names: params.location_path_names,
       staff_user: actor.username,
       staff_name: actor.fullName,
       status: "OPEN",
@@ -219,6 +285,9 @@ type SessionCreatePayload = {
   location_type?: string;
   location_name?: string;
   rack_no?: string;
+  location_id?: string;
+  location_path_ids?: string[];
+  location_path_names?: string[];
 };
 
 const postSessionToServer = async (
@@ -233,6 +302,9 @@ const postSessionToServer = async (
       location_type: payload.location_type,
       location_name: payload.location_name,
       rack_no: payload.rack_no,
+      location_id: payload.location_id,
+      location_path_ids: payload.location_path_ids,
+      location_path_names: payload.location_path_names,
     },
     {
       timeout: 3000,
@@ -253,6 +325,9 @@ const createDirectServerSession = async (params: CreateSessionParams): Promise<a
       location_type: params.location_type,
       location_name: params.location_name,
       rack_no: params.rack_no,
+      location_id: params.location_id,
+      location_path_ids: params.location_path_ids,
+      location_path_names: params.location_path_names,
     },
     generateUUID()
   );
@@ -265,6 +340,9 @@ const createServerSession = async (event: Extract<SessionEvent, { type: "SESSION
       location_type: event.payload.location_type,
       location_name: event.payload.location_name,
       rack_no: event.payload.rack_no,
+      location_id: event.payload.location_id,
+      location_path_ids: event.payload.location_path_ids,
+      location_path_names: event.payload.location_path_names,
     },
     event.meta.idempotencyKey
   );
@@ -551,6 +629,8 @@ export const finalizeSessionCommand = async (
   sessionId: string,
   payload?: { note?: string }
 ): Promise<any> => {
+  await assertSessionFinalizationReady(sessionId);
+
   if (!controlPlaneFlags.enableEventDrivenSessions) {
     return api
       .post(`/api/sessions/${sessionId}/finalize`, payload || {})

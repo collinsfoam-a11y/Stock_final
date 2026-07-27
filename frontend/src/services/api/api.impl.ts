@@ -100,6 +100,7 @@ export type {
 } from "./sessionManagementApi";
 export * from "./adminOperationsApi";
 export * from "./inventoryWorkflowApi";
+export * from "./locationHierarchyApi";
 
 // --- Unknown Items Management (Admin) ---
 

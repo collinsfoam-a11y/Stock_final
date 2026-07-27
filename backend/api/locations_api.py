@@ -1,16 +1,24 @@
 import logging
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends  # type: ignore
+from fastapi import APIRouter, Depends, HTTPException  # type: ignore
 
 from backend.auth.dependencies import get_current_user
 from backend.db.runtime import get_db
+from backend.models.location import LocationCreate, LocationRecord, LocationTreeNode
+from pydantic import BaseModel, Field
+from backend.services.location_service import LocationDomainError, LocationService
 from backend.sql_server_connector import sql_connector
 from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/locations", tags=["Locations"])
+
+
+class GovernedLocationCreate(LocationCreate):
+    reason: str = Field(min_length=3, max_length=500)
+    change_reference: str = Field(min_length=1, max_length=160)
 
 
 _SHOWROOM_DEFAULTS: list[dict[str, str]] = [
@@ -113,6 +121,53 @@ async def _seed_default_warehouses(
         sanitize_for_logging(zone or "*"),
     )
     return _sanitize_warehouse_docs(defaults)
+
+
+@router.get("/tree", response_model=list[LocationTreeNode])
+async def get_location_tree(
+    current_user: dict = Depends(get_current_user),
+    db: Any = Depends(get_db),
+):
+    """Return the canonical hierarchy for picker and breadcrumb clients."""
+    del current_user
+    return await LocationService(db).tree()
+
+
+@router.get("/resolve/{identifier}", response_model=LocationRecord)
+async def resolve_location(
+    identifier: str,
+    current_user: dict = Depends(get_current_user),
+    db: Any = Depends(get_db),
+):
+    """Resolve a stable ID or a legacy warehouse/floor/rack identifier."""
+    del current_user
+    location = await LocationService(db).resolve(identifier)
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    return location
+
+
+@router.post("", response_model=LocationRecord, status_code=201)
+async def create_location(
+    payload: GovernedLocationCreate,
+    current_user: dict = Depends(get_current_user),
+    db: Any = Depends(get_db),
+):
+    """Create a governed hierarchy node; flat legacy APIs remain read-compatible."""
+    if current_user.get("role") not in {"supervisor", "admin"}:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    try:
+        location_payload = LocationCreate.model_validate(
+            payload.model_dump(exclude={"reason", "change_reference"})
+        )
+        return await LocationService(db).create(
+            location_payload,
+            actor=current_user["username"],
+            reason=payload.reason,
+            change_reference=payload.change_reference,
+        )
+    except LocationDomainError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("/warehouses", response_model=list[dict[str, Any]])

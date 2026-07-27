@@ -65,6 +65,7 @@ export interface ScanFormData {
 
 export interface CreateCountLinePayload {
   session_id: string;
+  location_id?: string;
   recount_of_id?: string;
   item_code: string;
   item_name?: string;

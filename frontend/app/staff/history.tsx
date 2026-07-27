@@ -1,18 +1,15 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { PinEntryModal } from "@/components/modals/PinEntryModal";
-import { useAuthStore } from "@/store/authStore";
-import { deleteCountLine, getCountLines } from "@/services/api/api";
+import { getCountLines } from "@/services/api/api";
 import { haptics } from "@/services/haptics";
 import { flags } from "@/constants/flags";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { SkeletonList } from "@/components/LoadingSkeleton";
-import { SwipeableRow } from "@/components/SwipeableRow";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ModernCard } from "@/components/ui/ModernCard";
 import { font, radius, gap } from "@/theme/staffUiScale";
@@ -42,7 +39,6 @@ export default function HistoryScreen() {
   const initialApproved =
     flags.enableDeepLinks && (params.approved === "1" || params.approved === "true");
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
   const uiTokens = useUiTokens();
 
   interface CountLine {
@@ -67,9 +63,6 @@ export default function HistoryScreen() {
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [showApprovedOnly, setShowApprovedOnly] = React.useState<boolean>(!!initialApproved);
 
-  // Pin Entry Modal State
-  const [pinModalVisible, setPinModalVisible] = React.useState(false);
-  const [selectedLineForDelete, setSelectedLineForDelete] = React.useState<CountLine | null>(null);
 
   const normalizeStatus = React.useCallback((status?: string | null) => {
     return (status || "").toLowerCase();
@@ -150,31 +143,6 @@ export default function HistoryScreen() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onRefresh]);
-
-  const handleDeleteRequest = (item: CountLine) => {
-    setSelectedLineForDelete(item);
-    setPinModalVisible(true);
-  };
-
-  const handlePinSuccess = async () => {
-    if (!selectedLineForDelete) return;
-
-    try {
-      await deleteCountLine(selectedLineForDelete.id);
-      if (flags.enableHaptics) haptics.success();
-      Alert.alert("Success", "Count line deleted successfully");
-      loadCountLines(); // Refresh list
-    } catch (error: any) {
-      console.error("Delete error:", error);
-      Alert.alert(
-        "Delete Failed",
-        `${error.response?.data?.detail || "The count line could not be deleted."}\n\nThe item remains unchanged. Check connectivity and retry, or ask a supervisor to review it.`
-      );
-      if (flags.enableHaptics) haptics.error();
-    } finally {
-      setSelectedLineForDelete(null);
-    }
-  };
 
   const renderCountLine = ({ item, index }: { item: CountLine; index: number }) => {
     const varianceColor = item.variance === 0 ? uiTokens.colors.success : uiTokens.colors.error;
@@ -308,20 +276,6 @@ export default function HistoryScreen() {
     ) : (
       CardContent
     );
-
-    if (flags.enableSwipeActions && Platform.OS !== "web") {
-      return (
-        <SwipeableRow
-          rightLabel="Delete"
-          onRightAction={() => {
-            if (flags.enableHaptics) haptics.selection?.();
-            handleDeleteRequest(item);
-          }}
-        >
-          {AnimatedCard}
-        </SwipeableRow>
-      );
-    }
 
     return AnimatedCard;
   };
@@ -480,17 +434,6 @@ export default function HistoryScreen() {
         </TouchableOpacity>
       </BottomSheet>
 
-      <PinEntryModal
-        visible={pinModalVisible}
-        onClose={() => {
-          setPinModalVisible(false);
-          setSelectedLineForDelete(null);
-        }}
-        onSuccess={handlePinSuccess}
-        action="delete_count_line"
-        staffUsername={user?.username || "unknown"}
-        entityId={selectedLineForDelete?.id}
-      />
     </ScreenContainer>
   );
 }

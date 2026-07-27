@@ -29,6 +29,10 @@ export function ScanCameraOverlay({
   scanned,
   timeoutSeconds = 30,
 }: ScanCameraOverlayProps) {
+  const device = useCameraDevice("back");
+  const [isTorchOn, setIsTorchOn] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+
   useEffect(() => {
     if (timeoutSeconds <= 0) {
       return;
@@ -40,6 +44,21 @@ export function ScanCameraOverlay({
 
     return () => clearTimeout(timer);
   }, [onClose, timeoutSeconds]);
+
+  useEffect(() => {
+    if (device?.neutralZoom) {
+      setZoomLevel(device.neutralZoom);
+    }
+  }, [device?.neutralZoom]);
+
+  const codeScanner = useCodeScanner({
+    codeTypes: ["ean-13", "ean-8", "upc-a", "upc-e", "code-128", "code-39", "qr"],
+    onCodeScanned: (codes: any) => {
+      if (!scanned && codes.length > 0) {
+        onBarcodeScanned({ data: codes[0].value || "" });
+      }
+    },
+  });
 
   if (!permission) {
     return <View />;
@@ -60,17 +79,6 @@ export function ScanCameraOverlay({
     );
   }
 
-  const device = useCameraDevice('back');
-  const [isTorchOn, setIsTorchOn] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(1);
-
-  // Initialize zoom to neutral zoom if available
-  useEffect(() => {
-    if (device?.neutralZoom) {
-      setZoomLevel(device.neutralZoom);
-    }
-  }, [device?.neutralZoom]);
-
   const toggleTorch = () => setIsTorchOn((prev) => !prev);
   
   const handleZoomIn = () => {
@@ -84,15 +92,6 @@ export function ScanCameraOverlay({
       setZoomLevel((prev) => Math.max(prev - 1, device.minZoom));
     }
   };
-
-  const codeScanner = useCodeScanner({
-    codeTypes: ["ean-13", "ean-8", "upc-a", "upc-e", "code-128", "code-39", "qr"],
-    onCodeScanned: (codes: any) => {
-      if (!scanned && codes.length > 0) {
-        onBarcodeScanned({ data: codes[0].value || "" });
-      }
-    },
-  });
 
   if (!device) {
     return (

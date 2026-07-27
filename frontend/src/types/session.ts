@@ -47,6 +47,8 @@ export interface Session {
   barcode?: string;
   // Location metadata
   location_type?: string;
+  location_path_ids?: string[];
+  location_path_names?: string[];
   location_name?: string;
   rack_no?: string;
   last_heartbeat?: string;

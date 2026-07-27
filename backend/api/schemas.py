@@ -313,6 +313,8 @@ class Session(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     warehouse: str
     location_id: Optional[str] = None
+    location_path_ids: list[str] = Field(default_factory=list)
+    location_path_names: list[str] = Field(default_factory=list)
     location_key: Optional[str] = None
     location_type: Optional[str] = None
     location_name: Optional[str] = None
@@ -388,6 +390,9 @@ class SessionCreate(BaseModel):
     location_type: Optional[str] = None
     location_name: Optional[str] = None
     rack_no: Optional[str] = None
+    location_id: Optional[str] = None
+    location_path_ids: list[str] = Field(default_factory=list)
+    location_path_names: list[str] = Field(default_factory=list)
 
 
 class UnknownItem(BaseModel):

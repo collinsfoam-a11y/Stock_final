@@ -1,0 +1,71 @@
+services:
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/mknoufi/stock_verify_ui-backend:latest}
+    restart: always
+    environment:
+      - MONGO_URL=mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongo:27017/${DB_NAME:-stock_verification}?authSource=admin
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - SQL_SERVER_HOST=${SQL_SERVER_HOST}
+      - SQL_SERVER_PORT=${SQL_SERVER_PORT:-1433}
+      - SQL_SERVER_DATABASE=${SQL_SERVER_DATABASE}
+      - SQL_SERVER_USER=${SQL_SERVER_USER}
+      - SQL_SERVER_PASSWORD=${SQL_SERVER_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - PIN_SALT=${PIN_SALT}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS}
+      - AUTH_COOKIE_DOMAIN=${AUTH_COOKIE_DOMAIN}
+      - AUTH_COOKIE_SAMESITE=${AUTH_COOKIE_SAMESITE:-lax}
+      - AUTO_SEED_DEFAULT_USERS=${AUTO_SEED_DEFAULT_USERS:-false}
+      - AUTO_SEED_MOCK_ERP_DATA=${AUTO_SEED_MOCK_ERP_DATA:-false}
+    ports:
+      - "127.0.0.1:8001:8001"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  nginx:
+    image: ${NGINX_IMAGE:-ghcr.io/mknoufi/stock_verify_ui-nginx:latest}
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - nginx_ssl:/etc/nginx/ssl
+    depends_on:
+      - backend
+
+  mongo:
+    image: mongo:7
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo_data:
+  redis_data:
+  nginx_ssl:

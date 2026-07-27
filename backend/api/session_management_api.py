@@ -26,6 +26,7 @@ from backend.auth.dependencies import (
 from backend.core.websocket_manager import manager
 from backend.db.runtime import get_db
 from backend.services.lock_manager import get_lock_manager
+from backend.services.location_service import LocationService
 from backend.services.canonical_inventory import (
     find_session,
     get_session_count_lines,
@@ -794,12 +795,6 @@ async def _close_existing_user_sessions(db: AsyncIOMotorDatabase, username: str)
     logger.info("Skipping auto-close for existing sessions (user=%s)", _safe_log_value(username))
 
 
-async def _revoke_existing_refresh_tokens(username: str) -> None:
-    refresh_token_service = get_refresh_token_service()
-    if refresh_token_service:
-        await refresh_token_service.revoke_all_user_tokens(username)
-
-
 def _build_new_session(
     session_data: SessionCreate,
     current_user: dict[str, Any],
@@ -815,6 +810,9 @@ def _build_new_session(
         location_type=location_type,
         location_name=location_name,
         rack_no=rack_no,
+        location_id=session_data.location_id,
+        location_path_ids=session_data.location_path_ids,
+        location_path_names=session_data.location_path_names,
         staff_user=current_user["username"],
         staff_name=current_user.get("full_name", current_user["username"]),
         type=session_data.type or "STANDARD",
@@ -1234,6 +1232,13 @@ async def create_session(
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> Session:
     """Create a new session with snapshot/config persistence and single-session enforcement."""
+    if session_data.location_id:
+        canonical_location = await LocationService(db).resolve(session_data.location_id)
+        if not canonical_location or not canonical_location.get("active", True):
+            raise HTTPException(status_code=422, detail="Canonical location is missing or inactive")
+        session_data.location_id = str(canonical_location["id"])
+        session_data.location_path_ids = list(canonical_location.get("path_ids") or [])
+        session_data.location_path_names = list(canonical_location.get("path_names") or [])
     warehouse, location_type, location_name, rack_no = _validate_session_create_request(
         session_data
     )
@@ -1248,7 +1253,6 @@ async def create_session(
         return Session(**existing_session)
 
     await _close_existing_user_sessions(db, current_user["username"])
-    await _revoke_existing_refresh_tokens(current_user["username"])
 
     session = _build_new_session(
         session_data,
@@ -1297,10 +1301,14 @@ async def get_active_sessions(
     }
 
     if user_id:
-        # Only supervisors can view other users' sessions
-        if current_user["role"] != "supervisor" and user_id != current_user["username"]:
+        if (
+            current_user["role"] not in ("supervisor", "admin")
+            and user_id != current_user["username"]
+        ):
             raise HTTPException(status_code=403, detail="Access denied")
         query["staff_user"] = user_id
+    elif current_user["role"] not in ("supervisor", "admin"):
+        query["staff_user"] = current_user["username"]
 
     if rack_id:
         query["rack_no"] = rack_id
@@ -1384,7 +1392,10 @@ async def get_session_detail(
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     # Check access
-    if current_user["role"] != "supervisor" and _session_owner(session) != current_user["username"]:
+    if (
+        current_user["role"] not in ("supervisor", "admin")
+        and _session_owner(session) != current_user["username"]
+    ):
         raise HTTPException(status_code=403, detail="Access denied")
 
     line_summary = await _get_session_line_summary(db, session_id)
@@ -1415,7 +1426,10 @@ async def get_session_stats(
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     # Check access
-    if current_user["role"] != "supervisor" and _session_owner(session) != current_user["username"]:
+    if (
+        current_user["role"] not in ("supervisor", "admin")
+        and _session_owner(session) != current_user["username"]
+    ):
         raise HTTPException(status_code=403, detail="Access denied")
 
     line_summary = await _get_session_line_summary(db, session_id)
@@ -1740,6 +1754,23 @@ async def finalize_session(
         lock_manager,
         note=request.note if request else None,
     )
+
+
+@router.get("/{session_id}/finalization-readiness")
+async def get_finalization_readiness(
+    session_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Return the exact readiness decision used by canonical finalization."""
+    session = await find_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+    if current_user.get("role") not in {"supervisor", "admin"} and _session_owner(
+        session
+    ) != current_user.get("username"):
+        raise HTTPException(status_code=403, detail="Not your session")
+    return await SessionLifecycleService(db).get_finalization_readiness(session_id)
 
 
 @router.post("/{session_id}/complete")

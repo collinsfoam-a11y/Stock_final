@@ -31,6 +31,7 @@ describe("useDeferredItemSubmission", () => {
         sessionId: "session-1",
         currentFloor: "F1",
         currentRack: "R1",
+        currentLocationId: "canonical-location-1",
         item: {
           id: "item-1",
           item_code: "ITEM001",
@@ -77,6 +78,7 @@ describe("useDeferredItemSubmission", () => {
         expect.objectContaining({
           item_code: "ITEM001",
           item_name: "Batch Item Name",
+          location_id: "canonical-location-1",
         })
       )
     );

@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "name": "Stock Verify complete remediation",
+  "phases": [
+    {
+      "id": "phase-0", "name": "Architecture contracts", "approval_required": false,
+      "tasks": [
+        {"id": "p0-contracts", "name": "Freeze domain and API contracts", "kind": "manual", "instructions": "Document lifecycle states, invariants, ownership boundaries, idempotency rules, offline conflict policy, and the canonical error envelope before implementation.", "targets": ["docs/architecture", "backend/api", "frontend/src/services"]},
+        {"id": "p0-tests", "name": "Add contract characterization tests", "kind": "manual", "instructions": "Add tests that capture the current critical count, finalization, sync, and error behaviors so later changes expose regressions.", "targets": ["backend/tests", "frontend/src"]}
+      ]
+    },
+    {
+      "id": "phase-1", "name": "Governance hardening", "approval_required": false,
+      "tasks": [
+        {"id": "p1-voiding", "name": "Replace destructive count edits", "kind": "manual", "instructions": "Implement void/supersede semantics, preserve immutable history, capture actor/reason/timestamp, and update API/UI behavior.", "targets": ["backend/api", "backend/services", "backend/db", "frontend/src"]},
+        {"id": "p1-repair", "name": "Gate repair operations", "kind": "manual", "instructions": "Require explicit authorization, reason, audit event, and safe default dry-run for repair tooling.", "targets": ["backend/scripts", "backend/services", "backend/tests"]},
+        {"id": "p1-validate", "name": "Validate governance changes", "kind": "command", "mutates": false, "commands": [["{python}", "-m", "pytest", "backend/tests", "-q", "--tb=short"]]}
+      ]
+    },
+    {
+      "id": "phase-2", "name": "Finalization and offline safety", "approval_required": false,
+      "tasks": [
+        {"id": "p2-readiness", "name": "Centralize finalization readiness", "kind": "manual", "instructions": "Create a single readiness policy shared by API and UI, including unresolved conflicts, pending sync, evidence, and variance requirements.", "targets": ["backend/services", "backend/api", "frontend/src"]},
+        {"id": "p2-offline", "name": "Make offline writes idempotent", "kind": "manual", "instructions": "Add stable operation IDs, replay protection, explicit conflict states, and retry-safe client behavior.", "targets": ["backend/api", "backend/services", "frontend/src/services"]},
+        {"id": "p2-validate", "name": "Validate finalization and sync", "kind": "command", "mutates": false, "commands": [["{python}", "-m", "pytest", "backend/tests", "-q", "--tb=short"]]}
+      ]
+    },
+    {
+      "id": "phase-3", "name": "Location hierarchy", "approval_required": true,
+      "tasks": [
+        {"id": "p3-model", "name": "Implement hierarchical locations", "kind": "manual", "instructions": "Add stable location identity and ancestry/path semantics while retaining compatibility with existing location references.", "targets": ["backend/db", "backend/services", "backend/api", "frontend/src"]},
+        {"id": "p3-migration", "name": "Prepare and rehearse location migration", "kind": "manual", "instructions": "Create reversible migration and backfill scripts, run them in dry-run against a snapshot, and record row counts and rollback evidence.", "targets": ["backend/alembic", "backend/scripts", "backend/tests"]},
+        {"id": "p3-validate", "name": "Validate location hierarchy", "kind": "command", "mutates": false, "commands": [["{python}", "-m", "pytest", "backend/tests", "-q", "--tb=short"]]}
+      ]
+    },
+    {
+      "id": "phase-4", "name": "Canonical inventory identity", "approval_required": true,
+      "tasks": [
+        {"id": "p4-identity", "name": "Introduce canonical inventory identity", "kind": "manual", "instructions": "Define canonical item identity, aliases, normalized codes, uniqueness rules, and deterministic duplicate resolution.", "targets": ["backend/db", "backend/services", "backend/api", "frontend/src"]},
+        {"id": "p4-backfill", "name": "Backfill and verify identity links", "kind": "manual", "instructions": "Run an idempotent dry-run backfill, review collisions, then execute only with a backup and rollback path.", "targets": ["backend/scripts", "backend/tests"]},
+        {"id": "p4-validate", "name": "Validate canonical identity", "kind": "command", "mutates": false, "commands": [["{python}", "-m", "pytest", "backend/tests", "-q", "--tb=short"]]}
+      ]
+    },
+    {
+      "id": "phase-5", "name": "Physical batch aggregate", "approval_required": true,
+      "tasks": [
+        {"id": "p5-batches", "name": "Model physical batches", "kind": "manual", "instructions": "Implement batch identity, quantities, lifecycle transitions, concurrency control, and links to items and locations.", "targets": ["backend/db", "backend/services", "backend/api", "frontend/src"]},
+        {"id": "p5-validate", "name": "Validate batch invariants", "kind": "command", "mutates": false, "commands": [["{python}", "-m", "pytest", "backend/tests", "-q", "--tb=short"]]}
+      ]
+    },
+    {
+      "id": "phase-6", "name": "Serial registry", "approval_required": true,
+      "tasks": [
+        {"id": "p6-serials", "name": "Implement serial registry", "kind": "manual", "instructions": "Add normalized unique serials, lifecycle/location history, duplicate handling, imports, scans, and audit events.", "targets": ["backend/db", "backend/services", "backend/api", "frontend/src"]},
+        {"id": "p6-validate", "name": "Validate serial integrity", "kind": "command", "mutates": false, "commands": [["{python}", "-m", "pytest", "backend/tests", "-q", "--tb=short"]]}
+      ]
+    },
+    {
+      "id": "phase-7", "name": "Damage and evidence aggregates", "approval_required": true,
+      "tasks": [
+        {"id": "p7-damage", "name": "Implement damage cases and evidence", "kind": "manual", "instructions": "Create damage lifecycle, severity/reason taxonomy, append-only evidence metadata, authorization, and secure storage links.", "targets": ["backend/db", "backend/services", "backend/api", "frontend/src"]},
+        {"id": "p7-validate", "name": "Validate evidence governance", "kind": "command", "mutates": false, "commands": [["{python}", "-m", "pytest", "backend/tests", "-q", "--tb=short"]]}
+      ]
+    },
+    {
+      "id": "phase-8", "name": "Reconciliation and exception dashboard", "approval_required": false,
+      "tasks": [
+        {"id": "p8-reconcile", "name": "Build reconciliation projections", "kind": "manual", "instructions": "Create explainable variance projections, exception queues, assignment/state transitions, filters, and drill-down evidence.", "targets": ["backend/services", "backend/api", "frontend/src"]},
+        {"id": "p8-validate", "name": "Validate reconciliation", "kind": "command", "mutates": false, "commands": [["{python}", "-m", "pytest", "backend/tests", "-q", "--tb=short"]]}
+      ]
+    },
+    {
+      "id": "phase-9", "name": "Unified API error contract", "approval_required": false,
+      "tasks": [
+        {"id": "p9-errors", "name": "Unify backend and client errors", "kind": "manual", "instructions": "Adopt the documented error envelope, stable error codes, correlation IDs, safe messages, client parsing, and compatibility handling.", "targets": ["backend/exceptions.py", "backend/middleware", "backend/api", "frontend/src/services"]},
+        {"id": "p9-validate", "name": "Run complete quality gates", "kind": "command", "mutates": false, "commands": [["{python}", "-m", "pytest", "backend/tests", "-q", "--tb=short"], ["corepack", "pnpm", "--dir", "frontend", "exec", "tsc", "--noEmit"]]}
+      ]
+    },
+    {
+      "id": "phase-10", "name": "Advanced features", "approval_required": true,
+      "tasks": [
+        {"id": "p10-prioritize", "name": "Prioritize advanced capabilities", "kind": "manual", "instructions": "Choose advanced analytics, automation, and AI features only after measuring the stable domain model; document value, risk, privacy, fallback, and monitoring.", "targets": ["docs", "backend", "frontend"]},
+        {"id": "p10-implement", "name": "Implement approved advanced slice", "kind": "manual", "instructions": "Deliver the approved smallest vertical slice behind a feature flag with evaluation, observability, and rollback.", "targets": ["backend", "frontend"]},
+        {"id": "p10-validate", "name": "Run final regression gates", "kind": "command", "mutates": false, "commands": [["{python}", "-m", "pytest", "backend/tests", "-q", "--tb=short"], ["corepack", "pnpm", "--dir", "frontend", "exec", "tsc", "--noEmit"]]}
+      ]
+    }
+  ]
+}

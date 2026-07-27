@@ -4,6 +4,8 @@ Handles offline queue sync with conflict detection and retry logic
 and preserves backward compatibility with legacy offline payloads.
 """
 
+import hashlib
+import json
 import logging
 from backend.utils.api_utils import sanitize_for_logging
 import re
@@ -152,6 +154,13 @@ class BatchSyncResponse(BaseModel):
     )
     success_count: Optional[int] = Field(None, description="Legacy summary: successful operations")
     failed_count: Optional[int] = Field(None, description="Legacy summary: failed operations")
+
+
+def _sync_record_fingerprint(record: SyncRecord) -> str:
+    """Bind an idempotency key to one canonical logical payload."""
+    payload = record.model_dump(mode="json")
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 # Sync Logic
@@ -393,6 +402,21 @@ async def sync_batch(
     """
     start_time = time.time()
 
+    if request.operations:
+        raise HTTPException(
+            status_code=410,
+            detail=(
+                "CRITICAL: Legacy operations-based sync is disabled. "
+                "Submit records-based payload only."
+            ),
+        )
+
+    if not request.records:
+        raise HTTPException(
+            status_code=400,
+            detail="No records provided for batch sync",
+        )
+
     # Rate limiting check
     user_id = (
         current_user.get("username")
@@ -410,21 +434,6 @@ async def sync_batch(
                 "limit": rate_info.get("limit", 10),
             },
             headers={"Retry-After": str(rate_info.get("retry_after", 60))},
-        )
-
-    if request.operations:
-        raise HTTPException(
-            status_code=410,
-            detail=(
-                "CRITICAL: Legacy operations-based sync is disabled. "
-                "Submit records-based payload only."
-            ),
-        )
-
-    if not request.records:
-        raise HTTPException(
-            status_code=400,
-            detail="No records provided for batch sync",
         )
 
     # Get database
@@ -465,12 +474,27 @@ async def sync_batch(
         lifecycle_service = SessionLifecycleService(db)
         # Validate all records first
         for record in request.records:
+            payload_fingerprint = _sync_record_fingerprint(record)
             # Check idempotency first using client_record_id as operation_id
             existing_op = await db.idempotency_operations.find_one(
                 {"operation_id": record.client_record_id}
             )
             if existing_op:
-                ok_records.append(record.client_record_id)
+                recorded_fingerprint = existing_op.get("payload_fingerprint")
+                if recorded_fingerprint and recorded_fingerprint != payload_fingerprint:
+                    conflicts.append(
+                        SyncConflict(
+                            client_record_id=record.client_record_id,
+                            conflict_type="idempotency_mismatch",
+                            message="Idempotency key was already used for a different payload.",
+                            details={
+                                "session_id": record.session_id,
+                                "recorded_session_id": existing_op.get("session_id"),
+                            },
+                        )
+                    )
+                else:
+                    ok_records.append(record.client_record_id)
                 continue
 
             conflict = await validate_record(record, db, lock_manager, sync_service, user_id)
@@ -492,6 +516,9 @@ async def sync_batch(
                     await db.idempotency_operations.insert_one(
                         {
                             "operation_id": record.client_record_id,
+                            "payload_fingerprint": payload_fingerprint,
+                            "session_id": record.session_id,
+                            "created_by": user_id,
                             "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
                         }
                     )

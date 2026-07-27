@@ -15,6 +15,9 @@ export type SessionStartedPayload = {
   location_type?: string;
   location_name?: string;
   rack_no?: string;
+  location_id?: string;
+  location_path_ids?: string[];
+  location_path_names?: string[];
   staff_user: string;
   staff_name: string;
   status: string;

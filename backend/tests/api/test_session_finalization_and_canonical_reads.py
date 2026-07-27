@@ -235,6 +235,82 @@ async def test_finalize_session_rejects_unresolved_lines(async_client, test_db):
 
 
 @pytest.mark.asyncio
+async def test_finalization_readiness_and_finalize_share_sync_conflict_blocker(
+    async_client, test_db
+):
+    session_id = "sess-finalize-sync-conflict"
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    await _create_user(test_db, "supervisor1", "supervisor", full_name="Supervisor User")
+    await test_db.sessions.insert_one(
+        {
+            "id": session_id,
+            "session_id": session_id,
+            "warehouse": "Main Warehouse",
+            "staff_user": "staff1",
+            "status": "REVIEW",
+            "started_at": now,
+            "reconciled_at": now,
+        }
+    )
+    await test_db.sync_conflicts.insert_one(
+        {
+            "session_id": session_id,
+            "entity_type": "count_line",
+            "entity_id": "line-1",
+            "status": "pending",
+        }
+    )
+
+    headers = _make_auth_headers("supervisor1", "supervisor")
+    readiness_response = await async_client.get(
+        f"/api/sessions/{session_id}/finalization-readiness", headers=headers
+    )
+    assert readiness_response.status_code == 200
+    readiness = readiness_response.json()
+    assert readiness["ready"] is False
+    assert readiness["blockers"] == [
+        {
+            "code": "UNRESOLVED_SYNC_CONFLICTS",
+            "count": 1,
+            "message": "1 unresolved sync conflict(s)",
+        }
+    ]
+
+    finalize_response = await async_client.post(
+        f"/api/sessions/{session_id}/finalize", headers=headers
+    )
+    assert finalize_response.status_code == 409
+    assert "unresolved sync conflict" in finalize_response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_finalization_readiness_blocks_pending_server_sync(async_client, test_db):
+    session_id = "sess-finalize-pending-sync"
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    await _create_user(test_db, "supervisor1", "supervisor", full_name="Supervisor User")
+    await test_db.sessions.insert_one(
+        {
+            "id": session_id,
+            "session_id": session_id,
+            "warehouse": "Main Warehouse",
+            "staff_user": "staff1",
+            "status": "REVIEW",
+            "started_at": now,
+        }
+    )
+    await test_db.sync_queue.insert_one(
+        {"queue_id": "queue-1", "session_id": session_id, "status": "PENDING_RETRY"}
+    )
+
+    response = await async_client.get(
+        f"/api/sessions/{session_id}/finalization-readiness",
+        headers=_make_auth_headers("supervisor1", "supervisor"),
+    )
+    assert response.status_code == 200
+    assert response.json()["blockers"][0]["code"] == "PENDING_SERVER_SYNC"
+
+
+@pytest.mark.asyncio
 async def test_legacy_complete_route_allows_staff_owner_close(async_client, test_db):
     session_id = "sess-legacy-complete"
     now = datetime.now(timezone.utc).replace(tzinfo=None)

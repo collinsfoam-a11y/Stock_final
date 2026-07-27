@@ -86,7 +86,14 @@ async def repair_legacy_zero_variance_approvals(
     dry_run: bool = True,
     limit: Optional[int] = None,
     session_id: Optional[str] = None,
+    repair_actor: Optional[str] = None,
+    repair_reason: Optional[str] = None,
+    change_reference: Optional[str] = None,
 ) -> dict[str, Any]:
+    if not dry_run and not all((repair_actor, repair_reason, change_reference)):
+        raise ValueError(
+            "Executing repairs requires repair_actor, repair_reason, and change_reference"
+        )
     stats: dict[str, Any] = {
         "scanned": 0,
         "candidates": 0,
@@ -155,9 +162,13 @@ async def repair_legacy_zero_variance_approvals(
                 },
                 context={
                     "session_id": str(doc.get("session_id") or ""),
-                    "username": "system",
+                    "username": repair_actor,
                     "governance_mode": "repair",
                     "validation_mode": "repair_skip",
+                    "repair_authorized": True,
+                    "repair_actor": repair_actor,
+                    "repair_reason": repair_reason,
+                    "repair_change_reference": change_reference,
                 },
             )
             if int(getattr(result, "modified_count", 0) or 0) > 0:
@@ -187,6 +198,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             dry_run=not args.execute,
             limit=args.limit,
             session_id=args.session_id,
+            repair_actor=args.actor,
+            repair_reason=args.reason,
+            change_reference=args.change_reference,
         )
 
 
@@ -208,6 +222,13 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="session_id",
         default=None,
         help="Restrict repairs to a single session id.",
+    )
+    parser.add_argument("--actor", help="Named operator authorizing an executed repair.")
+    parser.add_argument("--reason", help="Business reason for an executed repair.")
+    parser.add_argument(
+        "--change-reference",
+        dest="change_reference",
+        help="Ticket, incident, or approved change reference.",
     )
     return parser
 

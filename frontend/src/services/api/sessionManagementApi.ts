@@ -36,6 +36,9 @@ export interface CreateSessionParams {
   location_type?: string;
   location_name?: string;
   rack_no?: string;
+  location_id?: string;
+  location_path_ids?: string[];
+  location_path_names?: string[];
 }
 
 export interface SessionStatsResponse {
@@ -55,6 +58,9 @@ type SessionCreateConfig = {
   locationType?: string;
   locationName?: string;
   rackNo?: string;
+  locationId?: string;
+  locationPathIds?: string[];
+  locationPathNames?: string[];
 };
 
 type SessionPage = {
@@ -77,6 +83,9 @@ const normalizeCreateSessionParams = (
   locationType: typeof params !== "string" ? params.location_type : undefined,
   locationName: typeof params !== "string" ? params.location_name : undefined,
   rackNo: typeof params !== "string" ? params.rack_no : undefined,
+  locationId: typeof params !== "string" ? params.location_id : undefined,
+  locationPathIds: typeof params !== "string" ? params.location_path_ids : undefined,
+  locationPathNames: typeof params !== "string" ? params.location_path_names : undefined,
 });
 
 const paginateSessions = (sessions: Session[], page: number, pageSize: number): SessionPage => {
@@ -252,6 +261,9 @@ export const createSession = async (params: string | CreateSessionParams) => {
       location_type: config.locationType,
       location_name: config.locationName,
       rack_no: config.rackNo,
+      location_id: config.locationId,
+      location_path_ids: config.locationPathIds,
+      location_path_names: config.locationPathNames,
     });
     await cacheSession(result);
     return result;

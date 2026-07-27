@@ -6,6 +6,7 @@ interface ScanSessionState {
   // Session Context
   currentFloor: string | null;
   currentRack: string | null; // Manual input for rack/shelf identifier
+  currentLocationId: string | null;
   isSectionActive: boolean;
   activeSessionId: string | null;
   sessionType: "STANDARD" | "BLIND" | "STRICT";
@@ -13,6 +14,7 @@ interface ScanSessionState {
   // Actions
   setFloor: (floor: string) => void;
   setRack: (rack: string) => void;
+  setLocationId: (locationId: string | null) => void;
   setActiveSession: (id: string, type: "STANDARD" | "BLIND" | "STRICT") => void;
   clearActiveSession: () => void;
   startSection: () => void;
@@ -26,6 +28,7 @@ export const useScanSessionStore = create<ScanSessionState>()(
     (set, get) => ({
       currentFloor: null,
       currentRack: null,
+      currentLocationId: null,
       isSectionActive: false,
 
       activeSessionId: null,
@@ -33,6 +36,7 @@ export const useScanSessionStore = create<ScanSessionState>()(
 
       setFloor: (floor) => set({ currentFloor: floor }),
       setRack: (rack) => set({ currentRack: rack }),
+      setLocationId: (currentLocationId) => set({ currentLocationId }),
       setActiveSession: (id, type) =>
         set({ activeSessionId: id, sessionType: type }),
       clearActiveSession: () =>
@@ -50,6 +54,7 @@ export const useScanSessionStore = create<ScanSessionState>()(
           isSectionActive: false,
           currentFloor: null,
           currentRack: null,
+          currentLocationId: null,
         });
       },
 
@@ -66,6 +71,7 @@ export const useScanSessionStore = create<ScanSessionState>()(
         set({
           currentFloor: null,
           currentRack: null,
+          currentLocationId: null,
           isSectionActive: false,
           activeSessionId: null,
           sessionType: "STANDARD",

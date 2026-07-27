@@ -44,7 +44,13 @@ async def test_repair_legacy_zero_variance_approvals_updates_pending_exact_match
         }
     )
 
-    stats = await repair_legacy_zero_variance_approvals(db, dry_run=False)
+    stats = await repair_legacy_zero_variance_approvals(
+        db,
+        dry_run=False,
+        repair_actor="test-supervisor",
+        repair_reason="Correct legacy approval projection",
+        change_reference="TEST-CHANGE-1",
+    )
 
     assert stats["scanned"] == 2
     assert stats["candidates"] == 1
@@ -56,6 +62,9 @@ async def test_repair_legacy_zero_variance_approvals_updates_pending_exact_match
     assert repaired["approval_status"] == "APPROVED"
     assert repaired["approved_by"] == "system"
     assert repaired["approved_at"] == counted_at
+    assert repaired["repair_actor"] == "test-supervisor"
+    assert repaired["repair_reason"] == "Correct legacy approval projection"
+    assert repaired["repair_change_reference"] == "TEST-CHANGE-1"
 
     untouched = await db.count_lines.find_one({"id": "line-2"})
     assert untouched["status"] == "pending"

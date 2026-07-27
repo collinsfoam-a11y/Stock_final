@@ -11,6 +11,7 @@ import { colors as c, semanticColors as sc, gradients as g } from "./colors";
 import {
   spacing as sp,
   layout as l,
+  semanticSpacing as ss,
   touchTargets as tt,
   hitSlop as hs,
 } from "./spacing";
@@ -36,6 +37,7 @@ import {
   opacity as o,
   zIndex as z,
 } from "./animations";
+import { wcag } from "./contrast";
 import {
   modernBorderRadius as legacyBorderRadius,
   modernTypography as legacyTypography,
@@ -57,8 +59,10 @@ export {
   layout,
   touchTargets,
   hitSlop,
+  semanticSpacing,
   type Spacing,
   type SpacingKey,
+  type SemanticSpacingKey,
 } from "./spacing";
 
 export { radius, componentRadius, type Radius, type RadiusKey } from "./radius";
@@ -96,6 +100,8 @@ export {
   type SpringConfig,
 } from "./animations";
 
+export { wcag, getContrastRatio, isAA, isAAA } from "./contrast";
+
 // Legacy compatibility aliases used by screens that have not fully
 // normalized onto the lower-level token exports yet.
 export const typography = legacyTypography;
@@ -111,6 +117,7 @@ export const unifiedTheme = {
   semanticColors: sc,
   gradients: g,
   spacing: sp,
+  semanticSpacing: ss,
   layout: l,
   touchTargets: tt,
   hitSlop: hs,
@@ -133,6 +140,7 @@ export const unifiedTheme = {
   springConfigs: spc,
   opacity: o,
   zIndex: z,
+  wcag,
 } as const;
 
 export type UnifiedTheme = typeof unifiedTheme;

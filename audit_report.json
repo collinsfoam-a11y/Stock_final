@@ -1,0 +1,299 @@
+{
+  "audit_1_frontend_theme_style_tokens": {
+    "theme_files_found": [
+      "frontend/src/theme/designSystem.ts",
+      "frontend/src/theme/designTokens.ts",
+      "frontend/src/theme/enhancedColors.ts",
+      "frontend/src/theme/fontPreferences.ts",
+      "frontend/src/theme/index.ts",
+      "frontend/src/theme/legacyCompat.ts",
+      "frontend/src/theme/modernDesign.ts",
+      "frontend/src/theme/operationalStyleBridge.ts",
+      "frontend/src/theme/operationalTheme.ts",
+      "frontend/src/theme/shadowUtils.ts",
+      "frontend/src/theme/staffUiScale.ts",
+      "frontend/src/theme/themes.ts",
+      "frontend/src/theme/themeTokens.ts",
+      "frontend/src/theme/typography.ts",
+      "frontend/src/theme/uiConstants.ts",
+      "frontend/src/theme/unified/animations.ts",
+      "frontend/src/theme/unified/colors.ts",
+      "frontend/src/theme/unified/index.ts",
+      "frontend/src/theme/unified/radius.ts",
+      "frontend/src/theme/unified/shadows.ts",
+      "frontend/src/theme/unified/spacing.ts",
+      "frontend/src/theme/unified/typography.ts",
+      "frontend/src/styles/globalStyles.ts",
+      "frontend/src/styles/modernDesignSystem.ts",
+      "frontend/src/styles/unifiedSystem.ts",
+      "frontend/src/styles/screens/ItemDetail.styles.ts",
+      "frontend/src/styles/screens/Scan.styles.ts",
+      "frontend/src/components/ui/ThemedScreen.tsx",
+      "frontend/src/components/ui/ThemePicker.tsx",
+      "frontend/src/context/ThemeContext.tsx",
+      "frontend/src/hooks/useSystemTheme.ts",
+      "frontend/src/hooks/useTheme.ts",
+      "frontend/src/hooks/useUiTokens.ts",
+      "frontend/src/services/storage/tokenStore.ts",
+      "frontend/src/services/themeService.ts",
+      "frontend/src/theme/unified/colors.ts",
+      "frontend/src/theme/designTokens.ts",
+      "frontend/src/theme/enhancedColors.ts",
+      "frontend/src/theme/operationalTheme.ts",
+      "frontend/src/theme/themes.ts",
+      "frontend/src/theme/themeTokens.ts"
+    ],
+    "theme_file_counts": {
+      "theme_directory_files": 23,
+      "styles_directory_files": 5,
+      "cross_cutting_theme_named_files": 15,
+      "total_unique_theme_related_files": 43
+    },
+    "common_color_values": {
+      "top_10_hex": [
+        { "color": "#ffffff", "count": 38 },
+        { "color": "#0ea5e9", "count": 25 },
+        { "color": "#10b981", "count": 17 },
+        { "color": "#ef4444", "count": 13 },
+        { "color": "#1e293b", "count": 12 },
+        { "color": "#f59e0b", "count": 11 },
+        { "color": "#0f766e", "count": 11 },
+        { "color": "#06b6d4", "count": 11 },
+        { "color": "#0284c7", "count": 10 },
+        { "color": "#22c55e", "count": 10 }
+      ],
+      "top_10_rgba": [
+        { "color": "rgba(255, 255, 255, ...)", "count": 49 },
+        { "color": "rgba(0, 0, 0, ...)", "count": 29 },
+        { "color": "rgba(15, 23, 42, ...)", "count": 24 },
+        { "color": "rgba(0,0,0, ...)", "count": 20 },
+        { "color": "rgba(255,255,255, ...)", "count": 16 },
+        { "color": "rgba(239, 68, 68, ...)", "count": 9 },
+        { "color": "rgba(99, 102, 241, ...)", "count": 6 },
+        { "color": "rgba(76, 175, 80, ...)", "count": 5 },
+        { "color": "rgba(59, 130, 246, ...)", "count": 5 },
+        { "color": "rgba(14, 165, 233, ...)", "count": 4 }
+      ],
+      "note": "rgba values are truncated at the parameter boundary; exact alpha values vary"
+    },
+    "common_font_sizes": [
+      { "size": "fontSize: 12", "count": 77 },
+      { "size": "fontSize: 14", "count": 77 },
+      { "size": "fontSize: 16", "count": 54 },
+      { "size": "fontSize: 13", "count": 24 },
+      { "size": "fontSize: 10", "count": 20 },
+      { "size": "fontSize: 11", "count": 16 },
+      { "size": "fontSize: 20", "count": 14 },
+      { "size": "fontSize: 15", "count": 13 },
+      { "size": "fontSize: 18", "count": 12 },
+      { "size": "fontSize: 24", "count": 12 }
+    ],
+    "common_spacing": [
+      { "value": "marginTop: 2", "count": 24 },
+      { "value": "marginBottom: 8", "count": 22 },
+      { "value": "padding: 12", "count": 18 },
+      { "value": "padding: 20", "count": 16 },
+      { "value": "padding: 16", "count": 16 },
+      { "value": "marginBottom: 16", "count": 16 },
+      { "value": "paddingVertical: 12", "count": 13 },
+      { "value": "padding: 24", "count": 11 },
+      { "value": "marginTop: 4", "count": 11 },
+      { "value": "marginBottom: 4", "count": 11 }
+    ],
+    "inline_style_usage": {
+      "files_with_style_prop": 151,
+      "files_importing_style_constants": 151,
+      "files_using_inline_style_objects_only": 20,
+      "files_importing_constants_only": 20,
+      "files_both_inline_and_imported": 131,
+      "files_neither": 305,
+      "total_source_files": 476,
+      "inline_style_vs_constant_ratio": "Approximately 1:1 when counting all files that use style= or import from styles/theme/tokens. However, the ratio of pure inline style objects (style={{...}}) to pure StyleSheet.create usage (style={styles.xxx}) is roughly 1:4, meaning about 20% of styled files use inline style objects while 80% use imported style constants."
+    },
+    "ui_library_detection": {
+      "react_native_paper": false,
+      "native_base": false,
+      "other_ui_libraries": [],
+      "custom_theme_system": true,
+      "theme_architecture": "Custom React Context-based theme system (ThemeContext) with design tokens, semantic colors, typography, spacing, radius, shadows, and motion tokens. Uses a unified theme system in frontend/src/theme/unified/."
+    },
+    "inline_style_patterns_found": {
+      "style_double_brace_inline": "style={{color: ...}} or style={{backgroundColor: ...}} -- used in ~30 files for inline color overrides",
+      "style_single_brace_variable": "style={styles.xxx} -- used in ~131 files with StyleSheet.create or imported style objects",
+      "style_array_merge": "style={[styles.xxx, { property: value }]} -- mixed pattern used in ~53 files",
+      "fontSize_inline": "fontSize: N -- found in 121 files across both inline and StyleSheet patterns"
+    },
+    "key_findings": [
+      "No React Native Paper or NativeBase UI libraries detected; the project uses a fully custom theme system",
+      "The theme system is well-structured with design tokens (colors, spacing, radius, shadows, typography) in themed/ subdirectory",
+      "A separate styles/ directory contains global styles and screen-specific stylesheets",
+      "About 32% of source files (151/476) use the style= prop, while 32% import from styles/theme/tokens",
+      "The dominant styling pattern is StyleSheet.create or imported style objects rather than inline style={{...}} objects",
+      "The project has a mature design token system with semantic color naming (primary, success, warning, error, info) with 50-90 shade scales",
+      "Color palette is based on Material Design 3 with common Tailwind-like hex values (#0ea5e9, #10b981, #ef4444, etc.)",
+      "Most common font sizes cluster around 10-16px (body text range) with 20-24px for headings",
+      "Spacing values follow a tight convention: 2, 4, 8, 12, 16, 20, 24 pixels"
+    ]
+  },
+  "audit_2_remote_branches": {
+    "total_remote_branches": 240,
+    "bolt_branches_performance": {
+      "count": 60,
+      "description": "Bolt-prefixed branches for performance improvements (database query optimization, list virtualization, memoization, parallelization, N+1 fix, scroll optimization, flatlist-to-virtuallist replacement)",
+      "notable_patterns": [
+        "bolt-optimize-* (query/memoization optimization)",
+        "bolt-fix-* (bug fixes for sync, scrolling, batch issues)",
+        "bolt-replace-* (architecture replacements like flatlist->virtuallist)",
+        "bolt-remove-* (removing overhead like virtualization)",
+        "bolt-parallelize-* (parallel query execution)",
+        "bolt/ (slash-prefixed variant) and bolt/ subdirectories"
+      ],
+      "branches": [
+        "origin/bolt-analytics-parallel-queries-18295195463125269887",
+        "origin/bolt-asyncio-gather-16053350422243870586",
+        "origin/bolt-facet-optimization-logs-api-4406288642777590425",
+        "origin/bolt-fix-batch-sync-n1-15552547644709417334",
+        "origin/bolt-fix-dashboard-facet-bottleneck-17637491070366124484",
+        "origin/bolt-fix-non-scrolling-lists-14204265750268143719",
+        "origin/bolt-fix-recentscans-performance-2723645718279827707",
+        "origin/bolt-memoize-serial-entry-card-882003280984870811",
+        "origin/bolt-optimize-activity-log-stats-18239454281938290323",
+        "origin/bolt-optimize-calculate-verified-value-7010455189845134865",
+        "origin/bolt-optimize-datatable-15325947203086416623",
+        "origin/bolt-optimize-error-log-facet-16151665884786472909",
+        "origin/bolt-optimize-filtered-items-13758655995385875171",
+        "origin/bolt-optimize-mongo-facet-1075976445437446084",
+        "origin/bolt-optimize-realtime-dashboard-table-13796985308349640220",
+        "origin/bolt-optimize-recount-modal-14556338937211056856",
+        "origin/bolt-optimize-scroll-disabled-lists-6196735508398678208",
+        "origin/bolt-optimize-scroll-enabled-lists-2516592164294812927",
+        "origin/bolt-optimize-serial-entries-list-13299219868874576242",
+        "origin/bolt-optimize-unknown-items-list-5717674389194370621",
+        "origin/bolt-optimize-users-table-348292091316635",
+        "origin/bolt-optimize-users-table-list-10223159087985054407",
+        "origin/bolt-parallelize-sync-conflicts-stats-17305515469307127958",
+        "origin/bolt-remove-virtualization-overhead-15952590641048409807",
+        "origin/bolt-remove-virtualization-overhead-5495466546118750274",
+        "origin/bolt-remove-virtualization-overhead-6597366823260721158",
+        "origin/bolt-replace-flatlist-with-virtuallist-11103426051471079829",
+        "origin/bolt-replace-unscrollable-flatlist-10503769616354543836",
+        "origin/bolt-unscrollable-list-optimization-1470035489981876041",
+        "origin/bolt-users-table-virtuallist-33105547031124064",
+        "origin/bolt-virtual-list-dashboard-6526714893832121870",
+        "origin/bolt-virtual-list-optimization-9231089028797816607",
+        "origin/bolt-virtual-list-realtime-dashboard-10498849458653859728",
+        "origin/bolt-virtual-list-realtime-dashboard-7098895327674651844",
+        "origin/bolt-virtual-list-searchable-select-modal-11015807433142243399",
+        "origin/bolt/ai-variance-parallel-gather-13774264361366207571",
+        "origin/bolt/concurrent-analytics-queries-5114953240646889682",
+        "origin/bolt/dashboard-facet-performance-16269874526639850675",
+        "origin/bolt/error-log-facet-optimization-9008882475042232938",
+        "origin/bolt/fix-n-plus-1-enrichment-queries-8880284811077753571",
+        "origin/bolt/optimize-conflict-stats-9320904863931463650",
+        "origin/bolt/optimize-system-report-fetching-11176295895246165042",
+        "origin/bolt/optimize-users-table-12804704079059571412",
+        "origin/bolt/optimize-users-table-18426995540402489013",
+        "origin/bolt/optimize-userstable-virtuallist-1508398238278668606",
+        "origin/bolt/parallelize-analytics-queries-13543220949959210411",
+        "origin/bolt/parallelize-dashboard-queries-3211612710137267980",
+        "origin/bolt/realtime-dashboard-table-virtual-list-12288624911930382157",
+        "origin/bolt/realtime-dashboard-virtual-list-4811922138777874754",
+        "origin/bolt/recent-scans-memoization-15906631712188508779",
+        "origin/bolt/remove-list-virtualization-overhead-16514437771611492790",
+        "origin/bolt/remove-mongodb-facet-7917305111996474875",
+        "origin/bolt/remove-unnecessary-virtualization-3863301545700612375",
+        "origin/bolt/remove-virtualization-overhead-3417128418340652504",
+        "origin/bolt/replace-flatlist-with-virtuallist-in-userstable-9501705940422318209",
+        "origin/bolt/replace-non-scrolling-virtualized-lists-8555563498993727727",
+        "origin/bolt/search-autocomplete-virtual-list-10435694926712811055",
+        "origin/bolt/system-report-service-parallelization-7272156028017114422",
+        "origin/bolt/users-table-virtual-list-4130533955414794228",
+        "origin/bolt/virtual-list-users-table-687565204681618104"
+      ]
+    },
+    "palette_a11y_branches_accessibility_palette_work": {
+      "count": 129,
+      "description": "Palette-prefixed branches for accessibility enhancements, palette adjustments, UX improvements, and haptic/UI polish",
+      "subcategories": {
+        "palette-a11y (direct prefix, dash)": {
+          "count": 6,
+          "examples": [
+            "origin/palette-a11y-accordion-icons-10226776822422744177",
+            "origin/palette-a11y-animated-button-12438130000551614070",
+            "origin/palette-a11y-moderninput-icons-8658828118322089885",
+            "origin/palette-a11y-premium-header-15269049407912284669",
+            "origin/palette-a11y-progress-indicators-10267618367362149015",
+            "origin/palette-a11y-searchable-select-modal-8121821428550276069"
+          ]
+        },
+        "palette/ (slash prefix with a11y)": {
+          "count": 64,
+          "examples": [
+            "origin/palette/a11y-create-session-close-14192737475014273915",
+            "origin/palette/a11y-premium-header-10733540213742943708",
+            "origin/palette/a11y-scan-camera-close-button-1993792411703650553",
+            "origin/palette/accessibility-enhancements-10600927988212577660",
+            "origin/palette/accessibility-forms-3970876664676545222",
+            "origin/palette/accessibility-improvements-9547638500266849045",
+            "origin/palette/accessible-icon-buttons-1022072472724748082",
+            "origin/palette/accordion-a11y-1621494070808370851",
+            "origin/palette/avatar-accessibility-11561969647663773367",
+            "origin/palette/badge-accessibility-improvement-5860317802429915763",
+            "origin/palette/chip-micro-ux-enhancements-14439411981082517264",
+            "origin/palette/create-session-modal-a11y-13791371598187850215",
+            "origin/palette/datatable-pagination-a11y-1094415256175997512",
+            "origin/palette/enhance-progress-accessibility-1716572191146372154",
+            "origin/palette/feedback-a11y-enhancement-8843917260772860964",
+            "origin/palette/header-a11y-haptics-351146849720932613",
+            "origin/palette/loading-spinner-a11y-10738245009464060594",
+            "origin/palette/premium-header-a11y-10467040722842706016",
+            "origin/palette/refresh-button-a11y-15234139633584287182",
+            "origin/palette/scan-lookup-panel-a11y-3048449228701014637",
+            "origin/palette/standardize-haptics-input-a11y-916447801015190096",
+            "origin/palette/tabs-ux-enhancement-15645023528449783055",
+            "origin/palette/ux-polish-haptics-a11y-4438787971460209827",
+            "origin/palette/ux-refresh-button-9019487679736658195"
+          ]
+        },
+        "palette- UX/accessibility hybrid": {
+          "count": 42,
+          "note": "Branches like palette-ux-a11y-icon-buttons, palette-modern-button-ux-enhancement, palette-chip-ux-enhancement that combine palette, a11y, and ux in the name"
+        }
+      }
+    },
+    "ux_branches": {
+      "count": 8,
+      "description": "UX-prefixed branches for UI/UX changes (both dash and slash variants)",
+      "branches": [
+        "origin/ux-improve-session-modal-a11y-8720226435049553585",
+        "origin/ux-premium-header-a11y-2907449143805049538",
+        "origin/ux/image-viewer-modal-a11y-haptics-9889091342787671904",
+        "origin/ux/palette-accessibility-labels-13808219641783105961",
+        "origin/ux/refresh-button-a11y-15441368116646867755"
+      ],
+      "note": "The 3 additional branches with 'ux' in slugs but different prefixes (e.g., palette-ux-enhancement) are already counted under palette branches above"
+    },
+    "other_relevant_branches": {
+      "fix_applying_a11y_and_perf": [
+        "origin/fix/apply-remaining-a11y-and-perf"
+      ],
+      "claude_a11y_pr": [
+        "origin/claude/pr115-imageviewer-a11y"
+      ],
+      "jules_palette_a11y": [
+        "origin/jules-palette-premiumheader-a11y-15115297408411956877"
+      ],
+      "jules_bolt_perf": [
+        "origin/jules-bolt-nplusone-sync-4526358597283753043",
+        "origin/jules-bolt-perf-users-table-virtual-list-4671264512968321663"
+      ]
+    },
+    "summary": {
+      "total_relevant_branches": 200,
+      "bolt_performance": 60,
+      "palette_a11y_accessibility": 129,
+      "ux_direct_prefix": 5,
+      "other_mixed_relevance": 6
+    }
+  }
+}

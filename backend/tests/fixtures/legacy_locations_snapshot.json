@@ -1,0 +1,8 @@
+[
+  {"id": "fl_ground", "warehouse_name": "Ground Floor", "zone": "showroom"},
+  {"id": "fl_first", "warehouse_name": "First Floor", "zone": "showroom"},
+  {"id": "fl_second", "warehouse_name": "Second Floor", "zone": "showroom"},
+  {"id": "wh_main", "warehouse_name": "Main Godown", "zone": "godown"},
+  {"id": "wh_top", "warehouse_name": "Top Godown", "zone": "godown"},
+  {"id": "wh_damage", "warehouse_name": "Damage Area", "zone": "godown"}
+]

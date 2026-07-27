@@ -82,6 +82,51 @@ async def test_modern_batch_sync_success(async_client: AsyncClient, authenticate
 
 
 @pytest.mark.asyncio
+async def test_modern_batch_sync_quarantines_changed_payload_with_reused_key(
+    async_client: AsyncClient, authenticated_headers, test_db
+):
+    session_id = str(uuid.uuid4())
+    await _seed_active_session_with_snapshot(
+        test_db, session_id=session_id, item_code="ITEM-REPLAY"
+    )
+    record = {
+        "client_record_id": "stable-key-changed-payload",
+        "session_id": session_id,
+        "location_id": "LOC-1",
+        "floor_id": "F1",
+        "rack_id": "R1",
+        "item_code": "ITEM-REPLAY",
+        "verified_qty": 2.0,
+        "created_at": "2026-07-27T10:00:00Z",
+        "updated_at": "2026-07-27T10:00:00Z",
+    }
+
+    first = await async_client.post(
+        "/api/sync/batch", json={"records": [record]}, headers=authenticated_headers
+    )
+    assert first.status_code == 200
+    changed = {**record, "verified_qty": 99.0}
+    second = await async_client.post(
+        "/api/sync/batch", json={"records": [changed]}, headers=authenticated_headers
+    )
+
+    assert second.status_code == 200
+    body = second.json()
+    assert body["ok"] == []
+    assert body["conflicts"][0]["conflict_type"] == "idempotency_mismatch"
+    assert (
+        await test_db.count_lines.count_documents(
+            {"client_record_id": "stable-key-changed-payload"}
+        )
+        == 1
+    )
+    persisted = await test_db.count_lines.find_one(
+        {"client_record_id": "stable-key-changed-payload"}
+    )
+    assert persisted["counted_qty"] == 2.0
+
+
+@pytest.mark.asyncio
 async def test_modern_batch_sync_allows_same_serial_for_different_items(
     async_client: AsyncClient, authenticated_headers, test_db
 ):

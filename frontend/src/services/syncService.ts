@@ -205,7 +205,7 @@ const toIsoTimestamp = (...values: unknown[]): string => {
   return new Date(parsed).toISOString();
 };
 
-const resolveClientRecordId = (item: OfflineQueueItem): string => {
+export const resolveClientRecordId = (item: OfflineQueueItem): string => {
   const audit = asObject(item.data.audit);
   return (
     firstString(

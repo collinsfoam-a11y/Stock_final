@@ -20,14 +20,14 @@ class Permission(str, Enum):
     SESSION_READ = "session.read"
     SESSION_READ_ALL = "session.read_all"
     SESSION_UPDATE = "session.update"
-    SESSION_DELETE = "session.delete"
+    SESSION_VOID = "session.void"
     SESSION_CLOSE = "session.close"
 
     # Count line permissions
     COUNT_LINE_CREATE = "count_line.create"
     COUNT_LINE_READ = "count_line.read"
     COUNT_LINE_UPDATE = "count_line.update"
-    COUNT_LINE_DELETE = "count_line.delete"
+    COUNT_LINE_VOID = "count_line.void"
     COUNT_LINE_APPROVE = "count_line.approve"
     COUNT_LINE_REJECT = "count_line.reject"
 
@@ -89,12 +89,12 @@ ROLE_PERMISSIONS: dict[str, set[Permission]] = {
         Permission.SESSION_READ,
         Permission.SESSION_READ_ALL,
         Permission.SESSION_UPDATE,
-        Permission.SESSION_DELETE,
+        Permission.SESSION_VOID,
         Permission.SESSION_CLOSE,
         Permission.COUNT_LINE_CREATE,
         Permission.COUNT_LINE_READ,
         Permission.COUNT_LINE_UPDATE,
-        Permission.COUNT_LINE_DELETE,
+        Permission.COUNT_LINE_VOID,
         Permission.COUNT_LINE_APPROVE,
         Permission.COUNT_LINE_REJECT,
         Permission.ITEM_READ,

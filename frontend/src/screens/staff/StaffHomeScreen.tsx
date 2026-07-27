@@ -39,6 +39,8 @@ import ModernHeader from "@/components/ui/ModernHeader";
 import ModernCard from "@/components/ui/ModernCard";
 import ModernButton from "@/components/ui/ModernButton";
 import ModernInput from "@/components/ui/ModernInput";
+import { locationBreadcrumb, resolveLocation } from "@/services/api/locationHierarchyApi";
+import type { HierarchicalLocation } from "@/types/location";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -139,6 +141,7 @@ const StaffHome = React.memo(function StaffHome() {
   const setActiveSession = useScanSessionStore((s) => s.setActiveSession);
   const setFloor = useScanSessionStore((s) => s.setFloor);
   const setRack = useScanSessionStore((s) => s.setRack);
+  const setLocationId = useScanSessionStore((s) => s.setLocationId);
 
   // ── PIN prompt ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -178,6 +181,8 @@ const StaffHome = React.memo(function StaffHome() {
   const [isCreating, setIsCreating] = useState(false);
   const [zones, setZones] = useState<Zone[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
+  const [canonicalLocation, setCanonicalLocation] = useState<HierarchicalLocation | null>(null);
 
   // ── Queries ───────────────────────────────────────────────────────────────
   const {
@@ -282,6 +287,8 @@ const StaffHome = React.memo(function StaffHome() {
   const resetModal = () => {
     setLocationType(null);
     setSelectedFloor(null);
+    setSelectedWarehouseId(null);
+    setCanonicalLocation(null);
     setRackName("");
     setShowCreateModal(false);
   };
@@ -310,12 +317,24 @@ const StaffHome = React.memo(function StaffHome() {
     }
     try {
       setIsCreating(true);
+      let resolvedLocation = canonicalLocation;
+      if (!resolvedLocation && selectedWarehouseId) {
+        try {
+          resolvedLocation = await resolveLocation(selectedWarehouseId);
+          setCanonicalLocation(resolvedLocation);
+        } catch {
+          // Legacy locations remain usable until their additive migration is executed.
+        }
+      }
       const session = await createSession({
         warehouse: warehouseName,
         type: "STANDARD",
         location_type: locationType,
         location_name: selectedFloor,
         rack_no: trimmedRack,
+        location_id: resolvedLocation?.id,
+        location_path_ids: resolvedLocation?.path_ids,
+        location_path_names: resolvedLocation?.path_names,
       });
       const sessionId = session?.id || session?._id || session?.session_id;
       if (!sessionId) throw new Error("Session created without ID");
@@ -325,6 +344,7 @@ const StaffHome = React.memo(function StaffHome() {
       void refetch();
       setFloor(`${locationType} - ${selectedFloor}`);
       setRack(trimmedRack);
+      setLocationId(resolvedLocation?.id || null);
       setActiveSession(sessionId, "STANDARD");
       router.push({ pathname: "/staff/scan", params: { sessionId } } as any);
     } catch (err) {
@@ -350,6 +370,7 @@ const StaffHome = React.memo(function StaffHome() {
       }
     }
     setActiveSession(sessionId, "STANDARD");
+    setLocationId(session.location_id || null);
     router.push({ pathname: "/staff/scan", params: { sessionId } } as any);
   };
 
@@ -720,7 +741,12 @@ const StaffHome = React.memo(function StaffHome() {
                         borderColor: active ? uiTokens.colors.accent : uiTokens.colors.border,
                       },
                     ]}
-                    onPress={() => { setLocationType(zone.zone_name); setSelectedFloor(null); }}
+                    onPress={() => {
+                      setLocationType(zone.zone_name);
+                      setSelectedFloor(null);
+                      setSelectedWarehouseId(null);
+                      setCanonicalLocation(null);
+                    }}
                     accessibilityRole="radio"
                     accessibilityState={{ selected: active }}
                   >
@@ -756,7 +782,14 @@ const StaffHome = React.memo(function StaffHome() {
                             borderColor: active ? uiTokens.colors.accent : uiTokens.colors.border,
                           },
                         ]}
-                        onPress={() => setSelectedFloor(wh.warehouse_name)}
+                        onPress={() => {
+                          setSelectedFloor(wh.warehouse_name);
+                          setSelectedWarehouseId(wh.id);
+                          setCanonicalLocation(null);
+                          void resolveLocation(wh.id)
+                            .then(setCanonicalLocation)
+                            .catch(() => setCanonicalLocation(null));
+                        }}
                         accessibilityRole="radio"
                         accessibilityState={{ selected: active }}
                       >
@@ -789,7 +822,9 @@ const StaffHome = React.memo(function StaffHome() {
                   <View style={[s.previewBanner, { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.08), borderColor: colorWithAlpha(uiTokens.colors.accent, 0.2) }]}>
                     <Ionicons name="information-circle-outline" size={14} color={uiTokens.colors.accent} />
                     <Text style={[s.previewText, { color: uiTokens.colors.accent }]}>
-                      {locationType} › {selectedFloor} › {rackName.trim().toUpperCase()}
+                      {canonicalLocation
+                        ? `${locationBreadcrumb(canonicalLocation)} › ${rackName.trim().toUpperCase()}`
+                        : `${locationType} › ${selectedFloor} › ${rackName.trim().toUpperCase()}`}
                     </Text>
                   </View>
                 )}

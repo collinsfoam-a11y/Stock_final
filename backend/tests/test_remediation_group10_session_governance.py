@@ -20,12 +20,20 @@ def _make_db(
     pending_lines_count: int = 0,
 ) -> MagicMock:
     db = MagicMock()
+    db.sessions = MagicMock()
+    db.sessions.find_one = AsyncMock(
+        return_value={"id": "sess-1", "session_id": "sess-1", "status": "REVIEW"}
+    )
     db.unknown_items = MagicMock()
     db.unknown_items.count_documents = AsyncMock(return_value=unknown_count)
     db.recount_requests = MagicMock()
     db.recount_requests.count_documents = AsyncMock(return_value=recount_count)
     db.count_lines = MagicMock()
     db.count_lines.count_documents = AsyncMock(return_value=pending_lines_count)
+    db.sync_conflicts = MagicMock()
+    db.sync_conflicts.count_documents = AsyncMock(return_value=0)
+    db.sync_queue = MagicMock()
+    db.sync_queue.count_documents = AsyncMock(return_value=0)
     return db
 
 

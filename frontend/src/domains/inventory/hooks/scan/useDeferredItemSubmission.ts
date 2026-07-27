@@ -16,6 +16,7 @@ interface UseDeferredItemSubmissionParams {
   sessionId?: string;
   currentFloor?: string | null;
   currentRack?: string | null;
+  currentLocationId?: string | null;
   item: Item | null;
   quantity: string;
   condition: string;
@@ -103,6 +104,7 @@ type SubmissionPayloadContext = {
   quantity: string;
   currentFloor?: string | null;
   currentRack?: string | null;
+  currentLocationId?: string | null;
   condition: string;
   remark: string;
   isDamageEnabled: boolean;
@@ -167,6 +169,7 @@ const buildCountLinePayload = (context: SubmissionPayloadContext): CreateCountLi
     quantity,
     currentFloor,
     currentRack,
+    currentLocationId,
     condition,
     remark,
     isDamageEnabled,
@@ -194,6 +197,7 @@ const buildCountLinePayload = (context: SubmissionPayloadContext): CreateCountLi
 
   return {
     session_id: sessionId,
+    location_id: currentLocationId || resolveLocationValue(currentFloor),
     recount_of_id: context.recountTargetId || undefined,
     item_code: resolveItemCode(item, barcode),
     item_name: resolveItemName(item, barcode),
@@ -242,6 +246,7 @@ export const useDeferredItemSubmission = ({
   sessionId,
   currentFloor,
   currentRack,
+  currentLocationId,
   item,
   quantity,
   condition,
@@ -355,6 +360,7 @@ export const useDeferredItemSubmission = ({
         quantity,
         currentFloor,
         currentRack,
+        currentLocationId,
         condition,
         remark,
         isDamageEnabled,
@@ -400,6 +406,7 @@ export const useDeferredItemSubmission = ({
     condition,
     currentFloor,
     currentRack,
+    currentLocationId,
     damagePhoto,
     damageQty,
     damageType,

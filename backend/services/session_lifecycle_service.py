@@ -511,22 +511,56 @@ class SessionLifecycleService:
         *,
         db_session: Optional[Any] = None,
     ) -> None:
-        """
-        FIX GROUP 10: Server-side pre-finalization gate.
-        A session may NOT be finalized if any of these blockers exist.
-        """
-        kwargs = self._kwargs(db_session)
-        blockers: list[str] = []
+        """Enforce the same readiness decision exposed to API clients."""
+        readiness = await self.get_finalization_readiness(session_id, db_session=db_session)
+        if not readiness["ready"]:
+            messages = [blocker["message"] for blocker in readiness["blockers"]]
+            raise GovernanceViolation(
+                "CRITICAL: Session cannot be finalized — blockers: " + "; ".join(messages)
+            )
 
-        # 1. Unresolved unknown items
+    async def get_finalization_readiness(
+        self,
+        session_id: str,
+        *,
+        db_session: Optional[Any] = None,
+    ) -> dict[str, Any]:
+        """Return the canonical, machine-readable finalization decision."""
+        kwargs = self._kwargs(db_session)
+        session = await self.ensure_session_exists(session_id, db_session=db_session)
+        blockers: list[dict[str, Any]] = []
+
+        canonical_status = normalize_session_status(session.get("status"))
+        if session.get("finalized_at") or canonical_status == "FINALIZED":
+            blockers.append(
+                {
+                    "code": "ALREADY_FINALIZED",
+                    "count": 1,
+                    "message": "session is already finalized",
+                }
+            )
+        elif canonical_status != "REVIEW":
+            blockers.append(
+                {
+                    "code": "INVALID_SESSION_STATE",
+                    "count": 1,
+                    "message": f"session must be in REVIEW (currently {canonical_status})",
+                }
+            )
+
         unknown_count = await self.db.unknown_items.count_documents(
             {"session_id": session_id, "status": {"$nin": ["RESOLVED", "DISMISSED"]}},
             **kwargs,
         )
         if unknown_count > 0:
-            blockers.append(f"{unknown_count} unresolved unknown item(s)")
+            blockers.append(
+                {
+                    "code": "UNRESOLVED_UNKNOWN_ITEMS",
+                    "count": unknown_count,
+                    "message": f"{unknown_count} unresolved unknown item(s)",
+                }
+            )
 
-        # 2. Pending recount requests
         recount_count = await self.db.recount_requests.count_documents(
             {
                 "session_id": session_id,
@@ -535,9 +569,14 @@ class SessionLifecycleService:
             **kwargs,
         )
         if recount_count > 0:
-            blockers.append(f"{recount_count} pending recount request(s)")
+            blockers.append(
+                {
+                    "code": "PENDING_RECOUNTS",
+                    "count": recount_count,
+                    "message": f"{recount_count} pending recount request(s)",
+                }
+            )
 
-        # 3. Count lines requiring approval
         needs_review_count = await self.db.count_lines.count_documents(
             {
                 "session_id": session_id,
@@ -547,12 +586,64 @@ class SessionLifecycleService:
             **kwargs,
         )
         if needs_review_count > 0:
-            blockers.append(f"{needs_review_count} unresolved count lines pending approval")
-
-        if blockers:
-            raise GovernanceViolation(
-                "CRITICAL: Session cannot be finalized — blockers: " + "; ".join(blockers)
+            blockers.append(
+                {
+                    "code": "UNRESOLVED_COUNT_LINES",
+                    "count": needs_review_count,
+                    "message": f"{needs_review_count} unresolved count lines pending approval",
+                }
             )
+
+        conflict_count = await self.db.sync_conflicts.count_documents(
+            {
+                "session_id": session_id,
+                "status": {"$nin": ["resolved", "ignored", "RESOLVED", "IGNORED"]},
+            },
+            **kwargs,
+        )
+        if conflict_count > 0:
+            blockers.append(
+                {
+                    "code": "UNRESOLVED_SYNC_CONFLICTS",
+                    "count": conflict_count,
+                    "message": f"{conflict_count} unresolved sync conflict(s)",
+                }
+            )
+
+        pending_sync_count = await self.db.sync_queue.count_documents(
+            {
+                "session_id": session_id,
+                "status": {
+                    "$in": [
+                        "PENDING",
+                        "pending",
+                        "PENDING_RETRY",
+                        "pending_retry",
+                        "FAILED",
+                        "failed",
+                        "BLOCKED_CONFLICT",
+                        "blocked_conflict",
+                    ]
+                },
+            },
+            **kwargs,
+        )
+        if pending_sync_count > 0:
+            blockers.append(
+                {
+                    "code": "PENDING_SERVER_SYNC",
+                    "count": pending_sync_count,
+                    "message": f"{pending_sync_count} pending server sync record(s)",
+                }
+            )
+
+        return {
+            "session_id": session_id,
+            "status": canonical_status,
+            "ready": not blockers,
+            "blockers": blockers,
+            "checked_at": _utc_now().isoformat(),
+        }
 
     async def update_session_fields(
         self,

@@ -8,7 +8,7 @@ from typing import Any, NoReturn, Optional
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pymongo.errors import DuplicateKeyError
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.api.item_verification_api import record_count_line_variance
 from backend.api.schemas import BulkCountLineUpdate, CountLineCreate
@@ -101,6 +101,12 @@ class CountLineUpdateRequest(BaseModel):
     counted_qty: Optional[float] = None
     mrp_counted: Optional[float] = None
     batches: Optional[list[dict[str, Any]]] = None
+
+
+class CountLineVoidRequest(BaseModel):
+    """Auditable reason for removing a count line from active totals."""
+
+    reason: str = Field(min_length=3, max_length=500)
 
 
 def init_count_lines_api(
@@ -635,9 +641,7 @@ async def _evaluate_duplicate_context(
                 },
             )
         except Exception as exc:
-            logger.warning(
-                "Failed to audit proactive duplicate check: %s", _safe_log_value(exc)
-            )
+            logger.warning("Failed to audit proactive duplicate check: %s", _safe_log_value(exc))
 
     def _result(
         *,
@@ -1229,9 +1233,7 @@ async def _persist_count_line_document(
             "username": username,
             "db_session": tx,
             "skip_session_totals_update": True,
-            "expected_session_version": coerce_version(
-                (current_session or {}).get("version")
-            ),
+            "expected_session_version": coerce_version((current_session or {}).get("version")),
         }
 
         await write_service.process_write(
@@ -1773,7 +1775,10 @@ async def create_count_line(
                 "rack_id": line_data.rack_id,
             },
             decision=count_line.get("approval_status"),
-            after={"counted_qty": count_line.get("counted_qty"), "variance": count_line.get("variance")},
+            after={
+                "counted_qty": count_line.get("counted_qty"),
+                "variance": count_line.get("variance"),
+            },
         )
     except Exception as exc:
         logger.warning("Failed to audit count-line submission: %s", _safe_log_value(exc))
@@ -2694,13 +2699,13 @@ async def update_count_line(
         "updated_at": _current_timestamp(),
         "updated_by": current_user.get("username"),
     }
-    
+
     erp_item = None
     if payload.counted_qty is not None:
         new_counted_qty = float(payload.counted_qty)
         erp_item = await _get_erp_item_for_existing_count_line(db, count_line)
         update_data["counted_qty"] = new_counted_qty
-        
+
     if payload.mrp_counted is not None:
         update_data["mrp_counted"] = float(payload.mrp_counted)
 
@@ -2743,32 +2748,33 @@ async def update_count_line(
 
 
 async def _recalculate_session_stats(db, session_id: str) -> None:
-    """Re-calculate session stats after line deletion."""
+    """Re-calculate session stats after a line leaves active truth."""
     try:
         await _recompute_session_totals(db, session_id)
     except Exception as e:
         logger.error(
-            "Failed to update session stats after delete: %s",
+            "Failed to update session stats after count-line void: %s",
             _safe_log_value(e, max_length=200),
         )
 
 
-async def _log_delete_activity(
-    count_line: dict, line_id: str, current_user: dict, request: Request
+async def _log_void_activity(
+    count_line: dict, line_id: str, reason: str, current_user: dict, request: Request
 ) -> None:
-    """Log the delete activity if activity log service is available."""
+    """Log the void activity if activity log service is available."""
     if not _activity_log_service:
         return
     await _activity_log_service.log_activity(
         user=current_user["username"],
         role=current_user.get("role", ""),
-        action="delete_count_line",
+        action="void_count_line",
         entity_type="count_line",
         entity_id=str(count_line.get("id", line_id)),
         details={
             "item_code": count_line.get("item_code"),
             "session_id": count_line.get("session_id"),
             "counted_qty": count_line.get("counted_qty"),
+            "reason": reason,
         },
         ip_address=request.client.host if request and request.client else None,
         user_agent=request.headers.get("user-agent") if request else None,
@@ -2781,55 +2787,65 @@ async def delete_count_line(
     request: Request,
     current_user: dict = Depends(get_current_user),
 ):
-    """Delete a count line (requires supervisor override)."""
+    """Retired destructive endpoint retained to protect older clients."""
+    del line_id, request, current_user
+    raise HTTPException(
+        status_code=410,
+        detail="Count-line deletion is disabled. Use POST /api/count-lines/{line_id}/void.",
+    )
+
+
+@router.post("/count-lines/{line_id}/void")
+async def void_count_line(
+    line_id: str,
+    payload: CountLineVoidRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    """Void a mutable count line while preserving its complete history."""
     if current_user["role"] not in ["supervisor", "admin"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     db = _get_db_client()
+    count_line = await _find_count_line(db, line_id)
+    if not count_line:
+        raise HTTPException(status_code=404, detail="Count line not found")
+    await _ensure_count_line_mutable(db, count_line)
+    await _enforce_count_line_logic_from_line(
+        db=db,
+        count_line=count_line,
+        request=request,
+        current_user=current_user,
+        operation_name="void_count_line",
+    )
 
     try:
-        count_line = await _find_count_line(db, line_id)
-        if not count_line:
-            raise HTTPException(status_code=404, detail="Count line not found")
-        await _ensure_count_line_mutable(db, count_line)
-        await _enforce_count_line_logic_from_line(
-            db=db,
+        result = await _get_count_line_write_service(db).void_count_line(
             count_line=count_line,
-            request=request,
-            current_user=current_user,
-            operation_name="delete_count_line",
+            actor=current_user["username"],
+            reason=payload.reason,
         )
-
-        write_service = _get_count_line_write_service(db)
-        result = await write_service.process_write(
-            {"operation": "delete_one", "filter": {"_id": count_line["_id"]}},
-            context={
-                "session_id": str(count_line.get("session_id") or ""),
-                "governance_mode": "mutable_session",
-            },
-        )
-        if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Count line not found")
-
-        await _recalculate_session_stats(db, count_line["session_id"])
+        if result.modified_count == 0:
+            raise HTTPException(status_code=409, detail="Count line was not voided")
+        await _recalculate_session_stats(db, str(count_line.get("session_id") or ""))
         await _broadcast_dashboard_refresh(
-            "count_line_deleted",
+            "count_line_voided",
             session_id=str(count_line.get("session_id") or ""),
-            count_line=count_line,
+            count_line={**count_line, "status": "SUPERSEDED", "disposition": "VOIDED"},
         )
-        await _log_delete_activity(count_line, line_id, current_user, request)
-
-        return {"success": True, "message": "Count line deleted successfully"}
-
+        await _log_void_activity(count_line, line_id, payload.reason.strip(), current_user, request)
+        return {"success": True, "message": "Count line voided successfully"}
     except HTTPException:
         raise
-    except Exception as e:
+    except GovernanceViolation as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:
         logger.error(
-            "Error deleting count line %s: %s",
+            "Error voiding count line %s: %s",
             _safe_log_value(line_id),
-            _safe_log_value(e, max_length=200),
+            _safe_log_value(exc, max_length=200),
         )
-        _raise_count_lines_internal_error("Failed to delete count line", e)
+        _raise_count_lines_internal_error("Failed to void count line", exc)
 
 
 @router.get("/sessions/{session_id}/items/{item_code}/scan-status")
@@ -3455,9 +3471,7 @@ async def merge_count_lines(
                         "governance_mode": "mutable_session",
                         "skip_session_totals_update": True,
                         # OCC: detect concurrent session mutation during merge.
-                        "expected_session_version": coerce_version(
-                            target_session.get("version")
-                        ),
+                        "expected_session_version": coerce_version(target_session.get("version")),
                     },
                 )
 

@@ -101,7 +101,7 @@ export default function ItemDetailScreen() {
   const { barcode, sessionId } = params;
   const displayBarcode = Array.isArray(barcode) ? barcode[0] : barcode;
   const normalizedSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId;
-  const { currentFloor, currentRack } = useScanSessionStore();
+  const { currentFloor, currentRack, currentLocationId } = useScanSessionStore();
   const { settings } = useSettingsStore();
 
   // Form State
@@ -261,6 +261,7 @@ export default function ItemDetailScreen() {
       sessionId: normalizedSessionId,
       currentFloor,
       currentRack,
+      currentLocationId,
       item,
       quantity,
       condition,

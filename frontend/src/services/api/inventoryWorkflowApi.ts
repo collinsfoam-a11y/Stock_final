@@ -18,6 +18,7 @@ import {
   type DataSource,
 } from "../offline/offlineStorage";
 import { submitCountLineCommand } from "../control-plane/countLineControlPlane";
+import { assertSessionFinalizationReady } from "../control-plane/sessionControlPlane";
 import {
   approveCountLineCommand,
   overlayCountLineReviewState,
@@ -1199,6 +1200,7 @@ export const updateSessionStatus = async (sessionId: string, status: string) => 
  */
 export const finalizeSession = async (sessionId: string, payload?: { note?: string }) => {
   try {
+    await assertSessionFinalizationReady(sessionId);
     const response = await api.post(`/api/sessions/${sessionId}/finalize`, payload || {});
     return response.data;
   } catch (error: unknown) {
@@ -1246,14 +1248,14 @@ export const refreshItemStock = async (itemCode: string) => {
 };
 
 /**
- * Deletes a count line by identifier.
+ * Voids a count line while preserving its audit history.
  */
-export const deleteCountLine = async (lineId: string) => {
+export const voidCountLine = async (lineId: string, reason: string) => {
   try {
-    const response = await api.delete(`/api/count-lines/${lineId}`);
+    const response = await api.post(`/api/count-lines/${lineId}/void`, { reason });
     return response.data;
   } catch (error: any) {
-    __DEV__ && console.error("Delete count line error:", error);
+    __DEV__ && console.error("Void count line error:", error);
     throw error;
   }
 };

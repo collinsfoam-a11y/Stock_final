@@ -1,0 +1,68 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deploy environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ vars.DEPLOY_REGISTRY_USERNAME }}
+          password: ${{ secrets.DEPLOY_REGISTRY_TOKEN }}
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ vars.DEPLOY_REGISTRY_USERNAME }}/stock_verify_ui-backend:${{ github.sha }}
+            ghcr.io/${{ vars.DEPLOY_REGISTRY_USERNAME }}/stock_verify_ui-backend:latest
+
+      - name: Build and push nginx
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: nginx/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ vars.DEPLOY_REGISTRY_USERNAME }}/stock_verify_ui-nginx:${{ github.sha }}
+            ghcr.io/${{ vars.DEPLOY_REGISTRY_USERNAME }}/stock_verify_ui-nginx:latest
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ vars.DEPLOY_HOST }}
+          username: ${{ vars.DEPLOY_USER }}
+          port: ${{ vars.DEPLOY_PORT || 22 }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd ${{ vars.DEPLOY_PATH }}
+            BACKEND_IMAGE=ghcr.io/${{ vars.DEPLOY_REGISTRY_USERNAME }}/stock_verify_ui-backend:${{ github.sha }} \
+            NGINX_IMAGE=ghcr.io/${{ vars.DEPLOY_REGISTRY_USERNAME }}/stock_verify_ui-nginx:${{ github.sha }} \
+            docker compose --env-file .env.prod -f docker-compose.production.yml up -d --remove-orphans
+
+      - name: Post-deploy smoke
+        if: always()
+        run: |
+          curl -f ${{ vars.DEPLOY_HEALTHCHECK_URL }}/api/health || exit 1

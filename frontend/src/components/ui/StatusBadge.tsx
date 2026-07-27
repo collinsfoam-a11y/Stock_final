@@ -21,6 +21,8 @@ import Animated, {
 import { borderRadius } from "@/theme/legacyCompat";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import { getDecorativeIconProps } from "@/utils/accessibility";
+import { spacing } from "@/theme/unified/spacing";
 
 type BadgeVariant =
   | "success"
@@ -118,7 +120,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   const containerStyle: ViewStyle = {
     flexDirection: "row",
     alignItems: "center",
-    gap: sizeConfig.paddingH / 2,
+    gap: spacing.xs,
     paddingHorizontal: sizeConfig.paddingH,
     paddingVertical: sizeConfig.paddingV,
     borderRadius: borderRadius.full,
@@ -130,7 +132,12 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   const content = (
     <>
       {icon && (
-        <Ionicons name={icon} size={sizeConfig.iconSize} color={colors.text} />
+        <Ionicons
+          name={icon}
+          size={sizeConfig.iconSize}
+          color={colors.text}
+          {...getDecorativeIconProps()}
+        />
       )}
       <Text
         style={[
@@ -148,13 +155,27 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   if (pulse) {
     return (
-      <Animated.View style={[containerStyle, animatedStyle, style]}>
+      <Animated.View
+        style={[containerStyle, animatedStyle, style]}
+        accessible={true}
+        accessibilityRole="text"
+        accessibilityLabel={label}
+      >
         {content}
       </Animated.View>
     );
   }
 
-  return <View style={[containerStyle, style]}>{content}</View>;
+  return (
+    <View
+      style={[containerStyle, style]}
+      accessible={true}
+      accessibilityRole="text"
+      accessibilityLabel={label}
+    >
+      {content}
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({

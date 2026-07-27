@@ -10,6 +10,13 @@ Optimized indexes for 20 concurrent users and fast queries
 from typing import Union
 
 INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
+    "locations": [
+        ([("id", 1)], {"unique": True, "name": "idx_location_id"}),
+        ([("legacy_id", 1)], {"unique": True, "sparse": True, "name": "idx_location_legacy_id"}),
+        ([("parent_id", 1), ("slug", 1)], {"unique": True, "name": "idx_location_sibling_slug"}),
+        ([("path_ids", 1)], {"name": "idx_location_path"}),
+        ([("active", 1), ("location_type", 1)], {"name": "idx_location_active_type"}),
+    ],
     # Idempotency Operations Collection
     "idempotency_operations": [
         # Unique operation ID

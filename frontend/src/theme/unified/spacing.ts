@@ -81,6 +81,19 @@ export const hitSlop = {
   large: { top: 16, bottom: 16, left: 16, right: 16 },
 } as const;
 
+// ==========================================
+// SEMANTIC SPACING ALIASES
+// ==========================================
+export const semanticSpacing = {
+  screenPadding: layout.screenPadding,
+  cardPadding: layout.cardPadding,
+  sectionGap: layout.sectionGap,
+  itemGap: layout.itemGap,
+  inlineGap: layout.inlineGap,
+  formGap: layout.fieldGap,
+} as const;
+
 // Type exports
 export type Spacing = typeof spacing;
 export type SpacingKey = keyof typeof spacing;
+export type SemanticSpacingKey = keyof typeof semanticSpacing;
