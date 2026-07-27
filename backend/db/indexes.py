@@ -281,6 +281,22 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
             {"name": "idx_serial_registry_item_id_time"},
         ),
     ],
+    "canonical_serials": [
+        ([("id", 1)], {"unique": True, "name": "idx_canonical_serial_id"}),
+        (
+            [("normalized_serial", 1)],
+            {"unique": True, "name": "idx_canonical_serial_unique"},
+        ),
+        (
+            [("item_identity_id", 1), ("status", 1)],
+            {"name": "idx_canonical_serial_item_status"},
+        ),
+        (
+            [("location_id", 1), ("status", 1)],
+            {"name": "idx_canonical_serial_location_status"},
+        ),
+        ([("physical_batch_id", 1)], {"name": "idx_canonical_serial_batch"}),
+    ],
     "damage_logs": [
         ([("event_id", 1)], {"unique": True, "name": "idx_damage_event"}),
         ([("session_id", 1), ("timestamp", -1)], {"name": "idx_damage_session_time"}),

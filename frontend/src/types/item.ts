@@ -45,6 +45,37 @@ export interface PhysicalBatch {
   active: boolean;
 }
 
+export type SerialStatus =
+  | "IN_STOCK"
+  | "QUARANTINED"
+  | "ALLOCATED"
+  | "CONSUMED"
+  | "RETIRED";
+
+export interface SerialHistoryEntry {
+  from_status?: SerialStatus | null;
+  to_status: SerialStatus;
+  from_location_id?: string | null;
+  to_location_id?: string | null;
+  actor: string;
+  change_reference: string;
+  source: string;
+  changed_at: string;
+}
+
+export interface CanonicalSerial {
+  id: string;
+  serial_number: string;
+  normalized_serial: string;
+  item_identity_id: string;
+  physical_batch_id?: string | null;
+  location_id?: string | null;
+  status: SerialStatus;
+  history: SerialHistoryEntry[];
+  version: number;
+  active: boolean;
+}
+
 /**
  * MRP Variant - different MRP values for the same item
  * Extended version with more fields than scan.ts NormalizedMrpVariant

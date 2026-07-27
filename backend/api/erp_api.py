@@ -14,11 +14,18 @@ from backend.error_messages import get_error_message
 from backend.services.cache_service import CacheService
 from backend.services.inventory_identity_service import InventoryIdentityService
 from backend.models.physical_batch import PhysicalBatchQuantities, PhysicalBatchStatus
+from backend.models.canonical_serial import SerialStatus
 from backend.services.concurrency import ConcurrencyError
 from backend.services.physical_batch_service import (
     PhysicalBatchError,
     PhysicalBatchNotFound,
     PhysicalBatchService,
+)
+from backend.services.canonical_serial_service import (
+    CanonicalSerialError,
+    CanonicalSerialNotFound,
+    CanonicalSerialService,
+    DuplicateSerialError,
 )
 from backend.sql_server_connector import SQLServerConnector
 from backend.utils.api_utils import sanitize_for_logging
@@ -52,6 +59,35 @@ class PhysicalBatchUpdateRequest(BaseModel):
     change_reference: str = Field(min_length=1, max_length=200)
 
 
+class CanonicalSerialRegisterRequest(BaseModel):
+    serial_number: str = Field(min_length=1, max_length=200)
+    item_identity_id: str = Field(min_length=1)
+    physical_batch_id: Optional[str] = None
+    location_id: Optional[str] = None
+    change_reference: str = Field(min_length=1, max_length=200)
+    source: str = Field(default="SCAN", min_length=1, max_length=50)
+
+
+class CanonicalSerialImportRecord(BaseModel):
+    serial_number: str = Field(min_length=1, max_length=200)
+    item_identity_id: str = Field(min_length=1)
+    physical_batch_id: Optional[str] = None
+    location_id: Optional[str] = None
+
+
+class CanonicalSerialImportRequest(BaseModel):
+    records: list[CanonicalSerialImportRecord] = Field(min_length=1, max_length=1000)
+    change_reference: str = Field(min_length=1, max_length=200)
+
+
+class CanonicalSerialTransitionRequest(BaseModel):
+    status: SerialStatus
+    expected_version: int = Field(ge=0)
+    location_id: Optional[str] = None
+    change_reference: str = Field(min_length=1, max_length=200)
+    source: str = Field(default="API", min_length=1, max_length=50)
+
+
 def _batch_actor(current_user: dict[str, Any]) -> str:
     return str(
         current_user.get("username")
@@ -71,6 +107,12 @@ def _batch_response(document: dict[str, Any]) -> dict[str, Any]:
         - float(quantities.get("reserved") or 0)
     )
     result["quantities"] = quantities
+    return result
+
+
+def _serial_response(document: dict[str, Any]) -> dict[str, Any]:
+    result = dict(document)
+    result.pop("_id", None)
     return result
 
 
@@ -183,6 +225,86 @@ async def update_physical_batch(
     except ConcurrencyError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except (PhysicalBatchError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/erp/serials/{serial_number}")
+async def resolve_canonical_serial(
+    serial_number: str,
+    current_user: dict = Depends(get_current_user),
+):
+    del current_user
+    if _db is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+    document = await CanonicalSerialService(_db).resolve(serial_number)
+    if not document:
+        raise HTTPException(status_code=404, detail="Canonical serial not found")
+    return _serial_response(document)
+
+
+@router.post("/erp/serials", status_code=201)
+async def register_canonical_serial(
+    request: CanonicalSerialRegisterRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    if _db is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+    try:
+        document = await CanonicalSerialService(_db).register(
+            serial_number=request.serial_number,
+            item_identity_id=request.item_identity_id,
+            physical_batch_id=request.physical_batch_id,
+            location_id=request.location_id,
+            actor=_batch_actor(current_user),
+            change_reference=request.change_reference,
+            source=request.source,
+        )
+        return _serial_response(document)
+    except DuplicateSerialError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except CanonicalSerialError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/erp/serials/import")
+async def import_canonical_serials(
+    request: CanonicalSerialImportRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    if _db is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+    records = [record.model_dump() for record in request.records]
+    return await CanonicalSerialService(_db).import_serials(
+        records,
+        actor=_batch_actor(current_user),
+        change_reference=request.change_reference,
+    )
+
+
+@router.patch("/erp/serials/{serial_id}")
+async def transition_canonical_serial(
+    serial_id: str,
+    request: CanonicalSerialTransitionRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    if _db is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+    try:
+        document = await CanonicalSerialService(_db).transition(
+            serial_id,
+            status=request.status,
+            expected_version=request.expected_version,
+            actor=_batch_actor(current_user),
+            change_reference=request.change_reference,
+            location_id=request.location_id,
+            source=request.source,
+        )
+        return _serial_response(document)
+    except CanonicalSerialNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ConcurrencyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except CanonicalSerialError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 

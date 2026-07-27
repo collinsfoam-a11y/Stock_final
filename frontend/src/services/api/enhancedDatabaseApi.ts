@@ -7,6 +7,8 @@ import type {
   CanonicalInventoryIdentity,
   PhysicalBatch,
   PhysicalBatchStatus,
+  CanonicalSerial,
+  SerialStatus,
 } from "../../types/item";
 
 interface ApiError {
@@ -111,6 +113,58 @@ export class EnhancedDatabaseAPI {
   ): Promise<PhysicalBatch> {
     const response = await api.patch<PhysicalBatch>(
       `/api/erp/physical-batches/${encodeURIComponent(batchId)}`,
+      input,
+    );
+    return response.data;
+  }
+
+  static async resolveCanonicalSerial(serialNumber: string): Promise<CanonicalSerial> {
+    const response = await api.get<CanonicalSerial>(
+      `/api/erp/serials/${encodeURIComponent(serialNumber)}`,
+    );
+    return response.data;
+  }
+
+  static async registerCanonicalSerial(input: {
+    serial_number: string;
+    item_identity_id: string;
+    physical_batch_id?: string;
+    location_id?: string;
+    change_reference: string;
+    source?: string;
+  }): Promise<CanonicalSerial> {
+    const response = await api.post<CanonicalSerial>("/api/erp/serials", input);
+    return response.data;
+  }
+
+  static async importCanonicalSerials(
+    records: Array<{
+      serial_number: string;
+      item_identity_id: string;
+      physical_batch_id?: string;
+      location_id?: string;
+    }>,
+    changeReference: string,
+  ): Promise<{ registered: number; failed: number; errors: Array<Record<string, string>> }> {
+    const response = await api.post("/api/erp/serials/import", {
+      records,
+      change_reference: changeReference,
+    });
+    return response.data;
+  }
+
+  static async transitionCanonicalSerial(
+    serialId: string,
+    input: {
+      status: SerialStatus;
+      expected_version: number;
+      location_id?: string;
+      change_reference: string;
+      source?: string;
+    },
+  ): Promise<CanonicalSerial> {
+    const response = await api.patch<CanonicalSerial>(
+      `/api/erp/serials/${encodeURIComponent(serialId)}`,
       input,
     );
     return response.data;
