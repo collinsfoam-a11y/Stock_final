@@ -3,6 +3,7 @@
  */
 import api from "../httpClient";
 import { Item } from "./itemVerificationApi";
+import type { CanonicalInventoryIdentity } from "../../types/item";
 
 interface ApiError {
   response?: {
@@ -58,6 +59,13 @@ export interface AdvancedSearchParams {
 }
 
 export class EnhancedDatabaseAPI {
+  static async resolveCanonicalIdentity(identifier: string): Promise<CanonicalInventoryIdentity> {
+    const response = await api.get<CanonicalInventoryIdentity>(
+      `/api/erp/items/identity/${encodeURIComponent(identifier)}`,
+    );
+    return response.data;
+  }
+
   /**
    * Enhanced barcode lookup with source selection and metadata
    */

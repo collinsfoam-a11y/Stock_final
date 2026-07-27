@@ -11,6 +11,7 @@ from backend.api.schemas import ERPItem
 from backend.auth.dependencies import get_current_user
 from backend.error_messages import get_error_message
 from backend.services.cache_service import CacheService
+from backend.services.inventory_identity_service import InventoryIdentityService
 from backend.sql_server_connector import SQLServerConnector
 from backend.utils.api_utils import sanitize_for_logging
 
@@ -20,6 +21,22 @@ router = APIRouter()
 _db: Optional[AsyncIOMotorDatabase[Any]] = None
 _cache_service: Optional[CacheService] = None
 _sql_connector: Optional[SQLServerConnector] = None
+
+
+@router.get("/erp/items/identity/{identifier}")
+async def resolve_inventory_identity(
+    identifier: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """Resolve an item code or any registered barcode alias to one stable identity."""
+    del current_user
+    if _db is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+    identity = await InventoryIdentityService(_db).resolve(identifier)
+    if not identity:
+        raise HTTPException(status_code=404, detail="Canonical inventory identity not found")
+    identity.pop("_id", None)
+    return identity
 
 
 def init_erp_api(

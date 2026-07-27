@@ -4,6 +4,24 @@
  */
 export { Item } from "./scan";
 
+export interface InventoryItemAlias {
+  alias_type: "item_code" | "barcode" | "manual_barcode" | "unit2_barcode" | "unit_m_barcode";
+  value: string;
+  normalized_value: string;
+}
+
+export interface CanonicalInventoryIdentity {
+  id: string;
+  canonical_code: string;
+  normalized_code: string;
+  display_name: string;
+  aliases: InventoryItemAlias[];
+  source_record_ids: string[];
+  active: boolean;
+  version: number;
+  collision_state?: string | null;
+}
+
 /**
  * MRP Variant - different MRP values for the same item
  * Extended version with more fields than scan.ts NormalizedMrpVariant

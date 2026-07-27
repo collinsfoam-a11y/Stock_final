@@ -10,6 +10,12 @@ Optimized indexes for 20 concurrent users and fast queries
 from typing import Union
 
 INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
+    "inventory_identities": [
+        ([("id", 1)], {"unique": True, "name": "idx_inventory_identity_id"}),
+        ([("normalized_code", 1)], {"unique": True, "name": "idx_inventory_normalized_code"}),
+        ([("aliases.normalized_value", 1)], {"unique": True, "name": "idx_inventory_alias_unique"}),
+        ([("active", 1)], {"name": "idx_inventory_identity_active"}),
+    ],
     "locations": [
         ([("id", 1)], {"unique": True, "name": "idx_location_id"}),
         ([("legacy_id", 1)], {"unique": True, "sparse": True, "name": "idx_location_legacy_id"}),
