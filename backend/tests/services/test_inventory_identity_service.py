@@ -79,6 +79,32 @@ def test_merge_combines_variants_for_same_item_deterministically():
     }
 
 
+def test_merge_quarantines_ambiguous_aliases_without_merging_products():
+    identities = merge_identities(
+        [
+            {"_id": "1", "item_code": "A", "barcode": "100"},
+            {"_id": "2", "item_code": "B", "barcode": "100"},
+            {"_id": "3", "item_code": "C", "barcode": "200"},
+        ],
+        quarantined_aliases={"100"},
+    )
+    assert len(identities) == 3
+    affected = [
+        identity for identity in identities if identity.normalized_code in {"A", "B"}
+    ]
+    unaffected = next(
+        identity for identity in identities if identity.normalized_code == "C"
+    )
+    assert all(
+        identity.collision_state == "ALIAS_QUARANTINED" for identity in affected
+    )
+    assert unaffected.collision_state is None
+    assert all(
+        "100" not in {alias.normalized_value for alias in identity.aliases}
+        for identity in identities
+    )
+
+
 @pytest.mark.asyncio
 async def test_upsert_requires_governance_and_is_idempotent():
     db = MagicMock()

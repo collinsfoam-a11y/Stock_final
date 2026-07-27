@@ -82,7 +82,12 @@ def build_identity(document: dict[str, Any]) -> InventoryIdentity:
     )
 
 
-def merge_identities(documents: Iterable[dict[str, Any]]) -> list[InventoryIdentity]:
+def merge_identities(
+    documents: Iterable[dict[str, Any]],
+    *,
+    quarantined_aliases: Optional[set[str]] = None,
+) -> list[InventoryIdentity]:
+    quarantined = quarantined_aliases or set()
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for document in documents:
         normalized_code = normalize_item_identifier(document.get("item_code"))
@@ -91,6 +96,7 @@ def merge_identities(documents: Iterable[dict[str, Any]]) -> list[InventoryIdent
 
     merged: list[InventoryIdentity] = []
     for normalized_code, rows in sorted(grouped.items()):
+        identity_quarantined = False
         aliases: dict[tuple[str, str], ItemAlias] = {}
         source_ids: set[str] = set()
         names: set[str] = set()
@@ -106,6 +112,9 @@ def merge_identities(documents: Iterable[dict[str, Any]]) -> list[InventoryIdent
             if code:
                 codes.add(code)
             for alias in aliases_for(row):
+                if alias.normalized_value in quarantined:
+                    identity_quarantined = True
+                    continue
                 aliases[(alias.alias_type.value, alias.normalized_value)] = alias
         merged.append(
             InventoryIdentity(
@@ -121,6 +130,7 @@ def merge_identities(documents: Iterable[dict[str, Any]]) -> list[InventoryIdent
                 ),
                 aliases=[aliases[key] for key in sorted(aliases)],
                 source_record_ids=sorted(source_ids),
+                collision_state="ALIAS_QUARANTINED" if identity_quarantined else None,
             )
         )
     return merged

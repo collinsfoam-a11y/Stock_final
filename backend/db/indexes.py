@@ -12,14 +12,33 @@ from typing import Union
 INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
     "inventory_identities": [
         ([("id", 1)], {"unique": True, "name": "idx_inventory_identity_id"}),
-        ([("normalized_code", 1)], {"unique": True, "name": "idx_inventory_normalized_code"}),
-        ([("aliases.normalized_value", 1)], {"unique": True, "name": "idx_inventory_alias_unique"}),
+        (
+            [("normalized_code", 1)],
+            {"unique": True, "name": "idx_inventory_normalized_code"},
+        ),
+        (
+            [("aliases.normalized_value", 1)],
+            {"unique": True, "name": "idx_inventory_alias_unique"},
+        ),
         ([("active", 1)], {"name": "idx_inventory_identity_active"}),
+    ],
+    "inventory_identity_conflicts": [
+        (
+            [("alias", 1), ("status", 1)],
+            {"unique": True, "name": "idx_identity_conflict_alias_status"},
+        ),
+        ([("change_reference", 1)], {"name": "idx_identity_conflict_change"}),
     ],
     "locations": [
         ([("id", 1)], {"unique": True, "name": "idx_location_id"}),
-        ([("legacy_id", 1)], {"unique": True, "sparse": True, "name": "idx_location_legacy_id"}),
-        ([("parent_id", 1), ("slug", 1)], {"unique": True, "name": "idx_location_sibling_slug"}),
+        (
+            [("legacy_id", 1)],
+            {"unique": True, "sparse": True, "name": "idx_location_legacy_id"},
+        ),
+        (
+            [("parent_id", 1), ("slug", 1)],
+            {"unique": True, "name": "idx_location_sibling_slug"},
+        ),
         ([("path_ids", 1)], {"name": "idx_location_path"}),
         ([("active", 1), ("location_type", 1)], {"name": "idx_location_active_type"}),
     ],
@@ -28,7 +47,10 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         # Unique operation ID
         ([("operation_id", 1)], {"unique": True, "name": "idx_operation_id"}),
         # TTL index for automatic cleanup (30 days)
-        ([("created_at", 1)], {"expireAfterSeconds": 2592000, "name": "idx_operation_ttl"}),
+        (
+            [("created_at", 1)],
+            {"expireAfterSeconds": 2592000, "name": "idx_operation_ttl"},
+        ),
     ],
     # Verification Records Collection
     "verification_records": [
@@ -177,16 +199,25 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
             [("metadata.idempotency_key", 1)],
             {"unique": True, "sparse": True, "name": "idx_event_metadata_idempotency"},
         ),
-        ([("metadata.request_idempotency_key", 1)], {"name": "idx_event_request_idempotency"}),
+        (
+            [("metadata.request_idempotency_key", 1)],
+            {"name": "idx_event_request_idempotency"},
+        ),
         (
             [("scan_fingerprint", 1)],
             {"unique": True, "sparse": True, "name": "idx_event_scan_fingerprint"},
         ),
-        ([("payload.session_id", 1), ("timestamp", -1)], {"name": "idx_event_session_time"}),
+        (
+            [("payload.session_id", 1), ("timestamp", -1)],
+            {"name": "idx_event_session_time"},
+        ),
     ],
     "event_applied": [
         ([("event_id", 1)], {"unique": True, "name": "idx_event_applied_event_id"}),
-        ([("session_id", 1), ("applied_at", -1)], {"name": "idx_event_applied_session_time"}),
+        (
+            [("session_id", 1), ("applied_at", -1)],
+            {"name": "idx_event_applied_session_time"},
+        ),
         ([("item_id", 1), ("applied_at", -1)], {"name": "idx_event_applied_item_time"}),
     ],
     "items_snapshot": [
@@ -194,14 +225,20 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
             [("session_id", 1), ("item_code", 1)],
             {"unique": True, "name": "idx_items_snapshot_session_item"},
         ),
-        ([("session_id", 1), ("updated_at", -1)], {"name": "idx_items_snapshot_session_time"}),
+        (
+            [("session_id", 1), ("updated_at", -1)],
+            {"name": "idx_items_snapshot_session_time"},
+        ),
     ],
     "batch_records": [
         (
             [("session_id", 1), ("item_code", 1), ("batch_id", 1)],
             {"unique": True, "name": "idx_batch_records_unique"},
         ),
-        ([("item_code", 1), ("updated_at", -1)], {"name": "idx_batch_records_item_time"}),
+        (
+            [("item_code", 1), ("updated_at", -1)],
+            {"name": "idx_batch_records_item_time"},
+        ),
     ],
     "serial_records": [
         (
@@ -220,8 +257,14 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
             {"unique": True, "sparse": True, "name": "idx_serial_registry_item_serial"},
         ),
         ([("serial_no", 1)], {"name": "idx_serial_registry_serial_lookup"}),
-        ([("item_code", 1), ("updated_at", -1)], {"name": "idx_serial_registry_item_time"}),
-        ([("item_id", 1), ("updated_at", -1)], {"name": "idx_serial_registry_item_id_time"}),
+        (
+            [("item_code", 1), ("updated_at", -1)],
+            {"name": "idx_serial_registry_item_time"},
+        ),
+        (
+            [("item_id", 1), ("updated_at", -1)],
+            {"name": "idx_serial_registry_item_id_time"},
+        ),
     ],
     "damage_logs": [
         ([("event_id", 1)], {"unique": True, "name": "idx_damage_event"}),
@@ -233,7 +276,10 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
     ],
     "approvals": [
         ([("approval_id", 1)], {"unique": True, "name": "idx_approvals_id"}),
-        ([("session_id", 1), ("approved_at", -1)], {"name": "idx_approvals_session_time"}),
+        (
+            [("session_id", 1), ("approved_at", -1)],
+            {"name": "idx_approvals_session_time"},
+        ),
     ],
     "sync_queue": [
         ([("queue_id", 1)], {"unique": True, "name": "idx_sync_queue_id"}),
@@ -255,7 +301,10 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         # User sessions
         ([("created_by", 1), ("created_at", -1)], {"name": "idx_user_time"}),
         # Staff user + status for active session lookup
-        ([("staff_user", 1), ("status", 1), ("warehouse", 1)], {"name": "idx_staff_active"}),
+        (
+            [("staff_user", 1), ("status", 1), ("warehouse", 1)],
+            {"name": "idx_staff_active"},
+        ),
         # Status
         ([("status", 1), ("created_at", -1)], {"name": "idx_status"}),
         # Warehouse
@@ -325,7 +374,10 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("event_type", 1), ("timestamp", -1)], {"name": "idx_audit_event_time"}),
         # User history
         ([("actor_id", 1), ("timestamp", -1)], {"name": "idx_audit_actor_time"}),
-        ([("actor_username", 1), ("timestamp", -1)], {"name": "idx_audit_username_time"}),
+        (
+            [("actor_username", 1), ("timestamp", -1)],
+            {"name": "idx_audit_username_time"},
+        ),
         # Resource tracking
         ([("resource_id", 1), ("timestamp", -1)], {"name": "idx_audit_resource_time"}),
         # Canonical audit fields (BSR queryability requirement)
@@ -338,14 +390,20 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
     # Rate Limits Collection (MM7 fix: TTL cleanup for PIN rate limiting)
     "rate_limits": [
         # TTL index: auto-delete rate limit records after 10 minutes
-        ([("window_start", 1)], {"expireAfterSeconds": 600, "name": "idx_rate_limit_ttl"}),
+        (
+            [("window_start", 1)],
+            {"expireAfterSeconds": 600, "name": "idx_rate_limit_ttl"},
+        ),
     ],
     # Users Collection
     "users": [
         # Unique username
         ([("username", 1)], {"unique": True, "name": "idx_username_unique"}),
         # Unique phone number (sparse allowed for legacy users)
-        ([("phone_number", 1)], {"unique": True, "sparse": True, "name": "idx_phone_unique"}),
+        (
+            [("phone_number", 1)],
+            {"unique": True, "sparse": True, "name": "idx_phone_unique"},
+        ),
         # Fast PIN lookup
         ([("pin_lookup_hash", 1)], {"name": "idx_pin_lookup", "sparse": True}),
         # Active users
@@ -368,7 +426,10 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("verified_by", 1)], {"name": "idx_variance_verifier"}),
         ([("verified_at", -1)], {"name": "idx_variance_time"}),
         ([("category", 1), ("floor", 1)], {"name": "idx_variance_category_floor"}),
-        ([("warehouse", 1), ("verified_at", -1)], {"name": "idx_variance_warehouse_time"}),
+        (
+            [("warehouse", 1), ("verified_at", -1)],
+            {"name": "idx_variance_warehouse_time"},
+        ),
     ],
     # ERPNext Export Settings Collections (BSR export-readiness mappings)
     "erpnext_warehouse_mappings": [
@@ -396,7 +457,10 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ),
     ],
     "erpnext_item_export_flags": [
-        ([("item_code", 1)], {"unique": True, "name": "idx_item_export_flags_item_code"}),
+        (
+            [("item_code", 1)],
+            {"unique": True, "name": "idx_item_export_flags_item_code"},
+        ),
     ],
     # ERPNext Export Previews (approve/download/validate/corrections/photo-manifest
     # all look up a preview by export_id -- every preview document gets a fresh
