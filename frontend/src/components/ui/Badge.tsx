@@ -69,7 +69,7 @@ export const Badge: React.FC<BadgeProps> = ({
   const accessibilityProps = {
     accessible: true,
     accessibilityRole: accessibilityRole,
-    accessibilityLabel: accessibilityLabel ?? (defaultLabel ? `Badge: ${defaultLabel}` : undefined),
+    accessibilityLabel: (accessibilityLabel && accessibilityLabel.trim() !== "") ? accessibilityLabel : (defaultLabel ? `Badge: ${defaultLabel}` : undefined),
   };
 
   if (dot) {
