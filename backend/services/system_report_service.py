@@ -1,8 +1,9 @@
+import asyncio
 import io
 import logging
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 import psutil
@@ -66,7 +67,14 @@ class SystemReportService:
         start_dt, end_dt = self._normalize_date_range(start_date, end_date)
         activities: list[dict[str, Any]] = []
 
-        for log in await self._fetch_collection_documents("activity_logs", limit=300):
+        # Optimization: Fetch independent query logs concurrently
+        activity_logs, login_logs, audit_logs = await asyncio.gather(
+            self._fetch_collection_documents("activity_logs", limit=300),
+            self._fetch_collection_documents("login_history", limit=300),
+            self._fetch_collection_documents("audit_logs", limit=300),
+        )
+
+        for log in activity_logs:
             timestamp = self._extract_timestamp(log, "timestamp")
             if not self._is_in_range(timestamp, start_dt, end_dt):
                 continue
@@ -83,7 +91,7 @@ class SystemReportService:
                 )
             )
 
-        for log in await self._fetch_collection_documents("login_history", limit=300):
+        for log in login_logs:
             timestamp = self._extract_timestamp(log, "timestamp", "created_at")
             if not self._is_in_range(timestamp, start_dt, end_dt):
                 continue
@@ -100,7 +108,7 @@ class SystemReportService:
                 )
             )
 
-        for log in await self._fetch_collection_documents("audit_logs", limit=300):
+        for log in audit_logs:
             timestamp = self._extract_timestamp(log, "timestamp")
             if not self._is_in_range(timestamp, start_dt, end_dt):
                 continue
@@ -126,7 +134,14 @@ class SystemReportService:
         start_dt, end_dt = self._normalize_date_range(start_date, end_date)
         history: list[dict[str, Any]] = []
 
-        for log in await self._fetch_collection_documents("sync_history", limit=300):
+        # Optimization: Fetch independent sync queries concurrently
+        sync_logs, sync_meta, erp_sync_meta = await asyncio.gather(
+            self._fetch_collection_documents("sync_history", limit=300),
+            self._fetch_collection_documents("sync_metadata", limit=50),
+            self._fetch_collection_documents("erp_sync_metadata", limit=50),
+        )
+
+        for log in sync_logs:
             timestamp = self._extract_timestamp(log, "timestamp", "last_sync", "last_synced")
             if not self._is_in_range(timestamp, start_dt, end_dt):
                 continue
@@ -143,7 +158,7 @@ class SystemReportService:
                 )
             )
 
-        for log in await self._fetch_collection_documents("sync_metadata", limit=50):
+        for log in sync_meta:
             timestamp = self._extract_timestamp(log, "last_sync", "timestamp")
             if not self._is_in_range(timestamp, start_dt, end_dt):
                 continue
@@ -165,7 +180,7 @@ class SystemReportService:
                 )
             )
 
-        for log in await self._fetch_collection_documents("erp_sync_metadata", limit=50):
+        for log in erp_sync_meta:
             timestamp = self._extract_timestamp(log, "last_sync", "last_synced", "timestamp")
             if not self._is_in_range(timestamp, start_dt, end_dt):
                 continue
@@ -241,7 +256,7 @@ class SystemReportService:
         return rows[:100]
 
     async def _build_live_system_snapshot(
-        self, now: datetime, start_dt: Optional[datetime], end_dt: Optional[datetime]
+        self, now: datetime, start_dt: datetime | None, end_dt: datetime | None
     ) -> dict[str, Any]:
         error_window_start = start_dt or (now - timedelta(hours=24))
         error_window_end = end_dt or now
@@ -284,8 +299,8 @@ class SystemReportService:
         self,
         collection_name: str,
         timestamp_field: str,
-        start_dt: Optional[datetime],
-        end_dt: Optional[datetime],
+        start_dt: datetime | None,
+        end_dt: datetime | None,
     ) -> int:
         count = 0
         for row in await self._fetch_collection_documents(collection_name, limit=5000):
@@ -297,8 +312,8 @@ class SystemReportService:
     def _aggregate_api_metrics(
         self,
         metrics: list[dict[str, Any]],
-        start_dt: Optional[datetime],
-        end_dt: Optional[datetime],
+        start_dt: datetime | None,
+        end_dt: datetime | None,
     ) -> list[dict[str, Any]]:
         buckets: dict[datetime, dict[str, Any]] = defaultdict(
             lambda: {"request_count": 0, "error_count": 0, "latency_total": 0.0, "latency_count": 0}
@@ -354,10 +369,10 @@ class SystemReportService:
 
     def _normalize_date_range(
         self, start_date: Any, end_date: Any
-    ) -> tuple[Optional[datetime], Optional[datetime]]:
+    ) -> tuple[datetime | None, datetime | None]:
         return self._parse_datetime(start_date), self._parse_datetime(end_date, end_of_day=True)
 
-    def _parse_datetime(self, value: Any, end_of_day: bool = False) -> Optional[datetime]:
+    def _parse_datetime(self, value: Any, end_of_day: bool = False) -> datetime | None:
         if value is None:
             return None
         if isinstance(value, datetime):
@@ -387,7 +402,7 @@ class SystemReportService:
             parsed = datetime.combine(parsed.date(), time.max)
         return parsed
 
-    def _extract_timestamp(self, row: dict[str, Any], *field_names: str) -> Optional[datetime]:
+    def _extract_timestamp(self, row: dict[str, Any], *field_names: str) -> datetime | None:
         for field_name in field_names:
             if field_name not in row:
                 continue
@@ -398,9 +413,9 @@ class SystemReportService:
 
     def _is_in_range(
         self,
-        timestamp: Optional[datetime],
-        start_dt: Optional[datetime],
-        end_dt: Optional[datetime],
+        timestamp: datetime | None,
+        start_dt: datetime | None,
+        end_dt: datetime | None,
     ) -> bool:
         if timestamp is None:
             return False
