@@ -19,6 +19,9 @@ import {
 import { theme } from "@/styles/unifiedSystem";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+
 interface CreateSessionModalProps {
   isCreatingSession: boolean;
   isLoadingWarehouses: boolean;
@@ -64,8 +67,15 @@ export function CreateSessionModal({
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create New Session</Text>
-              <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-                <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+              <TouchableOpacity
+                {...getAccessibleButtonProps({ label: "Close modal" })}
+                onPress={() => {
+                  void haptics.light();
+                  onClose();
+                }}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={theme.colors.text.primary} {...getDecorativeIconProps()} />
               </TouchableOpacity>
             </View>
 
@@ -81,11 +91,18 @@ export function CreateSessionModal({
                   {zones.map((zone) => (
                     <TouchableOpacity
                       key={zone.id}
+                      {...getAccessibleButtonProps({
+                        label: zone.zone_name,
+                        selected: locationType === zone.zone_name,
+                      })}
                       style={[
                         styles.optionButton,
                         locationType === zone.zone_name && styles.optionButtonSelected,
                       ]}
-                      onPress={() => onChangeLocationType(zone.zone_name)}
+                      onPress={() => {
+                        void haptics.light();
+                        onChangeLocationType(zone.zone_name);
+                      }}
                     >
                       <Text
                         style={[
@@ -110,12 +127,19 @@ export function CreateSessionModal({
                       {warehouses.map((warehouse) => (
                         <TouchableOpacity
                           key={warehouse.id}
+                          {...getAccessibleButtonProps({
+                            label: warehouse.warehouse_name,
+                            selected: selectedFloor === warehouse.warehouse_name,
+                          })}
                           style={[
                             styles.optionButton,
                             selectedFloor === warehouse.warehouse_name &&
                               styles.optionButtonSelected,
                           ]}
-                          onPress={() => onChangeSelectedFloor(warehouse.warehouse_name)}
+                          onPress={() => {
+                            void haptics.light();
+                            onChangeSelectedFloor(warehouse.warehouse_name);
+                          }}
                         >
                           <Text
                             style={[
@@ -147,12 +171,20 @@ export function CreateSessionModal({
               )}
 
               <TouchableOpacity
+                {...getAccessibleButtonProps({
+                  label: "Start Session",
+                  disabled: !locationType || !selectedFloor || !rackName.trim() || isCreatingSession,
+                  busy: isCreatingSession,
+                })}
                 style={[
                   styles.createButton,
                   (!locationType || !selectedFloor || !rackName.trim() || isCreatingSession) &&
                     styles.createButtonDisabled,
                 ]}
-                onPress={onSubmit}
+                onPress={() => {
+                  void haptics.medium();
+                  onSubmit();
+                }}
                 disabled={!locationType || !selectedFloor || !rackName.trim() || isCreatingSession}
               >
                 {isCreatingSession ? (
