@@ -1,17 +1,25 @@
 import asyncio
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pydantic import BaseModel, Field
 
 from backend.api.schemas import ERPItem
 from backend.auth.dependencies import get_current_user
 from backend.error_messages import get_error_message
 from backend.services.cache_service import CacheService
 from backend.services.inventory_identity_service import InventoryIdentityService
+from backend.models.physical_batch import PhysicalBatchQuantities, PhysicalBatchStatus
+from backend.services.concurrency import ConcurrencyError
+from backend.services.physical_batch_service import (
+    PhysicalBatchError,
+    PhysicalBatchNotFound,
+    PhysicalBatchService,
+)
 from backend.sql_server_connector import SQLServerConnector
 from backend.utils.api_utils import sanitize_for_logging
 
@@ -21,6 +29,49 @@ router = APIRouter()
 _db: Optional[AsyncIOMotorDatabase[Any]] = None
 _cache_service: Optional[CacheService] = None
 _sql_connector: Optional[SQLServerConnector] = None
+
+
+class PhysicalBatchCreateRequest(BaseModel):
+    batch_number: str = Field(min_length=1, max_length=100)
+    location_id: Optional[str] = None
+    on_hand: float = Field(default=0, ge=0)
+    damaged: float = Field(default=0, ge=0)
+    reserved: float = Field(default=0, ge=0)
+    manufactured_on: Optional[date] = None
+    expires_on: Optional[date] = None
+    change_reference: str = Field(min_length=1, max_length=200)
+
+
+class PhysicalBatchUpdateRequest(BaseModel):
+    expected_version: int = Field(ge=0)
+    status: Optional[PhysicalBatchStatus] = None
+    location_id: Optional[str] = None
+    on_hand: Optional[float] = Field(default=None, ge=0)
+    damaged: Optional[float] = Field(default=None, ge=0)
+    reserved: Optional[float] = Field(default=None, ge=0)
+    change_reference: str = Field(min_length=1, max_length=200)
+
+
+def _batch_actor(current_user: dict[str, Any]) -> str:
+    return str(
+        current_user.get("username")
+        or current_user.get("user_id")
+        or current_user.get("id")
+        or ""
+    )
+
+
+def _batch_response(document: dict[str, Any]) -> dict[str, Any]:
+    result = dict(document)
+    result.pop("_id", None)
+    quantities = dict(result.get("quantities") or {})
+    quantities["available"] = (
+        float(quantities.get("on_hand") or 0)
+        - float(quantities.get("damaged") or 0)
+        - float(quantities.get("reserved") or 0)
+    )
+    result["quantities"] = quantities
+    return result
 
 
 @router.get("/erp/items/identity/{identifier}")
@@ -34,9 +85,105 @@ async def resolve_inventory_identity(
         raise HTTPException(status_code=503, detail="Service not initialized")
     identity = await InventoryIdentityService(_db).resolve(identifier)
     if not identity:
-        raise HTTPException(status_code=404, detail="Canonical inventory identity not found")
+        raise HTTPException(
+            status_code=404, detail="Canonical inventory identity not found"
+        )
     identity.pop("_id", None)
     return identity
+
+
+@router.get("/erp/items/{item_identity_id}/physical-batches")
+async def list_physical_batches(
+    item_identity_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    del current_user
+    if _db is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+    cursor = _db.physical_batches.find({"item_identity_id": item_identity_id}).sort(
+        "normalized_batch_number", 1
+    )
+    return [_batch_response(document) async for document in cursor]
+
+
+@router.post("/erp/items/{item_identity_id}/physical-batches", status_code=201)
+async def create_physical_batch(
+    item_identity_id: str,
+    request: PhysicalBatchCreateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    if _db is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+    try:
+        document = await PhysicalBatchService(_db).create(
+            item_identity_id=item_identity_id,
+            batch_number=request.batch_number,
+            location_id=request.location_id,
+            quantities=PhysicalBatchQuantities(
+                on_hand=request.on_hand,
+                damaged=request.damaged,
+                reserved=request.reserved,
+            ),
+            manufactured_on=request.manufactured_on,
+            expires_on=request.expires_on,
+            actor=_batch_actor(current_user),
+            change_reference=request.change_reference,
+        )
+        return _batch_response(document)
+    except (PhysicalBatchError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.patch("/erp/physical-batches/{batch_id}")
+async def update_physical_batch(
+    batch_id: str,
+    request: PhysicalBatchUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    if _db is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+    service = PhysicalBatchService(_db)
+    try:
+        before = await service.get(batch_id)
+        current = dict(before.get("quantities") or {})
+        quantities = None
+        if any(
+            value is not None
+            for value in (request.on_hand, request.damaged, request.reserved)
+        ):
+            quantities = PhysicalBatchQuantities(
+                on_hand=(
+                    request.on_hand
+                    if request.on_hand is not None
+                    else current.get("on_hand", 0)
+                ),
+                damaged=(
+                    request.damaged
+                    if request.damaged is not None
+                    else current.get("damaged", 0)
+                ),
+                reserved=(
+                    request.reserved
+                    if request.reserved is not None
+                    else current.get("reserved", 0)
+                ),
+            )
+        document = await service.update(
+            batch_id,
+            expected_version=request.expected_version,
+            actor=_batch_actor(current_user),
+            change_reference=request.change_reference,
+            quantities=quantities,
+            status=request.status,
+            location_id=request.location_id,
+        )
+        return _batch_response(document)
+    except PhysicalBatchNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ConcurrencyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except (PhysicalBatchError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 def init_erp_api(
@@ -151,7 +298,9 @@ def _normalize_barcode_input(
 
 
 @router.get("/erp/items/barcode/{barcode}", response_model=ERPItem)
-async def get_item_by_barcode(barcode: str, current_user: dict = Depends(get_current_user)):
+async def get_item_by_barcode(
+    barcode: str, current_user: dict = Depends(get_current_user)
+):
     """
     Get item details by barcode from MongoDB.
     """
@@ -185,7 +334,8 @@ async def get_item_by_barcode(barcode: str, current_user: dict = Depends(get_cur
     if not item:
         error = get_error_message("DB_ITEM_NOT_FOUND", {"barcode": barcode})
         logger.warning(
-            "Item not found in MongoDB: barcode=%s", sanitize_for_logging(normalized_barcode)
+            "Item not found in MongoDB: barcode=%s",
+            sanitize_for_logging(normalized_barcode),
         )
         raise HTTPException(
             status_code=error["status_code"],
@@ -201,7 +351,10 @@ async def get_item_by_barcode(barcode: str, current_user: dict = Depends(get_cur
 
     # Cache for 1 hour
     await _cache_service.set("items", normalized_barcode, item, ttl=3600)
-    logger.debug("Item fetched from MongoDB: barcode=%s", sanitize_for_logging(normalized_barcode))
+    logger.debug(
+        "Item fetched from MongoDB: barcode=%s",
+        sanitize_for_logging(normalized_barcode),
+    )
 
     return ERPItem(**item)
 
@@ -342,7 +495,8 @@ async def get_item_batches(
                 "item_name": batch.get("item_name"),
                 "stock_qty": batch.get("stock_qty", 0),
                 "mrp": batch.get("mrp"),
-                "manufacturing_date": batch.get("mfg_date") or batch.get("manufacturing_date"),
+                "manufacturing_date": batch.get("mfg_date")
+                or batch.get("manufacturing_date"),
                 "expiry_date": batch.get("expiry_date"),
                 "warehouse_id": batch.get("warehouse_id"),
                 "warehouse_name": batch.get("warehouse_name"),
@@ -479,7 +633,9 @@ async def get_all_items(
 
 @router.get("/items/search")
 async def search_items_compatibility(
-    query: Optional[str] = Query(None, description="Search term (legacy param 'query')"),
+    query: Optional[str] = Query(
+        None, description="Search term (legacy param 'query')"
+    ),
     search: Optional[str] = Query(None, description="Alternate search param"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),

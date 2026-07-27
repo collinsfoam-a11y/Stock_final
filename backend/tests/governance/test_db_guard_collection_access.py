@@ -19,6 +19,9 @@ async def test_db_guard_blocks_bracket_collection_writes_without_authority():
     with pytest.raises(GovernanceViolation, match="Direct DB write forbidden"):
         await db["recount_requests"].insert_one({"id": "recount-1"})
 
+    with pytest.raises(GovernanceViolation, match="Direct DB write forbidden"):
+        await db["physical_batches"].insert_one({"id": "batch-1"})
+
 
 @pytest.mark.asyncio
 async def test_db_guard_allows_bracket_collection_writes_with_authority():
@@ -33,6 +36,9 @@ async def test_db_guard_allows_bracket_collection_writes_with_authority():
 
     with write_authority("UnknownItemService"):
         await db["unknown_items"].insert_one({"id": "unknown-1"})
+
+    with write_authority("PhysicalBatchService"):
+        await db["physical_batches"].insert_one({"id": "batch-2"})
 
 
 @pytest.mark.asyncio

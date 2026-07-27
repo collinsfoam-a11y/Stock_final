@@ -43,6 +43,7 @@ AUTHORIZED_WRITE_AUTHORITIES: dict[str, frozenset[str]] = {
             "reconciliation_records",
         }
     ),
+    "PhysicalBatchService": frozenset({"physical_batches"}),
 }
 # FIX GROUP 6: All collections that carry immutable business state must be guarded.
 _GUARD_TARGET_COLLECTIONS: tuple[str, ...] = (
@@ -56,6 +57,7 @@ _GUARD_TARGET_COLLECTIONS: tuple[str, ...] = (
     "inventory_ledger",
     "inventory_movements",
     "reconciliation_records",
+    "physical_batches",
 )
 _GUARD_WRITE_METHODS: tuple[str, ...] = (
     "insert_one",
@@ -227,7 +229,10 @@ def _require_write_authority(operation: str) -> None:
             f"CRITICAL: Direct DB write forbidden ({operation}). Use domain service."
         )
     collection_name = str(operation or "").split(".", 1)[0].strip()
-    if collection_name and collection_name not in AUTHORIZED_WRITE_AUTHORITIES[authority]:
+    if (
+        collection_name
+        and collection_name not in AUTHORIZED_WRITE_AUTHORITIES[authority]
+    ):
         raise GovernanceViolation(
             "CRITICAL: "
             f"{authority} cannot mutate {collection_name}. Use the collection's canonical domain service."
@@ -381,9 +386,16 @@ def _patch_collection_resolvers(db: Any) -> None:
         original_get_collection = getattr(db_class, "get_collection", None)
         if callable(original_get_collection):
 
-            def _guarded_get_collection(self: Any, name: Any, *args: Any, **kwargs: Any) -> Any:
+            def _guarded_get_collection(
+                self: Any, name: Any, *args: Any, **kwargs: Any
+            ) -> Any:
                 proxies = getattr(self, _DB_GUARD_PROXIES_ATTR, {})
-                if isinstance(name, str) and name in proxies and not args and not kwargs:
+                if (
+                    isinstance(name, str)
+                    and name in proxies
+                    and not args
+                    and not kwargs
+                ):
                     return proxies[name]
                 return original_get_collection(self, name, *args, **kwargs)
 

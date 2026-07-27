@@ -3,7 +3,11 @@
  */
 import api from "../httpClient";
 import { Item } from "./itemVerificationApi";
-import type { CanonicalInventoryIdentity } from "../../types/item";
+import type {
+  CanonicalInventoryIdentity,
+  PhysicalBatch,
+  PhysicalBatchStatus,
+} from "../../types/item";
 
 interface ApiError {
   response?: {
@@ -62,6 +66,52 @@ export class EnhancedDatabaseAPI {
   static async resolveCanonicalIdentity(identifier: string): Promise<CanonicalInventoryIdentity> {
     const response = await api.get<CanonicalInventoryIdentity>(
       `/api/erp/items/identity/${encodeURIComponent(identifier)}`,
+    );
+    return response.data;
+  }
+
+  static async listPhysicalBatches(itemIdentityId: string): Promise<PhysicalBatch[]> {
+    const response = await api.get<PhysicalBatch[]>(
+      `/api/erp/items/${encodeURIComponent(itemIdentityId)}/physical-batches`,
+    );
+    return response.data;
+  }
+
+  static async createPhysicalBatch(
+    itemIdentityId: string,
+    input: {
+      batch_number: string;
+      location_id?: string;
+      on_hand?: number;
+      damaged?: number;
+      reserved?: number;
+      manufactured_on?: string;
+      expires_on?: string;
+      change_reference: string;
+    },
+  ): Promise<PhysicalBatch> {
+    const response = await api.post<PhysicalBatch>(
+      `/api/erp/items/${encodeURIComponent(itemIdentityId)}/physical-batches`,
+      input,
+    );
+    return response.data;
+  }
+
+  static async updatePhysicalBatch(
+    batchId: string,
+    input: {
+      expected_version: number;
+      status?: PhysicalBatchStatus;
+      location_id?: string;
+      on_hand?: number;
+      damaged?: number;
+      reserved?: number;
+      change_reference: string;
+    },
+  ): Promise<PhysicalBatch> {
+    const response = await api.patch<PhysicalBatch>(
+      `/api/erp/physical-batches/${encodeURIComponent(batchId)}`,
+      input,
     );
     return response.data;
   }

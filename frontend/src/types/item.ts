@@ -22,6 +22,29 @@ export interface CanonicalInventoryIdentity {
   collision_state?: string | null;
 }
 
+export type PhysicalBatchStatus = "ACTIVE" | "QUARANTINED" | "DEPLETED" | "CLOSED";
+
+export interface PhysicalBatchQuantities {
+  on_hand: number;
+  damaged: number;
+  reserved: number;
+  available: number;
+}
+
+export interface PhysicalBatch {
+  id: string;
+  item_identity_id: string;
+  batch_number: string;
+  normalized_batch_number: string;
+  location_id?: string | null;
+  status: PhysicalBatchStatus;
+  quantities: PhysicalBatchQuantities;
+  manufactured_on?: string | null;
+  expires_on?: string | null;
+  version: number;
+  active: boolean;
+}
+
 /**
  * MRP Variant - different MRP values for the same item
  * Extended version with more fields than scan.ts NormalizedMrpVariant

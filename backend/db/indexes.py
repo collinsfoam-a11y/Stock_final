@@ -240,6 +240,21 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
             {"name": "idx_batch_records_item_time"},
         ),
     ],
+    "physical_batches": [
+        ([("id", 1)], {"unique": True, "name": "idx_physical_batch_id"}),
+        (
+            [("item_identity_id", 1), ("normalized_batch_number", 1)],
+            {"unique": True, "name": "idx_physical_batch_item_number"},
+        ),
+        (
+            [("location_id", 1), ("status", 1)],
+            {"name": "idx_physical_batch_location_status"},
+        ),
+        (
+            [("expires_on", 1), ("status", 1)],
+            {"name": "idx_physical_batch_expiry_status"},
+        ),
+    ],
     "serial_records": [
         (
             [("item_id", 1), ("serial_no", 1)],
