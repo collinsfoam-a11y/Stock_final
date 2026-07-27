@@ -301,6 +301,28 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("event_id", 1)], {"unique": True, "name": "idx_damage_event"}),
         ([("session_id", 1), ("timestamp", -1)], {"name": "idx_damage_session_time"}),
     ],
+    "damage_cases": [
+        ([("id", 1)], {"unique": True, "name": "idx_damage_case_id"}),
+        (
+            [("item_identity_id", 1), ("status", 1)],
+            {"name": "idx_damage_case_item_status"},
+        ),
+        (
+            [("physical_batch_id", 1), ("status", 1)],
+            {"name": "idx_damage_case_batch_status"},
+        ),
+        ([("canonical_serial_id", 1)], {"name": "idx_damage_case_serial"}),
+        (
+            [("location_id", 1), ("status", 1)],
+            {"name": "idx_damage_case_location_status"},
+        ),
+        (
+            [("session_id", 1), ("count_line_id", 1)],
+            {"name": "idx_damage_case_count_context"},
+        ),
+        ([("evidence.id", 1)], {"unique": True, "name": "idx_damage_evidence_id"}),
+        ([("evidence.content_hash", 1)], {"name": "idx_damage_evidence_hash"}),
+    ],
     "variance_logs": [
         ([("event_id", 1)], {"unique": True, "name": "idx_variance_event"}),
         ([("session_id", 1), ("timestamp", -1)], {"name": "idx_variance_session_time"}),

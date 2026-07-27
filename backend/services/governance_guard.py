@@ -45,6 +45,7 @@ AUTHORIZED_WRITE_AUTHORITIES: dict[str, frozenset[str]] = {
     ),
     "PhysicalBatchService": frozenset({"physical_batches"}),
     "CanonicalSerialService": frozenset({"canonical_serials"}),
+    "DamageCaseService": frozenset({"damage_cases"}),
 }
 # FIX GROUP 6: All collections that carry immutable business state must be guarded.
 _GUARD_TARGET_COLLECTIONS: tuple[str, ...] = (
@@ -60,6 +61,7 @@ _GUARD_TARGET_COLLECTIONS: tuple[str, ...] = (
     "reconciliation_records",
     "physical_batches",
     "canonical_serials",
+    "damage_cases",
 )
 _GUARD_WRITE_METHODS: tuple[str, ...] = (
     "insert_one",

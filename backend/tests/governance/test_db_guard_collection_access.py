@@ -25,6 +25,9 @@ async def test_db_guard_blocks_bracket_collection_writes_without_authority():
     with pytest.raises(GovernanceViolation, match="Direct DB write forbidden"):
         await db["canonical_serials"].insert_one({"id": "serial-1"})
 
+    with pytest.raises(GovernanceViolation, match="Direct DB write forbidden"):
+        await db["damage_cases"].insert_one({"id": "damage-1"})
+
 
 @pytest.mark.asyncio
 async def test_db_guard_allows_bracket_collection_writes_with_authority():
@@ -45,6 +48,9 @@ async def test_db_guard_allows_bracket_collection_writes_with_authority():
 
     with write_authority("CanonicalSerialService"):
         await db["canonical_serials"].insert_one({"id": "serial-2"})
+
+    with write_authority("DamageCaseService"):
+        await db["damage_cases"].insert_one({"id": "damage-2"})
 
 
 @pytest.mark.asyncio

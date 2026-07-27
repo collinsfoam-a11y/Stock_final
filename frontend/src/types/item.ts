@@ -76,6 +76,44 @@ export interface CanonicalSerial {
   active: boolean;
 }
 
+export type DamageCaseStatus =
+  | "OPEN"
+  | "UNDER_REVIEW"
+  | "APPROVED"
+  | "REJECTED"
+  | "RESOLVED"
+  | "VOIDED";
+export type DamageDisposition = "RETURNABLE" | "NON_RETURNABLE";
+export type EvidenceKind = "PHOTO" | "DOCUMENT" | "NOTE";
+
+export interface DamageEvidence {
+  id: string;
+  kind: EvidenceKind;
+  reference: string;
+  content_hash: string;
+  media_type?: string | null;
+  captured_at: string;
+  captured_by: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface DamageCase {
+  id: string;
+  item_identity_id: string;
+  quantity: number;
+  disposition: DamageDisposition;
+  status: DamageCaseStatus;
+  physical_batch_id?: string | null;
+  canonical_serial_id?: string | null;
+  location_id?: string | null;
+  session_id?: string | null;
+  count_line_id?: string | null;
+  description: string;
+  evidence: DamageEvidence[];
+  version: number;
+  active: boolean;
+}
+
 /**
  * MRP Variant - different MRP values for the same item
  * Extended version with more fields than scan.ts NormalizedMrpVariant

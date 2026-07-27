@@ -9,6 +9,10 @@ import type {
   PhysicalBatchStatus,
   CanonicalSerial,
   SerialStatus,
+  DamageCase,
+  DamageCaseStatus,
+  DamageDisposition,
+  EvidenceKind,
 } from "../../types/item";
 
 interface ApiError {
@@ -165,6 +169,75 @@ export class EnhancedDatabaseAPI {
   ): Promise<CanonicalSerial> {
     const response = await api.patch<CanonicalSerial>(
       `/api/erp/serials/${encodeURIComponent(serialId)}`,
+      input,
+    );
+    return response.data;
+  }
+
+  static async getDamageCase(caseId: string): Promise<DamageCase> {
+    const response = await api.get<DamageCase>(
+      `/api/erp/damage-cases/${encodeURIComponent(caseId)}`,
+    );
+    return response.data;
+  }
+
+  static async createDamageCase(input: {
+    item_identity_id: string;
+    quantity: number;
+    disposition: DamageDisposition;
+    description: string;
+    evidence: Array<{
+      id: string;
+      kind: EvidenceKind;
+      reference: string;
+      content_hash: string;
+      media_type?: string;
+      metadata?: Record<string, unknown>;
+    }>;
+    physical_batch_id?: string;
+    canonical_serial_id?: string;
+    location_id?: string;
+    session_id?: string;
+    count_line_id?: string;
+    reason: string;
+    change_reference: string;
+  }): Promise<DamageCase> {
+    const response = await api.post<DamageCase>("/api/erp/damage-cases", input);
+    return response.data;
+  }
+
+  static async transitionDamageCase(
+    caseId: string,
+    input: {
+      status: DamageCaseStatus;
+      expected_version: number;
+      reason: string;
+      change_reference: string;
+    },
+  ): Promise<DamageCase> {
+    const response = await api.patch<DamageCase>(
+      `/api/erp/damage-cases/${encodeURIComponent(caseId)}`,
+      input,
+    );
+    return response.data;
+  }
+
+  static async addDamageEvidence(
+    caseId: string,
+    input: {
+      id: string;
+      kind: EvidenceKind;
+      reference: string;
+      content_hash: string;
+      media_type?: string;
+      metadata?: Record<string, unknown>;
+      expected_version: number;
+      reason: string;
+      change_reference: string;
+    },
+  ): Promise<DamageCase> {
+    const response = await api.post<DamageCase>(
+      `/api/erp/damage-cases/${encodeURIComponent(caseId)}/evidence`,
       input,
     );
     return response.data;

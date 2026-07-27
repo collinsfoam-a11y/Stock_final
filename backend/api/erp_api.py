@@ -15,6 +15,12 @@ from backend.services.cache_service import CacheService
 from backend.services.inventory_identity_service import InventoryIdentityService
 from backend.models.physical_batch import PhysicalBatchQuantities, PhysicalBatchStatus
 from backend.models.canonical_serial import SerialStatus
+from backend.models.damage_case import (
+    DamageCaseStatus,
+    DamageDisposition,
+    DamageEvidence,
+    EvidenceKind,
+)
 from backend.services.concurrency import ConcurrencyError
 from backend.services.physical_batch_service import (
     PhysicalBatchError,
@@ -26,6 +32,11 @@ from backend.services.canonical_serial_service import (
     CanonicalSerialNotFound,
     CanonicalSerialService,
     DuplicateSerialError,
+)
+from backend.services.damage_case_service import (
+    DamageCaseError,
+    DamageCaseNotFound,
+    DamageCaseService,
 )
 from backend.sql_server_connector import SQLServerConnector
 from backend.utils.api_utils import sanitize_for_logging
@@ -88,6 +99,43 @@ class CanonicalSerialTransitionRequest(BaseModel):
     source: str = Field(default="API", min_length=1, max_length=50)
 
 
+class DamageEvidenceRequest(BaseModel):
+    id: str = Field(min_length=1, max_length=200)
+    kind: EvidenceKind
+    reference: str = Field(min_length=1, max_length=2048)
+    content_hash: str = Field(pattern=r"^[a-fA-F0-9]{64}$")
+    media_type: Optional[str] = Field(default=None, max_length=100)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class DamageCaseCreateRequest(BaseModel):
+    item_identity_id: str = Field(min_length=1)
+    quantity: float = Field(gt=0)
+    disposition: DamageDisposition
+    description: str = Field(min_length=1, max_length=2000)
+    evidence: list[DamageEvidenceRequest] = Field(min_length=1, max_length=50)
+    physical_batch_id: Optional[str] = None
+    canonical_serial_id: Optional[str] = None
+    location_id: Optional[str] = None
+    session_id: Optional[str] = None
+    count_line_id: Optional[str] = None
+    reason: str = Field(min_length=1, max_length=1000)
+    change_reference: str = Field(min_length=1, max_length=200)
+
+
+class DamageEvidenceAddRequest(DamageEvidenceRequest):
+    expected_version: int = Field(ge=0)
+    reason: str = Field(min_length=1, max_length=1000)
+    change_reference: str = Field(min_length=1, max_length=200)
+
+
+class DamageCaseTransitionRequest(BaseModel):
+    status: DamageCaseStatus
+    expected_version: int = Field(ge=0)
+    reason: str = Field(min_length=1, max_length=1000)
+    change_reference: str = Field(min_length=1, max_length=200)
+
+
 def _batch_actor(current_user: dict[str, Any]) -> str:
     return str(
         current_user.get("username")
@@ -114,6 +162,19 @@ def _serial_response(document: dict[str, Any]) -> dict[str, Any]:
     result = dict(document)
     result.pop("_id", None)
     return result
+
+
+def _damage_evidence(request: DamageEvidenceRequest, actor: str) -> DamageEvidence:
+    return DamageEvidence(
+        id=request.id,
+        kind=request.kind,
+        reference=request.reference,
+        content_hash=request.content_hash.lower(),
+        media_type=request.media_type,
+        captured_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        captured_by=actor,
+        metadata=request.metadata,
+    )
 
 
 @router.get("/erp/items/identity/{identifier}")
@@ -305,6 +366,102 @@ async def transition_canonical_serial(
     except ConcurrencyError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except CanonicalSerialError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/erp/damage-cases/{case_id}")
+async def get_damage_case(
+    case_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    del current_user
+    if _db is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+    try:
+        return _serial_response(await DamageCaseService(_db).get(case_id))
+    except DamageCaseNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/erp/damage-cases", status_code=201)
+async def create_damage_case(
+    request: DamageCaseCreateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    if _db is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+    actor = _batch_actor(current_user)
+    try:
+        document = await DamageCaseService(_db).create(
+            item_identity_id=request.item_identity_id,
+            quantity=request.quantity,
+            disposition=request.disposition,
+            description=request.description,
+            evidence=[_damage_evidence(row, actor) for row in request.evidence],
+            actor=actor,
+            reason=request.reason,
+            change_reference=request.change_reference,
+            physical_batch_id=request.physical_batch_id,
+            canonical_serial_id=request.canonical_serial_id,
+            location_id=request.location_id,
+            session_id=request.session_id,
+            count_line_id=request.count_line_id,
+        )
+        return _serial_response(document)
+    except (DamageCaseError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/erp/damage-cases/{case_id}/evidence")
+async def add_damage_case_evidence(
+    case_id: str,
+    request: DamageEvidenceAddRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    if _db is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+    actor = _batch_actor(current_user)
+    try:
+        document = await DamageCaseService(_db).add_evidence(
+            case_id,
+            evidence=_damage_evidence(request, actor),
+            expected_version=request.expected_version,
+            actor=actor,
+            reason=request.reason,
+            change_reference=request.change_reference,
+        )
+        return _serial_response(document)
+    except DamageCaseNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ConcurrencyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except (DamageCaseError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.patch("/erp/damage-cases/{case_id}")
+async def transition_damage_case(
+    case_id: str,
+    request: DamageCaseTransitionRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    if _db is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+    try:
+        document = await DamageCaseService(_db).transition(
+            case_id,
+            status=request.status,
+            expected_version=request.expected_version,
+            actor=_batch_actor(current_user),
+            reason=request.reason,
+            change_reference=request.change_reference,
+        )
+        return _serial_response(document)
+    except DamageCaseNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ConcurrencyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except DamageCaseError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
