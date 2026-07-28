@@ -319,7 +319,11 @@ class Session(BaseModel):
     rack_no: Optional[str] = None
     staff_user: str
     staff_name: str
-    status: str = "OPEN"  # OPEN, ACTIVE, CLOSED
+    status: str = "OPEN"  # OPEN, ACTIVE, CLOSED, PAUSED, SUBMITTED, SUPERVISOR_REVIEW, RECOUNT_REQUIRED, APPROVED, COMPLETED, FINALISED, CANCELLED, AUTO_RELEASED
+    approval_status: Optional[str] = None
+    auto_release_reason: Optional[str] = None
+    approval_summary: Optional[dict] = None
+    blocking_items: Optional[list[str]] = None
     type: str = "STANDARD"  # STANDARD, BLIND, STRICT
     started_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
@@ -362,11 +366,6 @@ class Session(BaseModel):
     def normalize_status(cls, v: Any) -> str:
         if isinstance(v, str):
             v = v.upper()
-            # Map legacy RECONCILE to ACTIVE for now, or allow it if we can't
-            # migrate yet. But the plan says "Normalize session states
-            # (OPEN | ACTIVE | CLOSED)".
-            # If we strictly enforce it, we might break existing data.
-            # Let's allow RECONCILE but prefer ACTIVE.
             if v == "RECONCILE":
                 return "ACTIVE"
             return v
@@ -499,7 +498,344 @@ class CommandSyncResponse(BaseModel):
     rejected: list[dict[str, Any]]
     acks: dict[str, dict[str, Any]]
     client_batch_id: Optional[str] = None
+class CountObservationStatus(str, Enum):
+    DRAFT = "DRAFT"
+    AWAITING_SQL_VALIDATION = "AWAITING_SQL_VALIDATION"
+    AUTO_APPROVED = "AUTO_APPROVED"
+    SUPERVISOR_REVIEW = "SUPERVISOR_REVIEW"
+    APPROVED = "APPROVED"
+    RECOUNT_REQUESTED = "RECOUNT_REQUESTED"
+    RECOUNT_ASSIGNED = "RECOUNT_ASSIGNED"
+    RECOUNT_IN_PROGRESS = "RECOUNT_IN_PROGRESS"
+    RECOUNT_SUBMITTED = "RECOUNT_SUBMITTED"
+    RECOUNT_MATCHED = "RECOUNT_MATCHED"
+    RECOUNT_DIFFERENCE = "RECOUNT_DIFFERENCE"
+    RECOUNT_APPROVED = "RECOUNT_APPROVED"
+    REJECTED = "REJECTED"
+    DISTRIBUTED_STOCK_INVESTIGATION = "DISTRIBUTED_STOCK_INVESTIGATION"
+    PENDING_INVESTIGATION = "PENDING_INVESTIGATION"
+    CONFLICT = "CONFLICT"
 
+
+class SqlComparisonSource(str, Enum):
+    ORIGINAL_SUBMISSION = "original_submission"
+    RECONSTRUCTED_SUBMISSION = "reconstructed_submission"
+    SYNC_TIME = "sync_time"
+    RECOUNT_SUBMISSION = "recount_submission"
+
+
+class SupervisorAction(str, Enum):
+    APPROVE = "APPROVE"
+    REJECT = "REJECT"
+    REQUEST_RECOUNT = "REQUEST_RECOUNT"
+    REQUEST_EVIDENCE = "REQUEST_EVIDENCE"
+    REQUEST_CLARIFICATION = "REQUEST_CLARIFICATION"
+    CORRECT_CLASSIFICATION = "CORRECT_CLASSIFICATION"
+    MAP_TO_EXISTING_BATCH = "MAP_TO_EXISTING_BATCH"
+    APPROVE_NEW_BATCH = "APPROVE_NEW_BATCH"
+    APPROVE_RELOCATION = "APPROVE_RELOCATION"
+    APPROVE_BUNDLE = "APPROVE_BUNDLE"
+    CREATE_DAMAGE_CASE = "CREATE_DAMAGE_CASE"
+    ESCALATE = "ESCALATE"
+    ADJUST_COUNT = "ADJUST_COUNT"
+
+
+class RecountScope(str, Enum):
+    ITEM = "ITEM"
+    BATCH = "BATCH"
+    SERIAL = "SERIAL"
+    LOCATION = "LOCATION"
+    SESSION = "SESSION"
+
+
+class RecountPriority(str, Enum):
+    LOW = "LOW"
+    NORMAL = "NORMAL"
+    HIGH = "HIGH"
+    URGENT = "URGENT"
+
+
+class ReviewQueueType(str, Enum):
+    QUANTITY_VARIANCE = "QUANTITY_VARIANCE"
+    BATCH_MRP_MISMATCH = "BATCH_MRP_MISMATCH"
+    SERIAL_CONFLICT = "SERIAL_CONFLICT"
+    LOCATION_INVESTIGATION = "LOCATION_INVESTIGATION"
+    DAMAGE_CONDITION = "DAMAGE_CONDITION"
+    RETURN_REPAIR = "RETURN_REPAIR"
+    UNKNOWN_ITEMS = "UNKNOWN_ITEMS"
+    BUNDLE_PROPOSALS = "BUNDLE_PROPOSALS"
+    RECOUNT_REQUESTS = "RECOUNT_REQUESTS"
+    SYNC_CONFLICTS = "SYNC_CONFLICTS"
+    SESSION_FINALISATION = "SESSION_FINALISATION"
+
+
+class AdditionalLocationResponse(str, Enum):
+    YES = "YES"
+    NO = "NO"
+    NOT_CHECKED = "NOT_CHECKED"
+
+
+class SystemRecommendation(str, Enum):
+    AUTO_APPROVE = "AUTO_APPROVE"
+    SUPERVISOR_REVIEW = "SUPERVISOR_REVIEW"
+    REQUEST_RECOUNT = "REQUEST_RECOUNT"
+    REQUEST_LOCATION_VERIFICATION = "REQUEST_LOCATION_VERIFICATION"
+    REQUEST_EVIDENCE = "REQUEST_EVIDENCE"
+    PENDING_SQL = "PENDING_SQL"
+    BLOCKED = "BLOCKED"
+
+
+class ApprovalExceptionType(str, Enum):
+    BATCH_VARIANCE = "BATCH_VARIANCE"
+    SERIAL_CONFLICT = "SERIAL_CONFLICT"
+    ATTRIBUTE_MISMATCH = "ATTRIBUTE_MISMATCH"
+    LOCATION_MISMATCH = "LOCATION_MISMATCH"
+    DAMAGED_STOCK = "DAMAGED_STOCK"
+    UNKNOWN_ITEM = "UNKNOWN_ITEM"
+    PROVISIONAL_BATCH = "PROVISIONAL_BATCH"
+    PROVISIONAL_BUNDLE = "PROVISIONAL_BUNDLE"
+    INTERNAL_BARCODE = "INTERNAL_BARCODE"
+    INCOMPLETE_EVIDENCE = "INCOMPLETE_EVIDENCE"
+    MISSING_POLICY = "MISSING_POLICY"
+    LOW_CONFIDENCE = "LOW_CONFIDENCE"
+    CONCURRENT_OBSERVATION = "CONCURRENT_OBSERVATION"
+    SYNC_CONFLICT = "SYNC_CONFLICT"
+    EXCESS_QUANTITY = "EXCESS_QUANTITY"
+    SHORTAGE = "SHORTAGE"
+    POLICY_THRESHOLD = "POLICY_THRESHOLD"
+    RETURN_CLASSIFICATION = "RETURN_CLASSIFICATION"
+    COUNT_MODIFIED = "COUNT_MODIFIED"
+    RECOUNT_DIFFERENCE = "RECOUNT_DIFFERENCE"
+
+
+class SqlAvailability(str, Enum):
+    AVAILABLE_AT_SUBMISSION = "AVAILABLE_AT_SUBMISSION"
+    AVAILABLE_AT_SYNC = "AVAILABLE_AT_SYNC"
+    RECONSTRUCTED = "RECONSTRUCTED"
+    UNAVAILABLE = "UNAVAILABLE"
+
+
+class ApprovalExceptionDetail(BaseModel):
+    exception_type: ApprovalExceptionType
+    description: Optional[str] = None
+    is_blocking: bool = True
+
+
+class CountObservationCreate(BaseModel):
+    session_id: str
+    item_code: str
+    item_name: Optional[str] = None
+    counted_qty: float
+    base_uom: Optional[str] = None
+    uom_code: Optional[str] = None
+    uom_name: Optional[str] = None
+    conversion_factor: Optional[float] = 1.0
+    quantity_precision: Optional[int] = None
+    batches: Optional[list[dict[str, Any]]] = None
+    serial_entries: Optional[list[SerialEntry]] = None
+    split_section: Optional[str] = None
+    split_total: Optional[float] = None
+    mrp_counted: Optional[float] = None
+    manufacturing_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    barcode: Optional[str] = None
+    batch_id: Optional[str] = None
+    damaged_qty: Optional[float] = 0
+    non_returnable_damaged_qty: Optional[float] = 0
+    item_condition: Optional[str] = None
+    floor_no: Optional[str] = None
+    rack_no: Optional[str] = None
+    mark_location: Optional[str] = None
+    location_id: Optional[str] = None
+    remark: Optional[str] = None
+    photo_proofs: Optional[list[PhotoProof]] = None
+    parameter_checks: Optional[dict[str, Any]] = None
+    accessory_checks: Optional[dict[str, Any]] = None
+    variance_reason: Optional[str] = None
+    variance_note: Optional[str] = None
+
+
+class CountObservation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str
+    item_code: str
+    item_name: Optional[str] = None
+    counted_qty: float
+    base_uom: Optional[str] = None
+    uom_code: Optional[str] = None
+    uom_name: Optional[str] = None
+    conversion_factor: Optional[float] = 1.0
+    quantity_precision: Optional[int] = None
+    batches: Optional[list[dict[str, Any]]] = None
+    serial_entries: Optional[list[SerialEntry]] = None
+    split_section: Optional[str] = None
+    split_total: Optional[float] = None
+    mrp_counted: Optional[float] = None
+    manufacturing_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    barcode: Optional[str] = None
+    batch_id: Optional[str] = None
+    damaged_qty: Optional[float] = 0
+    non_returnable_damaged_qty: Optional[float] = 0
+    item_condition: Optional[str] = None
+    floor_no: Optional[str] = None
+    rack_no: Optional[str] = None
+    mark_location: Optional[str] = None
+    location_id: Optional[str] = None
+    remark: Optional[str] = None
+    photo_proofs: Optional[list[PhotoProof]] = None
+    parameter_checks: Optional[dict[str, Any]] = None
+    accessory_checks: Optional[dict[str, Any]] = None
+    version: int = 1
+    previous_version_id: Optional[str] = None
+    status: CountObservationStatus = CountObservationStatus.DRAFT
+    approval_status: Optional[str] = None
+    sql_qty_at_submission: Optional[float] = None
+    sql_qty_at_recount: Optional[float] = None
+    sql_quantity_source: Optional[SqlAvailability] = None
+    sql_comparison_source: Optional[SqlComparisonSource] = None
+    variance: Optional[float] = None
+    exception_types: Optional[list[ApprovalExceptionType]] = None
+    exception_details: Optional[list[ApprovalExceptionDetail]] = None
+    system_recommendation: Optional[SystemRecommendation] = None
+    supervisor_decision: Optional[str] = None
+    supervisor_notes: Optional[str] = None
+    decided_by: Optional[str] = None
+    decided_at: Optional[datetime] = None
+    additional_location_response: Optional[AdditionalLocationResponse] = None
+    linked_location_task_id: Optional[str] = None
+    is_recount: bool = False
+    recount_of_id: Optional[str] = None
+    recount_is_blind: bool = False
+    recount_original_hidden_fields: Optional[dict[str, Any]] = None
+    idempotency_key: Optional[str] = None
+    scan_fingerprint: Optional[str] = None
+    created_by: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+class RecountRequest(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    observation_id: str
+    session_id: str
+    item_code: str
+    requested_by: str
+    request_reason: str
+    scope: RecountScope = RecountScope.ITEM
+    batch_or_serial_scope: Optional[str] = None
+    location_id: Optional[str] = None
+    required_evidence: Optional[list[str]] = None
+    priority: RecountPriority = RecountPriority.NORMAL
+    is_blind: bool = True
+    status: CountObservationStatus = CountObservationStatus.RECOUNT_REQUESTED
+    assigned_to: Optional[str] = None
+    assigned_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    submitted_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    linked_recount_observation_id: Optional[str] = None
+
+
+class AdditionalLocationInvestigation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    observation_id: str
+    session_id: str
+    item_code: str
+    response: AdditionalLocationResponse
+    suspected_location: Optional[str] = None
+    observed_or_estimated_qty: Optional[float] = None
+    staff_remark: Optional[str] = None
+    photo_urls: Optional[list[str]] = None
+    staff_confidence: Optional[str] = None
+    linked_verification_task_id: Optional[str] = None
+    created_by: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+class ApprovalDecision(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    observation_id: Optional[str] = None
+    recount_request_id: Optional[str] = None
+    session_id: Optional[str] = None
+    decided_by: str
+    decided_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    action: SupervisorAction
+    reason: Optional[str] = None
+    notes: Optional[str] = None
+    corrected_classification: Optional[str] = None
+    target_batch_id: Optional[str] = None
+    damage_case_id: Optional[str] = None
+    linked_verification_task_id: Optional[str] = None
+    observation_snapshot: Optional[dict[str, Any]] = None
+
+
+class SupervisorReviewCard(BaseModel):
+    observation_id: str
+    session_id: str
+    queue_type: ReviewQueueType
+    staff_user: str
+    staff_name: Optional[str] = None
+    location: Optional[str] = None
+    item_identity: dict[str, Any]
+    tracking_mode: Optional[str] = None
+    baseline_qty: Optional[float] = None
+    sql_qty_at_submission: Optional[float] = None
+    physical_qty: float
+    variance: Optional[float] = None
+    batch_details: Optional[list[dict[str, Any]]] = None
+    serial_details: Optional[list[dict[str, Any]]] = None
+    split_count_calculation: Optional[dict[str, Any]] = None
+    mandatory_remark: Optional[str] = None
+    additional_location_response: Optional[str] = None
+    parameter_differences: Optional[list[dict[str, Any]]] = None
+    photos: Optional[list[str]] = None
+    previous_count_versions: Optional[list[dict[str, Any]]] = None
+    system_recommendation: SystemRecommendation
+    exception_types: Optional[list[ApprovalExceptionType]] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+class SessionApprovalSummary(BaseModel):
+    session_id: str
+    total_observations: int
+    auto_approved: int
+    supervisor_approved: int
+    recount_requested: int
+    pending_investigation: int
+    sync_conflicts: int
+    blocking_items: Optional[list[str]] = None
+
+
+class RecountComparisonResult(BaseModel):
+    original_observation_id: str
+    recount_observation_id: str
+    original_count: float
+    recount_count: float
+    sql_at_recount: float
+    difference: float
+    matches_sql: bool
+    decision: str
+    original_variance: Optional[float] = None
+    recount_variance: Optional[float] = None
+
+
+class AutoApprovalRuleResult(BaseModel):
+    rule_name: str
+    passed: bool
+    detail: Optional[str] = None
+
+
+class AutoApprovalResult(BaseModel):
+    observation_id: str
+    approved: bool
+    rules_passed: list[AutoApprovalRuleResult]
+    sql_quantity_source: Optional[SqlAvailability]
+    sql_comparison_source: Optional[SqlComparisonSource]
+    block_reason: Optional[str] = None
 
 class PasswordResetConfirm(BaseModel):
     """Confirm password reset using the token."""
@@ -567,7 +903,13 @@ class ExceptionRecord(BaseModel):
     severity: str = "medium"
 
 
-class CountObservation(BaseModel):
+
+class StructuredCountObservation(BaseModel):
+    """Structured count-observation model (L09): composes quantity, batches,
+    serials, condition allocations, evidence and exception sub-documents with
+    append-only versioning. Renamed on merge to avoid colliding with the
+    legacy flat CountObservation above; both are currently unreferenced."""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     session_id: str
     item_code: str
@@ -598,7 +940,7 @@ class CountObservation(BaseModel):
     variance_note: Optional[str] = None
 
     @model_validator(mode="after")
-    def normalize_location_context(self) -> "CountObservation":
+    def normalize_location_context(self) -> "StructuredCountObservation":
         if self.floor_id:
             self.floor_id = str(self.floor_id).strip() or None
         if self.rack_id:
@@ -612,3 +954,90 @@ class CountObservation(BaseModel):
         if not self.rack_id and self.rack_no:
             self.rack_id = self.rack_no
         return self
+
+
+class DamageType(str, Enum):
+    PHYSICAL = "PHYSICAL"
+    WATER = "WATER"
+    FIRE = "FIRE"
+    MOLD = "MOLD"
+    EXPIRED = "EXPIRED"
+    BATTERY_LEAK = "BATTERY_LEAK"
+    PACKAGING = "PACKAGING"
+    OTHER = "OTHER"
+
+
+class ItemCondition(str, Enum):
+    SALEABLE = "SALEABLE"
+    DAMAGED = "DAMAGED"
+    EXPIRED = "EXPIRED"
+    QUARANTINE = "QUARANTINE"
+    OPENED_BOX = "OPENED_BOX"
+    DISPLAY = "DISPLAY"
+    INCOMPLETE = "INCOMPLETE"
+    RETURNABLE = "RETURNABLE"
+    NON_RETURNABLE = "NON_RETURNABLE"
+    REPAIRABLE = "REPAIRABLE"
+    INSPECTION_REQUIRED = "INSPECTION_REQUIRED"
+
+
+class ReturnStatus(str, Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    PICKUP_SCHEDULED = "PICKUP_SCHEDULED"
+    PICKED_UP = "PICKED_UP"
+    CREDIT_NOTE_ISSUED = "CREDIT_NOTE_ISSUED"
+    REPAIR_IN_PROGRESS = "REPAIR_IN_PROGRESS"
+    REPAIRED = "REPAIRED"
+    DISCOUNT_SALE = "DISCOUNT_SALE"
+    WRITE_OFF = "WRITE_OFF"
+
+
+class DamageCase(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    observation_id: Optional[str] = None
+    count_line_id: Optional[str] = None
+    session_id: str
+    item_code: str
+    item_name: Optional[str] = None
+    batch_id: Optional[str] = None
+    serial_numbers: Optional[list[str]] = None
+    qty: float
+    damage_type: DamageType = DamageType.PHYSICAL
+    condition: ItemCondition = ItemCondition.DAMAGED
+    return_status: ReturnStatus = ReturnStatus.PENDING
+    reason: Optional[str] = None
+    condition_details: Optional[str] = None
+    photo_urls: Optional[list[str]] = None
+    reported_by: str
+    decided_by: Optional[str] = None
+    decided_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+class DamageCaseCreate(BaseModel):
+    observation_id: Optional[str] = None
+    count_line_id: Optional[str] = None
+    session_id: str
+    item_code: str
+    item_name: Optional[str] = None
+    batch_id: Optional[str] = None
+    serial_numbers: Optional[list[str]] = None
+    qty: float
+    damage_type: DamageType = DamageType.PHYSICAL
+    condition: ItemCondition = ItemCondition.DAMAGED
+    reason: Optional[str] = None
+    condition_details: Optional[str] = None
+    photo_urls: Optional[list[str]] = None
+
+
+class DamageCaseDecision(BaseModel):
+    damage_case_id: str
+    action: str
+    return_status: Optional[ReturnStatus] = None
+    reason: Optional[str] = None
+    credit_note_amount: Optional[float] = None
+    repair_notes: Optional[str] = None
+    decided_by: str

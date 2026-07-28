@@ -20,12 +20,14 @@ from backend.services.canonical_inventory import (
     count_line_requires_supervisor_review,
     extract_document_id,
     find_duplicate_count_line,
+    find_duplicate_count_observation,
     find_session,
     is_count_line_locked,
     is_count_line_effectively_reviewed,
     is_session_finalized,
     materialize_count_line_review_state,
     recompute_session_totals,
+    record_duplicate_governance_event,
 )
 from backend.services.concurrency import ConcurrencyError, coerce_version
 from backend.services.count_line_write_service import (
@@ -958,6 +960,71 @@ async def _maybe_update_session_barcode(db: Any, line_data: CountLineCreate) -> 
         logger.error("Failed to update session barcode: %s", _safe_log_value(exc, max_length=200))
 
 
+async def _create_and_evaluate_observation(
+    db: Any,
+    line_data: CountLineCreate,
+    current_user: dict[str, Any],
+    count_line: dict[str, Any],
+) -> None:
+    try:
+        is_recount = bool(line_data.recount_of_id)
+        observation = {
+            "id": str(uuid.uuid4()),
+            "session_id": line_data.session_id,
+            "item_code": line_data.item_code,
+            "item_name": count_line.get("item_name"),
+            "counted_qty": float(count_line.get("counted_qty") or 0),
+            "base_uom": count_line.get("uom_code"),
+            "uom_code": count_line.get("uom_code"),
+            "uom_name": count_line.get("uom_name"),
+            "conversion_factor": float(count_line.get("conversion_factor") or 1.0),
+            "quantity_precision": count_line.get("quantity_precision"),
+            "batches": count_line.get("batches"),
+            "serial_entries": count_line.get("serial_entries"),
+            "split_section": line_data.split_section,
+            "split_total": float(count_line.get("split_total") or 0),
+            "mrp_counted": float(count_line.get("mrp") or 0),
+            "manufacturing_date": line_data.manufacturing_date,
+            "expiry_date": line_data.expiry_date,
+            "barcode": count_line.get("barcode"),
+            "batch_id": line_data.batch_id,
+            "damaged_qty": float(count_line.get("damaged_qty") or 0),
+            "non_returnable_damaged_qty": float(count_line.get("non_returnable_damaged_qty") or 0),
+            "item_condition": count_line.get("item_condition"),
+            "floor_no": line_data.floor_no,
+            "rack_no": line_data.rack_no,
+            "mark_location": line_data.mark_location,
+            "location_id": line_data.location_id,
+            "remark": line_data.remark,
+            "photo_proofs": [],
+            "parameter_checks": {},
+            "accessory_checks": {},
+            "version": 1,
+            "status": "DRAFT",
+            "sql_qty_at_submission": count_line.get("erp_qty"),
+            "created_by": current_user.get("username"),
+            "is_recount": is_recount,
+            "recount_of_id": line_data.recount_of_id,
+        }
+        duplicate = await find_duplicate_count_observation(db, observation)
+        if duplicate:
+            await record_duplicate_governance_event(
+                db,
+                observation_id=observation["id"],
+                session_id=line_data.session_id,
+                actor=current_user.get("username", "system"),
+                duplicate_of_id=str(duplicate.get("id") or ""),
+                reason="duplicate_detected_on_submission",
+            )
+            observation["status"] = "SUPERVISOR_REVIEW"
+            observation["exception_types"] = ["CONCURRENT_OBSERVATION"]
+            observation["system_recommendation"] = "SUPERVISOR_REVIEW"
+        await db["count_observations"].insert_one(observation)
+        count_line["observation_id"] = observation["id"]
+    except Exception as exc:
+        logger.error("Failed to create approval observation: %s", _safe_log_value(exc, max_length=200))
+
+
 async def _record_high_risk_correction(
     request: Request,
     db: Any,
@@ -1205,6 +1272,7 @@ async def create_count_line(
         logger.error("Failed to update session stats: %s", _safe_log_value(exc, max_length=200))
 
     await _maybe_update_session_barcode(db, line_data)
+    await _create_and_evaluate_observation(db, line_data, current_user, count_line)
 
     if count_line.get("risk_flags"):
         await _record_high_risk_correction(

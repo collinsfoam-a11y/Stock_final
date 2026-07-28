@@ -55,6 +55,7 @@ class RouterRegistry:
     supervisor_pin_router: APIRouter
     notifications_router: APIRouter
     api_router: APIRouter
+    damage_router: APIRouter
 
     enterprise_router: Optional[APIRouter] = None
     notes_router: Optional[APIRouter] = None
@@ -64,6 +65,7 @@ class RouterRegistry:
     pin_auth_router: Optional[APIRouter] = None
     reconciliation_router: Optional[APIRouter] = None
     recount_router: Optional[APIRouter] = None
+    approval_router: Optional[APIRouter] = None
     enterprise_available: bool = False
 
 
@@ -204,6 +206,20 @@ def _register_optional_router_set(app: FastAPI, registry: RouterRegistry, logger
         logger,
         success_log="Recount API router registered",
         failure_log="Recount router registration failed",
+    )
+    _include_optional_router(
+        app,
+        registry.approval_router,
+        logger,
+        success_log="Approval API router registered",
+        failure_log="Approval router registration failed",
+    )
+    _include_optional_router(
+        app,
+        registry.damage_router,
+        logger,
+        success_log="Damage API router registered",
+        failure_log="Damage router registration failed",
     )
 
 
