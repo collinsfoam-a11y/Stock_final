@@ -20,12 +20,14 @@ from backend.services.canonical_inventory import (
     count_line_requires_supervisor_review,
     extract_document_id,
     find_duplicate_count_line,
+    find_duplicate_count_observation,
     find_session,
     is_count_line_locked,
     is_count_line_effectively_reviewed,
     is_session_finalized,
     materialize_count_line_review_state,
     recompute_session_totals,
+    record_duplicate_governance_event,
 )
 from backend.services.concurrency import ConcurrencyError, coerce_version
 from backend.services.count_line_write_service import (
@@ -965,6 +967,7 @@ async def _create_and_evaluate_observation(
     count_line: dict[str, Any],
 ) -> None:
     try:
+        is_recount = bool(line_data.recount_of_id)
         observation = {
             "id": str(uuid.uuid4()),
             "session_id": line_data.session_id,
@@ -978,7 +981,7 @@ async def _create_and_evaluate_observation(
             "quantity_precision": count_line.get("quantity_precision"),
             "batches": count_line.get("batches"),
             "serial_entries": count_line.get("serial_entries"),
-            "split_section": count_line.get("split_section"),
+            "split_section": line_data.split_section,
             "split_total": float(count_line.get("split_total") or 0),
             "mrp_counted": float(count_line.get("mrp") or 0),
             "manufacturing_date": line_data.manufacturing_date,
@@ -1000,10 +1003,24 @@ async def _create_and_evaluate_observation(
             "status": "DRAFT",
             "sql_qty_at_submission": count_line.get("erp_qty"),
             "created_by": current_user.get("username"),
+            "is_recount": is_recount,
+            "recount_of_id": line_data.recount_of_id,
         }
-        observation_id = str(uuid.uuid4())
+        duplicate = await find_duplicate_count_observation(db, observation)
+        if duplicate:
+            await record_duplicate_governance_event(
+                db,
+                observation_id=observation["id"],
+                session_id=line_data.session_id,
+                actor=current_user.get("username", "system"),
+                duplicate_of_id=str(duplicate.get("id") or ""),
+                reason="duplicate_detected_on_submission",
+            )
+            observation["status"] = "SUPERVISOR_REVIEW"
+            observation["exception_types"] = ["CONCURRENT_OBSERVATION"]
+            observation["system_recommendation"] = "SUPERVISOR_REVIEW"
         await db["count_observations"].insert_one(observation)
-        count_line["observation_id"] = observation_id
+        count_line["observation_id"] = observation["id"]
     except Exception as exc:
         logger.error("Failed to create approval observation: %s", _safe_log_value(exc, max_length=200))
 
