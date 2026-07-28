@@ -2,6 +2,7 @@ from typing import Any
 from fastapi import APIRouter, Depends
 
 from backend.auth.dependencies import get_current_user
+from backend.db.runtime import get_db
 
 router = APIRouter()
 
@@ -65,3 +66,16 @@ async def get_variance_trend(
         current_date += timedelta(days=1)
 
     return {"success": True, "data": data}
+
+
+@router.get("/session/{session_id}/sql")
+async def get_session_sql_variance(
+    session_id: str,
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    from backend.services.sql_variance_engine import SqlVarianceEngine
+
+    engine = SqlVarianceEngine(db)
+    result = await engine.compute_session_variance(session_id)
+    return {"success": True, "data": result}
