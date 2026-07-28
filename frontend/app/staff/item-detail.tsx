@@ -194,8 +194,6 @@ export default function ItemDetailScreen() {
   } = useItemEvidenceState();
   const {
     expiryDateField,
-    hasExpiryDate,
-    hasMfgDate,
     itemExpiryDate,
     itemExpiryDateFormat,
     itemMfgDate,
@@ -204,8 +202,6 @@ export default function ItemDetailScreen() {
     mrpEditable,
     resetMetadataState,
     setMrpEditable,
-    toggleExpiryDateEnabled,
-    toggleMfgDateEnabled,
   } = useItemMetadataState();
 
   const [isInteractionsComplete, setIsInteractionsComplete] = useState(false);
@@ -214,13 +210,11 @@ export default function ItemDetailScreen() {
     handleRemoveSerial,
     handleSerialChange,
     handleSerialScanned,
-    isSerializedItem,
     resetSerialState,
     serialEntries,
     serialNumbers,
     serialValidationErrors,
     serialValidationMessages,
-    setIsSerializedItem,
     setShowSerialScanner,
     showSerialScanner,
     validateSerials,
@@ -270,21 +264,16 @@ export default function ItemDetailScreen() {
       damageType,
       damagePhoto,
       itemPhotos,
-      isSerializedItem,
       serialEntries,
       serialNumbers,
       serialValidationErrors,
       validateSerials,
       varianceRemark,
       mrp,
-      hasMfgDate,
       itemMfgDate,
       itemMfgDateFormat,
-      hasExpiryDate,
       itemExpiryDate,
       itemExpiryDateFormat,
-      // Recount controls — enforce blocking/blind-recount in the submit guard,
-      // not just the visual banner.
       recountTargetId,
       blindRecountRequired,
       recountBlockedReason,
@@ -359,7 +348,7 @@ export default function ItemDetailScreen() {
   const heroStockValue = formatStockMetric(itemStock, itemUnit, settings.showItemStock);
   const heroMrpValue   = formatPriceMetric(item.mrp, settings.showItemPrices && settings.columnVisibility.mrp);
   const parsedQuantity = Number.parseFloat(quantity);
-  const canSubmit      = Number.isFinite(parsedQuantity) && parsedQuantity > 0;
+  const canSubmit      = Number.isFinite(parsedQuantity) && parsedQuantity >= 0;
   const shouldShowBatchVariants =
     batchLoading || Boolean(batchError) || rawVariantsCount > 0 || sameNameVariants.length > 0;
 
@@ -561,7 +550,6 @@ export default function ItemDetailScreen() {
               <SectionHeading icon="qr-code-outline" label="Serial Tracking" uiTokens={uiTokens} decorativeIconProps={decorativeIconProps} />
               <SerializedItemSection
                 enabled={settings.columnVisibility.serialNumber}
-                isSerializedItem={isSerializedItem}
                 serialEntries={serialEntries}
                 serialValidationErrors={serialValidationErrors}
                 serialValidationMessages={serialValidationMessages}
@@ -569,7 +557,6 @@ export default function ItemDetailScreen() {
                 onOpenScanner={() => setShowSerialScanner(true)}
                 onRemoveSerial={handleRemoveSerial}
                 onSerialChange={(index, text) => handleSerialChange(index, "serial_number", text)}
-                onSerializedChange={setIsSerializedItem}
               />
 
               {/* ── Batch Variants (optional) ── */}
