@@ -82,6 +82,107 @@ Default pattern:
 - Surface risk clearly when a command can mutate data or operational state.
 - For risky actions, cite exact files/commands you inspected before recommending execution.
 
+## Loop Engineering
+
+The project uses loop engineering for AI-agent-driven development. Each loop follows a strict lifecycle.
+
+### Standard Loop
+
+1. Select one approved issue
+2. Load repository instructions and domain documents
+3. Confirm current behaviour with tests
+4. Produce a small execution plan
+5. Add failing acceptance tests
+6. Implement the smallest complete change
+7. Run focused tests
+8. Run affected-domain tests
+9. Run repository gates
+10. Perform self-review
+11. Independent checker-agent review
+12. Correct findings
+13. Open PR with evidence
+14. Human review for governed changes
+15. Merge only after required checks pass
+16. Record lessons and update documentation
+
+### Terminal States
+
+Every agent loop must stop in one of these states: `PASS`, `READY_FOR_REVIEW`, `BLOCKED_REQUIREMENT`, `BLOCKED_DEPENDENCY`, `BLOCKED_MIGRATION`, `FAILED_TESTS`, `SECURITY_REVIEW_REQUIRED`, `HUMAN_DECISION_REQUIRED`, `SUPERSEDED`.
+
+Agents must not continue indefinitely after three failed implementation cycles. At that point they must produce: failure summary, commands executed, failing tests, suspected root cause, decisions required.
+
+## Worktree and Branch Strategy
+
+The repository uses Git worktrees for parallel safe execution. Worktrees are located at `worktrees/` at the project root.
+
+### Active Worktrees
+
+| ID | Path | Branch | Purpose |
+|---|---|---|---|
+| L02 | `worktrees/L02-session-ownership` | `loop/L02-session-ownership` | Session ownership and lifecycle |
+| L03 | `worktrees/L03-master-location` | `loop/L03-location-session-domain` | Master session and location model |
+| L04 | `worktrees/L04-tracking-policy` | `loop/L04-tracking-policy` | Backend-controlled item tracking policy |
+| L05 | `worktrees/L05-count-observations` | `loop/L05-batch-serial-observations` | Append-only physical observation model |
+| L06 | `worktrees/L06-sql-variance` | `loop/L06-sql-variance` | SQL-at-submission and variance engine |
+| L07 | `worktrees/L07-offline-journal` | `loop/L07-offline-journal` | Durable offline command protocol |
+
+### Branch Convention
+
+Branches follow `loop/L{NN}-{kebab-name}`. Parallel execution is allowed only when file ownership does not overlap.
+
+### Non-Overlapping File Protection
+
+The following files must never be edited concurrently across worktrees:
+
+- `backend/api/session_management_api.py`
+- `backend/api/schemas.py`
+- `backend/services/count_line_write_service.py`
+- `backend/services/session_lifecycle_service.py`
+- `backend/db/indexes.py`
+- `frontend/app/staff/item-detail.tsx`
+- `frontend/src/services/syncService.ts`
+- `frontend/src/services/offline/*`
+
+## Non-Negotiable Invariants
+
+These become machine-tested rules. Every PR must validate them:
+
+1. Staff cannot approve their own observations.
+2. Offline staff sync cannot create approved or locked data.
+3. No count observation is physically deleted.
+4. Staff cannot select quantity/batch/serial tracking mode.
+5. Zero is a valid physical count.
+6. Every submitted item requires a remark.
+7. One employee has no more than one active location session.
+8. One location has no more than one active claimant.
+9. Recount creates a new observation version.
+10. Finalisation requires zero unresolved blocking states.
+11. Cached ERP quantity must never be labelled as live SQL quantity.
+12. Serial conflicts cannot be silently merged.
+13. Evidence requirements are determined by policy.
+14. Every offline command has a stable ID and content hash.
+15. A command ID cannot be reused with different content.
+
+## AI-Agent Issue Template
+
+All new development issues must use this template:
+
+- **Goal**: One-sentence description of the work.
+- **Business requirement**: What business rule or capability does this implement?
+- **Current behaviour**: What happens now?
+- **Expected behaviour**: What should happen after the fix?
+- **In scope**: What is explicitly included.
+- **Out of scope**: What is explicitly excluded.
+- **Domain invariants**: Which of the 15 non-negotiable invariants apply.
+- **Allowed modules**: Which files/packages may be modified.
+- **Database changes**: Any schema or collection changes required.
+- **API changes**: Any endpoint contract changes.
+- **Tests that must be added**: Specific test cases (unit, integration, contract, E2E).
+- **Verification commands**: Exact commands to run for verification.
+- **Migration/rollback**: Migration strategy or explicit "no migration".
+- **Human approval required**: Yes/No with justification.
+- **Stop conditions**: Terminal states and maximum retry count.
+
 ## Completion Discipline
 
 - Once an agent starts an approved local work item, continue through the directly related implementation, cleanup, and verification until there is no known remaining work in that scope.
