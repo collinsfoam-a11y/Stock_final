@@ -1,35 +1,39 @@
-## Summary
+# Pull Request
 
--
+## Loop and Goal
+<!-- Which loop does this PR belong to? What is the goal? -->
 
-## Validation
+## Changes
+<!-- What changes were made? -->
 
-- [ ] Narrow relevant tests/checks were run, or the reason they were not run is documented.
-- [ ] No persistent data, live deployment, or hard-to-reverse operation was performed without approval.
+## Tests Added
+- [ ] Unit tests
+- [ ] Integration or contract tests
+- [ ] Required E2E test
+- [ ] Role and permission tests
+- [ ] Offline/retry test when applicable
+- [ ] Concurrency test when applicable
 
-## UI/UX Governance
+## Verification
+<!-- Exact commands run and results -->
 
-Complete this section for any PR that changes screens, forms, navigation, feedback, spacing, color, motion, or shared UI components.
+## Migration
+<!-- Migration strategy or explicit "no migration" -->
 
-- [ ] `docs/AGENT_UI_UX_RULES.md` was reviewed.
-- [ ] Existing tokens and shared components were reused before adding new UI.
-- [ ] No new visual system, token scale, semantic color meaning, navigation pattern, or UI library was introduced without architecture approval.
-- [ ] Loading, empty, error, success, disabled, offline, and recovery states were considered.
-- [ ] Online/offline state, pending sync, failed sync, retry, and last sync time are visible where operationally relevant.
-- [ ] Touch targets are at least `44x44`, with `48x48` preferred for Android-heavy workflows.
-- [ ] Icon-only controls have accessible labels.
-- [ ] Color is not the only status indicator.
-- [ ] Motion uses opacity/transform, respects reduced motion, and does not delay scan/count workflows.
-- [ ] Dense operational screens prioritize task, state, exception, and next action over decoration.
-- [ ] `cd frontend && npm run governance:ui:changed` was reviewed for changed UI files.
-- [ ] `cd frontend && npm run governance:ui:changed:strict` passes or blocking findings are listed below.
+## Rollback Instructions
+<!-- How to roll back if needed -->
 
-## UX Severity Notes
+## Independent Checker-Agent Review
+<!-- Has an independent checker-agent reviewed this PR? -->
 
-- [ ] No unresolved P0 UI/UX findings.
-- [ ] P1 UI/UX findings are fixed or explicitly risk-accepted.
-- [ ] Remaining P2/P3 UI/UX findings are listed below.
+## CI Checks
+- [ ] All required CI checks passing
 
-Remaining findings:
+## Evidence
+<!-- Screenshots, recordings, or other evidence for UI changes -->
 
--
+## Do Not Accept
+- "Implemented successfully"
+- "Tests should pass"
+- "Mostly complete"
+- "Remaining edge cases are low risk"
