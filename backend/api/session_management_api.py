@@ -763,18 +763,54 @@ def _validate_session_create_request(
     )
 
 
-async def _find_existing_session_for_warehouse(
+async def _find_existing_session_for_employee(
     db: AsyncIOMotorDatabase,
     username: str,
-    warehouse: str,
 ) -> Optional[dict[str, Any]]:
+    """Enforces one active session per employee.
+
+    Returns an existing active session if the employee already has one,
+    otherwise returns None.
+    """
     existing_session = await db.sessions.find_one(
         {
             "staff_user": username,
             "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]},
-            "warehouse": {"$regex": f"^{re.escape(warehouse)}$", "$options": "i"},
         }
     )
+    if not existing_session:
+        return None
+
+    if "_id" in existing_session and "id" not in existing_session:
+        existing_session["id"] = str(existing_session["_id"])
+        del existing_session["_id"]
+    return existing_session
+
+
+async def _find_existing_session_for_location(
+    db: AsyncIOMotorDatabase,
+    warehouse: str,
+    location_type: Optional[str],
+    location_name: Optional[str],
+    rack_no: Optional[str],
+) -> Optional[dict[str, Any]]:
+    """Enforces one active location session per physical location.
+
+    Returns an existing active session for this location if one exists,
+    otherwise returns None.
+    """
+    query: dict[str, Any] = {
+        "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]},
+        "warehouse": {"$regex": f"^{re.escape(warehouse)}$", "$options": "i"},
+    }
+    if location_type:
+        query["location_type"] = {"$regex": f"^{re.escape(location_type)}$", "$options": "i"}
+    if location_name:
+        query["location_name"] = {"$regex": f"^{re.escape(location_name)}$", "$options": "i"}
+    if rack_no:
+        query["rack_no"] = {"$regex": f"^{re.escape(rack_no)}$", "$options": "i"}
+
+    existing_session = await db.sessions.find_one(query)
     if not existing_session:
         return None
 
@@ -1226,17 +1262,28 @@ async def create_session(
     warehouse, location_type, location_name, rack_no = _validate_session_create_request(
         session_data
     )
-    existing_session = await _find_existing_session_for_warehouse(
-        db, current_user["username"], warehouse
+    existing_session = await _find_existing_session_for_employee(
+        db, current_user["username"]
     )
     if existing_session:
         logger.info(
-            "Existing open session found for warehouse; returning existing session",
-            extra={"warehouse": warehouse, "session_id": existing_session.get("id")},
+            "Existing active session found for employee; returning existing session",
+            extra={"username": current_user["username"], "session_id": existing_session.get("id")},
         )
         return Session(**existing_session)
 
-    await _close_existing_user_sessions(db, current_user["username"])
+    warehouse_session = await _find_existing_session_for_location(
+        db, warehouse, location_type, location_name, rack_no
+    )
+    if warehouse_session:
+        logger.info(
+            "Active session exists for this location; claiming required",
+            extra={"warehouse": warehouse, "session_id": warehouse_session.get("id")},
+        )
+        raise HTTPException(
+            status_code=409,
+            detail="This location already has an active session. Claim it after release or pause.",
+        )
 
     session = _build_new_session(
         session_data,
@@ -1544,8 +1591,6 @@ async def update_session_status(
 
     requested = str(status or "").strip().upper()
     requested_canonical = normalize_canonical_session_status(requested)
-    if requested == "PAUSED":
-        requested_canonical = "ACTIVE"
     if requested in {"RECONCILE", "REVIEW"}:
         requested_canonical = "REVIEW"
     if requested in {"COMPLETED", "CLOSED", "FINALIZED"}:
@@ -1869,4 +1914,365 @@ async def bulk_close_sessions(
         detail=(
             "CRITICAL: bulk_close_sessions is disabled. Use per-session canonical /finalize flow."
         ),
+    )
+
+
+# =============================================================================
+# Session Ownership Models (Loop L02)
+# =============================================================================
+
+
+class SessionClaimRequest(BaseModel):
+    """Request to claim an available location session."""
+
+    session_id: str
+    device_id: str
+
+
+class SessionClaimResponse(BaseModel):
+    """Response confirming a session has been claimed."""
+
+    session_id: str
+    claimed_by: str
+    claimed_at: float
+    claim_version: int
+
+
+class SessionTakeoverRequest(BaseModel):
+    """Request to take over a stale or released session."""
+
+    session_id: str
+    device_id: str
+    reason: str
+
+
+class SessionTakeoverResponse(BaseModel):
+    """Response confirming a session takeover."""
+
+    session_id: str
+    claimed_by: str
+    claimed_at: float
+    previous_claim_version: int
+    takeover_reason: str
+
+
+# =============================================================================
+# Session Ownership Endpoints (Loop L02)
+# =============================================================================
+
+
+@router.post("/location-sessions/claim", response_model=SessionClaimResponse)
+async def claim_location_session(
+    request: SessionClaimRequest,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> SessionClaimResponse:
+    """Claim an available location session for the current employee."""
+    username = current_user["username"]
+    role = current_user.get("role", "staff")
+
+    # Enforce one active session per employee
+    existing_active = await db.sessions.find_one(
+        {
+            "staff_user": username,
+            "status": {"$in": ["OPEN", "ACTIVE", "RECONCILE"]},
+        }
+    )
+    if existing_active:
+        raise HTTPException(
+            status_code=409,
+            detail="Employee already has an active session. Pause or release it first.",
+        )
+
+    # Find the target session
+    target = await db.sessions.find_one({"id": request.session_id})
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Session {request.session_id} not found")
+
+    canonical_status = normalize_canonical_session_status(target.get("status", ""))
+    if canonical_status not in {"OPEN", "AVAILABLE", "RELEASED", "STALE"}:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Session is in {target.get('status')} state and cannot be claimed.",
+        )
+
+    # If the session belongs to the same employee, allow claiming their own released session
+    if target.get("staff_user") == username and canonical_status in {"RELEASED", "STALE"}:
+        pass  # Allow self-claim of released/stale session
+    elif target.get("staff_user") == username and canonical_status == "CLAIMED":
+        raise HTTPException(
+            status_code=409,
+            detail="Session already claimed by you.",
+        )
+    elif target.get("staff_user") is not None and canonical_status not in {"STALE"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Session is already claimed by another employee.",
+        )
+
+    # For supervisor/admin takeover of non-stale sessions, require reason
+    if role not in {"supervisor", "admin"} and canonical_status == "STALE":
+        # Regular staff can only claim stale sessions
+        pass
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    claim_version = (target.get("claim_version", 0) or 0) + 1
+
+    update = {
+        "$set": {
+            "staff_user": username,
+            "staff_name": current_user.get("full_name", username),
+            "status": "CLAIMED",
+            "last_heartbeat": now,
+            "claim_version": claim_version,
+            "claimed_at": now,
+            "claimed_by": username,
+            "claimed_device_id": request.device_id,
+        },
+        "$push": {
+            "ownership_events": {
+                "event_type": "CLAIM",
+                "actor": username,
+                "role": role,
+                "device_id": request.device_id,
+                "timestamp": now,
+                "claim_version": claim_version,
+                "previous_owner": target.get("staff_user"),
+            }
+        },
+    }
+
+    await db.sessions.update_one({"id": request.session_id}, update)
+
+    return SessionClaimResponse(
+        session_id=request.session_id,
+        claimed_by=username,
+        claimed_at=now.timestamp(),
+        claim_version=claim_version,
+    )
+
+
+@router.post("/location-sessions/{session_id}/pause", response_model=SessionClaimResponse)
+async def pause_location_session(
+    session_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_role("staff", "supervisor", "admin")),
+) -> SessionClaimResponse:
+    """Pause an active location session. PAUSED is a real state."""
+    username = current_user["username"]
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    session = await db.sessions.find_one({"id": session_id})
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+    canonical = normalize_canonical_session_status(session.get("status", ""))
+    if canonical not in {"ACTIVE", "CLAIMED"}:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot pause a session in {session.get('status')} state.",
+        )
+
+    if session.get("staff_user") != username and current_user.get("role") not in {"supervisor", "admin"}:
+        raise HTTPException(status_code=403, detail="Not your session to pause")
+
+    claim_version = (session.get("claim_version", 0) or 0) + 1
+
+    update = {
+        "$set": {
+            "status": "PAUSED",
+            "last_heartbeat": now,
+            "claim_version": claim_version,
+            "paused_at": now,
+            "paused_by": username,
+        },
+        "$push": {
+            "ownership_events": {
+                "event_type": "PAUSE",
+                "actor": username,
+                "role": current_user.get("role", "staff"),
+                "timestamp": now,
+                "claim_version": claim_version,
+            }
+        },
+    }
+
+    await db.sessions.update_one({"id": session_id}, update)
+
+    return SessionClaimResponse(
+        session_id=session_id,
+        claimed_by=username,
+        claimed_at=now.timestamp(),
+        claim_version=claim_version,
+    )
+
+
+@router.post("/location-sessions/{session_id}/resume", response_model=SessionClaimResponse)
+async def resume_location_session(
+    session_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> SessionClaimResponse:
+    """Resume a paused location session."""
+    username = current_user["username"]
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    session = await db.sessions.find_one({"id": session_id})
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+    canonical = normalize_canonical_session_status(session.get("status", ""))
+    if canonical != "PAUSED":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot resume a session in {session.get('status')} state. Only PAUSED sessions can be resumed.",
+        )
+
+    if session.get("staff_user") != username and current_user.get("role") not in {"supervisor", "admin"}:
+        raise HTTPException(status_code=403, detail="Not your session to resume")
+
+    claim_version = (session.get("claim_version", 0) or 0) + 1
+
+    update = {
+        "$set": {
+            "status": "CLAIMED",
+            "last_heartbeat": now,
+            "claim_version": claim_version,
+        },
+        "$push": {
+            "ownership_events": {
+                "event_type": "RESUME",
+                "actor": username,
+                "role": current_user.get("role", "staff"),
+                "timestamp": now,
+                "claim_version": claim_version,
+            }
+        },
+    }
+
+    await db.sessions.update_one({"id": session_id}, update)
+
+    return SessionClaimResponse(
+        session_id=session_id,
+        claimed_by=username,
+        claimed_at=now.timestamp(),
+        claim_version=claim_version,
+    )
+
+
+@router.post("/location-sessions/{session_id}/release", response_model=SessionClaimResponse)
+async def release_location_session(
+    session_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> SessionClaimResponse:
+    """Release an active location session, making it available for others."""
+    username = current_user["username"]
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    session = await db.sessions.find_one({"id": session_id})
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+    canonical = normalize_canonical_session_status(session.get("status", ""))
+    if canonical not in {"ACTIVE", "CLAIMED", "PAUSED"}:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot release a session in {session.get('status')} state.",
+        )
+
+    if session.get("staff_user") != username and current_user.get("role") not in {"supervisor", "admin"}:
+        raise HTTPException(status_code=403, detail="Not your session to release")
+
+    claim_version = (session.get("claim_version", 0) or 0) + 1
+
+    update = {
+        "$set": {
+            "status": "RELEASED",
+            "last_heartbeat": now,
+            "claim_version": claim_version,
+            "released_at": now,
+            "released_by": username,
+            "release_reason": "manual",
+        },
+        "$push": {
+            "ownership_events": {
+                "event_type": "RELEASE",
+                "actor": username,
+                "role": current_user.get("role", "staff"),
+                "timestamp": now,
+                "claim_version": claim_version,
+            }
+        },
+    }
+
+    await db.sessions.update_one({"id": session_id}, update)
+
+    return SessionClaimResponse(
+        session_id=session_id,
+        claimed_by=username,
+        claimed_at=now.timestamp(),
+        claim_version=claim_version,
+    )
+
+
+@router.post("/location-sessions/{session_id}/takeover", response_model=SessionTakeoverResponse)
+async def takeover_location_session(
+    session_id: str,
+    request: SessionTakeoverRequest,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_role("supervisor", "admin")),
+) -> SessionTakeoverResponse:
+    """Take over a stale session. Requires supervisor or admin role."""
+    username = current_user["username"]
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    session = await db.sessions.find_one({"id": session_id})
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+    canonical = normalize_canonical_session_status(session.get("status", ""))
+    if canonical not in {"STALE", "RELEASED"}:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot take over a session in {session.get('status')} state. Only STALE or RELEASED sessions can be taken over.",
+        )
+
+    claim_version = (session.get("claim_version", 0) or 0) + 1
+
+    update = {
+        "$set": {
+            "staff_user": username,
+            "staff_name": current_user.get("full_name", username),
+            "status": "CLAIMED",
+            "last_heartbeat": now,
+            "claim_version": claim_version,
+            "claimed_at": now,
+            "claimed_by": username,
+            "claimed_device_id": request.device_id,
+            "takeover_reason": request.reason,
+            "previous_owner": session.get("staff_user"),
+        },
+        "$push": {
+            "ownership_events": {
+                "event_type": "TAKEOVER",
+                "actor": username,
+                "role": current_user.get("role", "admin"),
+                "device_id": request.device_id,
+                "timestamp": now,
+                "claim_version": claim_version,
+                "previous_owner": session.get("staff_user"),
+                "reason": request.reason,
+            }
+        },
+    }
+
+    await db.sessions.update_one({"id": session_id}, update)
+
+    return SessionTakeoverResponse(
+        session_id=session_id,
+        claimed_by=username,
+        claimed_at=now.timestamp(),
+        previous_claim_version=claim_version - 1,
+        takeover_reason=request.reason,
     )
