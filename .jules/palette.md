@@ -33,3 +33,6 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+## 2025-02-27 - Redundant Accessibility Labels on Text Buttons
+**Learning:** In React Native, `TouchableOpacity` automatically reads nested `<Text>` components for screen readers. Adding `getAccessibleButtonProps` with an explicit label to buttons that already have descriptive text (like "Cancel" or "Authorize") creates redundant and confusing audio clutter for users.
+**Action:** Only apply explicit `getAccessibleButtonProps` with labels to icon-only buttons or dynamic components lacking descriptive nested text.

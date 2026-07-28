@@ -11,6 +11,7 @@ import { Modal } from "../ui/Modal";
 import { modernColors } from "@/styles/unifiedSystem";
 import { verifyPin } from "@/services/api/api"; // We will add this next
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 
 interface PinEntryModalProps {
   visible: boolean;
@@ -133,6 +134,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
 
         <View style={styles.actions}>
           <TouchableOpacity
+            {...getAccessibleButtonProps({ label: "Cancel" })}
             style={[styles.button, styles.cancelButton]}
             onPress={handleClose}
             disabled={loading}
@@ -141,6 +143,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
+            {...getAccessibleButtonProps({ label: "Authorize" })}
             style={[styles.button, styles.primaryButton]}
             onPress={handleSubmit}
             disabled={loading}

@@ -7,6 +7,7 @@ import ModernInput from "../ui/ModernInput";
 import { theme } from "../../styles/unifiedSystem";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 export interface AssignableStaffUser {
   username: string;
   full_name?: string | null;
@@ -84,6 +85,7 @@ export default function RecountAssignmentModal({
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Assign To</Text>
             <TouchableOpacity
+              {...getAccessibleButtonProps({ label: "Assign To" })}
               style={styles.selector}
               onPress={() => setPickerVisible(true)}
               activeOpacity={0.8}
@@ -109,6 +111,7 @@ export default function RecountAssignmentModal({
 
           <View style={styles.actions}>
             <TouchableOpacity
+              {...getAccessibleButtonProps({ label: "Cancel" })}
               style={[styles.button, styles.cancelButton]}
               onPress={onClose}
               disabled={loading}
@@ -118,6 +121,7 @@ export default function RecountAssignmentModal({
             </TouchableOpacity>
 
             <TouchableOpacity
+              {...getAccessibleButtonProps({ label: "Assign Recount" })}
               style={[
                 styles.button,
                 styles.confirmButton,

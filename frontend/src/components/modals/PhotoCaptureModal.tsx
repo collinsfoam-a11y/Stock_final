@@ -27,6 +27,7 @@ import {
 } from "../../styles/unifiedSystem";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 interface PhotoCaptureModalProps {
   visible: boolean;
   onClose: () => void;
@@ -169,8 +170,17 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         <SafeAreaView style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
-            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-              <Ionicons name="close" size={24} color={modernColors.text.primary} />
+            <TouchableOpacity
+              {...getAccessibleButtonProps({ label: "Close modal" })}
+              style={styles.closeButton}
+              onPress={handleClose}
+            >
+              <Ionicons
+                name="close"
+                size={24}
+                color={modernColors.text.primary}
+                {...getDecorativeIconProps()}
+              />
             </TouchableOpacity>
           </View>
           <View style={styles.permissionContainer}>
@@ -216,8 +226,17 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-            <Ionicons name="close" size={24} color={modernColors.text.primary} />
+          <TouchableOpacity
+            {...getAccessibleButtonProps({ label: "Close modal" })}
+            style={styles.closeButton}
+            onPress={handleClose}
+          >
+            <Ionicons
+              name="close"
+              size={24}
+              color={modernColors.text.primary}
+              {...getDecorativeIconProps()}
+            />
           </TouchableOpacity>
         </View>
 
@@ -257,6 +276,11 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             </>
           ) : (
             <TouchableOpacity
+              {...getAccessibleButtonProps({
+                label: "Capture photo",
+                disabled: isCapturing,
+                busy: isCapturing,
+              })}
               style={styles.captureButton}
               onPress={handleCapture}
               disabled={isCapturing}
