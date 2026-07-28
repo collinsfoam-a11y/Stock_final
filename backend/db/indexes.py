@@ -351,6 +351,18 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("category", 1), ("floor", 1)], {"name": "idx_variance_category_floor"}),
         ([("warehouse", 1), ("verified_at", -1)], {"name": "idx_variance_warehouse_time"}),
     ],
+    # Session Ownership Collection (L02)
+    "session_claims": [
+        ([("session_id", 1)], {"unique": True, "name": "idx_claim_session_id"}),
+        ([("staff_user", 1), ("claimed_at", -1)], {"name": "idx_claim_staff_time"}),
+        ([("session_id", 1), ("claim_version", -1)], {"name": "idx_claim_version"}),
+    ],
+    # Session Ownership Events Collection (L02)
+    "session_ownership_events": [
+        ([("session_id", 1), ("timestamp", -1)], {"name": "idx_ownership_session_time"}),
+        ([("actor", 1), ("event_type", 1)], {"name": "idx_ownership_actor_event"}),
+        ([("session_id", 1), ("event_type", 1)], {"name": "idx_ownership_session_event"}),
+    ],
 }
 
 
