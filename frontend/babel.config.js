@@ -4,7 +4,9 @@ module.exports = function (api) {
     try {
       return require.resolve("babel-preset-expo");
     } catch {
-      return require.resolve("babel-preset-expo", { paths: [require.resolve("jest-expo/package.json")] });
+      return require.resolve("babel-preset-expo", {
+        paths: [require.resolve("expo/package.json")],
+      });
     }
   })();
   return {
