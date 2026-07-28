@@ -94,6 +94,8 @@ def _build_line(
         "version": version,
         "previous_version_id": None,
         "recount_of_id": None,
+        # Remark is mandatory for every count-line write (L04 tracking policy).
+        "remark": "counted",
     }
 
 

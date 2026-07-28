@@ -454,6 +454,8 @@ class TestCreateCountLine:
             floor_no="F1",
             rack_no="R1",
             variance_reason="test_reason",
+            # Remark is mandatory for every count-line write (L04 tracking policy).
+            remark="counted",
         )
 
     @pytest.fixture
@@ -1312,6 +1314,7 @@ class TestCountLinesAPIEdgeCases:
                     item_code="ITEM001",
                     counted_qty=50,
                     variance_reason="test_reason",
+                    remark="counted",
                 ),
                 current_user={"username": "testuser"},
             )
@@ -1365,6 +1368,7 @@ class TestCountLinesAPIEdgeCases:
                     counted_qty=50,
                     barcode="123456789",
                     variance_reason="test_reason",
+                    remark="counted",
                 ),
                 current_user={"username": "testuser"},
             )
@@ -1426,6 +1430,7 @@ class TestCountLinesAPIEdgeCases:
                     rack_id="R1",
                     item_code="ITEM001",
                     counted_qty=50,
+                    remark="counted",
                 ),
                 current_user={"username": "testuser"},
             )

@@ -140,6 +140,37 @@ class SessionLifecycleService:
                 f"CRITICAL: Session version mismatch for {session_id} (expected {expected_version})"
             )
 
+    async def apply_ownership_transition(
+        self,
+        *,
+        session_id: str,
+        set_fields: dict[str, Any],
+        ownership_event: dict[str, Any],
+        db_session: Optional[Any] = None,
+    ) -> None:
+        """Apply a location-session ownership transition (claim/pause/resume/
+        release/takeover) as the single authorized writer for the ``sessions``
+        collection.
+
+        ``set_fields`` become ``$set``; ``ownership_event`` is pushed onto the
+        ``ownership_events`` audit log. The caller is responsible for computing
+        the new ``claim_version`` and validating state preconditions; this
+        method only performs the governed write.
+        """
+        if not isinstance(set_fields, dict) or not set_fields:
+            raise GovernanceViolation("CRITICAL: ownership transition requires set_fields")
+        update_doc: dict[str, Any] = {"$set": dict(set_fields)}
+        if isinstance(ownership_event, dict) and ownership_event:
+            update_doc["$push"] = {"ownership_events": dict(ownership_event)}
+        kwargs = self._kwargs(db_session)
+        await self._execute_authorized_write(
+            lambda: self.db.sessions.update_one(
+                self._lookup(session_id),
+                update_doc,
+                **kwargs,
+            )
+        )
+
     async def _compute_session_totals(
         self,
         session_id: str,

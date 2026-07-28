@@ -2042,7 +2042,11 @@ async def claim_location_session(
         },
     }
 
-    await db.sessions.update_one({"id": request.session_id}, update)
+    await SessionLifecycleService(db).apply_ownership_transition(
+        session_id=request.session_id,
+        set_fields=update["$set"],
+        ownership_event=update["$push"]["ownership_events"],
+    )
 
     return SessionClaimResponse(
         session_id=request.session_id,
@@ -2097,7 +2101,11 @@ async def pause_location_session(
         },
     }
 
-    await db.sessions.update_one({"id": session_id}, update)
+    await SessionLifecycleService(db).apply_ownership_transition(
+        session_id=session_id,
+        set_fields=update["$set"],
+        ownership_event=update["$push"]["ownership_events"],
+    )
 
     return SessionClaimResponse(
         session_id=session_id,
@@ -2150,7 +2158,11 @@ async def resume_location_session(
         },
     }
 
-    await db.sessions.update_one({"id": session_id}, update)
+    await SessionLifecycleService(db).apply_ownership_transition(
+        session_id=session_id,
+        set_fields=update["$set"],
+        ownership_event=update["$push"]["ownership_events"],
+    )
 
     return SessionClaimResponse(
         session_id=session_id,
@@ -2206,7 +2218,11 @@ async def release_location_session(
         },
     }
 
-    await db.sessions.update_one({"id": session_id}, update)
+    await SessionLifecycleService(db).apply_ownership_transition(
+        session_id=session_id,
+        set_fields=update["$set"],
+        ownership_event=update["$push"]["ownership_events"],
+    )
 
     return SessionClaimResponse(
         session_id=session_id,
@@ -2267,7 +2283,11 @@ async def takeover_location_session(
         },
     }
 
-    await db.sessions.update_one({"id": session_id}, update)
+    await SessionLifecycleService(db).apply_ownership_transition(
+        session_id=session_id,
+        set_fields=update["$set"],
+        ownership_event=update["$push"]["ownership_events"],
+    )
 
     return SessionTakeoverResponse(
         session_id=session_id,

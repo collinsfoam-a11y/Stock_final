@@ -85,6 +85,7 @@ class SyncRecord(BaseModel):
     subcategory: Optional[str] = Field(None, description="Subcategory")
     item_condition: Optional[str] = Field(None, description="Item condition")
     evidence_photos: list[str] = Field(default_factory=list, description="Photo URLs")
+    remark: Optional[str] = Field(None, description="Operator remark for the count line")
     status: str = Field("finalized", description="Record status (partial/finalized)")
     created_at: str = Field(..., description="Client creation timestamp")
     updated_at: str = Field(..., description="Client update timestamp")
@@ -337,6 +338,9 @@ async def sync_single_record(
             "version": 1,
             "previous_version_id": None,
             "recount_of_id": None,
+            # The write service enforces a remark on every count line; offline
+            # clients may omit it, so fall back to a stable default.
+            "remark": record.remark or "offline-sync",
         }
 
         if await _count_line_is_idempotent(db, record.session_id, doc):

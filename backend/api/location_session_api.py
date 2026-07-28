@@ -6,7 +6,6 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pydantic import BaseModel
 
 from backend.api.schemas import (
     LocationSession,

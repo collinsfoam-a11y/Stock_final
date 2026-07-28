@@ -164,6 +164,8 @@ async def test_count_line_write_service_syncs_projection_before_return():
                 "counted_at": now_dt,
                 "updated_at": now_dt,
                 "version": 1,
+                # Remark is mandatory for every count-line write (L04 tracking policy).
+                "remark": "counted",
             },
         },
         context={"username": "tester", "enforce_snapshot": False},

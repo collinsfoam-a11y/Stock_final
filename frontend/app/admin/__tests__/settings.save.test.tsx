@@ -61,11 +61,17 @@ jest.mock("../../../src/store/settingsStore", () => ({
     selector ? selector(mockSettingsState) : mockSettingsState,
 }));
 
+// NOTE: mock factories below use React.createElement rather than JSX. JSX inside a
+// jest.mock() factory crashes babel-plugin-jest-hoist when combined with
+// babel-preset-expo ("expected node to be of a type VariableDeclarator").
+
 jest.mock("../../../src/components/ui/AppearanceSettings", () => ({
   AppearanceSettings: () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const React = require("react");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { Text } = require("react-native");
-    return <Text>Appearance settings</Text>;
+    return React.createElement(Text, null, "Appearance settings");
   },
 }));
 
@@ -74,7 +80,10 @@ jest.mock("../../../src/components/ui/ModernCard", () => {
   const React = require("react");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require("react-native");
-  return ({ children }: { children: React.ReactNode }) => <View>{children}</View>;
+  const ModernCard = ({ children }: { children: React.ReactNode }) =>
+    React.createElement(View, null, children);
+  ModernCard.displayName = "ModernCard";
+  return ModernCard;
 });
 
 jest.mock("../../../src/components/settings", () => {
@@ -84,10 +93,13 @@ jest.mock("../../../src/components/settings", () => {
   const { Text, TextInput, View } = require("react-native");
 
   return {
-    SettingsActionSection: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
-    SettingsActionRow: ({ label }: { label: string }) => <Text>{label}</Text>,
-    SettingsSectionDivider: () => <View />,
-    SettingsSectionHeading: ({ title }: { title: string }) => <Text>{title}</Text>,
+    SettingsActionSection: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(View, null, children),
+    SettingsActionRow: ({ label }: { label: string }) =>
+      React.createElement(Text, null, label),
+    SettingsSectionDivider: () => React.createElement(View, null),
+    SettingsSectionHeading: ({ title }: { title: string }) =>
+      React.createElement(Text, null, title),
     SettingsTextInputRow: ({
       value,
       onChangeText,
@@ -96,9 +108,9 @@ jest.mock("../../../src/components/settings", () => {
       value: string;
       onChangeText: (text: string) => void;
       testID?: string;
-    }) => <TextInput value={value} onChangeText={onChangeText} testID={testID} />,
-    SettingsSyncStatus: () => <Text>Settings sync status</Text>,
-    UserSettingsSections: () => <Text>User settings sections</Text>,
+    }) => React.createElement(TextInput, { value, onChangeText, testID }),
+    SettingsSyncStatus: () => React.createElement(Text, null, "Settings sync status"),
+    UserSettingsSections: () => React.createElement(Text, null, "User settings sections"),
   };
 });
 
@@ -123,13 +135,13 @@ jest.mock("../../../src/components/ui", () => {
       scrollable?: boolean;
     }) => {
       const Container = scrollable ? ScrollView : View;
-      return (
-        <Container>
-          {header?.title ? <Text>{header.title}</Text> : null}
-          {header?.subtitle ? <Text>{header.subtitle}</Text> : null}
-          {header?.customRightContent ?? null}
-          {children}
-        </Container>
+      return React.createElement(
+        Container,
+        null,
+        header?.title ? React.createElement(Text, null, header.title) : null,
+        header?.subtitle ? React.createElement(Text, null, header.subtitle) : null,
+        header?.customRightContent ?? null,
+        children
       );
     },
   };

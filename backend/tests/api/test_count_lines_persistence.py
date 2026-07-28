@@ -64,6 +64,8 @@ async def _seed_session_and_line_for_variance_recalc(
         "financial_impact": 0.0,
         "counted_by": "staff1",
         "counted_at": now,
+        # Remark is mandatory for every count-line write (L04 tracking policy).
+        "remark": "counted",
     }
     if line_overrides:
         line_doc.update(line_overrides)

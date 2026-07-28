@@ -91,12 +91,25 @@ async def test_session_not_found(async_client, authenticated_headers):
 
 @pytest.mark.asyncio
 async def test_create_session_with_different_types(async_client, authenticated_headers):
-    """Test creating sessions with different types"""
-    for session_type in ["STANDARD", "SPOT_CHECK", "CYCLE_COUNT"]:
+    """First create honours the requested type; later creates return the
+    employee's single active session (L02 single-session-per-employee rule)."""
+    first_type = "SPOT_CHECK"
+    first_payload = {"warehouse": f"Test Warehouse {first_type}", "type": first_type}
+    first_response = await async_client.post(
+        "/api/sessions/", json=first_payload, headers=authenticated_headers
+    )
+    assert first_response.status_code == 200
+    first_session = first_response.json()
+    assert first_session["type"] == first_type
+
+    # Subsequent creates with a different type must return the existing
+    # active session rather than creating a second one.
+    for session_type in ["STANDARD", "CYCLE_COUNT"]:
         payload = {"warehouse": f"Test Warehouse {session_type}", "type": session_type}
         response = await async_client.post(
             "/api/sessions/", json=payload, headers=authenticated_headers
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["type"] == session_type
+        assert data["id"] == first_session["id"]
+        assert data["type"] == first_session["type"]

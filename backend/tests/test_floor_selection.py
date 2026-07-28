@@ -87,6 +87,7 @@ async def test_create_count_line_saves_floor_no(mock_db, mock_current_user):
         counted_qty=10,
         floor_no="First Floor",
         rack_no="R1",
+        remark="counted",
     )
 
     # Mock request

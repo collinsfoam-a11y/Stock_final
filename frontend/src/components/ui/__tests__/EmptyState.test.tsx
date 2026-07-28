@@ -3,23 +3,35 @@ import { render } from "@testing-library/react-native";
 import { EmptyState } from "../EmptyState";
 import { ThemeProvider } from "../../../context/ThemeContext";
 
+// NOTE: mock factories below use React.createElement rather than JSX. JSX inside a
+// jest.mock() factory crashes babel-plugin-jest-hoist when combined with
+// babel-preset-expo ("expected node to be of a type VariableDeclarator").
+
 // Mock FadeIn as it uses animations which might interfere with simple tests
 jest.mock("../FadeIn", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const ReactActual = require("react");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require("react-native");
   return {
-    FadeIn: ({ children, style }: any) => <View style={style}>{children}</View>,
+    FadeIn: ({ children, style }: any) =>
+      ReactActual.createElement(View, { style }, children),
   };
 });
 
 // Mock ModernButton
 jest.mock("../ModernButton", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const ReactActual = require("react");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Text, TouchableOpacity } = require("react-native");
   return {
-    ModernButton: ({ title, onPress }: any) => (
-      <TouchableOpacity onPress={onPress}>
-        <Text>{title}</Text>
-      </TouchableOpacity>
-    ),
+    ModernButton: ({ title, onPress }: any) =>
+      ReactActual.createElement(
+        TouchableOpacity,
+        { onPress },
+        ReactActual.createElement(Text, null, title)
+      ),
   };
 });
 

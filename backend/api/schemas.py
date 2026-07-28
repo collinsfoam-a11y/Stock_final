@@ -464,235 +464,98 @@ class PasswordResetConfirm(BaseModel):
         return self
 
 
-# =============================================================================
-# Loop L03: Master Session & Location Model Schemas
-# =============================================================================
+class QuantityObservation(BaseModel):
+    quantity: float
+    remark: Optional[str] = None
+    observed_at: Optional[datetime] = None
+    observed_by: Optional[str] = None
 
 
-class LocationHierarchyLevel(str, Enum):
-    COMPANY = "COMPANY"
-    SHOWROOM = "SHOWROOM"
-    GODOWN = "GODOWN"
-    FLOOR = "FLOOR"
-    RACK = "RACK"
-    AREA = "AREA"
-    QUARANTINE = "QUARANTINE"
-    DAMAGE = "DAMAGE"
+class PhysicalBatch(BaseModel):
+    item_code: str
+    physical_batch_number: str
+    mrp: Optional[float] = None
+    mfg_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    qty: float
+    condition: Optional[str] = None
 
 
-class Location(BaseModel):
-    """A physical location in the inventory hierarchy."""
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    parent_location_id: Optional[str] = None
-    level: LocationHierarchyLevel
-    name: str
-    code: Optional[str] = None
-    company: Optional[str] = None
-    showroom: Optional[str] = None
-    floor: Optional[str] = None
-    rack: Optional[str] = None
-    zone: Optional[str] = None
-    warehouse: Optional[str] = None
-    capacity_qty: Optional[int] = None
-    is_active: bool = True
-    created_by: Optional[str] = None
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
-    )
-    updated_at: Optional[datetime] = None
-
-    @model_validator(mode="after")
-    def validate_hierarchy_consistency(self) -> "Location":
-        if self.level == LocationHierarchyLevel.RACK:
-            if not self.floor:
-                raise ValueError("Rack locations require a floor")
-            if not self.warehouse:
-                raise ValueError("Rack locations require a warehouse")
-        return self
+class SerialUnit(BaseModel):
+    serial_number: str
+    item_code: str
+    mrp: Optional[float] = None
+    mfg_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    condition: Optional[str] = None
+    damage_type: Optional[str] = None
+    photos: list[str] = Field(default_factory=list)
+    location: Optional[str] = None
 
 
-class LocationCreate(BaseModel):
-    parent_location_id: Optional[str] = None
-    level: LocationHierarchyLevel
-    name: str
-    code: Optional[str] = None
-    company: Optional[str] = None
-    showroom: Optional[str] = None
-    floor: Optional[str] = None
-    rack: Optional[str] = None
-    zone: Optional[str] = None
-    warehouse: Optional[str] = None
-    capacity_qty: Optional[int] = None
-
-
-class MasterSessionStatus(str, Enum):
-    DRAFT = "DRAFT"
-    ACTIVE = "ACTIVE"
-    PAUSED = "PAUSED"
-    FINALIZING = "FINALIZING"
-    FINALIZED = "FINALIZED"
-    CANCELLED = "CANCELLED"
-
-
-class MasterSession(BaseModel):
-    """A master session controls a count programme scope."""
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    name: str
-    description: Optional[str] = None
-    status: MasterSessionStatus = MasterSessionStatus.DRAFT
-    created_by: str
-    created_by_name: Optional[str] = None
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
-    )
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    cancelled_at: Optional[datetime] = None
-    finalized_at: Optional[datetime] = None
-    finalized_by: Optional[str] = None
-    policy_version: str = "2026.07.1"
-    # Frozen ERP baseline
-    baseline_qty: Optional[int] = None
-    baseline_at: Optional[datetime] = None
-    snapshot_version: Optional[str] = None
-    # Location scope
-    location_ids: list[str] = Field(default_factory=list)
-    # Tracking config
-    tracking_mode: Optional[str] = None  # QUANTITY, BATCH, SERIAL, BUNDLE
-    allow_zero_count: bool = True
-    require_remark: bool = True
-    # Counters
-    total_location_sessions: int = 0
-    total_count_lines: int = 0
-    total_submitted_lines: int = 0
-    total_approved_lines: int = 0
-    total_rejected_lines: int = 0
-    total_pending_review_lines: int = 0
-    total_variance_quantity: float = 0.0
-    operational_delta: float = 0.0
-    audit_delta: float = 0.0
-    # Governance
-    requires_supervisor_approval: bool = True
-    auto_approve_threshold: float = 0.0
-    locked: bool = False
-
-
-class MasterSessionCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
-    location_ids: list[str] = Field(default_factory=list)
-    policy_version: str = "2026.07.1"
-    allow_zero_count: bool = True
-    require_remark: bool = True
-    requires_supervisor_approval: bool = True
-    auto_approve_threshold: float = 0.0
-
-
-class LocationSessionStatus(str, Enum):
-    AVAILABLE = "AVAILABLE"
-    CLAIMED = "CLAIMED"
-    ACTIVE = "ACTIVE"
-    PAUSED = "PAUSED"
-    RELEASED = "RELEASED"
-    STALE = "STALE"
-    SUBMITTED = "SUBMITTED"
-    RECOUNT = "RECOUNT"
-    UNDER_REVIEW = "UNDER_REVIEW"
-    APPROVED = "APPROVED"
-    CLOSED = "CLOSED"
-    CANCELLED = "CANCELLED"
-
-
-class LocationSession(BaseModel):
-    """A staff-created session for counting items at a specific physical location."""
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    master_session_id: str
-    location_id: str
-    location_name: str
-    location_level: LocationHierarchyLevel
-    warehouse: Optional[str] = None
-    floor: Optional[str] = None
-    rack: Optional[str] = None
-    company: Optional[str] = None
-    showroom: Optional[str] = None
-    zone: Optional[str] = None
-    status: LocationSessionStatus = LocationSessionStatus.AVAILABLE
-    created_by: str
-    created_by_name: Optional[str] = None
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
-    )
-    claimed_by: Optional[str] = None
-    claimed_at: Optional[datetime] = None
-    claimed_device_id: Optional[str] = None
-    claim_version: int = 0
-    started_at: Optional[datetime] = None
-    paused_at: Optional[datetime] = None
-    released_at: Optional[datetime] = None
-    stale_at: Optional[datetime] = None
-    submitted_at: Optional[datetime] = None
-    recount_requested_at: Optional[datetime] = None
-    under_review_at: Optional[datetime] = None
-    approved_at: Optional[datetime] = None
-    closed_at: Optional[datetime] = None
-    cancelled_at: Optional[datetime] = None
-    finalised_by: Optional[str] = None
-    finalised_at: Optional[datetime] = None
-    # Ownership events (append-only)
-    ownership_events: list[dict[str, Any]] = Field(default_factory=list)
-    # Counters
-    total_items_counted: int = 0
-    total_quantity_observed: int = 0
-    total_variance: float = 0.0
-    # Baseline (frozen at master session start)
-    baseline_qty: Optional[int] = None
-    baseline_at: Optional[datetime] = None
-
-
-class LocationSessionCreate(BaseModel):
-    master_session_id: str
-    location_id: str
-
-
-class LocationSessionEvent(BaseModel):
-    """Append-only audit event for location session lifecycle changes."""
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    location_session_id: str
-    master_session_id: str
-    event_type: str  # CREATED, CLAIMED, PAUSED, RESUMED, RELEASED, STALED, SUBMITTED, RECOUNT_REQUESTED, APPROVED, CLOSED, CANCELLED
-    actor: str
-    actor_role: str
-    device_id: Optional[str] = None
-    timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
-    )
-    details: Optional[dict[str, Any]] = None
-    previous_status: Optional[str] = None
-    new_status: Optional[str] = None
-    claim_version: Optional[int] = None
+class ConditionAllocation(BaseModel):
+    condition: str
+    qty: float
     reason: Optional[str] = None
 
 
-class TrackingMode(str, Enum):
-    QUANTITY = "QUANTITY"
-    BATCH = "BATCH"
-    SERIAL = "SERIAL"
-    BUNDLE = "BUNDLE"
+class EvidenceRecord(BaseModel):
+    storage_key: str
+    filename: str
+    capture_time: Optional[datetime] = None
+    uploader: Optional[str] = None
+    file_hash: Optional[str] = None
+    upload_status: str = "pending"
 
 
-class TrackingPolicySnapshot(BaseModel):
-    policy_version: str
-    item_version: str
-    tracking_mode: TrackingMode
-    quantity_precision: int
-    base_uom: Optional[str] = None
-    allows_fraction: bool = False
-    requires_mfg_date: bool = False
-    requires_expiry_date: bool = False
-    allowed_conditions: list[str] = Field(default_factory=list)
-    evidence_rules: dict[str, Any] = Field(default_factory=dict)
+class ExceptionRecord(BaseModel):
+    type: str
+    description: str
+    severity: str = "medium"
 
+
+class CountObservation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str
+    item_code: str
+    item_name: Optional[str] = None
+    quantity_observation: QuantityObservation
+    physical_batch: list[PhysicalBatch] = Field(default_factory=list)
+    serial_unit: list[SerialUnit] = Field(default_factory=list)
+    condition_allocation: list[ConditionAllocation] = Field(default_factory=list)
+    evidence: list[EvidenceRecord] = Field(default_factory=list)
+    exception: list[ExceptionRecord] = Field(default_factory=list)
+    idempotency_key: Optional[str] = None
+    version: int = 1
+    previous_version_id: Optional[str] = None
+    parent_observation_id: Optional[str] = None
+    lineage: list[str] = Field(default_factory=list)
+    status: str = "draft"
+    submitted_at: Optional[datetime] = None
+    submitted_by: Optional[str] = None
+    floor_id: Optional[str] = None
+    rack_id: Optional[str] = None
+    floor_no: Optional[str] = None
+    rack_no: Optional[str] = None
+    barcode: Optional[str] = None
+    batches: Optional[list[dict[str, Any]]] = None
+    remark: Optional[str] = None
+    noted_qty: Optional[float] = None
+    variance_reason: Optional[str] = None
+    variance_note: Optional[str] = None
+
+    @model_validator(mode="after")
+    def normalize_location_context(self) -> "CountObservation":
+        if self.floor_id:
+            self.floor_id = str(self.floor_id).strip() or None
+        if self.rack_id:
+            self.rack_id = str(self.rack_id).strip() or None
+        if self.floor_no:
+            self.floor_no = str(self.floor_no).strip() or None
+        if self.rack_no:
+            self.rack_no = str(self.rack_no).strip() or None
+        if not self.floor_id and self.floor_no:
+            self.floor_id = self.floor_no
+        if not self.rack_id and self.rack_no:
+            self.rack_id = self.rack_no
+        return self

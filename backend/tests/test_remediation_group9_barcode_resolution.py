@@ -48,6 +48,8 @@ async def test_barcode_field_included_in_query(barcode_field: str):
         "location_id": "LOC-1",
         "floor_id": "F1",
         "rack_id": "R1",
+        # Remark is mandatory for every count-line write (L04 tracking policy).
+        "remark": "counted",
     }
     context: dict = {
         "session_id": "sess-1",
