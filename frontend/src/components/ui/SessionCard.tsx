@@ -28,6 +28,9 @@ import {
 import { StatusBadge } from "./StatusBadge";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
+
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 type SessionStatus = "active" | "completed" | "paused" | "pending";
@@ -118,8 +121,14 @@ export const SessionCard: React.FC<SessionCardProps> = ({
   return (
     <Animated.View entering={FadeInDown.delay(index * 50).springify()} style={[animatedStyle]}>
       <AnimatedTouchableOpacity
+        {...getAccessibleButtonProps({ label: `Session ${name}`, hint: "View session details" })}
         style={[styles.container, style]}
-        onPress={onPress}
+        onPress={() => {
+          if (onPress) {
+            void haptics.light();
+            onPress();
+          }
+        }}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         activeOpacity={1}
@@ -128,7 +137,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.iconContainer}>
-              <Ionicons name="folder-open" size={20} color={modernColors.primary[400]} />
+              <Ionicons {...getDecorativeIconProps()} name="folder-open" size={20} color={modernColors.primary[400]} />
             </View>
             <View style={styles.headerInfo}>
               <Text style={styles.name} numberOfLines={1}>
@@ -136,13 +145,13 @@ export const SessionCard: React.FC<SessionCardProps> = ({
               </Text>
               {location && (
                 <View style={styles.locationRow}>
-                  <Ionicons name="location-outline" size={12} color={modernColors.text.tertiary} />
+                  <Ionicons {...getDecorativeIconProps()} name="location-outline" size={12} color={modernColors.text.tertiary} />
                   <Text style={styles.location}>{location}</Text>
                 </View>
               )}
               {barcode && (
                 <View style={styles.locationRow}>
-                  <Ionicons name="barcode-outline" size={12} color={modernColors.text.tertiary} />
+                  <Ionicons {...getDecorativeIconProps()} name="barcode-outline" size={12} color={modernColors.text.tertiary} />
                   <Text style={styles.location}>{barcode}</Text>
                 </View>
               )}
@@ -165,21 +174,28 @@ export const SessionCard: React.FC<SessionCardProps> = ({
           <View style={styles.footerInfo}>
             {createdBy && (
               <View style={styles.infoItem}>
-                <Ionicons name="person-outline" size={12} color={modernColors.text.tertiary} />
+                <Ionicons {...getDecorativeIconProps()} name="person-outline" size={12} color={modernColors.text.tertiary} />
                 <Text style={styles.infoText}>{createdBy}</Text>
               </View>
             )}
             {lastUpdated && (
               <View style={styles.infoItem}>
-                <Ionicons name="time-outline" size={12} color={modernColors.text.tertiary} />
+                <Ionicons {...getDecorativeIconProps()} name="time-outline" size={12} color={modernColors.text.tertiary} />
                 <Text style={styles.infoText}>{lastUpdated}</Text>
               </View>
             )}
           </View>
 
           {onResume && status !== "completed" && (
-            <TouchableOpacity style={styles.resumeButton} onPress={onResume}>
-              <Ionicons name="play" size={14} color={uiSemanticColors.text.inverse} />
+            <TouchableOpacity
+              {...getAccessibleButtonProps({ label: `Resume session ${name}` })}
+              style={styles.resumeButton}
+              onPress={() => {
+                void haptics.light();
+                onResume();
+              }}
+            >
+              <Ionicons {...getDecorativeIconProps()} name="play" size={14} color={uiSemanticColors.text.inverse} />
               <Text style={styles.resumeText}>Resume</Text>
             </TouchableOpacity>
           )}
