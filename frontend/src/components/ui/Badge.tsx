@@ -53,7 +53,7 @@ export const Badge: React.FC<BadgeProps> = ({
   const accessibilityProps = {
     accessible: true,
     accessibilityRole: accessibilityRole,
-    accessibilityLabel: accessibilityLabel ?? `Badge: ${label}`,
+    accessibilityLabel: accessibilityLabel || `Badge: ${label}`,
   };
 
   if (dot) {
