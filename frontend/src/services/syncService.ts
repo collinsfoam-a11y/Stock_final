@@ -205,7 +205,7 @@ const toIsoTimestamp = (...values: unknown[]): string => {
   return new Date(parsed).toISOString();
 };
 
-export const resolveClientRecordId = (item: OfflineQueueItem): string => {
+const resolveClientRecordId = (item: OfflineQueueItem): string => {
   const audit = asObject(item.data.audit);
   return (
     firstString(
@@ -676,19 +676,13 @@ export const initializeSyncService = () => {
     };
   }
 
-  const initialState = useNetworkStore.getState();
-  // Wake the queue on any connectivity transition — either basic network
-  // coming online or internet reachability being confirmed.  Using isOnline
-  // alone (not gating on isInternetReachable) ensures the queue still
-  // flushes in LAN-only environments where the backend is reachable but
-  // public internet is not.
-  let networkReady = initialState.isOnline;
+  let networkReady = useNetworkStore.getState().isOnline;
 
   const unsubscribe = useNetworkStore.subscribe((state) => {
     const wasOnline = networkReady;
     networkReady = state.isOnline;
 
-    if (networkReady && !wasOnline) {
+    if (state.isOnline && !wasOnline) {
       const settings = useSettingsStore.getState().settings;
       if (
         settings.offlineMode ||

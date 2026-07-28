@@ -789,6 +789,12 @@ async def _close_existing_user_sessions(db: AsyncIOMotorDatabase, username: str)
     logger.info("Skipping auto-close for existing sessions (user=%s)", _safe_log_value(username))
 
 
+async def _revoke_existing_refresh_tokens(username: str) -> None:
+    refresh_token_service = get_refresh_token_service()
+    if refresh_token_service:
+        await refresh_token_service.revoke_all_user_tokens(username)
+
+
 def _build_new_session(
     session_data: SessionCreate,
     current_user: dict[str, Any],
@@ -1237,6 +1243,7 @@ async def create_session(
         return Session(**existing_session)
 
     await _close_existing_user_sessions(db, current_user["username"])
+    await _revoke_existing_refresh_tokens(current_user["username"])
 
     session = _build_new_session(
         session_data,
@@ -1285,11 +1292,10 @@ async def get_active_sessions(
     }
 
     if user_id:
-        if current_user["role"] not in ("supervisor", "admin") and user_id != current_user["username"]:
+        # Only supervisors can view other users' sessions
+        if current_user["role"] != "supervisor" and user_id != current_user["username"]:
             raise HTTPException(status_code=403, detail="Access denied")
         query["staff_user"] = user_id
-    elif current_user["role"] not in ("supervisor", "admin"):
-        query["staff_user"] = current_user["username"]
 
     if rack_id:
         query["rack_no"] = rack_id
@@ -1373,10 +1379,7 @@ async def get_session_detail(
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     # Check access
-    if (
-        current_user["role"] not in ("supervisor", "admin")
-        and _session_owner(session) != current_user["username"]
-    ):
+    if current_user["role"] != "supervisor" and _session_owner(session) != current_user["username"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
     line_summary = await _get_session_line_summary(db, session_id)
@@ -1407,10 +1410,7 @@ async def get_session_stats(
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     # Check access
-    if (
-        current_user["role"] not in ("supervisor", "admin")
-        and _session_owner(session) != current_user["username"]
-    ):
+    if current_user["role"] != "supervisor" and _session_owner(session) != current_user["username"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
     line_summary = await _get_session_line_summary(db, session_id)

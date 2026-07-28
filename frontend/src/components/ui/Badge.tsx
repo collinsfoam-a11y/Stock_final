@@ -6,9 +6,20 @@
 
 import React from "react";
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from "react-native";
-import { colorPalette, spacing, typography, borderRadius } from "@/theme/designTokens";
+import {
+  colorPalette,
+  spacing,
+  typography,
+  borderRadius,
+} from "@/theme/designTokens";
 
-export type BadgeVariant = "default" | "primary" | "success" | "warning" | "error" | "info";
+export type BadgeVariant =
+  | "default"
+  | "primary"
+  | "success"
+  | "warning"
+  | "error"
+  | "info";
 export type BadgeSize = "sm" | "md" | "lg";
 
 interface BadgeProps {
@@ -31,7 +42,10 @@ const variantColors: Record<BadgeVariant, { bg: string; text: string }> = {
   info: { bg: colorPalette.info[500], text: colorPalette.neutral[0] },
 };
 
-const sizeStyles: Record<BadgeSize, { padding: number; fontSize: number; minWidth: number }> = {
+const sizeStyles: Record<
+  BadgeSize,
+  { padding: number; fontSize: number; minWidth: number }
+> = {
   sm: { padding: spacing.xs, fontSize: typography.fontSize.xs, minWidth: 16 },
   md: { padding: spacing.sm, fontSize: typography.fontSize.sm, minWidth: 20 },
   lg: { padding: spacing.md, fontSize: typography.fontSize.base, minWidth: 24 },
@@ -53,7 +67,7 @@ export const Badge: React.FC<BadgeProps> = ({
   const accessibilityProps = {
     accessible: true,
     accessibilityRole: accessibilityRole,
-    accessibilityLabel: accessibilityLabel || `Badge: ${label}`,
+    accessibilityLabel: accessibilityLabel ?? (label !== undefined && label !== "" ? `Badge: ${label}` : "Badge"),
   };
 
   if (dot) {
