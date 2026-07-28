@@ -368,7 +368,7 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("id", 1)], {"unique": True, "name": "idx_master_session_id"}),
         ([("created_by", 1), ("created_at", -1)], {"name": "idx_master_created_by_time"}),
         ([("status", 1), ("created_at", -1)], {"name": "idx_master_status_time"}),
-        ([("name"], {"name": "idx_master_name"}),
+        ([("name", 1)], {"name": "idx_master_name"}),
     ],
     # Location Hierarchy Collection (L03)
     "locations": [
