@@ -16,3 +16,7 @@
 ## 2026-06-03 - Verification of Hidden Decorative Icons in Jest Tests
 **Learning:** Checking that decorative icons are hidden from screen readers can be tested in React Native using `@testing-library/react-native` by resolving the components (e.g., `Ionicons` via `UNSAFE_getAllByType`) and verifying properties like `accessibilityElementsHidden: true`, `importantForAccessibility: "no"`, and `"aria-hidden": true`.
 **Action:** Include dedicated assertions on icon components in unit tests when applying `getDecorativeIconProps` to guarantee they are completely hidden from accessibility trees.
+
+## 2026-07-26 - Defensive Check on Accessibility Fallback Stringification
+**Learning:** When creating default `accessibilityLabel` formats via string interpolation/template literals (e.g., `Badge: ${label}`), optional or nullable props can lead to awkward screen reader output such as "Badge: undefined" if the prop is omitted.
+**Action:** Always wrap template literal fallback evaluations in defensive checks (e.g., `defaultLabel ? \`Badge: \${defaultLabel}\` : undefined`) to ensure nullable fields are never stringified into literal "undefined" or empty states for screen readers.
