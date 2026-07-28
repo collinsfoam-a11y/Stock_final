@@ -351,6 +351,47 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("category", 1), ("floor", 1)], {"name": "idx_variance_category_floor"}),
         ([("warehouse", 1), ("verified_at", -1)], {"name": "idx_variance_warehouse_time"}),
     ],
+    # Session Ownership Collection (L02)
+    "session_claims": [
+        ([("session_id", 1)], {"unique": True, "name": "idx_claim_session_id"}),
+        ([("staff_user", 1), ("claimed_at", -1)], {"name": "idx_claim_staff_time"}),
+        ([("session_id", 1), ("claim_version", -1)], {"name": "idx_claim_version"}),
+    ],
+    # Session Ownership Events Collection (L02)
+    "session_ownership_events": [
+        ([("session_id", 1), ("timestamp", -1)], {"name": "idx_ownership_session_time"}),
+        ([("actor", 1), ("event_type", 1)], {"name": "idx_ownership_actor_event"}),
+        ([("session_id", 1), ("event_type", 1)], {"name": "idx_ownership_session_event"}),
+    ],
+    # Master Session Collection (L03)
+    "master_sessions": [
+        ([("id", 1)], {"unique": True, "name": "idx_master_session_id"}),
+        ([("created_by", 1), ("created_at", -1)], {"name": "idx_master_created_by_time"}),
+        ([("status", 1), ("created_at", -1)], {"name": "idx_master_status_time"}),
+        ([("name"], {"name": "idx_master_name"}),
+    ],
+    # Location Hierarchy Collection (L03)
+    "locations": [
+        ([("id", 1)], {"unique": True, "name": "idx_location_id"}),
+        ([("parent_location_id", 1)], {"name": "idx_location_parent", "sparse": True}),
+        ([("level", 1), ("is_active", 1)], {"name": "idx_location_level_active"}),
+        ([("warehouse", 1), ("floor", 1), ("rack", 1)], {"name": "idx_location_hierarchy"}),
+        ([("company", 1), ("showroom", 1), ("floor", 1), ("zone", 1)], {"name": "idx_location_company_showroom"}),
+    ],
+    # Location Session Collection (L03)
+    "location_sessions": [
+        ([("id", 1)], {"unique": True, "name": "idx_location_session_id"}),
+        ([("master_session_id", 1)], {"name": "idx_ls_master_session"}),
+        ([("location_id", 1)], {"name": "idx_ls_location"}),
+        ([("status", 1), ("created_at", -1)], {"name": "idx_ls_status_time"}),
+        ([("created_by", 1), ("status", 1)], {"name": "idx_ls_creator_status"}),
+    ],
+    # Location Session Events Collection (L03)
+    "location_session_events": [
+        ([("location_session_id", 1), ("timestamp", -1)], {"name": "idx_lse_session_time"}),
+        ([("master_session_id", 1), ("timestamp", -1)], {"name": "idx_lse_master_time"}),
+        ([("actor", 1), ("event_type", 1)], {"name": "idx_lse_actor_event"}),
+    ],
 }
 
 

@@ -462,3 +462,216 @@ class PasswordResetConfirm(BaseModel):
         if len(self.new_password) < 8:
             raise ValueError("Password must be at least 8 characters long")
         return self
+
+
+# =============================================================================
+# Loop L03: Master Session & Location Model Schemas
+# =============================================================================
+
+
+class LocationHierarchyLevel(str, Enum):
+    COMPANY = "COMPANY"
+    SHOWROOM = "SHOWROOM"
+    GODOWN = "GODOWN"
+    FLOOR = "FLOOR"
+    RACK = "RACK"
+    AREA = "AREA"
+    QUARANTINE = "QUARANTINE"
+    DAMAGE = "DAMAGE"
+
+
+class Location(BaseModel):
+    """A physical location in the inventory hierarchy."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    parent_location_id: Optional[str] = None
+    level: LocationHierarchyLevel
+    name: str
+    code: Optional[str] = None
+    company: Optional[str] = None
+    showroom: Optional[str] = None
+    floor: Optional[str] = None
+    rack: Optional[str] = None
+    zone: Optional[str] = None
+    warehouse: Optional[str] = None
+    capacity_qty: Optional[int] = None
+    is_active: bool = True
+    created_by: Optional[str] = None
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
+    updated_at: Optional[datetime] = None
+
+    @model_validator(mode="after")
+    def validate_hierarchy_consistency(self) -> "Location":
+        if self.level == LocationHierarchyLevel.RACK:
+            if not self.floor:
+                raise ValueError("Rack locations require a floor")
+            if not self.warehouse:
+                raise ValueError("Rack locations require a warehouse")
+        return self
+
+
+class LocationCreate(BaseModel):
+    parent_location_id: Optional[str] = None
+    level: LocationHierarchyLevel
+    name: str
+    code: Optional[str] = None
+    company: Optional[str] = None
+    showroom: Optional[str] = None
+    floor: Optional[str] = None
+    rack: Optional[str] = None
+    zone: Optional[str] = None
+    warehouse: Optional[str] = None
+    capacity_qty: Optional[int] = None
+
+
+class MasterSessionStatus(str, Enum):
+    DRAFT = "DRAFT"
+    ACTIVE = "ACTIVE"
+    PAUSED = "PAUSED"
+    FINALIZING = "FINALIZING"
+    FINALIZED = "FINALIZED"
+    CANCELLED = "CANCELLED"
+
+
+class MasterSession(BaseModel):
+    """A master session controls a count programme scope."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    status: MasterSessionStatus = MasterSessionStatus.DRAFT
+    created_by: str
+    created_by_name: Optional[str] = None
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    cancelled_at: Optional[datetime] = None
+    finalized_at: Optional[datetime] = None
+    finalized_by: Optional[str] = None
+    policy_version: str = "2026.07.1"
+    # Frozen ERP baseline
+    baseline_qty: Optional[int] = None
+    baseline_at: Optional[datetime] = None
+    snapshot_version: Optional[str] = None
+    # Location scope
+    location_ids: list[str] = Field(default_factory=list)
+    # Tracking config
+    tracking_mode: Optional[str] = None  # QUANTITY, BATCH, SERIAL, BUNDLE
+    allow_zero_count: bool = True
+    require_remark: bool = True
+    # Counters
+    total_location_sessions: int = 0
+    total_count_lines: int = 0
+    total_submitted_lines: int = 0
+    total_approved_lines: int = 0
+    total_rejected_lines: int = 0
+    total_pending_review_lines: int = 0
+    total_variance_quantity: float = 0.0
+    operational_delta: float = 0.0
+    audit_delta: float = 0.0
+    # Governance
+    requires_supervisor_approval: bool = True
+    auto_approve_threshold: float = 0.0
+    locked: bool = False
+
+
+class MasterSessionCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    location_ids: list[str] = Field(default_factory=list)
+    policy_version: str = "2026.07.1"
+    allow_zero_count: bool = True
+    require_remark: bool = True
+    requires_supervisor_approval: bool = True
+    auto_approve_threshold: float = 0.0
+
+
+class LocationSessionStatus(str, Enum):
+    AVAILABLE = "AVAILABLE"
+    CLAIMED = "CLAIMED"
+    ACTIVE = "ACTIVE"
+    PAUSED = "PAUSED"
+    RELEASED = "RELEASED"
+    STALE = "STALE"
+    SUBMITTED = "SUBMITTED"
+    RECOUNT = "RECOUNT"
+    UNDER_REVIEW = "UNDER_REVIEW"
+    APPROVED = "APPROVED"
+    CLOSED = "CLOSED"
+    CANCELLED = "CANCELLED"
+
+
+class LocationSession(BaseModel):
+    """A staff-created session for counting items at a specific physical location."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    master_session_id: str
+    location_id: str
+    location_name: str
+    location_level: LocationHierarchyLevel
+    warehouse: Optional[str] = None
+    floor: Optional[str] = None
+    rack: Optional[str] = None
+    company: Optional[str] = None
+    showroom: Optional[str] = None
+    zone: Optional[str] = None
+    status: LocationSessionStatus = LocationSessionStatus.AVAILABLE
+    created_by: str
+    created_by_name: Optional[str] = None
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
+    claimed_by: Optional[str] = None
+    claimed_at: Optional[datetime] = None
+    claimed_device_id: Optional[str] = None
+    claim_version: int = 0
+    started_at: Optional[datetime] = None
+    paused_at: Optional[datetime] = None
+    released_at: Optional[datetime] = None
+    stale_at: Optional[datetime] = None
+    submitted_at: Optional[datetime] = None
+    recount_requested_at: Optional[datetime] = None
+    under_review_at: Optional[datetime] = None
+    approved_at: Optional[datetime] = None
+    closed_at: Optional[datetime] = None
+    cancelled_at: Optional[datetime] = None
+    finalised_by: Optional[str] = None
+    finalised_at: Optional[datetime] = None
+    # Ownership events (append-only)
+    ownership_events: list[dict[str, Any]] = Field(default_factory=list)
+    # Counters
+    total_items_counted: int = 0
+    total_quantity_observed: int = 0
+    total_variance: float = 0.0
+    # Baseline (frozen at master session start)
+    baseline_qty: Optional[int] = None
+    baseline_at: Optional[datetime] = None
+
+
+class LocationSessionCreate(BaseModel):
+    master_session_id: str
+    location_id: str
+
+
+class LocationSessionEvent(BaseModel):
+    """Append-only audit event for location session lifecycle changes."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    location_session_id: str
+    master_session_id: str
+    event_type: str  # CREATED, CLAIMED, PAUSED, RESUMED, RELEASED, STALED, SUBMITTED, RECOUNT_REQUESTED, APPROVED, CLOSED, CANCELLED
+    actor: str
+    actor_role: str
+    device_id: Optional[str] = None
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
+    details: Optional[dict[str, Any]] = None
+    previous_status: Optional[str] = None
+    new_status: Optional[str] = None
+    claim_version: Optional[int] = None
+    reason: Optional[str] = None
