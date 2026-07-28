@@ -448,6 +448,59 @@ class PasswordResetVerify(BaseModel):
         return self
 
 
+class CommandState(str, Enum):
+    PENDING = "PENDING"
+    IN_FLIGHT = "IN_FLIGHT"
+    ACKNOWLEDGED = "ACKNOWLEDGED"
+    CONFLICT = "CONFLICT"
+    REJECTED = "REJECTED"
+    BLOCKED_AUTH = "BLOCKED_AUTH"
+    BLOCKED_POLICY = "BLOCKED_POLICY"
+    MANUAL_REVIEW = "MANUAL_REVIEW"
+
+
+class CommandType(str, Enum):
+    COUNT_OBSERVATION = "COUNT_OBSERVATION"
+    BATCH_PROPOSAL = "BATCH_PROPOSAL"
+    SERIAL_REGISTRATION = "SERIAL_REGISTRATION"
+    CORRECTION = "CORRECTION"
+    DAMAGE_REPORT = "DAMAGE_REPORT"
+    SESSION_CLAIM = "SESSION_CLAIM"
+    HEARTBEAT = "HEARTBEAT"
+
+
+class CommandJournalEntry(BaseModel):
+    command_id: str
+    device_id: str
+    client_sequence: int
+    actor_id: str
+    master_session_id: Optional[str] = None
+    location_session_id: Optional[str] = None
+    item_code: Optional[str] = None
+    command_type: CommandType
+    payload: dict[str, Any]
+    payload_hash: str
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
+    state: CommandState = CommandState.PENDING
+    retry_count: int = 0
+    last_error: Optional[str] = None
+
+
+class CommandSyncRequest(BaseModel):
+    device_id: str
+    commands: list[CommandJournalEntry]
+    client_batch_id: Optional[str] = None
+
+
+class CommandSyncResponse(BaseModel):
+    accepted: list[dict[str, Any]]
+    rejected: list[dict[str, Any]]
+    acks: dict[str, dict[str, Any]]
+    client_batch_id: Optional[str] = None
+
+
 class PasswordResetConfirm(BaseModel):
     """Confirm password reset using the token."""
 
