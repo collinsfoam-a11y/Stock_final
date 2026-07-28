@@ -801,3 +801,90 @@ class PasswordResetConfirm(BaseModel):
         if len(self.new_password) < 8:
             raise ValueError("Password must be at least 8 characters long")
         return self
+
+
+class DamageType(str, Enum):
+    PHYSICAL = "PHYSICAL"
+    WATER = "WATER"
+    FIRE = "FIRE"
+    MOLD = "MOLD"
+    EXPIRED = "EXPIRED"
+    BATTERY_LEAK = "BATTERY_LEAK"
+    PACKAGING = "PACKAGING"
+    OTHER = "OTHER"
+
+
+class ItemCondition(str, Enum):
+    SALEABLE = "SALEABLE"
+    DAMAGED = "DAMAGED"
+    EXPIRED = "EXPIRED"
+    QUARANTINE = "QUARANTINE"
+    OPENED_BOX = "OPENED_BOX"
+    DISPLAY = "DISPLAY"
+    INCOMPLETE = "INCOMPLETE"
+    RETURNABLE = "RETURNABLE"
+    NON_RETURNABLE = "NON_RETURNABLE"
+    REPAIRABLE = "REPAIRABLE"
+    INSPECTION_REQUIRED = "INSPECTION_REQUIRED"
+
+
+class ReturnStatus(str, Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    PICKUP_SCHEDULED = "PICKUP_SCHEDULED"
+    PICKED_UP = "PICKED_UP"
+    CREDIT_NOTE_ISSUED = "CREDIT_NOTE_ISSUED"
+    REPAIR_IN_PROGRESS = "REPAIR_IN_PROGRESS"
+    REPAIRED = "REPAIRED"
+    DISCOUNT_SALE = "DISCOUNT_SALE"
+    WRITE_OFF = "WRITE_OFF"
+
+
+class DamageCase(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    observation_id: Optional[str] = None
+    count_line_id: Optional[str] = None
+    session_id: str
+    item_code: str
+    item_name: Optional[str] = None
+    batch_id: Optional[str] = None
+    serial_numbers: Optional[list[str]] = None
+    qty: float
+    damage_type: DamageType = DamageType.PHYSICAL
+    condition: ItemCondition = ItemCondition.DAMAGED
+    return_status: ReturnStatus = ReturnStatus.PENDING
+    reason: Optional[str] = None
+    condition_details: Optional[str] = None
+    photo_urls: Optional[list[str]] = None
+    reported_by: str
+    decided_by: Optional[str] = None
+    decided_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+class DamageCaseCreate(BaseModel):
+    observation_id: Optional[str] = None
+    count_line_id: Optional[str] = None
+    session_id: str
+    item_code: str
+    item_name: Optional[str] = None
+    batch_id: Optional[str] = None
+    serial_numbers: Optional[list[str]] = None
+    qty: float
+    damage_type: DamageType = DamageType.PHYSICAL
+    condition: ItemCondition = ItemCondition.DAMAGED
+    reason: Optional[str] = None
+    condition_details: Optional[str] = None
+    photo_urls: Optional[list[str]] = None
+
+
+class DamageCaseDecision(BaseModel):
+    damage_case_id: str
+    action: str
+    return_status: Optional[ReturnStatus] = None
+    reason: Optional[str] = None
+    credit_note_amount: Optional[float] = None
+    repair_notes: Optional[str] = None
+    decided_by: str
