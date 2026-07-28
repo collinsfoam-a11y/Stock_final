@@ -67,6 +67,7 @@ from backend.api.pi_api import router as pi_router
 
 # Phase 1-3: New Upgrade APIs
 from backend.api.sync_batch_api import router as sync_batch_router
+from backend.api.offline_sync_api import router as offline_sync_router
 from backend.api.unknown_items_api import (
     public_router as unknown_items_public_router,
     router as unknown_items_router,
@@ -889,6 +890,7 @@ register_routers(
         count_lines_router=count_lines_router,
         analytics_router=analytics_router,
         sync_batch_router=sync_batch_router,
+        offline_sync_router=offline_sync_router,
         unknown_items_router=unknown_items_router,
         unknown_items_public_router=unknown_items_public_router,
         rack_router=rack_router,

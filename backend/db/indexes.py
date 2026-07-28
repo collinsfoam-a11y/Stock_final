@@ -249,6 +249,29 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("queue_id", 1)], {"unique": True, "name": "idx_sync_queue_id"}),
         ([("status", 1), ("updated_at", -1)], {"name": "idx_sync_queue_status_time"}),
     ],
+    # L07: Offline command journal for durable device-to-server sync
+    "command_journal": [
+        (
+            [("command_id", 1)],
+            {"unique": True, "name": "idx_command_journal_command_id"},
+        ),
+        (
+            [("device_id", 1), ("client_sequence", -1)],
+            {"name": "idx_command_journal_device_seq"},
+        ),
+        (
+            [("payload_hash", 1)],
+            {"name": "idx_command_journal_payload_hash", "sparse": True},
+        ),
+        (
+            [("state", 1), ("created_at", -1)],
+            {"name": "idx_command_journal_state_time"},
+        ),
+        (
+            [("actor_id", 1), ("created_at", -1)],
+            {"name": "idx_command_journal_actor_time"},
+        ),
+    ],
     "erp_snapshot": [
         (
             [("session_id", 1), ("item_code", 1)],

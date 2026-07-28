@@ -37,6 +37,7 @@ class RouterRegistry:
     count_lines_router: APIRouter
     analytics_router: APIRouter
     sync_batch_router: APIRouter
+    offline_sync_router: APIRouter
     unknown_items_router: APIRouter
     unknown_items_public_router: APIRouter
     rack_router: APIRouter
@@ -133,6 +134,7 @@ def _register_core_router_set(app: FastAPI, registry: RouterRegistry) -> None:
         (registry.count_lines_router, "/api", None),
         (registry.analytics_router, "/api", None),
         (registry.sync_batch_router, None, None),
+        (registry.offline_sync_router, None, ["offline-commands"]),
         (registry.unknown_items_public_router, "/api", None),
         (registry.unknown_items_router, None, None),
         (registry.rack_router, None, None),
