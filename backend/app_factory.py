@@ -77,6 +77,7 @@ from backend.api.sync_conflicts_api import sync_conflicts_router
 from backend.api.sync_management_api import sync_management_router
 from backend.api.sync_status_api import sync_router
 from backend.api.recount_api import router as recount_router
+from backend.api.approval_api import router as approval_router
 from backend.api.user_management_api import user_management_router
 from backend.api.user_settings_api import router as user_settings_router
 from backend.api.variance_api import router as variance_router
@@ -914,6 +915,7 @@ register_routers(
         pin_auth_router=pin_auth_router,
         reconciliation_router=reconciliation_router,
         recount_router=recount_router,
+        approval_router=approval_router,
         enterprise_available=ENTERPRISE_AVAILABLE,
     ),
     logger,

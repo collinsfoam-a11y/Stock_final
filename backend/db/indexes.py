@@ -119,6 +119,55 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         # Snapshot references
         ([("snapshot_a_id", 1), ("snapshot_b_id", 1)], {"name": "idx_snapshots"}),
     ],
+    "count_observations": [
+        # Observation ID
+        ([("id", 1)], {"unique": True, "name": "idx_observation_id"}),
+        # Session queries
+        (
+            [("session_id", 1), ("created_at", -1)],
+            {"name": "idx_observation_session_time"},
+        ),
+        # Status queries
+        ([("approval_status", 1), ("created_at", -1)], {"name": "idx_approval_status_time"}),
+        # Item queries
+        (
+            [("item_code", 1), ("is_recount", 1)],
+            {"name": "idx_observation_item_recount"},
+        ),
+        # Staff queries
+        ([("created_by", 1)], {"name": "idx_observation_staff"}),
+        # Recount lineage
+        ([("recount_of_id", 1)], {"name": "idx_recount_of", "sparse": True}),
+        # Domain semantic idempotency guard
+        (
+            [("semantic_hash", 1)],
+            {"unique": True, "sparse": True, "name": "idx_observation_semantic_hash"},
+        ),
+    ],
+    "recount_requests": [
+        ([("id", 1)], {"unique": True, "name": "idx_recount_request_id"}),
+        ([("observation_id", 1)], {"name": "idx_recount_observation"}),
+        ([("session_id", 1)], {"name": "idx_recount_session"}),
+        ([("status", 1), ("priority", 1)], {"name": "idx_recount_status_priority"}),
+        ([("assigned_to", 1), ("status", 1)], {"name": "idx_recount_assigned"}),
+    ],
+    "recount_comparisons": [
+        ([("original_observation_id", 1)], {"name": "idx_recount_original"}),
+        ([("recount_observation_id", 1)], {"name": "idx_recount_recount"}),
+        ([("decision", 1)], {"name": "idx_recount_decision"}),
+    ],
+    "additional_location_investigations": [
+        ([("id", 1)], {"unique": True, "name": "idx_add_loc_id"}),
+        ([("observation_id", 1)], {"name": "idx_add_loc_observation"}),
+        ([("session_id", 1)], {"name": "idx_add_loc_session"}),
+        ([("response", 1)], {"name": "idx_add_loc_response"}),
+    ],
+    "approval_decisions": [
+        ([("id", 1)], {"unique": True, "name": "idx_approval_decision_id"}),
+        ([("observation_id", 1)], {"name": "idx_approval_observation"}),
+        ([("decided_by", 1), ("decided_at", -1)], {"name": "idx_approval_decided"}),
+        ([("session_id", 1), ("decided_at", -1)], {"name": "idx_approval_session_time"}),
+    ],
     # Count Lines Collection (existing)
     "count_lines": [
         # Session count lines
