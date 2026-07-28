@@ -4,6 +4,7 @@ Canonical inventory helpers shared by session, count-line, and sync flows.
 The active source of truth for stock verification is:
 - sessions
 - count_lines
+- count_observations
 """
 
 from __future__ import annotations
@@ -325,3 +326,56 @@ async def recompute_session_totals(
 
     await lifecycle_service.update_session_totals(session_id, session_update)
     return session_update
+
+
+def build_count_observation_duplicate_filter(observation: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "session_id": str(observation.get("session_id") or ""),
+        "item_code": str(observation.get("item_code") or ""),
+        "counted_qty": float(observation.get("counted_qty") or 0),
+        "is_recount": bool(observation.get("is_recount") or False),
+        "recount_of_id": observation.get("recount_of_id"),
+    }
+
+
+async def find_duplicate_count_observation(
+    db: Any,
+    observation: dict[str, Any],
+    *,
+    exclude_id: Optional[str] = None,
+) -> Optional[dict[str, Any]]:
+    duplicate_filter = build_count_observation_duplicate_filter(observation)
+    cursor = db["count_observations"].find(duplicate_filter).limit(1)
+    async for existing in cursor:
+        existing_id = str(existing.get("id") or "")
+        if exclude_id and existing_id == exclude_id:
+            continue
+        status = str(existing.get("status") or "").upper()
+        if status in {"SUPERSEDED", "REJECTED", "CANCELLED"}:
+            continue
+        return existing
+    return None
+
+
+async def record_duplicate_governance_event(
+    db: Any,
+    *,
+    observation_id: str,
+    session_id: str,
+    actor: str,
+    duplicate_of_id: str,
+    action: str = "DUPLICATE_DETECTED",
+    reason: Optional[str] = None,
+) -> dict[str, Any]:
+    event = {
+        "id": str(__import__("uuid").uuid4()),
+        "observation_id": observation_id,
+        "session_id": session_id,
+        "actor": actor,
+        "duplicate_of_id": duplicate_of_id,
+        "action": action,
+        "reason": reason,
+        "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+    }
+    await db["approval_decisions"].insert_one(event)
+    return event
