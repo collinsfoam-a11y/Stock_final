@@ -463,13 +463,18 @@ async def sync_batch(
     try:
         write_service = CountLineWriteService(db)
         lifecycle_service = SessionLifecycleService(db)
+
+        # ⚡ Bolt Optimization: Batch idempotency check to avoid N+1 queries
+        client_record_ids = [record.client_record_id for record in request.records]
+        existing_ops = await db.idempotency_operations.find(
+            {"operation_id": {"$in": client_record_ids}}
+        ).to_list(length=None)
+        existing_op_ids = {op["operation_id"] for op in existing_ops}
+
         # Validate all records first
         for record in request.records:
-            # Check idempotency first using client_record_id as operation_id
-            existing_op = await db.idempotency_operations.find_one(
-                {"operation_id": record.client_record_id}
-            )
-            if existing_op:
+            # Check idempotency first using pre-fetched cache
+            if record.client_record_id in existing_op_ids:
                 ok_records.append(record.client_record_id)
                 continue
 
