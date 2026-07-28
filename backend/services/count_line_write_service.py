@@ -1353,6 +1353,15 @@ class CountLineWriteService:
             raise HTTPException(status_code=409, detail="Count line is missing item_code")
 
         counted_qty = float(document.get("counted_qty") or 0.0)
+        if counted_qty < 0:
+            raise HTTPException(status_code=400, detail="Negative quantity is not allowed")
+
+        if not document.get("remark"):
+            raise HTTPException(status_code=400, detail="Item remark is mandatory")
+
+        if isinstance(erp_item, dict) and erp_item:
+            self.validation_service.normalize_quantity_for_item(item=erp_item, doc=document)
+
         expected_qty = float(document.get("erp_qty") or 0.0)
         session_id = str(document.get("session_id") or context.get("session_id") or "").strip()
 

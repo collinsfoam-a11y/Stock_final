@@ -259,6 +259,14 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
             },
         ),
     ],
+    "tracking_policy_snapshot": [
+        (
+            [("session_id", 1), ("item_code", 1)],
+            {"unique": True, "name": "idx_tracking_policy_session_item"},
+        ),
+        ([("session_id", 1), ("updated_at", -1)], {"name": "idx_tracking_policy_session_time"}),
+        ([("tracking_mode", 1)], {"name": "idx_tracking_policy_mode"}),
+    ],
     # ERP Items Collection (existing)
     "erp_items": [
         # Item code

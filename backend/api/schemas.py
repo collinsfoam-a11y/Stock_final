@@ -462,3 +462,23 @@ class PasswordResetConfirm(BaseModel):
         if len(self.new_password) < 8:
             raise ValueError("Password must be at least 8 characters long")
         return self
+
+
+class TrackingMode(str, Enum):
+    QUANTITY = "QUANTITY"
+    BATCH = "BATCH"
+    SERIAL = "SERIAL"
+    BUNDLE = "BUNDLE"
+
+
+class TrackingPolicySnapshot(BaseModel):
+    policy_version: str
+    item_version: str
+    tracking_mode: TrackingMode
+    quantity_precision: int
+    base_uom: Optional[str] = None
+    allows_fraction: bool = False
+    requires_mfg_date: bool = False
+    requires_expiry_date: bool = False
+    allowed_conditions: list[str] = Field(default_factory=list)
+    evidence_rules: dict[str, Any] = Field(default_factory=dict)
