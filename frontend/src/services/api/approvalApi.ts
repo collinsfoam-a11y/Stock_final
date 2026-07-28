@@ -1,4 +1,3 @@
-import { useAuthStore } from "../../store/authStore";
 import api from "../httpClient";
 import { createLogger } from "../logging";
 
@@ -133,17 +132,19 @@ export async function getSessionApprovalSummary(sessionId: string): Promise<any>
   }
 }
 
-export async function createAdditionalLocationInvestigation(payload: {
-  observation_id: string;
-  response: string;
-  suspected_location?: string;
-  observed_or_estimated_qty?: number;
-  staff_remark?: string;
-  staff_confidence?: string;
-  photo_urls?: string[];
-}): Promise<any> {
+export async function createAdditionalLocationInvestigation(
+  sessionId: string,
+  payload: {
+    observation_id: string;
+    response: string;
+    suspected_location?: string;
+    observed_or_estimated_qty?: number;
+    staff_remark?: string;
+    staff_confidence?: string;
+    photo_urls?: string[];
+  },
+): Promise<any> {
   try {
-    const sessionId = useAuthStore.getState().user?.sessionId;
     const response = await api.post(
       `/api/approval/sessions/${sessionId}/additional-location`,
       payload,

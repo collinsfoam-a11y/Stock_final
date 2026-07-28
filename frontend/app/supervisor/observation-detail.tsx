@@ -92,7 +92,7 @@ export default function ObservationDetailScreen() {
     return (
       <ScreenContainer>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ActivityIndicator size="large" color={theme.colors.primary[500]} />
         </View>
       </ScreenContainer>
     );
@@ -101,8 +101,8 @@ export default function ObservationDetailScreen() {
   return (
     <ScreenContainer>
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={safeBackNavigation} hitSlop={12}>
-          <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
+        <TouchableOpacity onPress={() => safeBackNavigation(router)} hitSlop={12}>
+          <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.title}>Observation Detail</Text>
       </View>
@@ -115,7 +115,7 @@ export default function ObservationDetailScreen() {
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Recommendation</Text>
-            <Text style={[styles.value, { color: theme.colors.warning }]}>
+            <Text style={[styles.value, { color: theme.colors.warning.main }]}>
               {observation?.system_recommendation || "—"}
             </Text>
           </View>
@@ -129,7 +129,7 @@ export default function ObservationDetailScreen() {
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Variance</Text>
-            <Text style={[styles.value, { color: theme.colors.error }]}>
+            <Text style={[styles.value, { color: theme.colors.error.main }]}>
               {observation?.variance ?? "—"}
             </Text>
           </View>
@@ -180,8 +180,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   title: {
-    ...theme.typography.heading,
-    color: theme.colors.text,
+    ...theme.typography.h4,
+    color: theme.colors.text.primary,
   },
   content: {
     paddingHorizontal: 16,
@@ -202,17 +202,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   label: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.textSecondary,
+    ...theme.typography.body.small,
+    color: theme.colors.text.secondary,
   },
   value: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.text,
+    ...theme.typography.body.small,
+    color: theme.colors.text.primary,
     fontWeight: "600",
   },
   sectionTitle: {
-    ...theme.typography.subtitle,
-    color: theme.colors.text,
+    ...theme.typography.h6,
+    color: theme.colors.text.primary,
   },
   actions: {
     flexDirection: "row",
@@ -223,29 +223,29 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.borderRadius.md,
     alignItems: "center",
     ...(Platform.OS === "web" ? { minWidth: 120 } : {}),
   },
   approveButton: {
-    backgroundColor: theme.colors.success + "18",
+    backgroundColor: theme.colors.success.main + "18",
   },
   approveText: {
-    color: theme.colors.success,
+    color: theme.colors.success.main,
     fontWeight: "600",
   },
   rejectButton: {
-    backgroundColor: theme.colors.error + "18",
+    backgroundColor: theme.colors.error.main + "18",
   },
   rejectText: {
-    color: theme.colors.error,
+    color: theme.colors.error.main,
     fontWeight: "600",
   },
   recountButton: {
-    backgroundColor: theme.colors.primary + "18",
+    backgroundColor: theme.colors.primary[500] + "18",
   },
   recountText: {
-    color: theme.colors.primary,
+    color: theme.colors.primary[500],
     fontWeight: "600",
   },
 });

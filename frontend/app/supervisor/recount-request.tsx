@@ -62,7 +62,7 @@ export default function RecountRequestScreen() {
     <ScreenContainer>
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
+          <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.screenTitle}>Request Recount</Text>
       </View>
@@ -89,7 +89,7 @@ export default function RecountRequestScreen() {
           <TextInput
             style={styles.textArea}
             placeholder="Why is a recount required?"
-            placeholderTextColor={theme.colors.textSecondary}
+            placeholderTextColor={theme.colors.text.secondary}
             value={reason}
             onChangeText={setReason}
             multiline
@@ -105,7 +105,7 @@ export default function RecountRequestScreen() {
               <Ionicons
                 name={isBlind ? "checkbox" : "square-outline"}
                 size={20}
-                color={theme.colors.primary}
+                color={theme.colors.primary[500]}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -138,8 +138,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   screenTitle: {
-    ...theme.typography.heading,
-    color: theme.colors.text,
+    ...theme.typography.h4,
+    color: theme.colors.text.primary,
   },
   content: {
     paddingHorizontal: 16,
@@ -149,8 +149,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   label: {
-    ...theme.typography.body,
-    color: theme.colors.text,
+    ...theme.typography.body.medium,
+    color: theme.colors.text.primary,
     fontWeight: "600",
   },
   chips: {
@@ -160,30 +160,30 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.card,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.surface.card,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.border.light,
   },
   chipActive: {
-    backgroundColor: theme.colors.primary + "18",
-    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary[500] + "18",
+    borderColor: theme.colors.primary[500],
   },
   chipText: {
-    ...theme.typography.caption,
-    color: theme.colors.textSecondary,
+    ...theme.typography.label.medium,
+    color: theme.colors.text.secondary,
   },
   chipTextActive: {
-    color: theme.colors.primary,
+    color: theme.colors.primary[500],
     fontWeight: "600",
   },
   textArea: {
-    ...theme.typography.body,
-    color: theme.colors.text,
-    backgroundColor: theme.colors.card,
+    ...theme.typography.body.medium,
+    color: theme.colors.text.primary,
+    backgroundColor: theme.colors.surface.card,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.lg,
+    borderColor: theme.colors.border.light,
+    borderRadius: theme.borderRadius.lg,
     padding: 12,
     minHeight: 120,
   },
@@ -201,20 +201,20 @@ const styles = StyleSheet.create({
   },
   toggleBoxActive: {},
   toggleTitle: {
-    ...theme.typography.body,
-    color: theme.colors.text,
+    ...theme.typography.body.medium,
+    color: theme.colors.text.primary,
     fontWeight: "600",
   },
   toggleSubtitle: {
-    ...theme.typography.caption,
-    color: theme.colors.textSecondary,
+    ...theme.typography.label.medium,
+    color: theme.colors.text.secondary,
     marginTop: 2,
   },
   submitButton: {
     marginTop: 8,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary[500],
     paddingVertical: 14,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.borderRadius.lg,
     alignItems: "center",
   },
   submitButtonWeb: {
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   },
   submitText: {
     color: "#fff",
-    ...theme.typography.subtitle,
+    ...theme.typography.h6,
     fontWeight: "600",
   },
 });

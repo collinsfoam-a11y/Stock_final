@@ -137,8 +137,8 @@ export default function ApprovalQueueScreen() {
             <View style={styles.header}>
               <Text style={styles.itemCode}>{item.item_identity?.item_code || item.observation_id}</Text>
               {item.system_recommendation ? (
-                <View style={[styles.badge, { backgroundColor: theme.colors.warning + "20" }]}>
-                  <Text style={[styles.badgeText, { color: theme.colors.warning }]}>
+                <View style={[styles.badge, { backgroundColor: theme.colors.warning.main + "20" }]}>
+                  <Text style={[styles.badgeText, { color: theme.colors.warning.main }]}>
                     {item.system_recommendation}
                   </Text>
                 </View>
@@ -201,10 +201,10 @@ export default function ApprovalQueueScreen() {
 
   return (
     <ScreenContainer>
-      <StatusBar style="dark" backgroundColor={theme.colors.background} />
+      <StatusBar style="dark" backgroundColor={theme.colors.background.default} />
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={safeBackNavigation} hitSlop={12}>
-          <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
+        <TouchableOpacity onPress={() => safeBackNavigation(router)} hitSlop={12}>
+          <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.screenTitle}>Approval Queue</Text>
       </View>
@@ -225,7 +225,7 @@ export default function ApprovalQueueScreen() {
               <Ionicons
                 name={item.icon}
                 size={18}
-                color={isActive ? theme.colors.primary : theme.colors.textSecondary}
+                color={isActive ? theme.colors.primary[500] : theme.colors.text.secondary}
               />
               <Text
                 style={[styles.queueTabText, isActive && styles.queueTabTextActive]}
@@ -240,13 +240,14 @@ export default function ApprovalQueueScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ActivityIndicator size="large" color={theme.colors.primary[500]} />
         </View>
       ) : (
         <FlashList
           data={items}
           keyExtractor={(item) => item.observation_id}
           renderItem={renderItem}
+          // @ts-ignore — FlashList's installed types omit estimatedItemSize; see sessions.tsx
           estimatedItemSize={220}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => loadQueue(activeQueue, true)} />
@@ -271,8 +272,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   screenTitle: {
-    ...theme.typography.heading,
-    color: theme.colors.text,
+    ...theme.typography.h4,
+    color: theme.colors.text.primary,
   },
   queueTabs: {
     gap: 8,
@@ -285,21 +286,21 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.card,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.surface.card,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.border.light,
   },
   queueTabActive: {
-    backgroundColor: theme.colors.primary + "18",
-    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary[500] + "18",
+    borderColor: theme.colors.primary[500],
   },
   queueTabText: {
-    ...theme.typography.caption,
-    color: theme.colors.textSecondary,
+    ...theme.typography.label.medium,
+    color: theme.colors.text.secondary,
   },
   queueTabTextActive: {
-    color: theme.colors.primary,
+    color: theme.colors.primary[500],
     fontWeight: "600",
   },
   card: {
@@ -313,17 +314,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   itemCode: {
-    ...theme.typography.subtitle,
-    color: theme.colors.text,
+    ...theme.typography.h6,
+    color: theme.colors.text.primary,
     flex: 1,
   },
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: theme.radius.full,
+    borderRadius: theme.borderRadius.full,
   },
   badgeText: {
-    ...theme.typography.caption,
+    ...theme.typography.label.medium,
     fontWeight: "600",
   },
   metaRow: {
@@ -332,28 +333,28 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   metaText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.textSecondary,
+    ...theme.typography.body.small,
+    color: theme.colors.text.secondary,
   },
   quantityText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.text,
+    ...theme.typography.body.small,
+    color: theme.colors.text.primary,
   },
   variance: {
-    color: theme.colors.error,
+    color: theme.colors.error.main,
     fontWeight: "600",
   },
   noVariance: {
-    color: theme.colors.success,
+    color: theme.colors.success.main,
   },
   exceptionText: {
-    ...theme.typography.caption,
-    color: theme.colors.error,
+    ...theme.typography.label.medium,
+    color: theme.colors.error.main,
     marginTop: 6,
   },
   remarkText: {
-    ...theme.typography.caption,
-    color: theme.colors.textSecondary,
+    ...theme.typography.label.medium,
+    color: theme.colors.text.secondary,
     marginTop: 4,
   },
   actions: {
@@ -364,28 +365,28 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.borderRadius.md,
     alignItems: "center",
   },
   approveButton: {
-    backgroundColor: theme.colors.success + "18",
+    backgroundColor: theme.colors.success.main + "18",
   },
   approveText: {
-    color: theme.colors.success,
+    color: theme.colors.success.main,
     fontWeight: "600",
   },
   rejectButton: {
-    backgroundColor: theme.colors.error + "18",
+    backgroundColor: theme.colors.error.main + "18",
   },
   rejectText: {
-    color: theme.colors.error,
+    color: theme.colors.error.main,
     fontWeight: "600",
   },
   recountButton: {
-    backgroundColor: theme.colors.primary + "18",
+    backgroundColor: theme.colors.primary[500] + "18",
   },
   recountText: {
-    color: theme.colors.primary,
+    color: theme.colors.primary[500],
     fontWeight: "600",
   },
   center: {
@@ -395,7 +396,7 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   emptyText: {
-    ...theme.typography.body,
-    color: theme.colors.textSecondary,
+    ...theme.typography.body.medium,
+    color: theme.colors.text.secondary,
   },
 });
