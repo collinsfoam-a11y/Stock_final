@@ -5,12 +5,13 @@
  */
 
 import * as React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Haptics from "expo-haptics";
 
 import { useTheme } from "../../hooks/useTheme";
 import { useSettingsStore } from "../../store/settingsStore";
+import { haptics } from "../../services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
 interface ThemePickerProps {
@@ -39,14 +40,17 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => 
                 styles.modeButton,
                 theme === mode.value && { backgroundColor: colors.accent },
               ]}
+              {...getAccessibleButtonProps({
+                label: `${mode.label} Mode`,
+                selected: theme === mode.value,
+              })}
               onPress={() => {
-                if (Platform.OS !== "web") {
-                  Haptics.selectionAsync();
-                }
+                void haptics.selection();
                 setSetting("theme", mode.value);
               }}
             >
               <Ionicons
+                {...getDecorativeIconProps()}
                 name={mode.icon as any}
                 size={18}
                 color={theme === mode.value ? uiSemanticColors.text.inverse : colors.textSecondary}

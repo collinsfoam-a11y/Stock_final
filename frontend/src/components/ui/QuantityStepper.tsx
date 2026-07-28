@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useThemeContext } from "../../context/ThemeContext";
 import { haptics } from "../../services/haptics";
-import { getDecorativeIconProps } from "../../utils/accessibility";
+import { getDecorativeIconProps, getAccessibleButtonProps } from "../../utils/accessibility";
 
 interface Props {
   value: number;
@@ -42,9 +42,10 @@ export function QuantityStepper({ value, onChange, min = 0, max, disabled, testI
         onPress={() => handleChange(-1)}
         disabled={disabled || value <= min}
         style={[styles.button, buttonStyle, (disabled || value <= min) && styles.buttonDisabled]}
-        accessibilityLabel="decrement"
-        accessibilityRole="button"
-        accessibilityState={{ disabled: disabled || value <= min }}
+        {...getAccessibleButtonProps({
+          label: "Decrease quantity",
+          disabled: disabled || value <= min,
+        })}
       >
         <Ionicons {...getDecorativeIconProps()} name="remove" size={20} color={theme.colors.text} />
       </TouchableOpacity>
@@ -57,6 +58,8 @@ export function QuantityStepper({ value, onChange, min = 0, max, disabled, testI
             backgroundColor: theme.colors.surface,
           },
         ]}
+        accessible={true}
+        accessibilityLabel={`Current quantity: ${value}`}
       >
         <Text style={[styles.valueText, { color: theme.colors.text }]}>{value}</Text>
       </View>
@@ -69,9 +72,10 @@ export function QuantityStepper({ value, onChange, min = 0, max, disabled, testI
           buttonStyle,
           (disabled || (typeof max === "number" && value >= max)) && styles.buttonDisabled,
         ]}
-        accessibilityLabel="increment"
-        accessibilityRole="button"
-        accessibilityState={{ disabled: disabled || (typeof max === "number" && value >= max) }}
+        {...getAccessibleButtonProps({
+          label: "Increase quantity",
+          disabled: disabled || (typeof max === "number" && value >= max),
+        })}
       >
         <Ionicons {...getDecorativeIconProps()} name="add" size={20} color={theme.colors.text} />
       </TouchableOpacity>

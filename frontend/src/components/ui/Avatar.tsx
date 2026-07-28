@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { colorPalette, typography } from "@/theme/designTokens";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
 
@@ -113,12 +114,20 @@ export const Avatar: React.FC<AvatarProps> = ({
         name={fallbackIcon}
         size={sizes.iconSize}
         color={colorPalette.neutral[0]}
+        {...getDecorativeIconProps()}
       />
     );
   };
 
+  const a11yLabel = name ? `Avatar for ${name}` : "User avatar";
+
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessible={true}
+      accessibilityRole="image"
+      accessibilityLabel={a11yLabel}
+    >
       <View
         style={[
           styles.avatar,

@@ -2,6 +2,7 @@ import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 import { Switch } from "../Switch";
 import { haptics } from "@/services/haptics";
+import { OPERATIONAL_HIT_SLOP } from "@/utils/accessibility";
 
 // Mock haptics service
 jest.mock("@/services/haptics", () => ({
@@ -71,5 +72,13 @@ describe("Switch", () => {
     );
 
     expect(getByLabelText("Enable notifications")).toBeTruthy();
+  });
+
+  it("applies hitSlop for better touch target", () => {
+    const { getByRole } = render(
+      <Switch value={false} onValueChange={() => {}} />
+    );
+
+    expect(getByRole("switch").props.hitSlop).toEqual(OPERATIONAL_HIT_SLOP.standard);
   });
 });

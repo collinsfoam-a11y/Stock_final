@@ -8,6 +8,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-nati
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 export interface TableColumn {
   key: string;
   label: string;
@@ -96,12 +97,14 @@ export const DataTable: React.FC<DataTableProps> = ({
         <TouchableOpacity
           key={column.key}
           style={[styles.headerCell, column.width && { width: column.width }] as any}
+          {...(column.sortable ? getAccessibleButtonProps({ label: `Sort by ${column.label}` }) : {})}
           onPress={() => column.sortable && handleSort(column.key)}
           disabled={!column.sortable}
         >
           <Text style={styles.headerText}>{column.label}</Text>
           {sortable && column.sortable && sortColumn === column.key && (
             <Ionicons
+              {...getDecorativeIconProps()}
               name={sortDirection === "asc" ? "chevron-up" : "chevron-down"}
               size={16}
               color={uiColors.info[500]}
@@ -146,10 +149,12 @@ export const DataTable: React.FC<DataTableProps> = ({
       <View style={styles.pagination}>
         <TouchableOpacity
           style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
+          {...getAccessibleButtonProps({ label: "Previous page", disabled: currentPage === 1 })}
           onPress={() => setCurrentPage(currentPage - 1)}
           disabled={currentPage === 1}
         >
           <Ionicons
+            {...getDecorativeIconProps()}
             name="chevron-back"
             size={20}
             color={currentPage === 1 ? uiColors.neutral[300] : uiColors.info[500]}
@@ -165,10 +170,12 @@ export const DataTable: React.FC<DataTableProps> = ({
             styles.paginationButton,
             currentPage === totalPages && styles.paginationButtonDisabled,
           ]}
+          {...getAccessibleButtonProps({ label: "Next page", disabled: currentPage === totalPages })}
           onPress={() => setCurrentPage(currentPage + 1)}
           disabled={currentPage === totalPages}
         >
           <Ionicons
+            {...getDecorativeIconProps()}
             name="chevron-forward"
             size={20}
             color={currentPage === totalPages ? uiColors.neutral[300] : uiColors.info[500]}

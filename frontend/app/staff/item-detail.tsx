@@ -44,7 +44,8 @@ import { useQuantityCountManager } from "@/domains/inventory/hooks/scan/useQuant
 import { useSerialEntryManager } from "@/domains/inventory/hooks/scan/useSerialEntryManager";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
-import { getDecorativeIconProps } from "@/utils/accessibility";
+import { getDecorativeIconProps, getAccessibleButtonProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 import { safeBackNavigation } from "@/utils/navigation";
 import { createItemDetailStyles } from "@/styles/screens/ItemDetail.styles";
 
@@ -467,10 +468,16 @@ export default function ItemDetailScreen() {
                     justifyContent: "center",
                   },
                 ]}
-                onPress={handleRefreshStock}
+                onPress={() => {
+                  void haptics.light();
+                  handleRefreshStock();
+                }}
                 disabled={isRefreshing}
-                accessibilityRole="button"
-                accessibilityLabel="Refresh stock from ERP"
+                {...getAccessibleButtonProps({
+                  label: "Refresh stock from ERP",
+                  disabled: isRefreshing,
+                  busy: isRefreshing,
+                })}
               >
                 <Ionicons
                   {...decorativeIconProps}
