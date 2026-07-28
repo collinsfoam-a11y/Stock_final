@@ -702,6 +702,23 @@ export {
   getZones,
   getWarehouses,
 } from "./api.misc";
+export type {
+  EvaluationResponse,
+  RecountCreatePayload,
+  SupervisorDecidePayload,
+} from "./approvalApi";
+export {
+  assignRecount,
+  createAdditionalLocationInvestigation,
+  createRecountRequest,
+  evaluateObservation,
+  getSessionApprovalSummary,
+  getSupervisorQueue,
+  getSupervisorQueueSummary,
+  startRecount,
+  submitRecount,
+  supervisorDecide,
+} from "./approvalApi";
 export type { Notification } from "./api.notifications";
 export {
   getNotifications,

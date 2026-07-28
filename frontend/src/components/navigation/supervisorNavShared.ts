@@ -51,6 +51,12 @@ export const SUPERVISOR_NAV_GROUPS: SupervisorNavGroup[] = [
         icon: "git-network",
         route: "/supervisor/user-workflows",
       },
+      {
+        key: "approval-queue",
+        label: "Approval Queue",
+        icon: "checkmark-circle",
+        route: "/supervisor/approval-queue",
+      },
       ...(supervisorFeatureFlags.activityLogs
         ? [
             {
