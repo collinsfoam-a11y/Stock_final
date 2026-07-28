@@ -1,145 +1,86 @@
 # Repository Merge Strategy
 
 Audit date: 2026-07-27
-Main branch HEAD: `dba33d8` (Merge PR #273 — Radio accessibility and tests)
+Execution: 2026-07-27 through 2026-07-28
+Main branch HEAD at audit: `dba33d8` (Merge PR #273 — Radio accessibility and tests)
 
 ## Executive Summary
 
-The repository has 22 open PRs spanning accessibility, performance, session
-management, offline sync, and a large feature branch. This document defines
+The repository had 22 open PRs spanning accessibility, performance, session
+management, offline sync, and a large feature branch. This document defined
 the merge order, required repairs, consolidation plan, and business-logic
-gap list that remains after all current PRs are resolved.
+gap list. Phases 1–5 are complete; Phase 6 items remain on hold.
+
+**Results:** 6 PRs merged, 13 PRs closed as superseded, 3 PRs on hold.
 
 ---
 
-## Phase 1 — Immediate Merges
+## Phase 1 — Immediate Merges ✓ COMPLETE
 
-### PR #283 — Badge accessibility fallback
+### PR #283 — Badge accessibility fallback → MERGED
 
-| Field | Value |
-|-------|-------|
-| Branch | `jules-16658110158600998158-52301a3b` |
-| Status | CI green, mergeable, 1 commit ahead of main |
-| Risk | Low |
-| Action | **Merge after routine review** |
+Merged first to unblock downstream PRs. Fixed the Badge component's
+fallback label bug (`5` instead of `Badge: 5`).
 
-Fixes a pre-existing bug where the Badge component's fallback label produces
-bare values (`5`) instead of contextual output (`Badge: 5`). This bug also
-causes test failures in PRs #282, #284, #281, and #285.
+### PR #284 — System report query optimization → MERGED
 
----
+Merged with asyncio.gather concurrency optimization. PR #270's unique
+`flag_resolver.py` change was already present on main; #270 closed.
 
-## Phase 2 — Repair and Merge
+### PR #282 — Session access and offline sync recovery → MERGED
 
-### PR #282 — Session access and offline sync recovery
+LAN-safe offline sync fix, session access hardening, token preservation.
+Repaired and merged after #283 landed.
 
-| Field | Value |
-|-------|-------|
-| Branch | `agent/session-sync-hardening` |
-| Status | Draft, mergeable, backend CI green, frontend CI blocked by Badge bug |
-| Risk | High value, medium risk |
-| Action | **Repair, then merge** |
+### PR #285 — CreateSessionModal accessibility and haptics → MERGED
 
-**Genuine defects this PR fixes in current main:**
-
-1. Session creation revokes the employee's refresh tokens
-2. Active-session endpoint leaks sessions outside staff member's ownership
-3. Administrators blocked from session detail/statistics that supervisors can access
-4. Offline payloads lost after HTTP 401
-5. Idempotency keys mutate across retries
-
-**Required repairs before merge:**
-
-1. **Badge test failure** — resolved by merging PR #283 first, then rebasing
-2. **LAN reachability gating** — the change gates sync wakeup on
-   `isInternetReachable === true`, but the network store initializes this to
-   `null` and it stays `false` on LAN-only networks. Replace with backend
-   reachability or revert to `isOnline`-only gating. Add a LAN-only sync test.
+CreateSessionModal accessibility props. Merged after #283 resolved
+Badge conflicts.
 
 ---
 
-## Phase 3 — Current-with-main PRs (merge in order)
+## Phase 2 — Repair and Merge ✓ COMPLETE
 
-These PRs are based on current main (`dba33d8`). All have Badge.tsx
-one-liner conflicts that auto-resolve once PR #283 merges.
+### PR #281 — SessionCard accessibility + Badge empty-string fix → MERGED
 
-### PR #285 — CreateSessionModal accessibility and haptics
+Rebased onto latest main, resolved `.jules/palette.md` conflict.
+Also included the Badge `??` → `||` fix for empty-string
+accessibilityLabel fallback.
 
-| Action | Merge after #283 |
-|--------|------------------|
+### PR #235 — Batch sync N+1 query fix → MERGED
 
-Supersedes PR #254 (closed). Covers close button accessibility, selection
-haptics, screen reader context. Low risk.
-
-### PR #284 — System report query optimization
-
-| Action | Merge; salvage #270's flag_resolver.py change first |
-|--------|-----------------------------------------------------|
-
-Duplicates PR #270's `system_report_service.py` refactor. PR #270 also has
-a unique `flag_resolver.py` asyncio.gather optimization — cherry-pick that
-into #284 before merging. Then close #270.
-
-### PR #281 — SessionCard accessibility and haptics
-
-| Action | Merge after #285 and #284 resolve Badge conflicts |
-|--------|---------------------------------------------------|
-
-Unique SessionCard changes. Low risk.
+Rebased onto latest main, resolved `.jules/bolt.md` conflict (fixed
+shell-expansion date). Replaced per-record `find_one` with bulk `$in`
+query in `sync_batch_api.py`.
 
 ---
 
-## Phase 4 — Stale Performance PRs (rebase and merge)
+## Phase 3 — Closed as Superseded ✓ COMPLETE
 
-These target older main commits but touch unique files with no overlap.
-
-| PR | Scope | File | Action |
-|----|-------|------|--------|
-| #243 | Analytics asyncio.gather | `analytics_service.py` | Rebase, merge |
-| #235 | Batch sync N+1 fix | `sync_batch_api.py` | Rebase, merge |
-
----
-
-## Phase 5 — Consolidated Accessibility PR
-
-Create one fresh branch from current main:
-`fix/consolidated-accessibility-cleanup`
-
-Manually reapply only changes not already present on main:
-
-| Source PR | Component | Unique Changes |
-|-----------|-----------|---------------|
-| #255 | Tabs | Haptic feedback, improved hitSlop, screen reader state |
-| #241 | Switch | Operational touch target hitSlop |
-| #223 | ThemePicker | Semantic buttons, standardized haptics |
-| #217 | QuantityStepper | Clearer increment/decrement labels |
-| #212 | Avatar | Semantic image accessibility |
-| #205 | InlineAlert | Grouped alert semantics, decorative-icon suppression |
-| #269 | Refresh stock button | Accessible button props, haptics |
-| #242 | ScanLookupPanel | Accessible search/scan button |
-| #248 | PhotoCaptureModal | Icon-only button accessibility (CreateSessionModal part superseded by #285) |
-| #228 | DataTable | Sort/pagination accessibility (drop bundled dep changes) |
-
-Close all source PRs after the consolidated PR is validated.
+| PR | Reason | Status |
+|----|--------|--------|
+| #257 | ProgressBar/ProgressRing a11y — superseded by merged PR #226/#280 | Closed |
+| #254 | CreateSessionModal close button — superseded by #285 | Closed |
+| #270 | System report optimization — duplicated by #284 | Closed |
+| #243 | Analytics asyncio.gather — already on main (commit `9945d06`) | Closed |
 
 ---
 
-## Phase 6 — Hold / Do Not Merge
+## Phase 4 — Do Not Merge ✓ COMPLETE (comments posted)
 
 ### PR #220 — Large advanced branch
 
 | Branch | `codex/protect-web-sync-variance-reporting` |
 |--------|---------------------------------------------|
 | Status | Not mergeable, substantially diverged |
-| Action | **Do not merge wholesale** |
+| Action | **Do not merge wholesale** — comment posted with assessment |
 
-**Critical problems:**
-- Serialized tracking remains staff-editable (should be ERP-controlled)
-- Serial duplicate validation regresses (missing item_code parameter)
+**Critical problems remain:**
+- Serialized tracking staff-editable (should be ERP-controlled)
+- Serial duplicate validation regresses
 - Zero count prohibited (incorrect for physical verification)
 - Remarks optional (should be mandatory)
 - Silent submission on screen exit (operationally unsafe)
-- Event sync doesn't establish SQL submission-time baseline
 
 **Useful work to extract into fresh PRs:**
 1. Backend-controlled serial tracking
@@ -149,6 +90,32 @@ Close all source PRs after the consolidated PR is validated.
 5. ERPNext export subsystem
 6. HSN/GST validation subsystem
 7. Duplicate-identity controls
+
+---
+
+## Phase 5 — Consolidated Accessibility PR ✓ COMPLETE
+
+Created PR #288 (`fix/consolidated-accessibility-cleanup`) consolidating
+unique changes from 10 stale accessibility PRs into a single clean PR.
+All 104 test suites pass (401 tests). 127 insertions, 27 deletions across
+11 modified files + 5 new test files.
+
+| Source PR | Component | Status |
+|-----------|-----------|--------|
+| #255 | Tabs — haptics.selection(), decorative icon props | Consolidated → Closed |
+| #241 | Switch — OPERATIONAL_HIT_SLOP | Consolidated → Closed |
+| #223 | ThemePicker — centralized haptics migration | Consolidated → Closed |
+| #217 | QuantityStepper — descriptive labels | Consolidated → Closed |
+| #212 | Avatar — image role, dynamic label | Consolidated → Closed |
+| #205 | InlineAlert — accessible grouping | Consolidated → Closed |
+| #269 | item-detail refresh button — busy/disabled state | Consolidated → Closed |
+| #242 | ScanLookupPanel — accessible button props | Consolidated → Closed |
+| #248 | PhotoCaptureModal — accessible button props (CreateSessionModal skipped, already on main) | Consolidated → Closed |
+| #228 | DataTable — sort header and pagination a11y | Consolidated → Closed |
+
+---
+
+## Phase 6 — Hold
 
 ### PR #222 — RecountAssignmentModal optimization
 
@@ -166,16 +133,6 @@ The JWT rewrite requires independent security review.
 
 Broad formatting changes that will conflict with nearly everything. Review
 for silent behavioral changes before merging as the final cleanup step.
-
----
-
-## Phase 7 — PRs Closed as Superseded
-
-| PR | Reason |
-|----|--------|
-| #257 | ProgressBar/ProgressRing a11y — superseded by merged PR #226/#280 |
-| #254 | CreateSessionModal close button — superseded by #285 |
-| #270 | System report optimization — duplicated by #284 (salvage flag_resolver) |
 
 ---
 
