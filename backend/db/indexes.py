@@ -152,6 +152,29 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
             {"name": "idx_count_line_item_serial", "sparse": True},
         ),
     ],
+    # Count Observation Collection (L05 append-only physical observation model)
+    "count_observation": [
+        # Session timeline
+        (
+            [("session_id", 1), ("version", 1)],
+            {"name": "idx_count_observation_session_version"},
+        ),
+        # Lookup by idempotency key
+        (
+            [("idempotency_key", 1)],
+            {"name": "idx_count_observation_idempotency", "unique": True, "sparse": True},
+        ),
+        # Item code within session
+        ([("item_code", 1), ("session_id", 1)], {"name": "idx_count_observation_item_session"}),
+        # Lineage chain traversal
+        ([("parent_observation_id", 1)], {"name": "idx_count_observation_parent", "sparse": True}),
+        # Status and timestamps
+        ([("status", 1), ("submitted_at", -1)], {"name": "idx_count_observation_status_time"}),
+        # Rack scoped lookups
+        ([("rack_id", 1), ("session_id", 1)], {"name": "idx_count_observation_rack_session"}),
+        # Floor scoped lookups
+        ([("floor_id", 1), ("session_id", 1)], {"name": "idx_count_observation_floor_session"}),
+    ],
     # Append-only event store
     "event_log": [
         ([("aggregate_id", 1), ("timestamp", 1)], {"name": "idx_event_aggregate_time"}),

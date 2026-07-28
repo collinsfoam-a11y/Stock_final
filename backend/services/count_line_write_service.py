@@ -704,6 +704,129 @@ class CountLineWriteService:
     ) -> Any:
         return await self.commit(payload, context)
 
+    @staticmethod
+    def _build_count_observation_semantic_hash(document: dict[str, Any]) -> str:
+        payload = {
+            "session_id": str(document.get("session_id") or ""),
+            "item_code": str(document.get("item_code") or document.get("item_id") or ""),
+            "qty": float(document.get("quantity_observation", {}).get("quantity") or 0.0),
+            "version": int(document.get("version", 1) or 1),
+        }
+        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    async def write_count_observation(
+        self,
+        document: dict[str, Any],
+        context: Optional[dict[str, Any]] = None,
+        *,
+        db_session: Optional[Any] = None,
+    ) -> Any:
+        ctx = context or {}
+        db_session = db_session or self._extract_db_session(ctx)
+        kwargs = {"session": db_session} if db_session is not None else {}
+
+        now = _utc_now()
+        document.setdefault("id", str(uuid.uuid4()))
+        document.setdefault("version", 1)
+        document.setdefault("status", "draft")
+        document.setdefault("quantity_observation", {})
+        quantity_obs = document.get("quantity_observation") or {}
+        if not quantity_obs.get("observed_at") and not document.get("submitted_at"):
+            quantity_obs["observed_at"] = now
+            document["quantity_observation"] = quantity_obs
+
+        previous_version_id = document.get("previous_version_id")
+        if previous_version_id:
+            previous_filter: dict[str, Any] = {"id": str(previous_version_id)}
+            if ObjectId.is_valid(str(previous_version_id)):
+                previous_filter = {
+                    "$or": [
+                        {"id": str(previous_version_id)},
+                        {"_id": ObjectId(str(previous_version_id))},
+                    ]
+                }
+            previous_doc = await self._resolve_awaitable(
+                self.db.count_observation.find_one(previous_filter, **kwargs)
+            )
+            if not isinstance(previous_doc, dict):
+                raise GovernanceViolation(
+                    "CRITICAL: previous_version_id references missing count observation"
+                )
+            incoming_version = int(document.get("version", 0) or 0)
+            expected_version = int(previous_doc.get("version", 1) or 1) + 1
+            if incoming_version != expected_version:
+                raise GovernanceViolation(
+                    "CRITICAL: Invalid version progression for recount observation"
+                )
+            document["version"] = expected_version
+            document.setdefault("parent_observation_id", str(previous_doc.get("id")))
+            lineage = list(previous_doc.get("lineage") or [])
+            lineage.append(str(previous_doc.get("id")))
+            document["lineage"] = lineage
+        else:
+            document.setdefault("lineage", [document.get("id")])
+
+        semantic_hash = self._build_count_observation_semantic_hash(document)
+        document["semantic_hash"] = semantic_hash
+        existing_semantic = await self._resolve_awaitable(
+            self.db.count_observation.find_one({"semantic_hash": semantic_hash}, **kwargs)
+        )
+        if isinstance(existing_semantic, dict):
+            raise GovernanceViolation(
+                "CRITICAL: Duplicate semantic hash for count observation"
+            )
+
+        idempotency_key = document.get("idempotency_key")
+        if idempotency_key:
+            existing_idempotency = await self._resolve_awaitable(
+                self.db.count_observation.find_one({"idempotency_key": idempotency_key}, **kwargs)
+            )
+            if isinstance(existing_idempotency, dict):
+                raise GovernanceViolation(
+                    "CRITICAL: Duplicate idempotency_key for count observation"
+                )
+
+        result = await self._execute_authorized_write(
+            lambda: self.db.count_observation.insert_one(document, **kwargs)
+        )
+        document["_id"] = result.inserted_id
+        session_id = str(document.get("session_id") or ctx.get("session_id") or "")
+        if session_id:
+            count_line_doc = self._build_count_line_projection(document)
+            await self._execute_authorized_write(
+                lambda: self.db.count_lines.insert_one(count_line_doc, **kwargs)
+            )
+        return result.inserted_id
+
+    def _build_count_line_projection(self, document: dict[str, Any]) -> dict[str, Any]:
+        quantity_obs = document.get("quantity_observation") or {}
+        now = _utc_now()
+        return {
+            "id": document.get("id"),
+            "session_id": document.get("session_id"),
+            "item_code": document.get("item_code"),
+            "item_name": document.get("item_name"),
+            "counted_qty": quantity_obs.get("quantity", 0.0),
+            "floor_id": document.get("floor_id"),
+            "rack_id": document.get("rack_id"),
+            "floor_no": document.get("floor_no"),
+            "rack_no": document.get("rack_no"),
+            "barcode": document.get("barcode"),
+            "batches": document.get("batches"),
+            "remark": document.get("remark") or quantity_obs.get("remark"),
+            "counted_at": quantity_obs.get("observed_at") or now,
+            "variance_reason": document.get("variance_reason"),
+            "variance_note": document.get("variance_note"),
+            "version": document.get("version", 1),
+            "previous_version_id": document.get("previous_version_id"),
+            "status": "draft",
+            "verified": False,
+            "approval_status": None,
+            "created_at": now,
+            "updated_at": now,
+        }
+
     async def _run_post_write_validation(
         self,
         *,

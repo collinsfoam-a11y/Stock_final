@@ -462,3 +462,100 @@ class PasswordResetConfirm(BaseModel):
         if len(self.new_password) < 8:
             raise ValueError("Password must be at least 8 characters long")
         return self
+
+
+class QuantityObservation(BaseModel):
+    quantity: float
+    remark: Optional[str] = None
+    observed_at: Optional[datetime] = None
+    observed_by: Optional[str] = None
+
+
+class PhysicalBatch(BaseModel):
+    item_code: str
+    physical_batch_number: str
+    mrp: Optional[float] = None
+    mfg_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    qty: float
+    condition: Optional[str] = None
+
+
+class SerialUnit(BaseModel):
+    serial_number: str
+    item_code: str
+    mrp: Optional[float] = None
+    mfg_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    condition: Optional[str] = None
+    damage_type: Optional[str] = None
+    photos: list[str] = Field(default_factory=list)
+    location: Optional[str] = None
+
+
+class ConditionAllocation(BaseModel):
+    condition: str
+    qty: float
+    reason: Optional[str] = None
+
+
+class EvidenceRecord(BaseModel):
+    storage_key: str
+    filename: str
+    capture_time: Optional[datetime] = None
+    uploader: Optional[str] = None
+    file_hash: Optional[str] = None
+    upload_status: str = "pending"
+
+
+class ExceptionRecord(BaseModel):
+    type: str
+    description: str
+    severity: str = "medium"
+
+
+class CountObservation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str
+    item_code: str
+    item_name: Optional[str] = None
+    quantity_observation: QuantityObservation
+    physical_batch: list[PhysicalBatch] = Field(default_factory=list)
+    serial_unit: list[SerialUnit] = Field(default_factory=list)
+    condition_allocation: list[ConditionAllocation] = Field(default_factory=list)
+    evidence: list[EvidenceRecord] = Field(default_factory=list)
+    exception: list[ExceptionRecord] = Field(default_factory=list)
+    idempotency_key: Optional[str] = None
+    version: int = 1
+    previous_version_id: Optional[str] = None
+    parent_observation_id: Optional[str] = None
+    lineage: list[str] = Field(default_factory=list)
+    status: str = "draft"
+    submitted_at: Optional[datetime] = None
+    submitted_by: Optional[str] = None
+    floor_id: Optional[str] = None
+    rack_id: Optional[str] = None
+    floor_no: Optional[str] = None
+    rack_no: Optional[str] = None
+    barcode: Optional[str] = None
+    batches: Optional[list[dict[str, Any]]] = None
+    remark: Optional[str] = None
+    noted_qty: Optional[float] = None
+    variance_reason: Optional[str] = None
+    variance_note: Optional[str] = None
+
+    @model_validator(mode="after")
+    def normalize_location_context(self) -> "CountObservation":
+        if self.floor_id:
+            self.floor_id = str(self.floor_id).strip() or None
+        if self.rack_id:
+            self.rack_id = str(self.rack_id).strip() or None
+        if self.floor_no:
+            self.floor_no = str(self.floor_no).strip() or None
+        if self.rack_no:
+            self.rack_no = str(self.rack_no).strip() or None
+        if not self.floor_id and self.floor_no:
+            self.floor_id = self.floor_no
+        if not self.rack_id and self.rack_no:
+            self.rack_id = self.rack_no
+        return self
