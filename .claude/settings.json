@@ -25,11 +25,8 @@
     "ask": [],
     "defaultMode": "acceptEdits"
   },
-  "model": {
-    "provider": "anthropic",
-    "modelName": "opus-4-8",
-    "alwaysThinkingEnabled": true
-  },
+  "model": "opus-4-8",
+  "alwaysThinkingEnabled": true,
   "hooks": {
     "PostToolUse": [
       {
