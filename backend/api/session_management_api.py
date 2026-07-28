@@ -36,6 +36,7 @@ from backend.services.canonical_inventory import (
 )
 from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.session_lifecycle_service import SessionLifecycleService
+from backend.services.finalisation_preflight import FinalisationPreflightService
 from backend.services.redis_service import get_redis
 from backend.services.runtime import get_refresh_token_service
 from backend.utils.api_utils import sanitize_for_logging
@@ -1712,6 +1713,18 @@ async def _complete_session_legacy_compatible(
         status_code=410,
         detail=("CRITICAL: /complete path is disabled. Use canonical /finalize flow only."),
     )
+
+
+@router.post("/{session_id}/finalize/preflight")
+async def finalize_preflight(
+    session_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    preflight = FinalisationPreflightService(db)
+    result = await preflight.evaluate(session_id)
+    status_code = 200 if result.get("ready") else 409
+    return {"success": result.get("ready", False), "data": result}
 
 
 @router.post("/{session_id}/finalize")
