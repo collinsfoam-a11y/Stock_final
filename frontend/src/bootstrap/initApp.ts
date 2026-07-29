@@ -116,10 +116,15 @@ export async function initializeApp(options: InitializeAppOptions): Promise<Init
   });
 
   const { authResult, settingsResult } = authAndSettingsResult;
-  if (authResult.status === "rejected" && isDev) {
+  if (authResult.status === "rejected") {
     log.warn("Auth loading failed", {
       error: describeError(authResult.reason),
     });
+    try {
+      await useAuthStore.getState().logout();
+    } catch (e) {
+      log.error("Failed to clear auth storage after auth load failure", { error: describeError(e) });
+    }
   }
   if (settingsResult.status === "rejected" && isDev) {
     log.warn("Settings loading failed", {

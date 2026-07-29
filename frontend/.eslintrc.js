@@ -1,6 +1,10 @@
 module.exports = {
   extends: "expo",
   plugins: ["import"],
+  env: {
+    jest: true,
+    node: true,
+  },
   settings: {
     "import/core-modules": ["expo-background-task"],
     "import/resolver": {
@@ -31,6 +35,13 @@ module.exports = {
     "no-restricted-imports": [
       "error",
       {
+        paths: [
+          {
+            name: "react-native",
+            importNames: ["TouchableOpacity"],
+            message: "Use AppTouchable from @/components/ui/AppTouchable instead for accessibility compliance.",
+          },
+        ],
         patterns: [
           {
             group: [
@@ -55,6 +66,9 @@ module.exports = {
       files: ["*.test.js", "*.test.tsx", "*.spec.js", "*.spec.tsx", "jest.setup.js", "jest.polyfills.js", "**/__tests__/**"],
       env: {
         jest: true,
+      },
+      rules: {
+        "@typescript-eslint/no-require-imports": "off",
       },
     },
     {

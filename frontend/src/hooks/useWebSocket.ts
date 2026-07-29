@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Platform } from "react-native";
-import { API_BASE_URL } from "../services/httpClient";
+import apiClient, { API_BASE_URL } from "../services/httpClient";
 import { useAuthStore } from "../store/authStore";
 import { secureStorage } from "../services/storage/secureStorage";
 import { handleUnauthorized } from "../services/authUnauthorizedHandler";
@@ -99,9 +99,23 @@ export const useWebSocket = (sessionId?: string, enabled: boolean = true) => {
 
       // Policy violation / auth failure: stop reconnecting and force auth cleanup.
       if (event.code === 1008) {
-        shouldReconnectRef.current = false;
+        log.warn("[WS] 1008 received, probing REST auth...", { sessionId: sessionId ?? null });
         if (isAuthenticated) {
-          handleUnauthorized();
+          // Don't immediately logout — try REST probe first
+          apiClient.get('/api/auth/me')
+            .then(() => {
+              log.warn("[WS] REST auth valid despite 1008, reconnecting...", { sessionId: sessionId ?? null });
+              if (shouldReconnectRef.current) {
+                if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+                reconnectTimeoutRef.current = setTimeout(connect, 5000);
+              }
+            })
+            .catch(() => {
+              shouldReconnectRef.current = false;
+              handleUnauthorized();
+            });
+        } else {
+          shouldReconnectRef.current = false;
         }
         return;
       }
