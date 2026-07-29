@@ -173,3 +173,49 @@ export const zIndex = {
 export type Duration = keyof typeof duration;
 export type EasingKey = keyof typeof easing;
 export type SpringConfig = keyof typeof springConfigs;
+
+// ==========================================
+// LEGACY MODERN ANIMATIONS
+// Nested duration/easing/scale/opacity object consumed by screens still
+// using the `modernAnimations.X.Y`-style API instead of the flat tokens above.
+// ==========================================
+export const legacyAnimations = {
+  duration: {
+    instant: 0,
+    fast: 150,
+    normal: 300,
+    slow: 500,
+    slower: 700,
+  },
+
+  easing: {
+    linear: "linear",
+    easeIn: "ease-in",
+    easeOut: "ease-out",
+    easeInOut: "ease-in-out",
+    spring: {
+      damping: 15,
+      stiffness: 300,
+      mass: 1,
+    },
+  },
+
+  scale: {
+    pressed: 0.95,
+    hover: 1.02,
+    focus: 1.05,
+    active: 1.05,
+  },
+
+  opacity: {
+    disabled: 0.5,
+    hover: 0.9,
+    pressed: 0.8,
+  },
+
+  spring: {
+    damping: 15,
+    stiffness: 300,
+    mass: 1,
+  },
+};

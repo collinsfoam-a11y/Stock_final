@@ -2,7 +2,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { theme } from "@/styles/unifiedSystem";
+import { legacyTheme as theme } from "@/theme/unified";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { DashboardStats } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 import { ModernCard } from "@/components/ui/ModernCard";

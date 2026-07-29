@@ -8,7 +8,7 @@ import React from "react";
 import { View, StyleSheet, ViewStyle } from "react-native";
 import { Skeleton, SkeletonListItem, SkeletonCard } from "./Skeleton";
 import { FadeIn } from "./FadeIn";
-import { modernColors } from "../../styles/unifiedSystem";
+import { legacyColors as modernColors } from "../../theme/unified";
 
 interface SkeletonListProps {
   count?: number;

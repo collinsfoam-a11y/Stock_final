@@ -21,12 +21,12 @@ import Animated, {
   FadeInUp,
 } from "react-native-reanimated";
 import {
-  modernColors,
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-  modernShadows,
-} from "../../styles/unifiedSystem";
+  legacyColors as modernColors,
+  legacyTypography as modernTypography,
+  legacySpacing as modernSpacing,
+  legacyBorderRadius as modernBorderRadius,
+  legacyShadows as modernShadows,
+} from "../../theme/unified";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 

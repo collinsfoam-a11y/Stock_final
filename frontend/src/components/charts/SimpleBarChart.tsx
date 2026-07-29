@@ -6,11 +6,11 @@
 import React from "react";
 import { View, Text, StyleSheet, Dimensions } from "react-native";
 import {
-  modernColors,
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-} from "../../styles/unifiedSystem";
+  legacyColors as modernColors,
+  legacyTypography as modernTypography,
+  legacySpacing as modernSpacing,
+  legacyBorderRadius as modernBorderRadius,
+} from "../../theme/unified";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CHART_WIDTH = SCREEN_WIDTH - modernSpacing.lg * 2 - 80;

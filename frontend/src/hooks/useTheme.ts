@@ -65,7 +65,7 @@ export type LegacyTheme = {
 };
 
 const buildLegacyTheme = (isDark: boolean): LegacyTheme => {
-  const neutral = colors.neutral ?? colors.gray;
+  const neutral = colors.neutral;
   const textColors = isDark ? darkColors.text : semanticColors.text;
   const backgroundColors = isDark ? darkColors.background : semanticColors.background;
   const borderColors = isDark ? darkColors.border : semanticColors.border;

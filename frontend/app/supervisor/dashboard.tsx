@@ -39,7 +39,7 @@ import {
 } from "../../src/components/supervisor/dashboard/supervisorDashboardShared";
 import { useUiTokens } from "../../src/hooks/useUiTokens";
 import { createSession, getSessions, getWarehouses, getZones } from "../../src/services/api/api";
-import { theme } from "@/theme/unified";
+import { legacyTheme as theme } from "@/theme/unified";
 import { colorWithAlpha } from "../../src/theme/themeTokens";
 import { Session } from "../../src/types";
 import { ActivityType } from "@/components/ui/ActivityFeedItem";

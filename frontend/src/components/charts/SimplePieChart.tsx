@@ -7,11 +7,11 @@ import React from "react";
 import { View, Text, StyleSheet, Platform } from "react-native";
 
 import {
-  modernColors,
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-} from "../../styles/unifiedSystem";
+  legacyColors as modernColors,
+  legacyTypography as modernTypography,
+  legacySpacing as modernSpacing,
+  legacyBorderRadius as modernBorderRadius,
+} from "../../theme/unified";
 
 const CHART_SIZE = 200;
 const RADIUS = 80;

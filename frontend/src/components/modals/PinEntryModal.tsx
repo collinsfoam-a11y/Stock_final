@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, StyleSheet, ActivityIndicator } from "react-native";
 import { Modal } from "../ui/Modal";
-import { modernColors } from "@/styles/unifiedSystem";
+import { legacyColors as modernColors } from "@/theme/unified";
 import { verifyPin } from "@/services/api/api"; // We will add this next
 import { semanticColors as uiSemanticColors } from "@/theme/unified";
 

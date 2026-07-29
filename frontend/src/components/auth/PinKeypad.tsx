@@ -19,7 +19,7 @@ import Animated, {
   withTiming,
   useSharedValue,
 } from "react-native-reanimated";
-import { modernColors } from "../../styles/unifiedSystem";
+import { legacyColors as modernColors } from "../../theme/unified";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 

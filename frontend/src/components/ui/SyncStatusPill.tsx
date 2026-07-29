@@ -18,7 +18,10 @@ import {
   subscribeSyncStatus,
   type SyncStatusSnapshot,
 } from "../../services/syncStatusPolling";
-import { modernAnimations, modernBorderRadius } from "@/theme/unified";
+import {
+  legacyAnimations as modernAnimations,
+  legacyBorderRadius as modernBorderRadius,
+} from "@/theme/unified";
 
 import { colors } from "@/theme/unified";
 import { useUiTokens } from "@/hooks/useUiTokens";

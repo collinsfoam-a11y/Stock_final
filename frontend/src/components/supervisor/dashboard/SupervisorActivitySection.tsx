@@ -4,7 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { ActivityItem } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { theme } from "@/styles/unifiedSystem";
+import { legacyTheme as theme } from "@/theme/unified";
 import { ActivityFeedItem } from "@/components/ui/ActivityFeedItem";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 import { ModernCard } from "@/components/ui/ModernCard";

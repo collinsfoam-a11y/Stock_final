@@ -20,7 +20,7 @@ import { useSettingsStore } from "../../src/store/settingsStore";
 import RecountAssignmentModal, {
   type AssignableStaffUser,
 } from "../../src/components/supervisor/RecountAssignmentModal";
-import { theme } from "../../src/styles/unifiedSystem";
+import { legacyTheme as theme } from "@/theme/unified";
 import { useToast } from "../../src/components/feedback/ToastProvider";
 import { safeBackNavigation } from "@/utils/navigation";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";

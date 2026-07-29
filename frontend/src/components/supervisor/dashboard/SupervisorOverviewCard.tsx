@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { theme } from "@/styles/unifiedSystem";
+import { legacyTheme as theme } from "@/theme/unified";
 import { colors as unifiedColors, semanticColors } from "@/theme/unified";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";

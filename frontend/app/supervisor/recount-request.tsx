@@ -8,7 +8,7 @@ import { View, Text, StyleSheet, TextInput, ScrollView, Alert, Platform } from "
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useToast } from "../../src/components/feedback/ToastProvider";
-import { theme } from "../../src/styles/unifiedSystem";
+import { legacyTheme as theme } from "@/theme/unified";
 import { createRecountRequest } from "../../src/services/api/approvalApi";
 import { safeBackNavigation } from "@/utils/navigation";
 

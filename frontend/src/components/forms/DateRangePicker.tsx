@@ -8,11 +8,11 @@ import { View, Text, StyleSheet, Platform } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  modernColors,
-  modernSpacing,
-  modernTypography,
-  modernBorderRadius,
-} from "@/styles/unifiedSystem";
+  legacyColors as modernColors,
+  legacySpacing as modernSpacing,
+  legacyTypography as modernTypography,
+  legacyBorderRadius as modernBorderRadius,
+} from "@/theme/unified";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 

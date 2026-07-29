@@ -7,7 +7,7 @@ import {
   WarehouseOption,
   ZoneOption,
 } from "@/components/supervisor/dashboard/supervisorDashboardShared";
-import { theme } from "@/styles/unifiedSystem";
+import { legacyTheme as theme } from "@/theme/unified";
 
 import { semanticColors as uiSemanticColors } from "@/theme/unified";
 import { haptics } from "@/services/haptics";

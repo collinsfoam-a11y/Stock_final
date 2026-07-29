@@ -5,7 +5,11 @@
 
 import React from "react";
 import { View, Text, StyleSheet, Dimensions, Platform } from "react-native";
-import { modernColors, modernTypography, modernSpacing } from "@/theme/unified";
+import {
+  legacyColors as modernColors,
+  legacyTypography as modernTypography,
+  legacySpacing as modernSpacing,
+} from "@/theme/unified";
 
 import { semanticColors as uiSemanticColors } from "@/theme/unified";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");

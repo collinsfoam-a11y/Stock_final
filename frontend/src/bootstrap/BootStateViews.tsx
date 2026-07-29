@@ -1,6 +1,9 @@
 import React from "react";
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
-import { modernColors, modernTypography } from "@/theme/unified";
+import {
+  legacyColors as modernColors,
+  legacyTypography as modernTypography,
+} from "@/theme/unified";
 import { BrandLogo } from "../components/branding/BrandLogo";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";

@@ -19,12 +19,12 @@ import Animated, {
   FadeInDown,
 } from "react-native-reanimated";
 import {
-  modernColors,
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-  modernShadows,
-} from "../../styles/unifiedSystem";
+  legacyColors as modernColors,
+  legacyTypography as modernTypography,
+  legacySpacing as modernSpacing,
+  legacyBorderRadius as modernBorderRadius,
+  legacyShadows as modernShadows,
+} from "../../theme/unified";
 import { StatusBadge } from "./StatusBadge";
 
 import { semanticColors as uiSemanticColors } from "@/theme/unified";

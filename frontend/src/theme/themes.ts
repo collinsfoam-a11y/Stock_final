@@ -5,16 +5,16 @@
  */
 
 import {
-  modernLayout,
-  modernColors,
-  modernGradients,
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-  modernShadows,
-  modernGlass,
-  modernAnimations,
-  modernComponentSizes,
+  legacyLayout as modernLayout,
+  legacyColors as modernColors,
+  legacyGradients as modernGradients,
+  legacyTypography as modernTypography,
+  legacySpacing as modernSpacing,
+  legacyBorderRadius as modernBorderRadius,
+  legacyShadows as modernShadows,
+  legacyGlass as modernGlass,
+  legacyAnimations as modernAnimations,
+  legacyComponentSizes as modernComponentSizes,
 } from "@/theme/unified";
 
 export type AppTheme = {

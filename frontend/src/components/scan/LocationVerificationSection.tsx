@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ModernInput } from "@/components/ui/ModernInput";
-import { modernColors } from "@/theme/unified";
+import { legacyColors as modernColors } from "@/theme/unified";
 import { DEFAULT_FLOOR_OPTIONS } from "@/config/location";
 
 import { semanticColors as uiSemanticColors } from "@/theme/unified";

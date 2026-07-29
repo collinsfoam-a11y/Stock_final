@@ -9,11 +9,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { VirtualList } from "../common/VirtualList";
 import {
-  modernColors,
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-} from "../../styles/unifiedSystem";
+  legacyColors as modernColors,
+  legacyTypography as modernTypography,
+  legacySpacing as modernSpacing,
+  legacyBorderRadius as modernBorderRadius,
+} from "../../theme/unified";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 

@@ -24,7 +24,7 @@ import { getLocalItems } from "../../src/db/localDb";
 import { ItemVerificationAPI } from "../../src/features/inventory/services/itemVerificationApi";
 import { ItemFilters, FilterValues } from "../../src/features/inventory/components/ItemFilters";
 import { useSettingsStore } from "../../src/store/settingsStore";
-import { theme } from "@/theme/unified";
+import { legacyTheme as theme } from "@/theme/unified";
 import { saveArrayBufferExport } from "../../src/utils/fileExport";
 import { safeBackNavigation } from "@/utils/navigation";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";

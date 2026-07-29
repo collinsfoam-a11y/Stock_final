@@ -19,11 +19,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, type CameraViewRef, useCameraPermissions } from "@/services/device/expoCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  modernColors,
-  modernTypography,
-  modernSpacing,
-  modernBorderRadius,
-} from "../../styles/unifiedSystem";
+  legacyColors as modernColors,
+  legacyTypography as modernTypography,
+  legacySpacing as modernSpacing,
+  legacyBorderRadius as modernBorderRadius,
+} from "../../theme/unified";
 
 import { semanticColors as uiSemanticColors } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";

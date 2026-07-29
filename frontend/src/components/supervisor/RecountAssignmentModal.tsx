@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SearchableSelectModal } from "../modals/SearchableSelectModal";
 import { Modal } from "../ui/Modal";
 import { ModernInput } from "../ui/ModernInput";
-import { theme } from "../../styles/unifiedSystem";
+import { legacyTheme as theme } from "@/theme/unified";
 
 import { semanticColors as uiSemanticColors } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";

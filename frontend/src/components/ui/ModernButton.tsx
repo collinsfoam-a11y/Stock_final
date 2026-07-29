@@ -22,7 +22,10 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { modernColors, modernAnimations } from "@/theme/unified";
+import {
+  legacyColors as modernColors,
+  legacyAnimations as modernAnimations,
+} from "@/theme/unified";
 import {
   colors,
   semanticColors,

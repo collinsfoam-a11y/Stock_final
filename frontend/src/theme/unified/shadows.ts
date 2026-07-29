@@ -197,3 +197,175 @@ export const blurIntensity = {
 // Type exports
 export type ShadowKey = keyof typeof shadows;
 export type Shadows = typeof shadows;
+
+// ==========================================
+// LEGACY MODERN SHADOWS
+// Wider named scale (incl. brand/aurora glows) consumed by screens still
+// using the `modernShadows.X`-style API instead of `shadows`/`coloredShadows`.
+// ==========================================
+export const legacyShadows = {
+  none: {
+    ...Platform.select({
+      web: { boxShadow: "0px 0px 0px transparent" },
+      default: {
+        shadowColor: "transparent",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0,
+        shadowRadius: 0,
+        elevation: 0,
+      },
+    }),
+  } as ViewStyle,
+
+  xs: {
+    ...Platform.select({
+      web: { boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.05)" },
+      default: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+      },
+    }),
+  } as ViewStyle,
+
+  sm: {
+    ...Platform.select({
+      web: { boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)" },
+      default: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+    }),
+  } as ViewStyle,
+
+  md: {
+    ...Platform.select({
+      web: { boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.15)" },
+      default: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 4,
+      },
+    }),
+  } as ViewStyle,
+
+  lg: {
+    ...Platform.select({
+      web: { boxShadow: "0px 8px 16px rgba(0, 0, 0, 0.2)" },
+      default: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+        elevation: 8,
+      },
+    }),
+  } as ViewStyle,
+
+  xl: {
+    ...Platform.select({
+      web: { boxShadow: "0px 12px 24px rgba(0, 0, 0, 0.25)" },
+      default: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.25,
+        shadowRadius: 24,
+        elevation: 12,
+      },
+    }),
+  } as ViewStyle,
+
+  primary: {
+    ...Platform.select({
+      web: { boxShadow: "0px 4px 8px rgba(59, 130, 246, 0.3)" },
+      default: {
+        shadowColor: "#3B82F6",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+      },
+    }),
+  } as ViewStyle,
+
+  success: {
+    ...Platform.select({
+      web: { boxShadow: "0px 4px 8px rgba(16, 185, 129, 0.3)" },
+      default: {
+        shadowColor: "#22C55E",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+      },
+    }),
+  } as ViewStyle,
+
+  aurora: {
+    ...Platform.select({
+      web: { boxShadow: "0px 8px 16px rgba(6, 182, 212, 0.35)" },
+      default: {
+        shadowColor: "#06B6D4",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 16,
+        elevation: 8,
+      },
+    }),
+  } as ViewStyle,
+
+  glow: {
+    ...Platform.select({
+      web: { boxShadow: "0px 0px 20px rgba(21, 96, 189, 0.6)" },
+      default: {
+        shadowColor: "#1560BD",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.6,
+        shadowRadius: 20,
+        elevation: 10,
+      },
+    }),
+  } as ViewStyle,
+};
+
+// ==========================================
+// LEGACY GLASSMORPHISM STYLES
+// ==========================================
+export const legacyGlass = {
+  light: {
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    borderWidth: 1,
+  } as ViewStyle,
+
+  medium: {
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderWidth: 1,
+  } as ViewStyle,
+
+  strong: {
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    borderColor: "rgba(255, 255, 255, 0.25)",
+    borderWidth: 1.5,
+  } as ViewStyle,
+
+  dark: {
+    backgroundColor: "rgba(2, 6, 23, 0.4)",
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderWidth: 1,
+  } as ViewStyle,
+
+  modal: {
+    backgroundColor: "rgba(11, 17, 33, 0.85)",
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    borderWidth: 1,
+  } as ViewStyle,
+};

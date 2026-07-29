@@ -15,7 +15,7 @@ import * as Haptics from "expo-haptics";
 
 import { getSessions } from "../../src/services/api/api";
 import { useSettingsStore } from "../../src/store/settingsStore";
-import { theme } from "../../src/styles/unifiedSystem";
+import { legacyTheme as theme } from "@/theme/unified";
 import { useToast } from "../../src/components/feedback/ToastProvider";
 import { safeBackNavigation } from "@/utils/navigation";
 import { ModernCard } from "@/components/ui/ModernCard";

@@ -7,7 +7,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Platform, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { theme } from "../../src/styles/unifiedSystem";
+import { legacyTheme as theme } from "@/theme/unified";
 import { useToast } from "../../src/components/feedback/ToastProvider";
 import { supervisorDecide, type SupervisorDecidePayload } from "../../src/services/api/approvalApi";
 import { safeBackNavigation } from "@/utils/navigation";

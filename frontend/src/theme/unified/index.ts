@@ -7,12 +7,21 @@
  */
 
 // Internal imports for unified theme object
-import { colors as c, semanticColors as sc, gradients as g } from "./colors";
+import {
+  colors as c,
+  semanticColors as sc,
+  gradients as g,
+  legacyColors,
+  legacyGradients,
+} from "./colors";
 import {
   spacing as sp,
   layout as l,
   touchTargets as tt,
   hitSlop as hs,
+  legacySpacing,
+  legacyLayout,
+  legacyComponentSizes,
 } from "./spacing";
 import {
   radius as r,
@@ -32,6 +41,8 @@ import {
   shadows as sh,
   coloredShadows as csh,
   blurIntensity as bi,
+  legacyShadows,
+  legacyGlass,
 } from "./shadows";
 import {
   duration as d,
@@ -40,6 +51,7 @@ import {
   springConfigs as spc,
   opacity as o,
   zIndex as z,
+  legacyAnimations,
 } from "./animations";
 
 // Core design tokens - export everything from each module
@@ -48,6 +60,8 @@ export {
   semanticColors,
   darkColors,
   gradients,
+  legacyColors,
+  legacyGradients,
   type ColorPalette,
   type SemanticColors,
   type ColorShade,
@@ -58,11 +72,20 @@ export {
   layout,
   touchTargets,
   hitSlop,
+  legacySpacing,
+  legacyLayout,
+  legacyComponentSizes,
   type Spacing,
   type SpacingKey,
 } from "./spacing";
 
-export { radius, componentRadius, type Radius, type RadiusKey } from "./radius";
+export {
+  radius,
+  componentRadius,
+  legacyBorderRadius,
+  type Radius,
+  type RadiusKey,
+} from "./radius";
 
 export {
   fontFamily,
@@ -71,6 +94,7 @@ export {
   lineHeight,
   letterSpacing,
   textStyles,
+  legacyTypography,
   type FontSize,
   type FontWeight,
   type TextStyleKey,
@@ -81,6 +105,8 @@ export {
   coloredShadows,
   glass,
   blurIntensity,
+  legacyShadows,
+  legacyGlass,
   type ShadowKey,
   type Shadows,
 } from "./shadows";
@@ -92,6 +118,7 @@ export {
   springConfigs,
   opacity,
   zIndex,
+  legacyAnimations,
   type Duration,
   type EasingKey,
   type SpringConfig,
@@ -101,6 +128,21 @@ export {
 // normalized onto the lower-level token exports yet.
 export const typography = legacyTypography;
 export const borderRadius = legacyBorderRadius;
+
+// Combined legacy theme object for screens that previously imported a
+// single static `theme` from the old modernDesignSystem bridge.
+export const legacyTheme = {
+  colors: legacyColors,
+  gradients: legacyGradients,
+  typography: legacyTypography,
+  spacing: legacySpacing,
+  borderRadius: legacyBorderRadius,
+  shadows: legacyShadows,
+  animations: legacyAnimations,
+  glass: legacyGlass,
+  layout: legacyLayout,
+  componentSizes: legacyComponentSizes,
+};
 
 /**
  * Complete unified theme object

@@ -20,7 +20,11 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { modernColors, modernSpacing, modernAnimations } from "@/theme/unified";
+import {
+  legacyColors as modernColors,
+  legacySpacing as modernSpacing,
+  legacyAnimations as modernAnimations,
+} from "@/theme/unified";
 import {
   semanticColors,
   radius as unifiedRadius,
