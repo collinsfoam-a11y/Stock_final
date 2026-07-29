@@ -101,16 +101,6 @@ jest.mock("../../../store/settingsStore", () => ({
 // jest.mock() factory crashes babel-plugin-jest-hoist when combined with
 // babel-preset-expo ("expected node to be of a type VariableDeclarator").
 
-jest.mock("../../ui/GlassCard", () => ({
-  GlassCard: ({ children }: { children: React.ReactNode }) => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const ReactActual = require("react");
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { View } = require("react-native");
-    return ReactActual.createElement(View, null, children);
-  },
-}));
-
 jest.mock("../../ui/AnimatedPressable", () => ({
   AnimatedPressable: ({
     children,

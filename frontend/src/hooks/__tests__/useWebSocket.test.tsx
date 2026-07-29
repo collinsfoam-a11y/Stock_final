@@ -6,6 +6,7 @@ import { handleUnauthorized } from "../../services/authUnauthorizedHandler";
 
 jest.mock("../../services/httpClient", () => ({
   API_BASE_URL: "http://localhost:8001",
+  get: jest.fn().mockRejectedValue(new Error("unauthorized")),
 }));
 
 jest.mock("../../store/authStore", () => ({

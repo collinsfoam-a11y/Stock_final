@@ -13,7 +13,7 @@ interface UseSearchItemsQueryOptions {
  * React Query hook for searching items
  * Provides caching and debouncing via query key changes
  */
-const useSearchItemsQuery = ({
+export const useSearchItemsQuery = ({
   query,
   enabled = true,
   minChars = 2,

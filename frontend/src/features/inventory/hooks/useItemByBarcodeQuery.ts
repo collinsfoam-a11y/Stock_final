@@ -13,7 +13,7 @@ interface UseItemByBarcodeQueryOptions {
  * React Query hook for fetching an item by barcode
  * Provides caching, automatic retries, and offline support
  */
-const useItemByBarcodeQuery = ({
+export const useItemByBarcodeQuery = ({
   barcode,
   enabled = true,
   retryCount = 3,
