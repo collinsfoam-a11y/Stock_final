@@ -238,3 +238,97 @@ export const textStyles = {
 export type FontSize = keyof typeof fontSize;
 export type FontWeight = keyof typeof fontWeight;
 export type TextStyleKey = keyof typeof textStyles;
+
+// ==========================================
+// LEGACY TYPOGRAPHY OBJECT
+// Full nested typography scale consumed by screens still using the
+// `typography.h1.fontSize`-style API instead of the flat tokens above.
+// ==========================================
+export const legacyTypography = {
+  fontFamily: {
+    display: "Inter_700Bold",
+    heading: "Inter_600SemiBold",
+    body: "Inter_400Regular",
+    label: "Inter_500Medium",
+    mono: Platform.OS === "ios" ? "Menlo" : "monospace",
+  },
+
+  display: {
+    large: { fontSize: 57, fontWeight: "700" as const, lineHeight: 64, letterSpacing: -0.5 },
+    medium: { fontSize: 45, fontWeight: "700" as const, lineHeight: 52, letterSpacing: -0.5 },
+    small: { fontSize: 36, fontWeight: "700" as const, lineHeight: 44, letterSpacing: -0.5 },
+  },
+
+  h1: { fontSize: 32, fontWeight: "700" as const, lineHeight: 40, letterSpacing: -0.5 },
+  h2: { fontSize: 28, fontWeight: "600" as const, lineHeight: 36, letterSpacing: 0 },
+  h3: { fontSize: 24, fontWeight: "600" as const, lineHeight: 32, letterSpacing: 0 },
+  h4: { fontSize: 20, fontWeight: "600" as const, lineHeight: 28, letterSpacing: 0.15 },
+  h5: { fontSize: 18, fontWeight: "600" as const, lineHeight: 24, letterSpacing: 0.15 },
+  h6: { fontSize: 16, fontWeight: "600" as const, lineHeight: 24, letterSpacing: 0.15 },
+
+  body: {
+    large: { fontSize: 18, fontWeight: "400" as const, lineHeight: 28, letterSpacing: 0.15 },
+    medium: { fontSize: 16, fontWeight: "400" as const, lineHeight: 24, letterSpacing: 0.15 },
+    small: { fontSize: 14, fontWeight: "400" as const, lineHeight: 20, letterSpacing: 0.25 },
+  },
+
+  label: {
+    large: { fontSize: 14, fontWeight: "500" as const, lineHeight: 20, letterSpacing: 0.1 },
+    medium: { fontSize: 12, fontWeight: "500" as const, lineHeight: 16, letterSpacing: 0.5 },
+    small: { fontSize: 11, fontWeight: "500" as const, lineHeight: 16, letterSpacing: 0.5 },
+  },
+
+  button: {
+    large: { fontSize: 16, fontWeight: "600" as const, lineHeight: 24, letterSpacing: 0.5 },
+    medium: { fontSize: 14, fontWeight: "600" as const, lineHeight: 20, letterSpacing: 0.5 },
+    small: { fontSize: 12, fontWeight: "600" as const, lineHeight: 16, letterSpacing: 0.5 },
+  },
+
+  overline: {
+    fontSize: 10,
+    fontWeight: "600" as const,
+    lineHeight: 16,
+    letterSpacing: 1.5,
+    textTransform: "uppercase" as const,
+  },
+
+  fontSize: {
+    xs: 12,
+    sm: 14,
+    base: 16,
+    md: 18,
+    lg: 20,
+    xl: 24,
+    "2xl": 30,
+    "3xl": 36,
+    "4xl": 48,
+    "5xl": 60,
+    "6xl": 72,
+    "7xl": 96,
+  },
+
+  fontWeight: {
+    light: "300" as const,
+    normal: "400" as const,
+    medium: "500" as const,
+    semibold: "600" as const,
+    bold: "700" as const,
+    extrabold: "800" as const,
+  },
+
+  lineHeight: {
+    tight: 1.2,
+    normal: 1.5,
+    relaxed: 1.75,
+    loose: 2,
+  },
+
+  letterSpacing: {
+    tighter: -0.5,
+    tight: -0.25,
+    normal: 0,
+    wide: 0.25,
+    wider: 0.5,
+    widest: 1,
+  },
+};

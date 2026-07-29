@@ -14,7 +14,11 @@ import {
   touchTargets as tt,
   hitSlop as hs,
 } from "./spacing";
-import { radius as r, componentRadius as cr } from "./radius";
+import {
+  radius as r,
+  componentRadius as cr,
+  legacyBorderRadius,
+} from "./radius";
 import {
   fontSize as fs,
   fontWeight as fw,
@@ -22,6 +26,7 @@ import {
   lineHeight as lh,
   letterSpacing as ls,
   textStyles as ts,
+  legacyTypography,
 } from "./typography";
 import {
   shadows as sh,
@@ -36,10 +41,6 @@ import {
   opacity as o,
   zIndex as z,
 } from "./animations";
-import {
-  modernBorderRadius as legacyBorderRadius,
-  modernTypography as legacyTypography,
-} from "../../styles/modernDesignSystem";
 
 // Core design tokens - export everything from each module
 export {

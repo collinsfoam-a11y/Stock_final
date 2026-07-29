@@ -55,3 +55,26 @@ export const componentRadius = {
 // Type exports
 export type Radius = typeof radius;
 export type RadiusKey = keyof typeof radius;
+
+// ==========================================
+// LEGACY BORDER RADIUS OBJECT
+// Wider scale (incl. component-specific keys) consumed by screens still
+// using the flat `borderRadius.md`-style API instead of `radius`/`componentRadius`.
+// ==========================================
+export const legacyBorderRadius = {
+  none: 0,
+  xs: 6,
+  sm: 10,
+  md: 14,
+  lg: 18,
+  xl: 24,
+  "2xl": 32,
+  "3xl": 40,
+  full: 9999,
+
+  button: 12,
+  card: 16,
+  input: 12,
+  modal: 24,
+  badge: 9999,
+};
