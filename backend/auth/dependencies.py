@@ -280,8 +280,14 @@ async def require_admin(
 
 def require_permissions(required_permissions: list[str]):
     """
-    Dependency factory to require specific permissions
-    Usage: dependencies=[Depends(require_permissions(["manage_reports"]))]
+    Dependency factory to require specific permissions.
+    Usage: dependencies=[Depends(require_permissions([Permission.ERROR_LOG_READ]))]
+
+    Resolution is delegated to ``backend.auth.permissions.get_user_permissions``,
+    which is the single authority on what a user may do. It expands the user's
+    role via ROLE_PERMISSIONS, unions any custom grants, and subtracts
+    ``disabled_permissions``. Reading ``current_user["permissions"]`` directly
+    here would bypass both role grants and revocations.
     """
 
     async def permission_checker(
@@ -290,15 +296,18 @@ def require_permissions(required_permissions: list[str]):
         """Check if user has required permissions"""
         from backend.error_messages import get_error_message
 
-        user_role = current_user.get("role", "")
-        user_permissions = current_user.get("permissions", [])
+        # Imported inside the function: permissions.py imports get_current_user
+        # from this module, so a module-level import would be circular.
+        from backend.auth.permissions import get_user_permissions
 
-        # Admin has all permissions
-        if user_role == "admin":
-            return current_user
+        # Accepts Permission members or raw strings; Permission is a str enum.
+        required = [str(getattr(p, "value", p)) for p in required_permissions]
+        effective_permissions = set(get_user_permissions(current_user))
 
-        # Check if user has all required permissions
-        missing_permissions = [p for p in required_permissions if p not in user_permissions]
+        # No admin short-circuit: ROLE_PERMISSIONS["admin"] already grants every
+        # permission, and honouring disabled_permissions for admins too keeps
+        # this consistent with PermissionChecker in permissions.py.
+        missing_permissions = [p for p in required if p not in effective_permissions]
 
         if missing_permissions:
             error = get_error_message("AUTH_INSUFFICIENT_PERMISSIONS")
@@ -309,7 +318,7 @@ def require_permissions(required_permissions: list[str]):
                     "detail": f"Missing permissions: {', '.join(missing_permissions)}",
                     "code": error.get("code", "INSUFFICIENT_PERMISSIONS"),
                     "category": error.get("category", "authorization"),
-                    "required_permissions": required_permissions,
+                    "required_permissions": required,
                     "missing_permissions": missing_permissions,
                 },
             )
