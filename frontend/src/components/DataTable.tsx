@@ -8,6 +8,9 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-nati
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
+
 export interface TableColumn {
   key: string;
   label: string;
@@ -96,7 +99,15 @@ export const DataTable: React.FC<DataTableProps> = ({
         <TouchableOpacity
           key={column.key}
           style={[styles.headerCell, column.width && { width: column.width }] as any}
-          onPress={() => column.sortable && handleSort(column.key)}
+          {...(column.sortable
+            ? getAccessibleButtonProps({ label: `Sort by ${column.label}` })
+            : {})}
+          onPress={() => {
+            if (column.sortable) {
+              void haptics.light();
+              handleSort(column.key);
+            }
+          }}
           disabled={!column.sortable}
         >
           <Text style={styles.headerText}>{column.label}</Text>
@@ -106,6 +117,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               size={16}
               color={uiColors.info[500]}
               style={styles.sortIcon}
+              {...(column.sortable ? getDecorativeIconProps() : {})}
             />
           )}
         </TouchableOpacity>
@@ -118,7 +130,13 @@ export const DataTable: React.FC<DataTableProps> = ({
     <TouchableOpacity
       key={index}
       style={[styles.row, index % 2 === 0 && styles.rowEven]}
-      onPress={() => onRowPress?.(item)}
+      {...(onRowPress ? getAccessibleButtonProps({ label: `Row ${index + 1}` }) : {})}
+      onPress={() => {
+        if (onRowPress) {
+          void haptics.light();
+          onRowPress(item);
+        }
+      }}
       disabled={!onRowPress}
     >
       {columns.map((column) => (
@@ -146,13 +164,18 @@ export const DataTable: React.FC<DataTableProps> = ({
       <View style={styles.pagination}>
         <TouchableOpacity
           style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
-          onPress={() => setCurrentPage(currentPage - 1)}
+          {...getAccessibleButtonProps({ label: "Previous page", disabled: currentPage === 1 })}
+          onPress={() => {
+            void haptics.light();
+            setCurrentPage(currentPage - 1);
+          }}
           disabled={currentPage === 1}
         >
           <Ionicons
             name="chevron-back"
             size={20}
             color={currentPage === 1 ? uiColors.neutral[300] : uiColors.info[500]}
+            {...getDecorativeIconProps()}
           />
         </TouchableOpacity>
 
@@ -165,13 +188,21 @@ export const DataTable: React.FC<DataTableProps> = ({
             styles.paginationButton,
             currentPage === totalPages && styles.paginationButtonDisabled,
           ]}
-          onPress={() => setCurrentPage(currentPage + 1)}
+          {...getAccessibleButtonProps({
+            label: "Next page",
+            disabled: currentPage === totalPages,
+          })}
+          onPress={() => {
+            void haptics.light();
+            setCurrentPage(currentPage + 1);
+          }}
           disabled={currentPage === totalPages}
         >
           <Ionicons
             name="chevron-forward"
             size={20}
             color={currentPage === totalPages ? uiColors.neutral[300] : uiColors.info[500]}
+            {...getDecorativeIconProps()}
           />
         </TouchableOpacity>
       </View>
