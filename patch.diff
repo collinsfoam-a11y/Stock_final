@@ -1,0 +1,215 @@
+<<<<<<< SEARCH
+import React, { useState, useMemo } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+=======
+import React, { useState, useMemo } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+  const renderHeader = () => (
+    <View style={styles.header}>
+      {columns.map((column) => (
+        <TouchableOpacity
+          key={column.key}
+          style={[styles.headerCell, column.width && { width: column.width }] as any}
+          onPress={() => column.sortable && handleSort(column.key)}
+          disabled={!column.sortable}
+        >
+          <Text style={styles.headerText}>{column.label}</Text>
+          {sortable && column.sortable && sortColumn === column.key && (
+            <Ionicons
+              name={sortDirection === "asc" ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={uiColors.info[500]}
+              style={styles.sortIcon}
+            />
+          )}
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  // Render row
+  const renderRow = (item: TableData, index: number) => (
+    <TouchableOpacity
+      key={index}
+      style={[styles.row, index % 2 === 0 && styles.rowEven]}
+      onPress={() => onRowPress?.(item)}
+      disabled={!onRowPress}
+    >
+      {columns.map((column) => (
+        <View
+          key={column.key}
+          style={[styles.cell, column.width && { width: column.width }] as any}
+        >
+          {column.render ? (
+            column.render(item[column.key], item)
+          ) : (
+            <Text style={styles.cellText}>{String(item[column.key] || "")}</Text>
+          )}
+        </View>
+      ))}
+    </TouchableOpacity>
+  );
+
+  // Render pagination
+  const renderPagination = () => {
+    if (!paginated || totalPages <= 1) {
+      return null;
+    }
+
+    return (
+      <View style={styles.pagination}>
+        <TouchableOpacity
+          style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
+          onPress={() => setCurrentPage(currentPage - 1)}
+          disabled={currentPage === 1}
+        >
+          <Ionicons
+            name="chevron-back"
+            size={20}
+            color={currentPage === 1 ? uiColors.neutral[300] : uiColors.info[500]}
+          />
+        </TouchableOpacity>
+
+        <Text style={styles.paginationText}>
+          Page {currentPage} of {totalPages}
+        </Text>
+
+        <TouchableOpacity
+          style={[
+            styles.paginationButton,
+            currentPage === totalPages && styles.paginationButtonDisabled,
+          ]}
+          onPress={() => setCurrentPage(currentPage + 1)}
+          disabled={currentPage === totalPages}
+        >
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={currentPage === totalPages ? uiColors.neutral[300] : uiColors.info[500]}
+          />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+=======
+  const renderHeader = () => (
+    <View style={styles.header}>
+      {columns.map((column) => (
+        <TouchableOpacity
+          key={column.key}
+          style={[styles.headerCell, column.width && { width: column.width }] as any}
+          {...(column.sortable ? getAccessibleButtonProps({ label: `Sort by ${column.label}` }) : {})}
+          onPress={() => {
+            if (column.sortable) {
+              void haptics.light();
+              handleSort(column.key);
+            }
+          }}
+          disabled={!column.sortable}
+        >
+          <Text style={styles.headerText}>{column.label}</Text>
+          {sortable && column.sortable && sortColumn === column.key && (
+            <Ionicons
+              name={sortDirection === "asc" ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={uiColors.info[500]}
+              style={styles.sortIcon}
+              {...(column.sortable ? getDecorativeIconProps() : {})}
+            />
+          )}
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  // Render row
+  const renderRow = (item: TableData, index: number) => (
+    <TouchableOpacity
+      key={index}
+      style={[styles.row, index % 2 === 0 && styles.rowEven]}
+      {...(onRowPress ? getAccessibleButtonProps({ label: `Row ${index + 1}` }) : {})}
+      onPress={() => {
+        if (onRowPress) {
+          void haptics.light();
+          onRowPress(item);
+        }
+      }}
+      disabled={!onRowPress}
+    >
+      {columns.map((column) => (
+        <View
+          key={column.key}
+          style={[styles.cell, column.width && { width: column.width }] as any}
+        >
+          {column.render ? (
+            column.render(item[column.key], item)
+          ) : (
+            <Text style={styles.cellText}>{String(item[column.key] || "")}</Text>
+          )}
+        </View>
+      ))}
+    </TouchableOpacity>
+  );
+
+  // Render pagination
+  const renderPagination = () => {
+    if (!paginated || totalPages <= 1) {
+      return null;
+    }
+
+    return (
+      <View style={styles.pagination}>
+        <TouchableOpacity
+          style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
+          {...getAccessibleButtonProps({ label: "Previous page", disabled: currentPage === 1 })}
+          onPress={() => {
+            void haptics.light();
+            setCurrentPage(currentPage - 1);
+          }}
+          disabled={currentPage === 1}
+        >
+          <Ionicons
+            name="chevron-back"
+            size={20}
+            color={currentPage === 1 ? uiColors.neutral[300] : uiColors.info[500]}
+            {...getDecorativeIconProps()}
+          />
+        </TouchableOpacity>
+
+        <Text style={styles.paginationText}>
+          Page {currentPage} of {totalPages}
+        </Text>
+
+        <TouchableOpacity
+          style={[
+            styles.paginationButton,
+            currentPage === totalPages && styles.paginationButtonDisabled,
+          ]}
+          {...getAccessibleButtonProps({ label: "Next page", disabled: currentPage === totalPages })}
+          onPress={() => {
+            void haptics.light();
+            setCurrentPage(currentPage + 1);
+          }}
+          disabled={currentPage === totalPages}
+        >
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={currentPage === totalPages ? uiColors.neutral[300] : uiColors.info[500]}
+            {...getDecorativeIconProps()}
+          />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+>>>>>>> REPLACE
