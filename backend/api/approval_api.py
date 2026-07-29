@@ -13,16 +13,11 @@ from backend.api.schemas import (
     ApprovalExceptionType,
     CountObservationStatus,
     ReviewQueueType,
-    SqlAvailability,
-    SqlComparisonSource,
-    SystemRecommendation,
 )
 from backend.auth.dependencies import auth_deps
 from backend.auth.permissions import Permission, require_permission
 from backend.models.approval import (
     AdditionalLocationInvestigation,
-    ApprovalDecision,
-    RecountRequest,
     SessionApprovalSummary,
     SupervisorReviewCard,
 )
@@ -200,7 +195,7 @@ async def supervisor_decide(
         update["status"] = CountObservationStatus.REJECTED.value
     elif payload.action == "REQUEST_RECOUNT":
         recount_service = get_recount_service()
-        request = await recount_service.create_request(
+        await recount_service.create_request(
             db=db,
             observation_id=observation_id,
             session_id=observation.get("session_id", ""),

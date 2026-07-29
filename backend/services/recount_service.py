@@ -14,7 +14,6 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from backend.models.approval import (
-    ApprovalDecision,
     RecountComparisonResult,
     RecountRequest,
 )

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,6 @@ class SqlVarianceEngine:
 
     async def compute_session_variance(self, session_id: str) -> Dict[str, Any]:
         observations = await self.db["count_observations"].find({"session_id": session_id}).to_list(length=1000)
-        count_lines = await self.db.count_lines.find({"session_id": session_id}).to_list(length=1000)
 
         total_physical = sum(float(o.get("counted_qty") or 0) for o in observations)
         total_sql_at_submission = sum(float(o.get("sql_qty_at_submission") or 0) for o in observations)

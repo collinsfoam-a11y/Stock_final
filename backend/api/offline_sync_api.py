@@ -19,12 +19,9 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 
 from backend.api.schemas import (
-    CommandJournalEntry,
     CommandState,
     CommandSyncRequest,
     CommandSyncResponse,
@@ -32,7 +29,7 @@ from backend.api.schemas import (
 )
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
-from backend.models.audit import AuditEventType, AuditLogStatus
+from backend.models.audit import AuditLogStatus
 from backend.services.activity_log import ActivityLogService
 from backend.services.transaction_manager import mongo_transaction
 
@@ -172,8 +169,8 @@ async def sync_commands(
                 "last_error": cmd.last_error,
             }
 
-            async def _write() -> None:
-                await command_journal.insert_one(entry_doc)
+            async def _write(doc: dict = entry_doc) -> None:
+                await command_journal.insert_one(doc)
 
             await mongo_transaction(db, _write)
 

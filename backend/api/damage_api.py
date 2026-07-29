@@ -14,13 +14,9 @@ from backend.api.schemas import (
     DamageCase,
     DamageCaseCreate,
     DamageCaseDecision,
-    DamageType,
-    ItemCondition,
-    ReturnStatus,
 )
 from backend.auth.dependencies import auth_deps
 from backend.auth.permissions import Permission, require_permission
-from backend.db.runtime import get_db
 from backend.services.governance_guard import GovernanceViolation
 
 logger = __import__("logging").getLogger(__name__)

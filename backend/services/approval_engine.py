@@ -12,15 +12,14 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from backend.models.approval import (
-    AdditionalLocationInvestigation,
     AutoApprovalResult,
 )
 from backend.api.schemas import (
     AdditionalLocationResponse,
     ApprovalExceptionDetail,
     ApprovalExceptionType,
+    CountObservationStatus,
     SqlAvailability,
-    SqlComparisonSource,
     SystemRecommendation,
 )
 
@@ -32,8 +31,8 @@ def _utc_now() -> datetime:
 
 
 class ApprovalEngine:
-    def __init__(self):
-        pass
+    def __init__(self, count_line_service: Any = None):
+        self.count_line_service = count_line_service
 
     async def evaluate(
         self,
@@ -196,7 +195,6 @@ class ApprovalEngine:
         batches = observation.get("batches") or []
         if not batches:
             return self._ok("no_batches")
-        sql_qty = float(observation.get("sql_qty_at_submission") or 0)
         physical_total = sum(float(b.get("counted_qty") or 0) for b in batches)
         sql_total = sum(float(b.get("sql_qty") or 0) for b in batches)
         if abs(physical_total - sql_total) > 0.0001:
