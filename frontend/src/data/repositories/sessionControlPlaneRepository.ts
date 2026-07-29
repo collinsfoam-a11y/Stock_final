@@ -1,11 +1,11 @@
 import { CONTROL_PLANE_PROJECTION_VERSION } from "@/core/config/controlPlaneFlags";
-import type { SessionEvent } from "@/domain/events/sessionEvents";
+import type { SessionEvent } from "@/core/events/sessionEvents";
 import {
   applySessionEventToSnapshot,
   buildSessionLocationKey,
   isProjectedSessionActive,
   type ProjectedSessionSnapshot,
-} from "@/domain/reducers/sessionProjectionReducer";
+} from "@/core/reducers/sessionProjectionReducer";
 import { getDb } from "@/db/localDb";
 
 type SessionEventRow = {
@@ -74,14 +74,14 @@ const toSnapshot = (row: SessionSnapshotRow): ProjectedSessionSnapshot => ({
 });
 
 const parseSessionEvent = (row: SessionEventRow): SessionEvent =>
-  ({
+  (({
     id: row.event_id,
     type: row.event_type as SessionEvent["type"],
     aggregateId: row.local_session_id,
     payload: JSON.parse(row.payload_json),
     meta: JSON.parse(row.metadata_json),
-    ts: row.event_ts,
-  }) as SessionEvent;
+    ts: row.event_ts
+  }) as SessionEvent);
 
 const getSnapshotByLocalId = async (
   localSessionId: string

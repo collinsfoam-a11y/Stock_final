@@ -4,15 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-} from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, Alert, RefreshControl } from "react-native";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useCameraPermissions } from "../../src/services/device/expoCamera";
@@ -49,8 +41,8 @@ import { validateBarcode } from "../../src/utils/validation";
 import { safeBackNavigation } from "@/utils/navigation";
 import { dedupeItemsKeepingHighestStock } from "../../src/utils/itemBatchUtils";
 
-import ModernHeader from "../../src/components/ui/ModernHeader";
-import ModernButton from "../../src/components/ui/ModernButton";
+import { ModernHeader } from "../../src/components/ui/ModernHeader";
+import { ModernButton } from "../../src/components/ui/ModernButton";
 import { SyncStatusPill } from "../../src/components/ui/SyncStatusPill";
 import { FinishRackModal } from "../../src/components/scan/FinishRackModal";
 import { ScanCameraOverlay } from "../../src/components/scan/ScanCameraOverlay";
@@ -64,6 +56,7 @@ import { useAuthStore } from "../../src/store/authStore";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { getTokenShadowStyle } from "@/theme/themeTokens";
 import { flags } from "@/constants/flags";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 const SCAN_BUFFER_TIMEOUT = 2000; // 2 seconds
 const SCAN_BUFFER_MAX_SIZE = 10;
 const SCAN_CONFIDENCE_THRESHOLD = 2;
@@ -604,18 +597,17 @@ const ScanScreen = React.memo(function ScanScreen() {
         onBackPress={() => safeBackNavigation(router, { userRole: "staff" })}
         rightComponent={
           <View style={styles.headerActions}>
-            <TouchableOpacity
+            <AppTouchable
               onPress={handleLogout}
               style={styles.logoutButton}
               accessibilityLabel="Log out"
               accessibilityRole="button"
             >
               <Ionicons name="log-out-outline" size={24} color={uiTokens.colors.accent} />
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
         }
       />
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="always"
@@ -680,7 +672,6 @@ const ScanScreen = React.memo(function ScanScreen() {
 
         <View style={styles.footerSpacer} />
       </ScrollView>
-
       {/* Bottom Action */}
       <View
         style={[
@@ -700,7 +691,6 @@ const ScanScreen = React.memo(function ScanScreen() {
           fullWidth
         />
       </View>
-
       <FinishRackModal
         currentFloor={currentFloor}
         currentRack={currentRack}
@@ -710,7 +700,6 @@ const ScanScreen = React.memo(function ScanScreen() {
         sessionStats={sessionStats}
         visible={showCloseSessionModal}
       />
-
       {loading && (
         <View
           style={[
@@ -725,7 +714,6 @@ const ScanScreen = React.memo(function ScanScreen() {
           <ActivityIndicator size="large" color={uiTokens.colors.accent} />
         </View>
       )}
-
       {/* Performance Monitor Overlay */}
       {showPerformanceOverlay && (
         <View

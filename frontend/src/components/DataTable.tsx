@@ -4,10 +4,11 @@
  */
 
 import React, { useState, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 export interface TableColumn {
   key: string;
   label: string;
@@ -93,7 +94,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   const renderHeader = () => (
     <View style={styles.header}>
       {columns.map((column) => (
-        <TouchableOpacity
+        <AppTouchable
           key={column.key}
           style={[styles.headerCell, column.width && { width: column.width }] as any}
           onPress={() => column.sortable && handleSort(column.key)}
@@ -108,19 +109,19 @@ export const DataTable: React.FC<DataTableProps> = ({
               style={styles.sortIcon}
             />
           )}
-        </TouchableOpacity>
+        </AppTouchable>
       ))}
     </View>
   );
 
   // Render row
   const renderRow = (item: TableData, index: number) => (
-    <TouchableOpacity
+    <AppTouchable
       key={index}
       style={[styles.row, index % 2 === 0 && styles.rowEven]}
       onPress={() => onRowPress?.(item)}
       disabled={!onRowPress}
-    >
+      accessibilityLabel="Select row">
       {columns.map((column) => (
         <View
           key={column.key}
@@ -133,7 +134,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           )}
         </View>
       ))}
-    </TouchableOpacity>
+    </AppTouchable>
   );
 
   // Render pagination
@@ -144,36 +145,34 @@ export const DataTable: React.FC<DataTableProps> = ({
 
     return (
       <View style={styles.pagination}>
-        <TouchableOpacity
+        <AppTouchable
           style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
           onPress={() => setCurrentPage(currentPage - 1)}
           disabled={currentPage === 1}
-        >
+          accessibilityLabel="Previous page">
           <Ionicons
             name="chevron-back"
             size={20}
             color={currentPage === 1 ? uiColors.neutral[300] : uiColors.info[500]}
           />
-        </TouchableOpacity>
-
+        </AppTouchable>
         <Text style={styles.paginationText}>
           Page {currentPage} of {totalPages}
         </Text>
-
-        <TouchableOpacity
+        <AppTouchable
           style={[
             styles.paginationButton,
             currentPage === totalPages && styles.paginationButtonDisabled,
           ]}
           onPress={() => setCurrentPage(currentPage + 1)}
           disabled={currentPage === totalPages}
-        >
+          accessibilityLabel="Next page">
           <Ionicons
             name="chevron-forward"
             size={20}
             color={currentPage === totalPages ? uiColors.neutral[300] : uiColors.info[500]}
           />
-        </TouchableOpacity>
+        </AppTouchable>
       </View>
     );
   };

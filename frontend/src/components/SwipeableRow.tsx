@@ -1,8 +1,9 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 
-import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 type Props = {
   children: React.ReactNode;
   leftLabel?: string;
@@ -20,9 +21,12 @@ const Action = ({
   color: string;
   onPress?: () => void;
 }) => (
-  <TouchableOpacity style={[styles.action, { backgroundColor: color }]} onPress={onPress}>
+  <AppTouchable
+    style={[styles.action, { backgroundColor: color }]}
+    onPress={onPress}
+ >
     <Text style={styles.actionText}>{label}</Text>
-  </TouchableOpacity>
+  </AppTouchable>
 );
 
 export const SwipeableRow: React.FC<Props> = ({
@@ -78,4 +82,3 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SwipeableRow;

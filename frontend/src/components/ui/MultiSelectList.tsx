@@ -18,14 +18,7 @@
  * ```
  */
 import React, { useState, useCallback, useMemo } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform as _Platform,
-  FlatListProps,
-} from "react-native";
+import { View, Text, StyleSheet, Platform as _Platform, FlatListProps } from "react-native";
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -42,7 +35,9 @@ import {
   radius,
   shadows as _shadows,
   textStyles,
-} from "@/theme/legacyCompat";
+} from "@/theme/unified";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 /** Generic item type constraint */
 export interface SelectableItem {
@@ -78,7 +73,7 @@ export interface MultiSelectListProps<T extends SelectableItem> extends Omit<
   onSelectionModeChange?: (active: boolean) => void;
 }
 
-const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+const AnimatedTouchable = Animated.createAnimatedComponent(AppTouchable);
 
 export function MultiSelectList<T extends SelectableItem>({
   items,
@@ -205,7 +200,11 @@ export function MultiSelectList<T extends SelectableItem>({
       {/* Selection Header */}
       {showSelectAll && selectionMode && items.length > 0 && (
         <Animated.View style={[styles.header, headerAnimatedStyle]}>
-          <TouchableOpacity style={styles.selectAllRow} onPress={toggleAll} activeOpacity={0.7}>
+          <AppTouchable
+            style={styles.selectAllRow}
+            onPress={toggleAll}
+            activeOpacity={0.7}
+            accessibilityLabel="Confirm">
             <View
               style={[
                 styles.checkbox,
@@ -219,19 +218,21 @@ export function MultiSelectList<T extends SelectableItem>({
               {someSelected && <View style={styles.partialIndicator} />}
             </View>
             <Text style={styles.selectAllText}>{selectAllLabel}</Text>
-          </TouchableOpacity>
+          </AppTouchable>
 
           <View style={styles.selectionInfo}>
             <Text style={styles.selectionCount}>{selectedIds.size} selected</Text>
             {selectedIds.size > 0 && (
-              <TouchableOpacity onPress={clearSelection} style={styles.clearButton}>
+              <AppTouchable
+                onPress={clearSelection}
+                style={styles.clearButton}
+ >
                 <Text style={styles.clearText}>Clear</Text>
-              </TouchableOpacity>
+              </AppTouchable>
             )}
           </View>
         </Animated.View>
       )}
-
       {/* List */}
       {/* ⚡ Bolt: Replaced FlatList with VirtualList to ensure smooth scrolling and quick rendering even with large datasets in multi-select modals. */}
       <VirtualList
@@ -432,4 +433,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MultiSelectList;
+

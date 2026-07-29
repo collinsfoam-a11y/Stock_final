@@ -1,14 +1,16 @@
 import React from "react";
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import ModernCard from "@/components/ui/ModernCard";
-import ModernInput from "@/components/ui/ModernInput";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { ModernInput } from "@/components/ui/ModernInput";
 import { getStockQty } from "@/utils/itemBatchUtils";
-import { borderRadius, colors, spacing, typography } from "@/theme/legacyCompat";
+import { borderRadius, colors, spacing, typography } from "@/theme/unified";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 export type ScanLookupNotice = {
   actionLabel?: string;
@@ -141,7 +143,11 @@ const SearchResultItem = React.memo(function SearchResultItem({
   const iconWash = uiTokens.mode === "dark" ? "rgba(88, 166, 255, 0.14)" : colors.primary[50];
 
   return (
-    <TouchableOpacity style={styles.resultItem} onPress={onPress} activeOpacity={0.7}>
+    <AppTouchable
+      style={styles.resultItem}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityLabel="Item">
       <View style={[styles.resultIcon, { backgroundColor: iconWash }]}>
         <Ionicons name="cube-outline" size={20} color={uiTokens.colors.accent} />
       </View>
@@ -157,7 +163,7 @@ const SearchResultItem = React.memo(function SearchResultItem({
         </Text>
       </View>
       <Ionicons name="chevron-forward" size={20} color={uiTokens.colors.textMuted} />
-    </TouchableOpacity>
+    </AppTouchable>
   );
 });
 
@@ -216,7 +222,7 @@ export function ScanLookupPanel({
               containerStyle={{ marginBottom: 0 }}
             />
           </View>
-          <TouchableOpacity
+          <AppTouchable
             style={[
               styles.searchButton,
               {
@@ -237,13 +243,13 @@ export function ScanLookupPanel({
             onPress={searchQuery.trim() ? onSubmitSearch : onOpenScanner}
             disabled={loading}
             activeOpacity={0.7}
-          >
+            accessibilityLabel={searchQuery.trim() ? "Search" : "Open scanner"}>
             <Ionicons
               name={searchQuery.trim() ? "arrow-forward" : "scan"}
               size={24}
               color={colors.white}
             />
-          </TouchableOpacity>
+          </AppTouchable>
         </View>
 
         {notice ? (
@@ -271,7 +277,7 @@ export function ScanLookupPanel({
                 {notice.message}
               </Text>
               {notice.actionLabel && onRetryNotice ? (
-                <TouchableOpacity
+                <AppTouchable
                   style={[
                     styles.noticeAction,
                     {
@@ -286,18 +292,18 @@ export function ScanLookupPanel({
                   <Text style={[styles.noticeActionText, { color: noticeColor }]}>
                     {notice.actionLabel}
                   </Text>
-                </TouchableOpacity>
+                </AppTouchable>
               ) : null}
             </View>
             {onDismissNotice ? (
-              <TouchableOpacity
+              <AppTouchable
                 style={styles.noticeDismiss}
                 onPress={onDismissNotice}
                 accessibilityRole="button"
                 accessibilityLabel="Dismiss scan message"
               >
                 <Ionicons name="close" size={18} color={uiTokens.colors.textMuted} />
-              </TouchableOpacity>
+              </AppTouchable>
             ) : null}
           </View>
         ) : null}
@@ -320,7 +326,6 @@ export function ScanLookupPanel({
           </View>
         )}
       </View>
-
       {searchResults.length === 0 && (
         <View style={styles.recentSection}>
           <Text style={[styles.sectionTitle, { color: uiTokens.colors.textPrimary }]}>
@@ -405,7 +410,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: colors.neutral[200],
   },
   searchButton: {
     width: 52,
@@ -418,8 +423,8 @@ const styles = StyleSheet.create({
     borderColor: colors.primary[700],
   },
   searchButtonDisabled: {
-    backgroundColor: colors.gray[300],
-    borderColor: colors.gray[300],
+    backgroundColor: colors.neutral[300],
+    borderColor: colors.neutral[300],
   },
   notice: {
     flexDirection: "row",
@@ -439,13 +444,13 @@ const styles = StyleSheet.create({
   noticeTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[900],
+    color: colors.neutral[900],
   },
   noticeMessage: {
     marginTop: 2,
     fontSize: typography.fontSize.xs,
     lineHeight: 18,
-    color: colors.gray[600],
+    color: colors.neutral[600],
   },
   noticeAction: {
     alignSelf: "flex-start",
@@ -474,13 +479,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: colors.neutral[200],
     zIndex: 200,
     elevation: 2,
   },
   searchResultSeparator: {
     height: 1,
-    backgroundColor: colors.gray[100],
+    backgroundColor: colors.neutral[100],
   },
   resultItem: {
     flexDirection: "row",
@@ -503,11 +508,11 @@ const styles = StyleSheet.create({
   resultName: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.gray[900],
+    color: colors.neutral[900],
   },
   resultCode: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray[500],
+    color: colors.neutral[500],
   },
   resultStock: {
     marginTop: 2,
@@ -524,7 +529,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: "700",
-    color: colors.gray[700],
+    color: colors.neutral[700],
     marginBottom: spacing.md,
     marginLeft: spacing.xs,
   },
@@ -535,7 +540,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: colors.neutral[200],
   },
   recentRow: {
     flexDirection: "row",
@@ -556,12 +561,12 @@ const styles = StyleSheet.create({
   recentName: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[900],
+    color: colors.neutral[900],
     marginBottom: 2,
   },
   recentCode: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray[500],
+    color: colors.neutral[500],
     fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
   },
   emptyState: {
@@ -571,14 +576,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.gray[100],
+    borderColor: colors.neutral[100],
     borderStyle: "dashed",
   },
   emptyIconContainer: {
     width: 64,
     height: 64,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.gray[50],
+    backgroundColor: colors.neutral[50],
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.md,
@@ -586,17 +591,17 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[900],
+    color: colors.neutral[900],
     marginBottom: spacing.xs,
   },
   emptySubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: colors.neutral[500],
     textAlign: "center",
     lineHeight: 20,
   },
   skeleton: {
-    backgroundColor: colors.gray[200],
+    backgroundColor: colors.neutral[200],
     overflow: "hidden",
   },
 });

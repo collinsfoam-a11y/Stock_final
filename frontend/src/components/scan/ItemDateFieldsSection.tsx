@@ -7,7 +7,7 @@ import { useUiTokens } from "@/hooks/useUiTokens";
 import type {
   DateParts,
   DatePickerPart,
-} from "@/domains/inventory/hooks/scan/useFlexibleDateField";
+} from "@/features/inventory/hooks/scan/useFlexibleDateField";
 
 interface DateFieldController {
   handleFormatChange: (format: DateFormatType) => void;

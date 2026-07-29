@@ -4,7 +4,7 @@ import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary";
 
 import { errorReporter } from "../services/errorRecovery";
 
-import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
 interface Props {
   children: ReactNode;
   fallback?: (error: Error, resetError: () => void) => ReactNode;

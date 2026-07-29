@@ -1,4 +1,5 @@
 import React from "react";
+// eslint-disable-next-line no-restricted-imports
 import * as ReactNative from "react-native";
 import { fireEvent, render } from "@testing-library/react-native";
 
@@ -44,7 +45,9 @@ jest.mock("@/components/ui", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require("react");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // eslint-disable-next-line no-restricted-imports
   const { Text, TouchableOpacity, View } = require("react-native");
+  const { AppTouchable } = require("@/components/ui/AppTouchable");
 
   return {
     AnimatedPressable: ({
@@ -54,7 +57,7 @@ jest.mock("@/components/ui", () => {
     }: {
       children: React.ReactNode;
       onPress?: () => void;
-    }) => React.createElement(TouchableOpacity, { onPress, ...props }, children),
+    }) => React.createElement(AppTouchable, { onPress, ...props }, children),
     GlassCard: ({ children, ...props }: { children: React.ReactNode }) =>
       React.createElement(View, props, children),
     ModernCard: ({ children, ...props }: { children: React.ReactNode }) =>

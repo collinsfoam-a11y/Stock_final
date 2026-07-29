@@ -3,28 +3,22 @@
  * Part of FR-M-23: Recount notifications
  */
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
 
 import { getCountLineById, type Notification } from "../src/services/api/api";
-import ModernCard from "../src/components/ui/ModernCard";
-import ModernHeader from "../src/components/ui/ModernHeader";
+import { ModernCard } from "../src/components/ui/ModernCard";
+import { ModernHeader } from "../src/components/ui/ModernHeader";
 import { useNotificationStore } from "../src/store/notificationStore";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { createLogger } from "@/services/logging";
 import { toastService } from "@/services/toastService";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 import { safeBackNavigation } from "@/utils/navigation";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 const log = createLogger("notifications");
 
@@ -47,7 +41,7 @@ function NotificationFilterTab({
     uiTokens.mode === "dark" ? uiTokens.colors.background : uiTokens.colors.surfaceElevated;
 
   return (
-    <TouchableOpacity
+    <AppTouchable
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       onPress={onPress}
@@ -59,7 +53,7 @@ function NotificationFilterTab({
           borderRadius: uiTokens.radius.md,
         },
       ]}
-    >
+ >
       <Text
         style={[
           styles.filterText,
@@ -68,7 +62,7 @@ function NotificationFilterTab({
       >
         {count === undefined ? label : `${label} (${count})`}
       </Text>
-    </TouchableOpacity>
+    </AppTouchable>
   );
 }
 
@@ -174,7 +168,7 @@ export default function NotificationsScreen() {
     const iconInfo = getNotificationIcon(item.type);
 
     return (
-      <TouchableOpacity
+      <AppTouchable
         accessibilityLabel={item.read ? item.title : `${item.title}, unread`}
         accessibilityRole="button"
         activeOpacity={0.75}
@@ -244,7 +238,7 @@ export default function NotificationsScreen() {
             ) : null}
           </View>
         </ModernCard>
-      </TouchableOpacity>
+      </AppTouchable>
     );
   };
 

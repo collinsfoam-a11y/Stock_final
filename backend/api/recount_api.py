@@ -23,7 +23,7 @@ from backend.services.notification_service import (
     NotificationType,
 )
 from backend.services.session_lifecycle_service import SessionLifecycleService
-from backend.services.transaction_manager import mongo_transaction
+from backend.core.uow import MongoUnitOfWork
 from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
@@ -365,14 +365,14 @@ async def complete_recount_request(
             )
         else:
             update_data["result_qty"] = request.result_qty
-            async with mongo_transaction(db.client) as tx:
-                recount = await lifecycle_service.get_recount_request(recount_id, db_session=tx)
+            async with MongoUnitOfWork(db.client) as uow:
+                recount = await lifecycle_service.get_recount_request(recount_id, db_session=uow.session)
                 if not recount:
                     raise HTTPException(status_code=404, detail="Recount request not found")
 
                 existing_line = await db.count_lines.find_one(
                     {"id": recount["count_line_id"]},
-                    session=tx,
+                    session=uow.session,
                 )
                 if not existing_line:
                     raise HTTPException(status_code=404, detail="Count line for recount not found")
@@ -394,7 +394,7 @@ async def complete_recount_request(
                     )
 
                 session_id = str(existing_line.get("session_id") or recount.get("session_id") or "")
-                session = await lifecycle_service.ensure_session_active(session_id, db_session=tx)
+                session = await lifecycle_service.ensure_session_active(session_id, db_session=uow.session)
 
                 location_id = str(
                     existing_line.get("location_id")
@@ -460,7 +460,7 @@ async def complete_recount_request(
                 tx_context = {
                     "session": session,
                     "username": username,
-                    "db_session": tx,
+                    "db_session": uow.session,
                 }
                 await write_service.process_write(
                     {"operation": "insert_one", "document": new_line},
@@ -490,7 +490,7 @@ async def complete_recount_request(
                     target_status=RecountStatus.COMPLETED.value,
                     actor=username,
                     fields=update_data,
-                    db_session=tx,
+                    db_session=uow.session,
                 )
 
         notification_service = NotificationService(db)

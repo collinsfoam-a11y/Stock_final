@@ -12,7 +12,6 @@ import {
   Platform,
   ScrollView,
   KeyboardAvoidingView,
-  TouchableOpacity,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -21,9 +20,9 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useScanSessionStore } from "@/store/scanSessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 
-import ModernHeader from "@/components/ui/ModernHeader";
-import ModernButton from "@/components/ui/ModernButton";
-import ModernCard from "@/components/ui/ModernCard";
+import { ModernHeader } from "@/components/ui/ModernHeader";
+import { ModernButton } from "@/components/ui/ModernButton";
+import { ModernCard } from "@/components/ui/ModernCard";
 import { ThemedScreen } from "@/components/ui/ThemedScreen";
 import { BatchVariantsSection } from "@/components/scan/BatchVariantsSection";
 import { CountQuantitySection } from "@/components/scan/CountQuantitySection";
@@ -35,18 +34,20 @@ import { ItemSubmitBar } from "@/components/scan/ItemSubmitBar";
 // ItemSummarySection removed — hero card is now the single source of item identity
 import { SerializedItemSection } from "@/components/scan/SerializedItemSection";
 import { PhotoCaptureModal } from "@/components/modals/PhotoCaptureModal";
-import { useDeferredItemSubmission } from "@/domains/inventory/hooks/scan/useDeferredItemSubmission";
-import { useItemDraftAutosave } from "@/domains/inventory/hooks/scan/useItemDraftAutosave";
-import { useItemDetailData } from "@/domains/inventory/hooks/scan/useItemDetailData";
-import { useItemEvidenceState } from "@/domains/inventory/hooks/scan/useItemEvidenceState";
-import { useItemMetadataState } from "@/domains/inventory/hooks/scan/useItemMetadataState";
-import { useQuantityCountManager } from "@/domains/inventory/hooks/scan/useQuantityCountManager";
-import { useSerialEntryManager } from "@/domains/inventory/hooks/scan/useSerialEntryManager";
+import { useDeferredItemSubmission } from "@/features/inventory/hooks/scan/useDeferredItemSubmission";
+import { useItemDraftAutosave } from "@/features/inventory/hooks/scan/useItemDraftAutosave";
+import { useItemDetailData } from "@/features/inventory/hooks/scan/useItemDetailData";
+import { useItemEvidenceState } from "@/features/inventory/hooks/scan/useItemEvidenceState";
+import { useItemMetadataState } from "@/features/inventory/hooks/scan/useItemMetadataState";
+import { useQuantityCountManager } from "@/features/inventory/hooks/scan/useQuantityCountManager";
+import { useSerialEntryManager } from "@/features/inventory/hooks/scan/useSerialEntryManager";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getDecorativeIconProps } from "@/utils/accessibility";
 import { safeBackNavigation } from "@/utils/navigation";
 import { createItemDetailStyles } from "@/styles/screens/ItemDetail.styles";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 const formatMetricNumber = (value: number | undefined | null): string => {
   if (typeof value !== "number" || !Number.isFinite(value)) return "---";
@@ -374,7 +375,6 @@ export default function ItemDetailScreen() {
         showBackButton
         onBackPress={handleBackPress}
       />
-
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -457,7 +457,7 @@ export default function ItemDetailScreen() {
                 </Text>
               </View>
               {/* Refresh stock from ERP/SQL */}
-              <TouchableOpacity
+              <AppTouchable
                 style={[
                   styles.heroMetricTile,
                   {
@@ -481,7 +481,7 @@ export default function ItemDetailScreen() {
                 <Text style={[styles.heroMetricLabel, { color: uiTokens.colors.accent }]}>
                   {isRefreshing ? "Syncing…" : "Refresh"}
                 </Text>
-              </TouchableOpacity>
+              </AppTouchable>
             </View>
 
             {/* Blind recount warning — shown when previous count must stay hidden */}
@@ -629,7 +629,6 @@ export default function ItemDetailScreen() {
           onSubmit={handleSubmitPress}
         />
       </KeyboardAvoidingView>
-
       <ItemDetailModals
         defaultMrp={parseFloat(mrp) || item?.mrp}
         existingSerials={serialEntries.map((e) => e.serial_number)}
@@ -640,7 +639,6 @@ export default function ItemDetailScreen() {
         onSerialScanned={handleSerialScanned}
         serialScannerVisible={showSerialScanner}
       />
-
       <PhotoCaptureModal
         visible={photoCaptureVisible}
         title={photoCaptureTitle}

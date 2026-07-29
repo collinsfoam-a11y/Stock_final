@@ -188,14 +188,14 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     alignItems: "center",
   },
   loadingText: {
-    marginTop: 16,
+    marginTop: uiTokens.spacing.md,
     ...typography.body,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: uiTokens.spacing.lg,
     paddingTop: Platform.OS === "ios" ? 60 : 40,
     paddingBottom: 20,
   },
@@ -210,7 +210,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: uiTokens.spacing.sm,
   },
   refreshButton: {
     padding: 10,
@@ -224,13 +224,13 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   },
   tabsContainer: {
     flexDirection: "row",
-    paddingHorizontal: 24,
+    paddingHorizontal: uiTokens.spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: dashboardTheme.colors.border.light,
-    gap: 24,
+    gap: uiTokens.spacing.lg,
   },
   tab: {
-    paddingVertical: 12,
+    paddingVertical: uiTokens.spacing.sm,
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
@@ -249,11 +249,11 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     flex: 1,
   },
   contentContainer: {
-    padding: 24,
+    padding: uiTokens.spacing.lg,
     paddingBottom: 40,
   },
   offlineNotice: {
-    padding: 18,
+    padding: uiTokens.spacing.md,
     marginBottom: 20,
     gap: 6,
   },
@@ -267,17 +267,17 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     lineHeight: 18,
   },
   tabContent: {
-    gap: 24,
+    gap: uiTokens.spacing.lg,
   },
   quickStatsRow: {
     flexDirection: "row",
-    gap: 16,
+    gap: uiTokens.spacing.md,
     flexWrap: "wrap",
   },
   toolsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 16,
+    gap: uiTokens.spacing.md,
   },
   toolCardWrapper: {
     flex: 1,
@@ -288,7 +288,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   },
   toolCard: {
     minHeight: 144,
-    padding: 18,
+    padding: uiTokens.spacing.md,
     gap: 10,
   },
   toolIcon: {
@@ -310,7 +310,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   quickStatCard: {
     flex: 1,
     minWidth: 140,
-    padding: 20,
+    padding: uiTokens.spacing.lg,
     alignItems: "center",
   },
   quickStatIcon: {
@@ -331,19 +331,19 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   },
   chartsRow: {
     flexDirection: "row",
-    gap: 24,
+    gap: uiTokens.spacing.lg,
     flexWrap: "wrap",
   },
   chartCard: {
     flex: 1,
     minWidth: 300,
-    padding: 20,
+    padding: uiTokens.spacing.lg,
     minHeight: 300,
   },
   chartTitle: {
     ...typography.h3,
     fontSize: 18,
-    marginBottom: 24,
+    marginBottom: uiTokens.spacing.lg,
   },
   sectionCard: {
     padding: 0,
@@ -351,7 +351,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   sectionTitle: {
     ...typography.h3,
     fontSize: 20,
-    padding: 20,
+    padding: uiTokens.spacing.lg,
   },
   servicesList: {
     paddingHorizontal: 20,
@@ -360,7 +360,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   serviceRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: uiTokens.spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: dashboardTheme.colors.border.light,
   },
@@ -368,7 +368,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     flex: 2,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: uiTokens.spacing.sm,
   },
   statusDot: {
     width: 8,
@@ -420,12 +420,12 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   },
   metricsGrid: {
     flexDirection: "row",
-    gap: 16,
+    gap: uiTokens.spacing.md,
     flexWrap: "wrap",
   },
   metricCard: {
     flex: 1,
-    padding: 20,
+    padding: uiTokens.spacing.lg,
     minWidth: 150,
   },
   metricLabel: {
@@ -437,13 +437,13 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     fontSize: 24,
   },
   diagnosisCard: {
-    padding: 20,
+    padding: uiTokens.spacing.lg,
   },
   diagnosisHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: uiTokens.spacing.lg,
   },
   sectionSubtitle: {
     ...typography.small,
@@ -470,7 +470,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     paddingVertical: 20,
     backgroundColor: "rgba(255, 255, 255, 0.03)",
     borderRadius: 12,
-    marginBottom: 24,
+    marginBottom: uiTokens.spacing.lg,
   },
   diagStatItem: {
     alignItems: "center",
@@ -484,15 +484,15 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     marginTop: 4,
   },
   issuesList: {
-    gap: 12,
+    gap: uiTokens.spacing.sm,
   },
   issueRow: {
     flexDirection: "row",
-    padding: 16,
+    padding: uiTokens.spacing.md,
     backgroundColor: "rgba(255, 255, 255, 0.05)",
     borderRadius: 12,
     alignItems: "center",
-    gap: 16,
+    gap: uiTokens.spacing.md,
   },
   issueIcon: {
     width: 40,
@@ -540,7 +540,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   noIssues: {
     alignItems: "center",
     paddingVertical: 40,
-    gap: 16,
+    gap: uiTokens.spacing.md,
   },
   noIssuesText: {
     ...typography.body,
@@ -548,7 +548,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   },
   recommendationsCard: {
     marginTop: 20,
-    padding: 16,
+    padding: uiTokens.spacing.md,
     borderRadius: 12,
     backgroundColor: "rgba(255, 255, 255, 0.04)",
     gap: 10,
@@ -570,16 +570,16 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   reportsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 16,
+    gap: uiTokens.spacing.md,
   },
   reportCard: {
     flex: 1,
     minWidth: 300,
-    padding: 20,
+    padding: uiTokens.spacing.lg,
   },
   reportHeader: {
     flexDirection: "row",
-    gap: 16,
+    gap: uiTokens.spacing.md,
     marginBottom: 20,
   },
   reportIcon: {
@@ -615,7 +615,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     fontWeight: "600",
   },
   analyticsCard: {
-    padding: 20,
+    padding: uiTokens.spacing.lg,
   },
   analyticsHeader: {
     flexDirection: "row",
@@ -639,7 +639,7 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
+    padding: uiTokens.spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: dashboardTheme.colors.border.light,
   },
@@ -648,16 +648,16 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
     fontSize: 20,
   },
   modalBody: {
-    padding: 20,
+    padding: uiTokens.spacing.lg,
   },
   modalLabel: {
     ...typography.label,
-    marginTop: 16,
+    marginTop: uiTokens.spacing.md,
     marginBottom: 8,
   },
   formatOptions: {
     flexDirection: "row",
-    gap: 12,
+    gap: uiTokens.spacing.sm,
     marginTop: 8,
   },
   formatOption: {
@@ -682,8 +682,8 @@ export const createDashboardWebStyles = (uiTokens: ThemeTokens) => {
   },
   modalFooter: {
     flexDirection: "row",
-    padding: 20,
-    gap: 12,
+    padding: uiTokens.spacing.lg,
+    gap: uiTokens.spacing.sm,
     borderTopWidth: 1,
     borderTopColor: dashboardTheme.colors.border.light,
   },

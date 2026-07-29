@@ -7,13 +7,17 @@ on import/export stability for runtime and tests.
 import logging
 from pathlib import Path
 
-from backend.app.factory import *  # noqa: F403
+from backend.app_factory import *  # noqa: F403
 from backend.api.count_lines_api import get_count_lines, unverify_stock, verify_stock  # noqa: F401
 from backend.auth.dependencies import get_current_user  # noqa: F401
 from backend.core.lifespan import cache_service  # noqa: F401
 from backend.app.settings_runtime import run_server_main
 from backend.config import settings
 
+# Since run_server_main uses "backend.server:app", we must export it here.
+from backend.app.factory import create_app
+
+app = create_app()
 
 def main() -> None:
     """Run the backend using the shared runtime bootstrap without re-importing app_factory."""
@@ -27,3 +31,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+from backend.app_factory import db

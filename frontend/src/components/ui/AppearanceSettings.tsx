@@ -12,7 +12,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { useSettingsStore } from "../../store/settingsStore";
 import { ThemePicker } from "./ThemePicker";
-import { AppCard } from "./AppCard";
+import { ModernCard } from "./ModernCard";
 import { FontSizeSlider, FontStylePicker } from "../settings";
 import { flags } from "../../constants/flags";
 
@@ -50,34 +50,34 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
 
       {/* Theme Mode */}
       <Animated.View entering={FadeInDown.delay(100).springify()}>
-        <AppCard variant="outlined" elevation="none" padding={16} style={styles.section}>
+        <ModernCard variant="outlined" elevation="none" padding={16} style={styles.section}>
           <ThemePicker compact={compact} />
-        </AppCard>
+        </ModernCard>
       </Animated.View>
 
       {/* Font Size */}
       <Animated.View entering={FadeInDown.delay(200).springify()}>
-        <AppCard variant="outlined" elevation="none" padding={0} style={styles.section}>
+        <ModernCard variant="outlined" elevation="none" padding={0} style={styles.section}>
           <FontSizeSlider
             value={typeof settings.fontSizeValue === "number" ? settings.fontSizeValue : 16}
             onValueChange={handleFontSizeChange}
           />
-        </AppCard>
+        </ModernCard>
       </Animated.View>
 
       {/* Font Style */}
       <Animated.View entering={FadeInDown.delay(300).springify()}>
-        <AppCard variant="outlined" elevation="none" padding={0} style={styles.section}>
+        <ModernCard variant="outlined" elevation="none" padding={0} style={styles.section}>
           <FontStylePicker
             value={settings.fontStyle}
             onValueChange={(value) => setSetting("fontStyle", value)}
           />
-        </AppCard>
+        </ModernCard>
       </Animated.View>
 
       {/* Preview Card */}
       <Animated.View entering={FadeInDown.delay(400).springify()}>
-        <AppCard variant="outlined" elevation="none" padding={20} style={styles.section}>
+        <ModernCard variant="outlined" elevation="none" padding={20} style={styles.section}>
           <Text style={[styles.previewTitle, { color: colors.text }]}>Preview</Text>
           <View style={[styles.previewBox, { backgroundColor: colors.background }]}>
             <View style={[styles.previewHeader, { backgroundColor: colors.surface }]}>
@@ -151,12 +151,12 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
               />
             </View>
           </View>
-        </AppCard>
+        </ModernCard>
       </Animated.View>
 
       {flags.uiSettingsV2 && (
         <Animated.View entering={FadeInDown.delay(500).springify()}>
-          <AppCard variant="outlined" elevation="none" padding={16} style={styles.section}>
+          <ModernCard variant="outlined" elevation="none" padding={16} style={styles.section}>
             <Text style={[styles.previewTitle, { color: colors.text }]}>Experience Settings</Text>
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
               UI Upgrade Mode: {flags.uiVisualSystemV2 ? "Premium Visual" : "Classic"}
@@ -187,7 +187,7 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({
                 {uiTokens.motion.slow}ms
               </Text>
             </View>
-          </AppCard>
+          </ModernCard>
         </Animated.View>
       )}
     </View>
@@ -302,4 +302,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AppearanceSettings;
+

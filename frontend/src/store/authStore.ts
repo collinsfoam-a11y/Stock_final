@@ -146,7 +146,7 @@ const LAST_USER_STORAGE_KEY = "last_logged_user";
 const PENDING_REDIRECT_STORAGE_KEY = "auth_pending_redirect";
 
 const log = createLogger("authStore");
-let heartbeatInterval: NodeJS.Timeout | null = null;
+let heartbeatInterval: ReturnType<typeof setTimeout> | null = null;
 const IS_TEST_ENV =
   process.env.NODE_ENV === "test" || typeof process.env.JEST_WORKER_ID !== "undefined";
 let apiClientPromise: Promise<(typeof import("../services/httpClient"))["default"]> | null = null;

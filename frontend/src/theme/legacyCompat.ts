@@ -83,12 +83,12 @@ const mergedSpacing = {
   ...((unifiedSpacing as unknown as GenericMap) || {}),
 } as GenericMap;
 
-if (mergedSpacing.xxl === undefined && mergedSpacing["2xl"] !== undefined) {
-  mergedSpacing.xxl = mergedSpacing["2xl"];
+if (mergedSpacing["2xl"] === undefined && mergedSpacing["2xl"] !== undefined) {
+  mergedSpacing["2xl"] = mergedSpacing["2xl"];
 }
 
-if (mergedSpacing["2xl"] === undefined && mergedSpacing.xxl !== undefined) {
-  mergedSpacing["2xl"] = mergedSpacing.xxl;
+if (mergedSpacing["2xl"] === undefined && mergedSpacing["2xl"] !== undefined) {
+  mergedSpacing["2xl"] = mergedSpacing["2xl"];
 }
 
 if (mergedSpacing["3xl"] === undefined) mergedSpacing["3xl"] = 64;

@@ -6,7 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import { useAuthStore } from "@/store/authStore";
 import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
 
-import { semanticColors, colors } from "@/theme/legacyCompat";
+import { semanticColors, colors } from "@/theme/unified";
 import { getFlag } from "@/constants/flags";
 const FEATURE_ITEMS = [
   "Offline-first stock counts",

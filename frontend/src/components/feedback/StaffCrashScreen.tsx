@@ -7,13 +7,15 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Platform } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Platform } from "react-native";
 import { useGlobalSearchParams, usePathname, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getAccessibleButtonProps } from "@/utils/accessibility";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface StaffCrashScreenProps {
   error: Error;
@@ -85,10 +87,7 @@ export const isStaleReactQueryBundleError = (error: Error): boolean => {
   const details = `${error?.message ?? ""}\n${error?.stack ?? ""}`;
   // Stale web bundles surface as "<hook> is not a function" for hooks whose
   // module/context shifted between chunks (useQueryClient, useReducedMotion, …).
-  return (
-    /(useQueryClient|useReducedMotion)/i.test(details) &&
-    /(not a function|undefined)/i.test(details)
-  );
+  return (/(useQueryClient|useReducedMotion)/i.test(details) && /(not a function|undefined)/i.test(details));
 };
 
 export const recoverFromStaleWebBundle = async (): Promise<boolean> => {
@@ -207,35 +206,35 @@ export const StaffCrashScreen: React.FC<StaffCrashScreenProps> = ({ error, reset
         )}
 
         <View style={styles.actions}>
-          <TouchableOpacity
+          <AppTouchable
             {...getAccessibleButtonProps({ label: "Retry loading scan workflow" })}
             style={[styles.button, styles.primaryButton]}
             onPress={handleRetry}
             disabled={isRecovering}
-          >
+            accessibilityLabel="Refresh">
             <Ionicons name="refresh" size={20} color={uiTokens.colors.surface} />
             <Text style={styles.primaryButtonText}>
               {isRecovering ? "Refreshing..." : staleBundleError ? "Refresh App" : "Try Again"}
             </Text>
-          </TouchableOpacity>
+          </AppTouchable>
 
-          <TouchableOpacity
+          <AppTouchable
             {...getAccessibleButtonProps({ label: recoveryTarget.accessibilityLabel })}
             style={[styles.button, styles.secondaryButton]}
             onPress={handleGoToScan}
-          >
+            accessibilityLabel="Scan">
             <Ionicons name="scan-outline" size={20} color={uiTokens.colors.accent} />
             <Text style={styles.secondaryButtonText}>{recoveryTarget.label}</Text>
-          </TouchableOpacity>
+          </AppTouchable>
 
-          <TouchableOpacity
+          <AppTouchable
             {...getAccessibleButtonProps({ label: "Log out after scan workflow error" })}
             style={[styles.button, styles.outlineButton]}
             onPress={handleLogout}
-          >
+            accessibilityLabel="Log out">
             <Ionicons name="log-out-outline" size={20} color={uiTokens.colors.textSecondary} />
             <Text style={styles.outlineButtonText}>Logout</Text>
-          </TouchableOpacity>
+          </AppTouchable>
         </View>
       </View>
     </View>
@@ -363,4 +362,3 @@ const createStyles = (uiTokens: CrashTokens) =>
     },
   });
 
-export default StaffCrashScreen;

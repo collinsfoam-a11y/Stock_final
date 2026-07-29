@@ -14,7 +14,7 @@ import { View, Text, StyleSheet, ViewStyle, TextStyle, StyleProp } from "react-n
 import { useThemeContext } from "@/context/ThemeContext";
 import { Spacing, FontSizes, FontWeights } from "@/theme/uiConstants";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { semanticColors as uiSemanticColors } from "@/theme/unified";
 export type SeparatorOrientation = "horizontal" | "vertical";
 
 export interface SeparatorProps {
@@ -165,4 +165,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Separator;
+

@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import Animated, {
   useAnimatedStyle,
   withRepeat,
@@ -18,11 +18,12 @@ import {
   subscribeSyncStatus,
   type SyncStatusSnapshot,
 } from "../../services/syncStatusPolling";
-import { modernAnimations, modernBorderRadius } from "../../styles/modernDesignSystem";
+import { modernAnimations, modernBorderRadius } from "@/theme/unified";
 
-import { colors } from "@/theme/legacyCompat";
+import { colors } from "@/theme/unified";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 export const SyncStatusPill = () => {
   const uiTokens = useUiTokens();
   const reduceMotion = useReducedMotion();
@@ -102,7 +103,7 @@ export const SyncStatusPill = () => {
   }
 
   return (
-    <TouchableOpacity
+    <AppTouchable
       onPress={handleSync}
       disabled={isOffline || isSyncing || (!hasPending && !isOffline)}
       activeOpacity={0.7}
@@ -121,7 +122,7 @@ export const SyncStatusPill = () => {
         </Animated.View>
         <Text style={[styles.label, { color: pillColor }]}>{label}</Text>
       </View>
-    </TouchableOpacity>
+    </AppTouchable>
   );
 };
 

@@ -1,9 +1,11 @@
 import React, { useMemo } from "react";
-import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 
-import ModernInput from "@/components/ui/ModernInput";
+import { ModernInput } from "@/components/ui/ModernInput";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 type MrpVariant = Record<string, any> & {
   id?: string | number;
@@ -112,7 +114,6 @@ export function ItemMrpSection({
           thumbColor={mrpEditable ? uiTokens.colors.surfaceElevated : uiTokens.colors.surface}
         />
       </View>
-
       {mrpVariants.length > 0 ? (
         <ScrollView
           horizontal
@@ -125,15 +126,15 @@ export function ItemMrpSection({
             const isSelected = selectedMrpVariant?.value === variant.value;
 
             return (
-              <TouchableOpacity
+              <AppTouchable
                 key={`mrp-${variantKey}-${index}`}
                 style={[styles.chip, isSelected && styles.chipActive]}
                 onPress={() => onSelectMrpVariant(variant)}
-              >
+ >
                 <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
                   ₹{variant.value}
                 </Text>
-              </TouchableOpacity>
+              </AppTouchable>
             );
           })}
         </ScrollView>

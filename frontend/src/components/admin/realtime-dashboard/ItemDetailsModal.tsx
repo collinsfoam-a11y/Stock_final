@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Modal, ScrollView, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import {
@@ -8,6 +8,8 @@ import {
 } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface ItemDetailsModalProps {
   item: DashboardItem | null;
@@ -61,13 +63,13 @@ export function ItemDetailsModal({ item, onClose, visible }: ItemDetailsModalPro
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Item Details</Text>
-            <TouchableOpacity
+            <AppTouchable
               {...getAccessibleButtonProps({ label: "Close item details" })}
               onPress={onClose}
               style={styles.closeButton}
-            >
+              accessibilityLabel="Close">
               <Ionicons name="close" size={22} color={uiTokens.colors.textPrimary} />
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
 
           <ScrollView
@@ -88,13 +90,13 @@ export function ItemDetailsModal({ item, onClose, visible }: ItemDetailsModalPro
             )}
           </ScrollView>
 
-          <TouchableOpacity
+          <AppTouchable
             {...getAccessibleButtonProps({ label: "Close item details" })}
             style={styles.doneButton}
             onPress={onClose}
-          >
+ >
             <Text style={styles.doneButtonText}>Close</Text>
-          </TouchableOpacity>
+          </AppTouchable>
         </View>
       </View>
     </Modal>

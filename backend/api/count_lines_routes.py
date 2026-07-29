@@ -39,7 +39,7 @@ from backend.services.logic_guard import build_request_context, enforce_session_
 from backend.services.notification_service import NotificationService
 from backend.services.snapshot_service import SnapshotService
 from backend.services.session_lifecycle_service import SessionLifecycleService
-from backend.services.transaction_manager import mongo_transaction
+from backend.core.uow import MongoUnitOfWork
 from backend.services.read_router import InventoryReadRouter, ProjectionReadError
 from backend.services.variant_service import VariantService
 from backend.utils.api_utils import sanitize_for_logging
@@ -745,11 +745,11 @@ async def _persist_count_line_document(
     write_service: CountLineWriteService,
     session: dict[str, Any],
 ) -> None:
-    async with mongo_transaction(db.client) as tx:
+    async with MongoUnitOfWork(db.client) as uow:
         write_context = {
             "session": session,
             "username": username,
-            "db_session": tx,
+            "db_session": uow.session,
             "skip_session_totals_update": True,
             # OCC: enforce that the session has not been modified since it was
             # loaded for this request. _capture_session_versions raises
@@ -799,7 +799,7 @@ async def _persist_count_line_document(
             draft_update_result = db.count_line_drafts.update_many(
                 draft_query,
                 draft_update_doc,
-                session=tx,
+                session=uow.session,
             )
         except TypeError:
             draft_update_result = db.count_line_drafts.update_many(
@@ -2671,7 +2671,7 @@ async def merge_count_lines(
                 merged_qty = float(source_line.get("counted_qty", 0) or 0) + target_qty
 
             erp_item = await _get_erp_item_for_existing_count_line(db, target_line)
-            async with mongo_transaction(db.client) as tx:
+            async with MongoUnitOfWork(db.client) as uow:
                 await write_service.process_write(
                     {
                         "operation": "update_one",
@@ -2688,7 +2688,7 @@ async def merge_count_lines(
                         "correction_reason": target_line.get("correction_reason"),
                         "location": target_line.get("floor_no"),
                         "username": current_user.get("username"),
-                        "db_session": tx,
+                        "db_session": uow.session,
                         "governance_mode": "mutable_session",
                         "skip_session_totals_update": True,
                         # OCC: detect concurrent session mutation during merge.
@@ -2707,7 +2707,7 @@ async def merge_count_lines(
                     context={
                         "session_id": source_session_id,
                         "username": current_user.get("username"),
-                        "db_session": tx,
+                        "db_session": uow.session,
                         "governance_mode": "mutable_session",
                         "skip_session_totals_update": True,
                     },

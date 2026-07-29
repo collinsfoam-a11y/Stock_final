@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
-from backend.utils.datetime_utils import utc_now_naive
+from backend.utils.datetime_utils import utc_now
 from uuid import uuid4
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -48,7 +48,7 @@ class RefreshTokenService:
 
     def create_access_token(self, data: dict[str, Any]) -> str:
         """Create a short-lived access token"""
-        expire = utc_now_naive() + self.access_token_expiry
+        expire = utc_now() + self.access_token_expiry
         to_encode = data.copy()
         to_encode.update(
             {"exp": expire, "type": "access", "iss": "stk-verify-api", "aud": "stk-verify-client"}
@@ -57,7 +57,7 @@ class RefreshTokenService:
 
     def create_refresh_token(self, data: dict[str, Any]) -> str:
         """Create a long-lived refresh token"""
-        expire = utc_now_naive() + self.refresh_token_expiry
+        expire = utc_now() + self.refresh_token_expiry
         to_encode = data.copy()
         # Include a unique token identifier so concurrent logins do not
         # generate identical JWT payloads and collide on the token hash index.
@@ -117,7 +117,7 @@ class RefreshTokenService:
             document: dict[str, Any] = {
                 "token_hash": token_hash,
                 "username": username,
-                "created_at": utc_now_naive(),
+                "created_at": utc_now(),
                 "expires_at": expires_at,
                 "revoked": False,
             }
@@ -139,7 +139,7 @@ class RefreshTokenService:
     async def _cleanup_expired_tokens(self):
         """Remove expired and revoked tokens"""
         try:
-            now = utc_now_naive()
+            now = utc_now()
             result = await self.db.refresh_tokens.delete_many(
                 {
                     "$and": [
@@ -189,7 +189,7 @@ class RefreshTokenService:
                         },
                         {"revoked": False},
                     ],
-                    "expires_at": {"$gt": utc_now_naive()},
+                    "expires_at": {"$gt": utc_now()},
                 }
             )
 
@@ -221,7 +221,7 @@ class RefreshTokenService:
             token_hash = _hash_token(token)
             result = await self.db.refresh_tokens.update_one(
                 {"$or": [{"token_hash": token_hash}, {"token": token}]},
-                {"$set": {"revoked": True, "revoked_at": utc_now_naive()}},
+                {"$set": {"revoked": True, "revoked_at": utc_now()}},
             )
             return result.modified_count > 0
         except Exception as e:
@@ -233,7 +233,7 @@ class RefreshTokenService:
     ) -> int:
         """Revoke all refresh tokens for a user"""
         try:
-            now = utc_now_naive()
+            now = utc_now()
             update_data = {"revoked": True, "revoked_at": now}
             if grace_period_seconds > 0:
                 update_data["grace_until"] = now + timedelta(seconds=grace_period_seconds)
@@ -271,7 +271,7 @@ class RefreshTokenService:
 
         # Rotate refresh token (issue new one, store it, revoke old one)
         new_refresh_token = self.create_refresh_token({"sub": username, "role": role})
-        new_refresh_expires_at = utc_now_naive() + self.refresh_token_expiry
+        new_refresh_expires_at = utc_now() + self.refresh_token_expiry
         if username:
             await self.store_refresh_token(
                 new_refresh_token,

@@ -4,16 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  RefreshControl,
-  Alert,
-  Platform,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, Alert, Platform } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -26,11 +17,15 @@ import {
   supervisorDecide,
   type SupervisorDecidePayload,
 } from "../../src/services/api/approvalApi";
-import { ModernCard, AnimatedPressable, ScreenContainer } from "../../src/components/ui";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { theme } from "../../src/styles/unifiedSystem";
 import { useToast } from "../../src/components/feedback/ToastProvider";
 import { safeBackNavigation } from "@/utils/navigation";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 
 type QueueType = "quantity_variance" | "batch_mrp_mismatch" | "serial_conflict" | "location_investigation" | "damage_condition" | "return_repair" | "unknown_items" | "bundle_proposals" | "recount_requests" | "sync_conflicts" | "session_finalisation";
 
@@ -125,7 +120,7 @@ export default function ApprovalQueueScreen() {
     return (
       <Animated.View entering={FadeInDown.delay(index * 20).springify()}>
         <ModernCard style={styles.card}>
-          <TouchableOpacity
+          <AppTouchable
             activeOpacity={0.8}
             onPress={() =>
               router.push({
@@ -133,7 +128,7 @@ export default function ApprovalQueueScreen() {
                 params: { observationId: item.observation_id },
               } as any)
             }
-          >
+ >
             <View style={styles.header}>
               <Text style={styles.itemCode}>{item.item_identity?.item_code || item.observation_id}</Text>
               {item.system_recommendation ? (
@@ -164,7 +159,7 @@ export default function ApprovalQueueScreen() {
                 Remark: {item.mandatory_remark}
               </Text>
             ) : null}
-          </TouchableOpacity>
+          </AppTouchable>
 
           <View style={styles.actions}>
             <AnimatedPressable
@@ -203,12 +198,14 @@ export default function ApprovalQueueScreen() {
     <ScreenContainer>
       <StatusBar style="dark" backgroundColor={theme.colors.background.default} />
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => safeBackNavigation(router)} hitSlop={12}>
+        <AppTouchable
+          onPress={() => safeBackNavigation(router)}
+          hitSlop={12}
+          accessibilityLabel="Previous">
           <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
-        </TouchableOpacity>
+        </AppTouchable>
         <Text style={styles.screenTitle}>Approval Queue</Text>
       </View>
-
       <FlashList
         horizontal
         data={QUEUE_TYPES}
@@ -218,10 +215,10 @@ export default function ApprovalQueueScreen() {
         renderItem={({ item }) => {
           const isActive = activeQueue === item.value;
           return (
-            <TouchableOpacity
+            <AppTouchable
               style={[styles.queueTab, isActive && styles.queueTabActive]}
               onPress={() => setActiveQueue(item.value)}
-            >
+ >
               <Ionicons
                 name={item.icon}
                 size={18}
@@ -233,11 +230,10 @@ export default function ApprovalQueueScreen() {
               >
                 {item.label}
               </Text>
-            </TouchableOpacity>
+            </AppTouchable>
           );
         }}
       />
-
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.colors.primary[500]} />

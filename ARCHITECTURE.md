@@ -87,3 +87,16 @@ graph TD
 - **`approvals`**: Supervisor workflow state.
 - **`users`**: Auth and profile data.
 - **`sync_log`**: Audit trail of sync bridge activities.
+
+## Mobile Route Compatibility Policy
+
+Mobile clients maintain an offline mutation queue (expo-sqlite). When the app regains connectivity, it flushes queued `POST`/`PUT`/`PATCH` requests. **HTTP 301/302 redirects can alter request methods or drop bodies**, which would corrupt queued mutations.
+
+The repository already implements `MIN_CLIENT_VERSION`. This should become the enforcement mechanism for route retirement.
+
+**Compatibility rules:**
+1. **Never** remove or redirect a queued mutation endpoint with 301/302.
+2. Prefer **route aliases or re-exported handlers** so the same code services multiple paths.
+3. 307/308 redirects may be used **only after verifying client HTTP library behavior** (Expo/Fetch).
+4. Maintain old paths for **at least one supported mobile release cycle**.
+5. Enforce `MIN_CLIENT_VERSION` before retiring any route used by offline queues.

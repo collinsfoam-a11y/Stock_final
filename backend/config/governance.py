@@ -1,54 +1,36 @@
 """
-Deprecated module wrapper.
-
-The canonical governance configuration lives in backend/config_governance.py.
-This file re-exports those values to avoid drift, but should not be used for new imports.
+Governance Configuration
+Centralized controls for SQL Verification policy enforcement.
 """
 
-from backend.config_governance import (
-    GOVERNANCE_FINGERPRINT,
-    SQL_MAX_LATENCY_MS,
-    SQL_MAX_VARIANCE,
-    SQL_VERIFY_STRICT,
-)
-
-__all__ = [
-    "GOVERNANCE_FINGERPRINT",
-    "SQL_MAX_LATENCY_MS",
-    "SQL_MAX_VARIANCE",
-    "SQL_VERIFY_STRICT",
-]
-
 import os
+from typing import Any
 
 
 def _env_bool(key: str, default: bool) -> bool:
+    """Safely parse boolean environment variables"""
     val = os.getenv(key)
     if val is None:
         return default
     return val.strip().lower() in ("1", "true", "yes", "on")
 
 
-# ==============================================================================
-# Feature Flags (Kill Switches)
-# ==============================================================================
-# Default to FALSE for maximum safety. Enable via env var only when needed.
+# Runtime Governance Toggles
+# Set these via environment variables or control plane to adjust policy without code changes.
 
-# Allow Sync Service to write to SQL Sync Status (but NEVER verified_qty)
-ENABLE_SQL_SYNC_WRITE = _env_bool("ENABLE_SQL_SYNC_WRITE", False)
+SQL_VERIFY_STRICT = _env_bool("SQL_VERIFY_STRICT", True)
 
-# Allow any form of automatic verification (e.g. precise match auto-verify)
-ENABLE_AUTO_VERIFICATION = _env_bool("ENABLE_AUTO_VERIFICATION", False)
+# Maximum allowed variance before auto-rejection in strict mode
+# Capped at 100,000 to prevent accidental disabling of safety
+SQL_MAX_VARIANCE = max(0, min(int(os.getenv("SQL_MAX_VARIANCE", "10000")), 100000))
 
-# Allow system to auto-resolve conflicts (e.g. trust newer timestamp)
-ENABLE_CONFLICT_AUTO_RESOLUTION = _env_bool("ENABLE_CONFLICT_AUTO_RESOLUTION", False)
+# Maximum acceptable SQL latency in ms (warning threshold)
+# Capped at 60s to prevent complete timeout blindness
+SQL_MAX_LATENCY_MS = max(100, min(int(os.getenv("SQL_MAX_LATENCY_MS", "5000")), 60000))
 
-GOVERNANCE_FINGERPRINT.update(
-    {
-        "flags": {
-            "sync_write": ENABLE_SQL_SYNC_WRITE,
-            "auto_verify": ENABLE_AUTO_VERIFICATION,
-            "conflict_resolve": ENABLE_CONFLICT_AUTO_RESOLUTION,
-        }
-    }
-)
+# Audit Fingerprint - Include in all compliance logs
+GOVERNANCE_FINGERPRINT: dict[str, Any] = {
+    "strict": SQL_VERIFY_STRICT,
+    "max_variance": SQL_MAX_VARIANCE,
+    "max_latency_ms": SQL_MAX_LATENCY_MS,
+}

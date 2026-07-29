@@ -9,14 +9,6 @@ import {
   TextInput as _TextInput,
   ScrollView as _ScrollView,
 } from "react-native";
-import {
-  LoadingSpinner,
-  AnimatedPressable as _AnimatedPressable,
-  ScreenContainer,
-  ModernCard,
-  ModernButton,
-  ModernInput,
-} from "@/components/ui";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { usePermission } from "../../src/hooks/usePermission";
@@ -30,6 +22,12 @@ import { useSettingsStore } from "../../src/store/settingsStore";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { AnimatedPressable as _AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { ModernButton } from "@/components/ui/ModernButton";
+import { ModernInput } from "@/components/ui/ModernInput";
 
 export default function UnknownItemsScreen() {
   const router = useRouter();
@@ -355,7 +353,7 @@ const createStyles = (uiTokens: UnknownItemsTokens) =>
   },
   emptyContainer: {
     alignItems: "center",
-    marginTop: uiTokens.spacing.xxl,
+    marginTop: uiTokens.spacing["2xl"],
   },
   emptyText: {
     fontSize: 18,

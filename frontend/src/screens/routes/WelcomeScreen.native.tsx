@@ -1,12 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-  useWindowDimensions,
-} from "react-native";
+import { View, Text, StyleSheet, Platform, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
@@ -15,13 +8,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
-import { colors, spacing, radius, gradients } from "@/theme/legacyCompat";
+import { colors, spacing, radius, gradients } from "@/theme/unified";
 import { useAuthStore } from "@/store/authStore";
 import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 
-import { semanticColors } from "@/theme/legacyCompat";
+import { semanticColors } from "@/theme/unified";
 import { getFlag } from "@/constants/flags";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
   if (Platform.OS === "web") {
     return (
@@ -190,11 +184,11 @@ export function WelcomeScreen() {
         </View>
 
         <SafeAnimatedView entering={FadeInDown.delay(1000).springify()} style={styles.actions}>
-          <TouchableOpacity
+          <AppTouchable
             onPress={() => handlePress("/login")}
             activeOpacity={0.9}
             style={styles.buttonShadow}
-          >
+ >
             <LinearGradient
               colors={gradients.primary}
               start={{ x: 0, y: 0 }}
@@ -204,18 +198,18 @@ export function WelcomeScreen() {
               <Text style={styles.loginButtonText}>Get Started</Text>
               <Ionicons name="arrow-forward" size={20} color={semanticColors.text.inverse} />
             </LinearGradient>
-          </TouchableOpacity>
+          </AppTouchable>
 
           {publicRegistrationEnabled ? (
-            <TouchableOpacity
+            <AppTouchable
               onPress={() => handlePress("/register")}
               activeOpacity={0.7}
               style={styles.registerButtonWrapper}
-            >
+ >
               <GlassSurface intensity={10} tint="light" style={styles.registerButton}>
                 <Text style={styles.registerButtonText}>Create Account</Text>
               </GlassSurface>
-            </TouchableOpacity>
+            </AppTouchable>
           ) : null}
         </SafeAnimatedView>
 

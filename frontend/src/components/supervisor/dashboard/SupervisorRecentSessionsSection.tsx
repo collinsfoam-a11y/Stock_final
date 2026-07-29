@@ -2,12 +2,12 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
-
-import { AnimatedPressable, ModernCard } from "@/components/ui";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { theme } from "@/styles/modernDesignSystem";
-import { semanticColors } from "@/theme/legacyCompat";
+import { theme } from "@/styles/unifiedSystem";
+import { semanticColors } from "@/theme/unified";
 import { Session } from "@/types";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { ModernCard } from "@/components/ui/ModernCard";
 
 interface SupervisorRecentSessionsSectionProps {
   onOpenSession: (sessionId: string) => void;

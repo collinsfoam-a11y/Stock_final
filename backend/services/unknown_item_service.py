@@ -14,7 +14,7 @@ from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.governance_audit_service import GovernanceAuditService
 from backend.services.governance_guard import write_authority
 from backend.services.session_lifecycle_service import SessionLifecycleService
-from backend.services.transaction_manager import mongo_transaction
+from backend.core.uow import MongoUnitOfWork
 
 
 class UnknownItemService:
@@ -200,9 +200,9 @@ class UnknownItemService:
         doc["reported_at"] = now
         doc["updated_at"] = now
 
-        async with mongo_transaction(self.db.client) as tx:
-            await self.lifecycle_service.ensure_session_active(session_id, db_session=tx)
-            kwargs = self._kwargs(tx)
+        async with MongoUnitOfWork(self.db.client) as uow:
+            await self.lifecycle_service.ensure_session_active(session_id, db_session=uow.session)
+            kwargs = self._kwargs(uow.session)
             await self._execute_authorized_write(
                 lambda: self.db.unknown_items.insert_one(doc, **kwargs)
             )
@@ -215,7 +215,7 @@ class UnknownItemService:
                 actor_id=actor_id,
                 version=int(doc.get("version") or 1),
                 metadata={"unknown_item_id": doc["id"]},
-                db_session=tx,
+                db_session=uow.session,
             )
 
         return doc
@@ -230,9 +230,9 @@ class UnknownItemService:
         rack_id: str,
         actor_id: str,
     ) -> dict[str, Any]:
-        async with mongo_transaction(self.db.client) as tx:
-            await self.lifecycle_service.ensure_session_active(session_id, db_session=tx)
-            kwargs = self._kwargs(tx)
+        async with MongoUnitOfWork(self.db.client) as uow:
+            await self.lifecycle_service.ensure_session_active(session_id, db_session=uow.session)
+            kwargs = self._kwargs(uow.session)
             existing = await self.db.unknown_items.find_one(self._resolve_filter(item_id), **kwargs)
             if not existing:
                 raise HTTPException(status_code=404, detail="Unknown item report not found")
@@ -278,7 +278,7 @@ class UnknownItemService:
                 actor_id=actor_id,
                 version=int((refreshed or {}).get("version") or 1),
                 metadata={"unknown_item_id": str((refreshed or {}).get("id") or item_id)},
-                db_session=tx,
+                db_session=uow.session,
             )
             return refreshed or dict(existing)
 
@@ -289,8 +289,8 @@ class UnknownItemService:
         actor_id: str,
         reason: Optional[str] = None,
     ) -> dict[str, Any]:
-        async with mongo_transaction(self.db.client) as tx:
-            kwargs = self._kwargs(tx)
+        async with MongoUnitOfWork(self.db.client) as uow:
+            kwargs = self._kwargs(uow.session)
             existing = await self.db.unknown_items.find_one(self._resolve_filter(item_id), **kwargs)
             if not existing:
                 raise HTTPException(status_code=404, detail="Unknown item report not found")
@@ -299,7 +299,7 @@ class UnknownItemService:
             if session_id:
                 await self.lifecycle_service.ensure_session_not_finalized(
                     session_id,
-                    db_session=tx,
+                    db_session=uow.session,
                 )
 
             now = self._utc_now()
@@ -341,7 +341,7 @@ class UnknownItemService:
                 actor_id=actor_id,
                 version=int((refreshed or {}).get("version") or 1),
                 metadata={"unknown_item_id": str((refreshed or {}).get("id") or item_id)},
-                db_session=tx,
+                db_session=uow.session,
             )
             return refreshed or dict(existing)
 
@@ -353,8 +353,8 @@ class UnknownItemService:
         actor_id: str,
         resolve_notes: Optional[str] = None,
     ) -> dict[str, Any]:
-        async with mongo_transaction(self.db.client) as tx:
-            kwargs = self._kwargs(tx)
+        async with MongoUnitOfWork(self.db.client) as uow:
+            kwargs = self._kwargs(uow.session)
             unknown = await self.db.unknown_items.find_one(self._resolve_filter(item_id), **kwargs)
             if not unknown:
                 raise HTTPException(status_code=404, detail="Unknown item report not found")
@@ -369,7 +369,7 @@ class UnknownItemService:
                 target=target,
                 actor_id=actor_id,
                 resolve_notes=resolve_notes,
-                db_session=tx,
+                db_session=uow.session,
             )
 
     async def create_manual_sku_and_resolve(
@@ -385,8 +385,8 @@ class UnknownItemService:
         actor_id: str,
         resolve_notes: Optional[str] = None,
     ) -> dict[str, Any]:
-        async with mongo_transaction(self.db.client) as tx:
-            kwargs = self._kwargs(tx)
+        async with MongoUnitOfWork(self.db.client) as uow:
+            kwargs = self._kwargs(uow.session)
             unknown = await self.db.unknown_items.find_one(self._resolve_filter(item_id), **kwargs)
             if not unknown:
                 raise HTTPException(status_code=404, detail="Unknown item report not found")
@@ -416,7 +416,7 @@ class UnknownItemService:
                 target=new_item,
                 actor_id=actor_id,
                 resolve_notes=resolve_notes,
-                db_session=tx,
+                db_session=uow.session,
                 manual_sku_created=True,
             )
 
@@ -427,15 +427,15 @@ class UnknownItemService:
         actor_id: str,
         reason: Optional[str] = None,
     ) -> dict[str, Any]:
-        async with mongo_transaction(self.db.client) as tx:
-            kwargs = self._kwargs(tx)
+        async with MongoUnitOfWork(self.db.client) as uow:
+            kwargs = self._kwargs(uow.session)
             existing = await self.db.unknown_items.find_one(self._resolve_filter(item_id), **kwargs)
             if not existing:
                 raise HTTPException(status_code=404, detail="Unknown item report not found")
 
             session_id = str(existing.get("session_id") or "").strip()
             if session_id:
-                await self.lifecycle_service.ensure_session_not_finalized(session_id, db_session=tx)
+                await self.lifecycle_service.ensure_session_not_finalized(session_id, db_session=uow.session)
 
             expected_version = coerce_version(existing.get("version"))
             now = self._utc_now()
@@ -481,6 +481,6 @@ class UnknownItemService:
                 actor_id=actor_id,
                 version=int(resolved_doc.get("version") or expected_version + 1),
                 metadata={"unknown_item_id": str(resolved_doc.get("id") or item_id)},
-                db_session=tx,
+                db_session=uow.session,
             )
             return resolved_doc

@@ -6,13 +6,15 @@
  */
 
 import React, { useMemo } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getAccessibleButtonProps } from "@/utils/accessibility";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface AdminCrashScreenProps {
   error: Error;
@@ -62,32 +64,32 @@ export const AdminCrashScreen: React.FC<AdminCrashScreenProps> = ({ error, reset
         )}
 
         <View style={styles.actions}>
-          <TouchableOpacity
+          <AppTouchable
             {...getAccessibleButtonProps({ label: "Retry loading admin panel" })}
             style={[styles.button, styles.primaryButton]}
             onPress={resetError}
-          >
+            accessibilityLabel="Refresh">
             <Ionicons name="refresh" size={20} color={uiTokens.colors.surface} />
             <Text style={styles.primaryButtonText}>Try Again</Text>
-          </TouchableOpacity>
+          </AppTouchable>
 
-          <TouchableOpacity
+          <AppTouchable
             {...getAccessibleButtonProps({ label: "Return to admin dashboard" })}
             style={[styles.button, styles.secondaryButton]}
             onPress={handleGoHome}
-          >
+            accessibilityLabel="Home">
             <Ionicons name="home-outline" size={20} color={uiTokens.colors.accent} />
             <Text style={styles.secondaryButtonText}>Go to Dashboard</Text>
-          </TouchableOpacity>
+          </AppTouchable>
 
-          <TouchableOpacity
+          <AppTouchable
             {...getAccessibleButtonProps({ label: "Log out after admin panel error" })}
             style={[styles.button, styles.outlineButton]}
             onPress={handleLogout}
-          >
+            accessibilityLabel="Log out">
             <Ionicons name="log-out-outline" size={20} color={uiTokens.colors.textSecondary} />
             <Text style={styles.outlineButtonText}>Logout</Text>
-          </TouchableOpacity>
+          </AppTouchable>
         </View>
 
         <Text style={styles.helpText}>
@@ -224,4 +226,3 @@ const createStyles = (uiTokens: CrashTokens) =>
     },
   });
 
-export default AdminCrashScreen;

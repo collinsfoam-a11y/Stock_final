@@ -4,16 +4,7 @@
  */
 
 import React, { useState, useMemo } from "react";
-import {
-  View,
-  Text,
-  Modal,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
+import { View, Text, Modal, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { VirtualList } from "../common/VirtualList";
@@ -23,6 +14,8 @@ import {
   modernSpacing,
   modernBorderRadius,
 } from "../../styles/unifiedSystem";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface SearchableSelectModalProps {
   visible: boolean;
@@ -68,7 +61,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
   };
 
   const renderOption = ({ item }: { item: string }) => (
-    <TouchableOpacity
+    <AppTouchable
       style={styles.optionItem}
       onPress={() => handleSelect(item)}
       testID={`${testID}-option-${item}`}
@@ -79,7 +72,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
         size={20}
         color={modernColors.text.tertiary}
       />
-    </TouchableOpacity>
+    </AppTouchable>
   );
 
   return (
@@ -98,17 +91,17 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
-            <TouchableOpacity
+            <AppTouchable
               style={styles.closeButton}
               onPress={handleClose}
               testID={`${testID}-close`}
-            >
+              accessibilityLabel="Close">
               <Ionicons
                 name="close"
                 size={24}
                 color={modernColors.text.primary}
               />
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
 
           {/* Search Input */}
@@ -130,16 +123,16 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
               testID={`${testID}-search`}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity
+              <AppTouchable
                 onPress={() => setSearchQuery("")}
                 style={styles.clearButton}
-              >
+                accessibilityLabel="Clear search">
                 <Ionicons
                   name="close-circle"
                   size={20}
                   color={modernColors.text.tertiary}
                 />
-              </TouchableOpacity>
+              </AppTouchable>
             )}
           </View>
 

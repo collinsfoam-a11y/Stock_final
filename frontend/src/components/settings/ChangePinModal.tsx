@@ -10,7 +10,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   Alert,
@@ -22,7 +21,8 @@ import { typography } from "../../theme/designTokens";
 import { authApi } from "../../services/api/authApi";
 import * as Haptics from "expo-haptics";
 
-import { semanticColors as uiSemanticColors, shadows as uiShadows } from "@/theme/legacyCompat";
+import { semanticColors as uiSemanticColors, shadows as uiShadows } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 interface ChangePinModalProps {
   visible: boolean;
   onClose: () => void;
@@ -293,15 +293,15 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
           </View>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity
+            <AppTouchable
               style={[styles.button, styles.cancelButton]}
               onPress={handleClose}
               disabled={loading}
-            >
+ >
               <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
-            </TouchableOpacity>
+            </AppTouchable>
 
-            <TouchableOpacity
+            <AppTouchable
               style={[
                 styles.button,
                 styles.submitButton,
@@ -309,13 +309,13 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
               ]}
               onPress={handleSubmit}
               disabled={!isValid || loading}
-            >
+ >
               {loading ? (
                 <ActivityIndicator color={uiSemanticColors.text.inverse} size="small" />
               ) : (
                 <Text style={[styles.buttonText, styles.submitButtonText]}>Change PIN</Text>
               )}
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
         </View>
       </KeyboardAvoidingView>

@@ -65,4 +65,4 @@ export function useReducedMotion() {
   return reducedMotionEnabled;
 }
 
-export default useReducedMotion;
+

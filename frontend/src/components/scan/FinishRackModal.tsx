@@ -3,8 +3,8 @@ import { Modal, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import ModernButton from "@/components/ui/ModernButton";
-import { borderRadius, colors, spacing, typography } from "@/theme/legacyCompat";
+import { ModernButton } from "@/components/ui/ModernButton";
+import { borderRadius, colors, spacing, typography } from "@/theme/unified";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 interface ScanStats {
@@ -35,7 +35,7 @@ export function FinishRackModal({
   const uiTokens = useUiTokens();
   const successWash = uiTokens.mode === "dark" ? "rgba(63, 185, 80, 0.14)" : colors.success[50];
   const summarySurface =
-    uiTokens.mode === "dark" ? uiTokens.colors.surfaceElevated : colors.gray[50];
+    uiTokens.mode === "dark" ? uiTokens.colors.surfaceElevated : colors.neutral[50];
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: colors.neutral[200],
   },
   modalIconContainer: {
     alignSelf: "center",
@@ -146,24 +146,24 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: "700",
-    color: colors.gray[900],
+    color: colors.neutral[900],
     marginBottom: spacing.sm,
     textAlign: "center",
   },
   modalText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
+    color: colors.neutral[600],
     marginBottom: spacing.lg,
     lineHeight: 22,
     textAlign: "center",
   },
   modalSummary: {
-    backgroundColor: colors.gray[50],
+    backgroundColor: colors.neutral[50],
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.gray[100],
+    borderColor: colors.neutral[100],
   },
   modalSummaryRow: {
     flexDirection: "row",
@@ -171,17 +171,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: colors.neutral[200],
   },
   modalSummaryLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
+    color: colors.neutral[600],
     fontWeight: "500",
   },
   modalSummaryValue: {
     fontSize: typography.fontSize.lg,
     fontWeight: "700",
-    color: colors.gray[900],
+    color: colors.neutral[900],
   },
   modalActions: {
     flexDirection: "row",

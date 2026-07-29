@@ -1,4 +1,4 @@
-import { ActivityType } from "@/components/ui";
+import { ActivityType } from "@/components/ui/ActivityFeedItem";
 
 export interface DashboardStats {
   totalSessions: number;

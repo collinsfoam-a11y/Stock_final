@@ -11,7 +11,6 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
   ScrollView,
   TextInput,
   useWindowDimensions,
@@ -25,10 +24,10 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { useAuthStore } from "../src/store/authStore";
 import { useSettingsStore } from "../src/store/settingsStore";
-import ModernButton from "../src/components/ui/ModernButton";
-import ModernCard from "../src/components/ui/ModernCard";
-import ModernInput from "../src/components/ui/ModernInput";
-import ModernHeader from "../src/components/ui/ModernHeader";
+import { ModernButton } from "../src/components/ui/ModernButton";
+import { ModernCard } from "../src/components/ui/ModernCard";
+import { ModernInput } from "../src/components/ui/ModernInput";
+import { ModernHeader } from "../src/components/ui/ModernHeader";
 import { useAppVersion } from "../src/hooks/useAppVersion";
 import { BrandLogo } from "../src/components/branding/BrandLogo";
 import {
@@ -38,7 +37,9 @@ import {
   radius as unifiedRadius,
   textStyles,
   shadows,
-} from "@/theme/legacyCompat";
+} from "@/theme/unified";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 // Safe Animated View for Web
 const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
@@ -79,13 +80,13 @@ const getLoginErrorAlert = (
   if (result.code === "AUTH_INVALID_CREDENTIALS") {
     return mode === "credentials"
       ? {
-          title: "Invalid Credentials",
-          message: result.message || "Incorrect username or password.",
-        }
+        title: "Invalid Credentials",
+        message: result.message || "Incorrect username or password.",
+      }
       : {
-          title: "Invalid PIN",
-          message: result.message || "Incorrect PIN. Please try again.",
-        };
+        title: "Invalid PIN",
+        message: result.message || "Incorrect PIN. Please try again.",
+      };
   }
 
   if (
@@ -284,9 +285,7 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <StatusBar style="dark" backgroundColor={unifiedColors.white} />
-
       <ModernHeader showLogo title="Lavanya Mart" subtitle="Stock Verification System" />
-
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -335,7 +334,7 @@ export default function LoginScreen() {
               <ModernCard style={styles.loginCard} padding={unifiedSpacing.lg}>
                 {/* Mode Toggle */}
                 <View style={styles.modeToggle}>
-                  <TouchableOpacity
+                  <AppTouchable
                     onPress={toggleLoginMode}
                     style={[
                       styles.modeButton,
@@ -357,17 +356,16 @@ export default function LoginScreen() {
                     >
                       PIN
                     </Text>
-                  </TouchableOpacity>
+                  </AppTouchable>
 
-                  <TouchableOpacity
+                  <AppTouchable
                     onPress={toggleLoginMode}
                     style={[
                       styles.modeButton,
                       loginMode === "credentials"
                         ? styles.modeButtonActive
                         : styles.modeButtonInactive,
-                    ]}
-                  >
+                    ]}>
                     <Ionicons
                       name="person"
                       size={20}
@@ -387,7 +385,7 @@ export default function LoginScreen() {
                     >
                       Credentials
                     </Text>
-                  </TouchableOpacity>
+                  </AppTouchable>
                 </View>
 
                 {/* PIN Entry Mode */}
@@ -409,11 +407,11 @@ export default function LoginScreen() {
                     />
 
                     {/* PIN Display - Clickable to focus */}
-                    <TouchableOpacity
+                    <AppTouchable
                       activeOpacity={1}
                       onPress={() => pinInputRef.current?.focus()}
                       style={styles.pinDisplay}
-                    >
+                      accessibilityLabel="Enter PIN">
                       {[0, 1, 2, 3].map((index) => (
                         <SafeAnimatedView
                           key={index}
@@ -427,14 +425,14 @@ export default function LoginScreen() {
                           {pin.length > index && <View style={styles.pinDotInner} />}
                         </SafeAnimatedView>
                       ))}
-                    </TouchableOpacity>
+                    </AppTouchable>
 
                     {errors.pin && <Text style={styles.errorText}>{errors.pin}</Text>}
 
                     {/* Biometric & Switch Options */}
                     <View style={styles.pinActions}>
                       {biometricAuthEnabled && lastLoggedUser?.has_pin ? (
-                        <TouchableOpacity
+                        <AppTouchable
                           onPress={handleBiometricAuth}
                           style={styles.biometricButton}
                         >
@@ -444,19 +442,21 @@ export default function LoginScreen() {
                             color={unifiedColors.primary[500]}
                           />
                           <Text style={styles.biometricText}>Unlock with Biometrics</Text>
-                        </TouchableOpacity>
+                        </AppTouchable>
                       ) : null}
 
                       <View style={styles.pinBottomActions}>
-                        <TouchableOpacity onPress={handleForgotPin}>
+                        <AppTouchable onPress={handleForgotPin} >
                           <Text style={styles.forgotLink}>Forgot PIN?</Text>
-                        </TouchableOpacity>
+                        </AppTouchable>
 
                         <View style={styles.actionDivider} />
 
-                        <TouchableOpacity onPress={() => setLoginMode("credentials")}>
+                        <AppTouchable
+                          onPress={() => setLoginMode("credentials")}
+                        >
                           <Text style={styles.switchAccountLink}>Switch Account</Text>
-                        </TouchableOpacity>
+                        </AppTouchable>
                       </View>
                     </View>
                   </>
@@ -490,12 +490,12 @@ export default function LoginScreen() {
                       disabled={isLoading}
                     />
 
-                    <TouchableOpacity
+                    <AppTouchable
                       onPress={handleForgotPassword}
                       style={styles.forgotPasswordContainer}
                     >
                       <Text style={styles.forgotLink}>Forgot Password?</Text>
-                    </TouchableOpacity>
+                    </AppTouchable>
                   </>
                 )}
 

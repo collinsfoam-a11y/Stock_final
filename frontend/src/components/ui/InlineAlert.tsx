@@ -69,4 +69,4 @@ export function InlineAlert({ type = "info", message, testID }: Props) {
   );
 }
 
-export default InlineAlert;
+

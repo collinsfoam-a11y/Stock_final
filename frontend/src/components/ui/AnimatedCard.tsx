@@ -17,7 +17,7 @@ import {
   semanticColors,
   gradients,
   animationPresets,
-} from "@/theme/legacyCompat";
+} from "@/theme/unified";
 import { useEntryAnimation, useScalePress } from "../../hooks/useAnimations";
 
 // ==========================================
@@ -304,4 +304,4 @@ const statsStyles = StyleSheet.create({
 });
 
 // Default export
-export default AnimatedCard;
+

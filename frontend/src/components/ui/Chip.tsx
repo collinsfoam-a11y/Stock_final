@@ -5,14 +5,7 @@
  */
 
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-} from "react-native";
+import { View, Text, StyleSheet, ViewStyle, TextStyle } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   colorPalette,
@@ -25,6 +18,8 @@ import {
   getAccessibleButtonProps,
   getDecorativeIconProps,
 } from "@/utils/accessibility";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 export type ChipVariant = "filled" | "outlined";
 export type ChipSize = "sm" | "md" | "lg";
@@ -94,7 +89,7 @@ export const Chip: React.FC<ChipProps> = ({
 
   const colors = getColors();
 
-  const Container = isInteractive ? TouchableOpacity : View;
+  const Container = isInteractive ? AppTouchable : View;
 
   const handlePress = () => {
     if (disabled) return;
@@ -136,7 +131,6 @@ export const Chip: React.FC<ChipProps> = ({
           style={styles.icon}
         />
       )}
-
       <Text
         style={[
           styles.text,
@@ -150,9 +144,8 @@ export const Chip: React.FC<ChipProps> = ({
       >
         {label}
       </Text>
-
       {onRemove && !disabled && (
-        <TouchableOpacity
+        <AppTouchable
           onPress={() => {
             void haptics.light();
             onRemove();
@@ -161,15 +154,14 @@ export const Chip: React.FC<ChipProps> = ({
           {...getAccessibleButtonProps({
             label: `Remove ${label}`,
             hitSlop: { top: 8, bottom: 8, left: 8, right: 8 },
-          })}
-        >
+          })}>
           <Ionicons
             {...getDecorativeIconProps()}
             name="close-circle"
             size={sizes.iconSize}
             color={colors.text}
           />
-        </TouchableOpacity>
+        </AppTouchable>
       )}
     </Container>
   );

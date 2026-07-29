@@ -2,8 +2,8 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import ModernCard from "@/components/ui/ModernCard";
-import { borderRadius, colors, spacing, typography } from "@/theme/legacyCompat";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { borderRadius, colors, spacing, typography } from "@/theme/unified";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 interface ScanStats {
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: colors.neutral[200],
   },
   statsRow: {
     flexDirection: "row",
@@ -117,26 +117,26 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 36,
-    backgroundColor: colors.gray[200],
+    backgroundColor: colors.neutral[200],
   },
   statValue: {
     fontSize: typography.fontSize["3xl"],
     fontWeight: "700",
-    color: colors.gray[900],
+    color: colors.neutral[900],
     marginBottom: 2,
     fontVariant: ["tabular-nums"],
   },
   statLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
+    color: colors.neutral[600],
     fontWeight: "600",
   },
   skeleton: {
-    backgroundColor: colors.gray[200],
+    backgroundColor: colors.neutral[200],
     overflow: "hidden",
   },
   skeletonShimmer: {
     flex: 1,
-    backgroundColor: colors.gray[100],
+    backgroundColor: colors.neutral[100],
   },
 });

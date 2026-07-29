@@ -9,7 +9,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   RefreshControl,
   Alert,
   Platform,
@@ -35,10 +34,12 @@ import { toastService } from "@/services/toastService";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha, getTokenShadowStyle } from "@/theme/themeTokens";
-import ModernHeader from "@/components/ui/ModernHeader";
-import ModernCard from "@/components/ui/ModernCard";
-import ModernButton from "@/components/ui/ModernButton";
-import ModernInput from "@/components/ui/ModernInput";
+import { ModernHeader } from "@/components/ui/ModernHeader";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { ModernButton } from "@/components/ui/ModernButton";
+import { ModernInput } from "@/components/ui/ModernInput";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -464,7 +465,7 @@ const StaffHome = React.memo(function StaffHome() {
         rightComponent={
           <View style={s.headerActions}>
             {/* Notifications */}
-            <TouchableOpacity
+            <AppTouchable
               style={[s.iconBtn, { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.08) }]}
               hitSlop={HIT_SLOP}
               onPress={() => router.push("/notifications" as any)}
@@ -481,10 +482,10 @@ const StaffHome = React.memo(function StaffHome() {
                   <Text style={s.badgeText}>{unreadCount > 99 ? "99+" : unreadCount}</Text>
                 </View>
               )}
-            </TouchableOpacity>
+            </AppTouchable>
 
             {/* Settings */}
-            <TouchableOpacity
+            <AppTouchable
               style={[s.iconBtn, { backgroundColor: colorWithAlpha(uiTokens.colors.textSecondary, 0.08) }]}
               hitSlop={HIT_SLOP}
               onPress={() => router.push("/staff/settings" as any)}
@@ -492,10 +493,10 @@ const StaffHome = React.memo(function StaffHome() {
               accessibilityLabel="Settings"
             >
               <Ionicons name="settings-outline" size={20} color={uiTokens.colors.textSecondary} />
-            </TouchableOpacity>
+            </AppTouchable>
 
             {/* Logout */}
-            <TouchableOpacity
+            <AppTouchable
               style={[s.iconBtn, { backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.08) }]}
               hitSlop={HIT_SLOP}
               onPress={handleLogout}
@@ -503,11 +504,10 @@ const StaffHome = React.memo(function StaffHome() {
               accessibilityLabel="Sign out"
             >
               <Ionicons name="log-out-outline" size={20} color={uiTokens.colors.error} />
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
         }
       />
-
       {/* Summary banner */}
       <View style={[s.summary, { backgroundColor: uiTokens.colors.surface, borderColor: uiTokens.colors.border }]}>
         <View style={s.summaryLeft}>
@@ -535,14 +535,13 @@ const StaffHome = React.memo(function StaffHome() {
           </View>
         </View>
       </View>
-
       {/* Tabs */}
       <View style={s.tabBar} accessibilityRole="tablist">
         {(["active", "history"] as const).map((tab) => {
           const isActive = activeTab === tab;
           const count = tab === "active" ? uniqueActiveSessions.length : finishedSessions.length;
           return (
-            <TouchableOpacity
+            <AppTouchable
               key={tab}
               style={[
                 s.tab,
@@ -552,7 +551,7 @@ const StaffHome = React.memo(function StaffHome() {
               onPress={() => setActiveTab(tab)}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
-            >
+ >
               <Text style={[s.tabText, { color: isActive ? uiTokens.colors.accent : uiTokens.colors.textSecondary }]}>
                 {tab === "active" ? "Active" : "History"}
               </Text>
@@ -561,11 +560,10 @@ const StaffHome = React.memo(function StaffHome() {
                   <Text style={s.tabBadgeText}>{count}</Text>
                 </View>
               )}
-            </TouchableOpacity>
+            </AppTouchable>
           );
         })}
       </View>
-
       {/* Content */}
       <ScrollView
         contentContainerStyle={s.scroll}
@@ -638,7 +636,6 @@ const StaffHome = React.memo(function StaffHome() {
           )}
         </Animated.View>
       </ScrollView>
-
       {/* ── Create Session Modal ─────────────────────────────────────────── */}
       <Modal
         visible={showCreateModal}
@@ -656,7 +653,7 @@ const StaffHome = React.memo(function StaffHome() {
               <Ionicons name="scan-outline" size={20} color={uiTokens.colors.accent} />
             </View>
             <Text style={[s.modalTitle, { color: uiTokens.colors.textPrimary }]}>New Session</Text>
-            <TouchableOpacity
+            <AppTouchable
               style={[s.modalClose, { backgroundColor: colorWithAlpha(uiTokens.colors.textSecondary, 0.08) }]}
               hitSlop={HIT_SLOP}
               onPress={resetModal}
@@ -664,7 +661,7 @@ const StaffHome = React.memo(function StaffHome() {
               accessibilityLabel="Close"
             >
               <Ionicons name="close" size={20} color={uiTokens.colors.textSecondary} />
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
 
           {/* Steps indicator */}
@@ -706,7 +703,7 @@ const StaffHome = React.memo(function StaffHome() {
               {zones.map((zone) => {
                 const active = locationType === zone.zone_name;
                 return (
-                  <TouchableOpacity
+                  <AppTouchable
                     key={zone.id}
                     style={[
                       s.chip,
@@ -720,7 +717,7 @@ const StaffHome = React.memo(function StaffHome() {
                     onPress={() => { setLocationType(zone.zone_name); setSelectedFloor(null); }}
                     accessibilityRole="radio"
                     accessibilityState={{ selected: active }}
-                  >
+ >
                     <Ionicons
                       name={active ? "location" : "location-outline"}
                       size={14}
@@ -729,7 +726,7 @@ const StaffHome = React.memo(function StaffHome() {
                     <Text style={[s.chipText, { color: active ? uiTokens.colors.accent : uiTokens.colors.textPrimary }]}>
                       {zone.zone_name}
                     </Text>
-                  </TouchableOpacity>
+                  </AppTouchable>
                 );
               })}
             </View>
@@ -742,7 +739,7 @@ const StaffHome = React.memo(function StaffHome() {
                   {warehouses.map((wh) => {
                     const active = selectedFloor === wh.warehouse_name;
                     return (
-                      <TouchableOpacity
+                      <AppTouchable
                         key={wh.id}
                         style={[
                           s.chip,
@@ -756,7 +753,7 @@ const StaffHome = React.memo(function StaffHome() {
                         onPress={() => setSelectedFloor(wh.warehouse_name)}
                         accessibilityRole="radio"
                         accessibilityState={{ selected: active }}
-                      >
+ >
                         <Ionicons
                           name={active ? "layers" : "layers-outline"}
                           size={14}
@@ -765,7 +762,7 @@ const StaffHome = React.memo(function StaffHome() {
                         <Text style={[s.chipText, { color: active ? uiTokens.colors.accent : uiTokens.colors.textPrimary }]}>
                           {wh.warehouse_name}
                         </Text>
-                      </TouchableOpacity>
+                      </AppTouchable>
                     );
                   })}
                 </View>

@@ -5,9 +5,9 @@
 
 import React from "react";
 import { View, Text, StyleSheet, Dimensions, Platform } from "react-native";
-import { modernColors, modernTypography, modernSpacing } from "../../styles/modernDesignSystem";
+import { modernColors, modernTypography, modernSpacing } from "@/theme/unified";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { semanticColors as uiSemanticColors } from "@/theme/unified";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CHART_WIDTH = SCREEN_WIDTH - modernSpacing.lg * 2 - 80;
 const CHART_HEIGHT = 200;

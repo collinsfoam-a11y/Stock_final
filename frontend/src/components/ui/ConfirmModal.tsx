@@ -21,12 +21,14 @@
  * ```
  */
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import Animated, { FadeIn, SlideInDown, SlideOutDown } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Modal } from "./Modal";
-import { colors, semanticColors, spacing, radius, textStyles } from "@/theme/legacyCompat";
+import { colors, semanticColors, spacing, radius, textStyles } from "@/theme/unified";
 import { haptics } from "@/services/haptics";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 export type ConfirmModalVariant = "default" | "danger" | "warning" | "success";
 
@@ -195,7 +197,7 @@ function ConfirmModal({
         {/* Actions */}
         <View style={styles.actions}>
           {/* Cancel Button */}
-          <TouchableOpacity
+          <AppTouchable
             style={styles.cancelButton}
             onPress={handleCancel}
             disabled={loading}
@@ -203,10 +205,10 @@ function ConfirmModal({
             accessibilityLabel={cancelLabel}
           >
             <Text style={styles.cancelText}>{cancelLabel}</Text>
-          </TouchableOpacity>
+          </AppTouchable>
 
           {/* Confirm Button */}
-          <TouchableOpacity
+          <AppTouchable
             style={[
               styles.confirmButton,
               { backgroundColor: config.color },
@@ -222,7 +224,7 @@ function ConfirmModal({
             ) : (
               <Text style={styles.confirmText}>{confirmLabel}</Text>
             )}
-          </TouchableOpacity>
+          </AppTouchable>
         </View>
       </Animated.View>
     </Modal>

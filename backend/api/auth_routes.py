@@ -18,12 +18,13 @@ from backend.api.schemas import (
 )
 from backend.auth.dependencies import auth_deps, get_current_user, optional_get_current_user
 from backend.auth.permissions import get_user_permissions
-from backend.auth.cookies import set_auth_cookies
+from backend.auth.cookies import set_auth_cookies, clear_auth_cookies, get_refresh_token_cookie
 from backend.config import settings
 from backend.db.runtime import get_db
 from backend.error_messages import get_error_message
 from backend.exceptions import (
     AuthenticationError,
+    ValidationError,
     AuthorizationError,
     DatabaseConnectionError,
     NotFoundError,
@@ -1418,3 +1419,73 @@ async def password_reset_confirm(data: PasswordResetConfirm):
     except Exception as e:
         logger.error("Password reset confirm failed: %s", sanitize_for_logging(str(e)))
         return ApiResponse.error_response({"message": "Failed to reset password"})
+
+@router.post("/auth/refresh", response_model=ApiResponse[TokenResponse])
+@result_to_response(success_status=200)
+async def refresh_token(
+    request: Request,
+    response: Response,
+) -> Result[dict[str, Any], Exception]:
+    """
+    Refresh access token using refresh token.
+
+    Request body should contain: {"refresh_token": "uuid-string"}
+    """
+    try:
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        refresh_token_value = body.get("refresh_token") or get_refresh_token_cookie(request)
+
+        if not refresh_token_value:
+            return Fail(ValidationError("Refresh token is required"))
+
+        token_service = get_refresh_token_service()
+        refreshed = await token_service.refresh_access_token(refresh_token_value)
+        if not refreshed:
+            return Fail(AuthenticationError("Invalid or expired refresh token"))
+
+        access_token = refreshed.get("access_token")
+        next_refresh_token = refreshed.get("refresh_token")
+        if isinstance(access_token, str) and isinstance(next_refresh_token, str):
+            set_auth_cookies(response, access_token, next_refresh_token)
+
+        return Ok(refreshed)
+    except Exception as e:
+        logger.error("Token refresh error: %s", sanitize_for_logging(str(e), 200))
+        return Fail(e)
+
+
+@router.post("/auth/logout")
+async def logout(
+    request: Request,
+    response: Response,
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    Logout user by revoking their refresh token.
+
+    Request body should contain: {"refresh_token": "uuid-string"}
+    """
+    try:
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        refresh_token_value = body.get("refresh_token") or get_refresh_token_cookie(request)
+
+        if refresh_token_value:
+            token_service = get_refresh_token_service()
+            payload = await token_service.verify_refresh_token(refresh_token_value)
+            # M11 fix: Always revoke the token if it's valid, regardless of sub match.
+            # The user is already authenticated via get_current_user, so the logout
+            # intent is clear. Skipping revocation on sub mismatch leaves tokens active.
+            if payload:
+                await token_service.revoke_token(refresh_token_value)
+
+        clear_auth_cookies(response)
+        return {"message": "Logged out successfully"}
+    except Exception as e:
+        logger.error("Logout error: %s", sanitize_for_logging(str(e), 200))
+        raise HTTPException(status_code=500, detail="Logout failed") from e

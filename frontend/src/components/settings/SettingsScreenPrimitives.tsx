@@ -14,7 +14,7 @@ import * as Haptics from "expo-haptics";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { colorWithAlpha } from "../../theme/themeTokens";
 import { AnimatedPressable } from "../ui/AnimatedPressable";
-import ModernCard from "../ui/ModernCard";
+import { ModernCard } from "../ui/ModernCard";
 
 type SettingsRowType = "navigation" | "action" | "switch" | "select";
 

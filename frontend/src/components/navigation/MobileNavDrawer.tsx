@@ -6,15 +6,7 @@
  */
 
 import React, { useMemo, useState } from "react";
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useSegments } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -28,6 +20,8 @@ import {
 } from "@/utils/accessibility";
 import { ADMIN_NAV_GROUPS } from "./adminNavShared";
 import { SUPERVISOR_NAV_GROUPS } from "./supervisorNavShared";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface DrawerNavItem {
   key: string;
@@ -88,16 +82,14 @@ export function MobileNavDrawer({ role, testID }: MobileNavDrawerProps) {
 
   return (
     <>
-      <TouchableOpacity
+      <AppTouchable
         style={[styles.fab, { bottom: insets.bottom + uiTokens.spacing.lg }]}
         onPress={() => setOpen(true)}
         activeOpacity={0.8}
         testID={testID}
-        {...getAccessibleButtonProps({ label: "Open navigation menu" })}
-      >
+        {...getAccessibleButtonProps({ label: "Open navigation menu" })}>
         <Ionicons name="menu" size={24} color={uiTokens.colors.background} />
-      </TouchableOpacity>
-
+      </AppTouchable>
       <Modal
         visible={open}
         transparent
@@ -115,13 +107,12 @@ export function MobileNavDrawer({ role, testID }: MobileNavDrawerProps) {
               <Text style={styles.panelTitle}>
                 {effectiveRole === "admin" ? "Admin" : "Supervisor"}
               </Text>
-              <TouchableOpacity
+              <AppTouchable
                 onPress={() => setOpen(false)}
                 style={styles.closeButton}
-                {...getAccessibleButtonProps({ label: "Close navigation menu" })}
-              >
+                {...getAccessibleButtonProps({ label: "Close navigation menu" })}>
                 <Ionicons name="close" size={22} color={uiTokens.colors.textSecondary} />
-              </TouchableOpacity>
+              </AppTouchable>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -131,7 +122,7 @@ export function MobileNavDrawer({ role, testID }: MobileNavDrawerProps) {
                   {group.items.map((item) => {
                     const active = isActive(item.route);
                     return (
-                      <TouchableOpacity
+                      <AppTouchable
                         key={item.key}
                         style={[styles.item, active && styles.itemActive]}
                         onPress={() => handleSelect(item.route)}
@@ -147,7 +138,7 @@ export function MobileNavDrawer({ role, testID }: MobileNavDrawerProps) {
                         <Text style={[styles.itemLabel, active && styles.itemLabelActive]}>
                           {item.label}
                         </Text>
-                      </TouchableOpacity>
+                      </AppTouchable>
                     );
                   })}
                 </View>
@@ -237,4 +228,3 @@ const createStyles = (uiTokens: ThemeTokens) =>
     },
   });
 
-export default MobileNavDrawer;

@@ -63,4 +63,3 @@ export class EventEmitter {
 
 export const eventEmitter = new EventEmitter();
 
-export default new EventEmitter();

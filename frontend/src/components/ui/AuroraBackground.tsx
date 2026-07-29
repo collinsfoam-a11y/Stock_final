@@ -34,7 +34,7 @@ import { useThemeContext } from "../../context/ThemeContext";
 import { ParticleField } from "./ParticleField";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 
-import { colors as uiColors } from "@/theme/legacyCompat";
+import { colors as uiColors } from "@/theme/unified";
 import { warnDeprecatedVisualSystem } from "./legacyVisualSystem";
 export type AuroraVariant = "primary" | "secondary" | "success" | "warm" | "dark";
 
@@ -296,4 +296,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AuroraBackground;
+

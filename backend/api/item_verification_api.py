@@ -270,6 +270,46 @@ class VerificationRequest(BaseModel):
     count_line_id: Optional[str] = None
 
 
+
+class SuccessMessageResponse(BaseModel):
+    success: bool
+    message: str
+
+class RefreshQtyResponse(BaseModel):
+    success: bool
+    message: str
+    item: dict[str, Any]
+
+class VerifyItemResponse(BaseModel):
+    success: bool
+    item: dict[str, Any]
+    variance: Optional[float]
+    message: str
+    fork_id: Optional[str] = None
+
+class PaginationInfo(BaseModel):
+    total: int
+    limit: int
+    skip: int
+    returned: int
+
+class FilteredItemsStatistics(BaseModel):
+    total_items: int
+    verified_items: int
+    unverified_items: int
+    total_qty: float
+
+class FilteredItemsResponse(BaseModel):
+    success: bool
+    items: list[dict[str, Any]]
+    pagination: PaginationInfo
+    statistics: FilteredItemsStatistics
+
+class SyncItemsResponse(BaseModel):
+    success: bool
+    items: list[dict[str, Any]]
+    sync_metadata: dict[str, Any]
+
 class ItemUpdateRequest(BaseModel):
     mrp: Optional[float] = None
     sales_price: Optional[float] = None
@@ -450,7 +490,7 @@ async def _fetch_updated_item(
     return updated_item
 
 
-@verification_router.patch("/{barcode}/update-master")
+@verification_router.patch("/{barcode}/update-master", response_model=SuccessMessageResponse)
 async def update_item_master(
     barcode: str,
     request: ItemUpdateRequest,
@@ -490,7 +530,7 @@ async def update_item_master(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@verification_router.post("/{barcode}/refresh-sql-qty")
+@verification_router.post("/{barcode}/refresh-sql-qty", response_model=RefreshQtyResponse)
 async def refresh_item_qty_from_sql(
     barcode: str,
     current_user: dict = Depends(get_current_user),
@@ -630,7 +670,7 @@ def _build_verification_log_doc(
     }
 
 
-@verification_router.patch("/{barcode}/verify")
+@verification_router.patch("/{barcode}/verify", response_model=VerifyItemResponse)
 async def verify_item(
     barcode: str,
     request: VerificationRequest,
@@ -711,7 +751,7 @@ async def verify_item(
         raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}") from e
 
 
-@verification_router.get("/filtered")
+@verification_router.get("/filtered", response_model=FilteredItemsResponse)
 async def get_filtered_items(
     category: Optional[str] = Query(None, description="Filter by category"),
     subcategory: Optional[str] = Query(None, description="Filter by subcategory"),
@@ -784,7 +824,7 @@ async def get_filtered_items(
         raise HTTPException(status_code=500, detail=f"Failed to get items: {str(e)}") from e
 
 
-@verification_router.get("/sync")
+@verification_router.get("/sync", response_model=SyncItemsResponse)
 async def sync_items_for_offline_cache(
     since: Optional[datetime] = Query(
         None, description="Return items updated after this timestamp (ISO 8601)"

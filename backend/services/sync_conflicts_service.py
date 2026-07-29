@@ -15,7 +15,7 @@ from pymongo.errors import PyMongoError
 from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.event_service import EventService
 from backend.services.session_lifecycle_service import SessionLifecycleService
-from backend.services.transaction_manager import mongo_transaction
+from backend.core.uow import MongoUnitOfWork
 from backend.services.validation_service import ValidationService
 
 UTC = timezone.utc
@@ -286,8 +286,8 @@ class SyncConflictsService:
         if resolution != ConflictResolution.IGNORE and resolved_data:
             entity_type = str(conflict.get("entity_type") or "")
             entity_id = str(conflict.get("entity_id") or "")
-            async with mongo_transaction(self.db.client) as tx:
-                kwargs = {"session": tx} if tx is not None else {}
+            async with MongoUnitOfWork(self.db.client) as uow:
+                kwargs = {"session": uow.session} if uow.session is not None else {}
                 await self.db.sync_conflicts.update_one(
                     {"_id": ObjectId(conflict_id)},
                     resolution_update,
@@ -311,7 +311,7 @@ class SyncConflictsService:
                             entity_id,
                             target_doc,
                             resolved_data,
-                            db_session=tx,
+                            db_session=uow.session,
                         )
                         return {
                             "conflict_id": conflict_id,
@@ -324,7 +324,7 @@ class SyncConflictsService:
                         entity_type,
                         entity_id,
                         resolved_data,
-                        db_session=tx,
+                        db_session=uow.session,
                     )
         else:
             await self.db.sync_conflicts.update_one(

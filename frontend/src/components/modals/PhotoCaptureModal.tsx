@@ -8,7 +8,6 @@ import {
   View,
   Text,
   Modal,
-  TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   Image,
@@ -26,7 +25,8 @@ import {
   modernBorderRadius,
 } from "../../styles/unifiedSystem";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { semanticColors as uiSemanticColors } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 interface PhotoCaptureModalProps {
   visible: boolean;
   onClose: () => void;
@@ -169,9 +169,12 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         <SafeAreaView style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
-            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+            <AppTouchable
+              style={styles.closeButton}
+              onPress={handleClose}
+              accessibilityLabel="Close">
               <Ionicons name="close" size={24} color={modernColors.text.primary} />
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
           <View style={styles.permissionContainer}>
             <Ionicons name="camera-outline" size={64} color={modernColors.text.tertiary} />
@@ -179,23 +182,26 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               Camera permission is required to capture photos
             </Text>
             {canAskPermission ? (
-              <TouchableOpacity
+              <AppTouchable
                 style={styles.permissionButton}
                 onPress={() => {
                   void requestCameraPermission();
                 }}
-              >
+ >
                 <Text style={styles.permissionButtonText}>Grant Permission</Text>
-              </TouchableOpacity>
+              </AppTouchable>
             ) : (
               <>
                 <Text style={styles.permissionHelpText}>
                   Camera permission was denied. Open app settings and enable camera access to
                   continue.
                 </Text>
-                <TouchableOpacity style={styles.permissionButton} onPress={handleOpenSettings}>
+                <AppTouchable
+                  style={styles.permissionButton}
+                  onPress={handleOpenSettings}
+ >
                   <Text style={styles.permissionButtonText}>Open Settings</Text>
-                </TouchableOpacity>
+                </AppTouchable>
               </>
             )}
           </View>
@@ -216,9 +222,12 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+          <AppTouchable
+            style={styles.closeButton}
+            onPress={handleClose}
+            accessibilityLabel="Close">
             <Ionicons name="close" size={24} color={modernColors.text.primary} />
-          </TouchableOpacity>
+          </AppTouchable>
         </View>
 
         {/* Camera or Preview */}
@@ -240,30 +249,30 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         <View style={styles.controls}>
           {capturedPhoto ? (
             <>
-              <TouchableOpacity
+              <AppTouchable
                 style={[styles.controlButton, styles.retakeButton]}
                 onPress={handleRetake}
-              >
+                accessibilityLabel="Refresh">
                 <Ionicons name="refresh" size={24} color={uiSemanticColors.text.inverse} />
                 <Text style={styles.controlButtonText}>Retake</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              </AppTouchable>
+              <AppTouchable
                 style={[styles.controlButton, styles.confirmButton]}
                 onPress={handleConfirm}
-              >
+                accessibilityLabel="Confirm">
                 <Ionicons name="checkmark" size={24} color={uiSemanticColors.text.inverse} />
                 <Text style={styles.controlButtonText}>Use Photo</Text>
-              </TouchableOpacity>
+              </AppTouchable>
             </>
           ) : (
-            <TouchableOpacity
+            <AppTouchable
               style={styles.captureButton}
               onPress={handleCapture}
               disabled={isCapturing}
               testID={`${testID}-capture`}
-            >
+              accessibilityLabel="Take photo">
               <View style={styles.captureButtonInner} />
-            </TouchableOpacity>
+            </AppTouchable>
           )}
         </View>
       </SafeAreaView>

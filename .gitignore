@@ -75,6 +75,7 @@ exports/
 .autogpt.yml
 .autopilot.json
 .agent/approval-log*.jsonl
+.agent/reports/codebase-audit/
 .clinerules
 .cursorrules
 .devon.yml

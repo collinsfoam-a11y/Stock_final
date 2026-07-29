@@ -43,7 +43,20 @@ async def test_unverify_stock_rejects_non_supervisor():
 @pytest.mark.asyncio
 @pytest.mark.governance
 async def test_verify_stock_allows_supervisor_and_updates(monkeypatch):
-    mock_db = MagicMock()
+    class DummyDb:
+        def __init__(self):
+            self.count_lines = AsyncMock()
+            self.count_lines.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+            self.sessions = AsyncMock()
+            self.sessions.find_one = AsyncMock(return_value={"id": "sess-1", "status": "ACTIVE"})
+            self.client = self
+
+        def __getattr__(self, name):
+            mock = AsyncMock()
+            setattr(self, name, mock)
+            return mock
+
+    mock_db = DummyDb()
     mock_db.count_lines.find_one = AsyncMock(
         side_effect=[
             {
@@ -72,10 +85,8 @@ async def test_verify_stock_allows_supervisor_and_updates(monkeypatch):
             },
         ]
     )
-    mock_db.count_lines.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
-    mock_db.sessions.find_one = AsyncMock(return_value={"id": "sess-1", "status": "ACTIVE"})
 
-    import backend.app_factory as app_factory
+    import backend.app.root_router as app_factory
 
     monkeypatch.setattr(app_factory, "activity_log_service", None)
 

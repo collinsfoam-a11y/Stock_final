@@ -5,14 +5,7 @@
  */
 
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  LayoutChangeEvent,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, LayoutChangeEvent } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -26,7 +19,9 @@ import {
   textStyles,
   touchTargets,
   hitSlop,
-} from "@/theme/legacyCompat";
+} from "@/theme/unified";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 export interface Tab {
   key: string;
@@ -90,7 +85,7 @@ export const Tabs: React.FC<TabsProps> = ({
     const isActive = tab.key === activeTab;
 
     return (
-      <TouchableOpacity
+      <AppTouchable
         key={tab.key}
         onPress={() => onTabChange(tab.key)}
         onLayout={(event) => handleTabLayout(tab.key, event)}
@@ -103,10 +98,8 @@ export const Tabs: React.FC<TabsProps> = ({
         activeOpacity={0.8}
         hitSlop={hitSlop.small}
         accessibilityRole="tab"
-        accessibilityState={{ selected: isActive }}
-      >
+        accessibilityState={{ selected: isActive }}>
         {tab.icon ? <View style={styles.tabIcon}>{tab.icon}</View> : null}
-
         <Text
           style={[
             styles.tabLabel,
@@ -116,7 +109,6 @@ export const Tabs: React.FC<TabsProps> = ({
         >
           {tab.label}
         </Text>
-
         {tab.badge !== undefined && tab.badge > 0 ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>
@@ -124,7 +116,7 @@ export const Tabs: React.FC<TabsProps> = ({
             </Text>
           </View>
         ) : null}
-      </TouchableOpacity>
+      </AppTouchable>
     );
   };
 

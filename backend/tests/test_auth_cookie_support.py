@@ -57,7 +57,7 @@ def test_refresh_accepts_cookie_without_request_body_token(client: TestClient, m
     refresh_token = login_response.cookies.get("sv_refresh_token")
     assert refresh_token
 
-    import backend.app_factory as app_factory
+    import backend.api.auth_routes as auth_routes
 
     refresh_mock = AsyncMock(
         return_value={
@@ -76,7 +76,7 @@ def test_refresh_accepts_cookie_without_request_body_token(client: TestClient, m
         }
     )
     monkeypatch.setattr(
-        app_factory,
+        auth_routes,
         "get_refresh_token_service",
         lambda: type(
             "_CookieRefreshService",

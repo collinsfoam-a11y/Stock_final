@@ -6,7 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import { useAuthStore } from "@/store/authStore";
 import { getRouteForRole, UserRole } from "@/utils/roleNavigation";
 
-import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
 function IndexScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);

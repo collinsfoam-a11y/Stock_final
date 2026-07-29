@@ -31,7 +31,7 @@ from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
 from backend.models.audit import AuditLogStatus
 from backend.services.activity_log import ActivityLogService
-from backend.services.transaction_manager import mongo_transaction
+from backend.core.uow import MongoUnitOfWork
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/commands", tags=["Offline Commands"])
@@ -169,10 +169,8 @@ async def sync_commands(
                 "last_error": cmd.last_error,
             }
 
-            async def _write(doc: dict = entry_doc) -> None:
-                await command_journal.insert_one(doc)
-
-            await mongo_transaction(db, _write)
+            async with MongoUnitOfWork(db.client) as uow:
+                await command_journal.insert_one(entry_doc)
 
             ack = _ack_doc(cmd.command_id, cmd_state)
             acks[cmd.command_id] = ack

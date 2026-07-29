@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
 export default function OnlineStatus() {
   const [isConnected, setIsConnected] = useState<boolean | null>(true);
 

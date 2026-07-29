@@ -1,7 +1,7 @@
 import React from "react";
 import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 
-import { semanticColors, colors } from "@/theme/legacyCompat";
+import { semanticColors, colors } from "@/theme/unified";
 const WelcomeScreen = React.lazy(() =>
   (Platform.OS === "web"
     ? import("../src/screens/routes/WelcomeScreen.web")

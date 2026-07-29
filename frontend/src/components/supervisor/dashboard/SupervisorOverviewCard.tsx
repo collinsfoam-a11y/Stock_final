@@ -2,12 +2,13 @@ import React from "react";
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
-
-import { AnimatedPressable, ModernCard, LiveIndicator } from "@/components/ui";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { theme } from "@/styles/modernDesignSystem";
-import { colors as unifiedColors, semanticColors } from "@/theme/legacyCompat";
+import { theme } from "@/styles/unifiedSystem";
+import { colors as unifiedColors, semanticColors } from "@/theme/unified";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { LiveIndicator } from "@/components/ui/LiveIndicator";
 
 export interface OverviewAction {
   key: string;

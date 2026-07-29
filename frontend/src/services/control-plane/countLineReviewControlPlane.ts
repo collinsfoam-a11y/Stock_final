@@ -8,7 +8,7 @@ import {
   createStockUnverifiedEvent,
   createStockVerifiedEvent,
   type CountLineReviewEvent,
-} from "@/domain/events/countLineReviewEvents";
+} from "@/core/events/countLineReviewEvents";
 import {
   getPendingCountLineReviewEvents,
   getProjectedCountLineReviewStates,
@@ -362,7 +362,7 @@ export const unverifyStockCommand = async (lineId: string, options?: ReviewComma
   );
 };
 
-export const syncPendingCountLineReviewEvents = async (): Promise<{
+const syncPendingCountLineReviewEvents = async (): Promise<{
   success: number;
   failed: number;
   total: number;

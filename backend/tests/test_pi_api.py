@@ -3,6 +3,13 @@ from fastapi.testclient import TestClient
 from backend.server import app
 from backend.auth.dependencies import get_current_user
 from backend.config import settings
+import os
+
+# Fix httpx parsing bug with ::1 in NO_PROXY
+if "NO_PROXY" in os.environ:
+    os.environ["NO_PROXY"] = os.environ["NO_PROXY"].replace("::1", "127.0.0.1")
+if "no_proxy" in os.environ:
+    os.environ["no_proxy"] = os.environ["no_proxy"].replace("::1", "127.0.0.1")
 
 respx = pytest.importorskip("respx")
 

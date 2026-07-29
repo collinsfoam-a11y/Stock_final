@@ -5,7 +5,7 @@
  */
 
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { getDecorativeIconProps } from "@/utils/accessibility";
 import Animated, {
@@ -21,8 +21,10 @@ import {
   textStyles,
   touchTargets,
   hitSlop,
-} from "@/theme/legacyCompat";
+} from "@/theme/unified";
 import { haptics } from "@/services/haptics";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface CheckboxProps {
   checked: boolean;
@@ -63,7 +65,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   };
 
   return (
-    <TouchableOpacity
+    <AppTouchable
       style={styles.container}
       onPress={handlePress}
       disabled={disabled}
@@ -93,7 +95,6 @@ export const Checkbox: React.FC<CheckboxProps> = ({
           />
         </Animated.View>
       </View>
-
       {(label || description) && (
         <View style={styles.labelContainer}>
           {label && (
@@ -111,7 +112,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
           )}
         </View>
       )}
-    </TouchableOpacity>
+    </AppTouchable>
   );
 };
 

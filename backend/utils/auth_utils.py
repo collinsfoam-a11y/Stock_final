@@ -128,6 +128,11 @@ def _verify_secret(plain_secret: Optional[str], hashed_secret: Optional[str]) ->
         logger.warning("Empty password or hash provided")
         return False
 
+    # Defensive: coerce non-string hashes to string (e.g. int from legacy data)
+    if not isinstance(hashed_secret, str):
+        logger.warning("Coercing non-string hash to str: %s", type(hashed_secret).__name__)
+        hashed_secret = str(hashed_secret)
+
     hash_algorithm = identify_password_hash(hashed_secret)
     password_bytes = plain_secret.encode("utf-8")
     if hash_algorithm == "bcrypt" and len(password_bytes) > BCRYPT_MAX_PASSWORD_BYTES:

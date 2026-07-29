@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native";
+import { View, Text, StyleSheet, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -24,7 +24,9 @@ import Animated, {
 import { zIndex as uiZIndex } from "@/theme/designTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha, getTokenShadowStyle, type ThemeTokens } from "@/theme/themeTokens";
-import { semanticColors } from "@/theme/legacyCompat";
+import { semanticColors } from "@/theme/unified";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 export interface SpeedDialAction {
   icon: keyof typeof Ionicons.glyphMap;
@@ -41,7 +43,7 @@ export interface SpeedDialMenuProps {
   position?: "bottom-right" | "bottom-left" | "top-right" | "top-left";
 }
 
-const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+const AnimatedTouchable = Animated.createAnimatedComponent(AppTouchable);
 
 // Extracted action item component to comply with React hooks rules
 interface SpeedDialActionItemProps {
@@ -242,14 +244,13 @@ const SpeedDialMenu: React.FC<SpeedDialMenuProps> = ({
             backdropStyle,
           ]}
         >
-          <TouchableOpacity
+          <AppTouchable
             style={StyleSheet.absoluteFill}
             onPress={toggleMenu}
             activeOpacity={1}
-          />
+            accessibilityLabel="Close menu" />
         </Animated.View>
       ) : null}
-
       <View style={[styles.container, getPositionStyles()]}>
         {actions.map((action, index) => (
           <SpeedDialActionItem
@@ -263,7 +264,7 @@ const SpeedDialMenu: React.FC<SpeedDialMenuProps> = ({
           />
         ))}
 
-        <TouchableOpacity
+        <AppTouchable
           style={[
             styles.mainButton,
             {
@@ -280,7 +281,7 @@ const SpeedDialMenu: React.FC<SpeedDialMenuProps> = ({
           <Animated.View style={mainRotationStyle}>
             <Ionicons name={mainIcon} size={28} color={semanticColors.text.inverse} />
           </Animated.View>
-        </TouchableOpacity>
+        </AppTouchable>
       </View>
     </>
   );

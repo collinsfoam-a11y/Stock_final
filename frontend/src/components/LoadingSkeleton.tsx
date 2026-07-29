@@ -1,5 +1,5 @@
 import React from "react";
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { semanticColors as uiSemanticColors } from "@/theme/unified";
 
 import { View } from "react-native";
 interface SkeletonListProps {

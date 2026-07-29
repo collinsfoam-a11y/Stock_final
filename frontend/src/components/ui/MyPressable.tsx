@@ -181,4 +181,4 @@ export const PressablePresets = {
   },
 };
 
-export default MyPressable;
+

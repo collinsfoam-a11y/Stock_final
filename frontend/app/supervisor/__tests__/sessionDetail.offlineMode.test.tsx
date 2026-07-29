@@ -1,3 +1,4 @@
+import { AppTouchable } from "@/components/ui/AppTouchable";
 import React from "react";
 import { act, render } from "@testing-library/react-native";
 
@@ -90,7 +91,7 @@ jest.mock("../../../src/components/ui/AnimatedPressable", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require("react");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { TouchableOpacity } = require("react-native");
+  const { AppTouchable } = require("@/components/ui/AppTouchable");
 
   return {
     AnimatedPressable: ({
@@ -100,7 +101,7 @@ jest.mock("../../../src/components/ui/AnimatedPressable", () => {
     }: {
       children: React.ReactNode;
       onPress?: () => void;
-    }) => React.createElement(TouchableOpacity, { onPress, ...props }, children),
+    }) => React.createElement(AppTouchable, { onPress, ...props }, children),
   };
 });
 

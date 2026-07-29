@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, StyleSheet, Platform, TouchableOpacity } from "react-native";
+import { Modal, StyleSheet, Platform } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -9,7 +9,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { flags } from "../../constants/flags";
 
-import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -69,7 +70,11 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       onRequestClose={onClose}
     >
       <Animated.View style={[styles.backdrop, backdropStyle]}>
-        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onClose} />
+        <AppTouchable
+          style={{ flex: 1 }}
+          activeOpacity={1}
+          onPress={onClose}
+          accessibilityLabel="Close" />
       </Animated.View>
       <Animated.View style={[styles.sheet, { height }, sheetStyle]}>{children}</Animated.View>
     </Modal>
@@ -95,4 +100,3 @@ const styles = StyleSheet.create({
   },
 });
 
-export default BottomSheet;

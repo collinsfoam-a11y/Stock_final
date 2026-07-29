@@ -1,12 +1,13 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-
-import { ModernCard, ProgressRing, StatsCard } from "@/components/ui";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { theme } from "@/styles/modernDesignSystem";
+import { theme } from "@/styles/unifiedSystem";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { DashboardStats } from "@/components/supervisor/dashboard/supervisorDashboardShared";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { ProgressRing } from "@/components/ui/ProgressRing";
+import { StatsCard } from "@/components/ui/StatsCard";
 
 interface SupervisorStatsSectionProps {
   completionPercentage: number;

@@ -332,207 +332,20 @@ activity_log_service = ActivityLogService(db)
 error_log_service = ErrorLogService(db)
 
 
-# Create the main app with lifespan
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    logger.info("🚀 Starting StockVerify application...")
-
-    # Hold strong references to fire-and-forget startup tasks so the event
-    # loop cannot garbage-collect them mid-flight (RUF006). Cancelled on
-    # shutdown if still pending.
-    background_tasks: set[asyncio.Task] = set()
-
-    def _spawn_background(coro, name: str) -> asyncio.Task:
-        task = asyncio.create_task(coro, name=name)
-        background_tasks.add(task)
-        task.add_done_callback(background_tasks.discard)
-        return task
-
-    # Initialize runtime globals
-    set_client(client)
-    set_db(db)
-    set_cache_service(cache_service)
-    set_refresh_token_service(refresh_token_service)
-
-    # Phase 1: Initialize Redis and related services
-    redis_service = None
-    pubsub_service = None
-    try:
-        logger.info("📦 Phase 1: Initializing Redis services...")
-        redis_service = await init_redis()
-        logger.info("✓ Redis service initialized")
-
-        # Start Pub/Sub service
-        pubsub_service = get_pubsub_service(redis_service)
-        await pubsub_service.start()
-
-        # Initialize lock manager (will be used by APIs)
-        get_lock_manager(redis_service)
-        logger.info("✓ Lock manager initialized")
-
-    except Exception as e:
-        logger.warning("⚠️ Redis services not available: %s", str(e))
-        logger.warning("Multi-user locking and real-time updates will be disabled")
-
-    # Start mDNS service
-    try:
-        logger.info("🌐 Starting mDNS service...")
-        # Use PORT env var if set (by PortDetector), otherwise settings
-        mdns_port = int(os.getenv("PORT", getattr(settings, "PORT", 8001)))
-        await start_mdns(port=mdns_port)
-        logger.info("✓ mDNS service started (stock-verify.local on port %s)", mdns_port)
-    except Exception as e:
-        logger.warning("⚠️ mDNS service failed to start: %s", str(e))
-
-    # Create MongoDB indexes via MigrationManager
-    # MigrationManager.ensure_indexes() now calls create_indexes internally
-
-    # Initialize SQL Server connection if credentials are available
-    sql_credentials_ready = False
-    try:
-        sql_host = getattr(settings, "SQL_SERVER_HOST", None)
-        sql_port = getattr(settings, "SQL_SERVER_PORT", 1433)
-        sql_database = getattr(settings, "SQL_SERVER_DATABASE", None)
-        sql_user = getattr(settings, "SQL_SERVER_USER", None)
-        sql_password = getattr(settings, "SQL_SERVER_PASSWORD", None)
-        sql_password_placeholder = isinstance(
-            sql_password, str
-        ) and sql_password.strip().lower() in {
-            "",
-            "your-sql-password",
-            "change-me",
-            "password",
-            "changeme",
-            "your-actual-sql-password",
-        }
-        sql_credentials_ready = (not sql_user) or bool(
-            sql_password and not sql_password_placeholder
-        )
-
-        # Always attach SQL connector to count_lines_router so it can handle its own fallbacks
-        try:
-            from backend.api.count_lines_api import router as count_lines_router
-
-            count_lines_router.sql_connector = sql_connector
-            logger.info("✓ SQL connector attached to count_lines_router")
-        except Exception as e:
-            logger.warning("Failed to attach SQL connector to count_lines_router: %s", str(e))
-
-        if sql_host and sql_database and sql_credentials_ready:
-            logger.info(
-                f"Attempting to connect to SQL Server at {sql_host}:{sql_port}/{sql_database}..."
-            )
-            try:
-                startup_sql_timeout = getattr(settings, "SQL_STARTUP_CONNECT_TIMEOUT", 5)
-                await asyncio.wait_for(
-                    asyncio.to_thread(
-                        sql_connector.connect,
-                        sql_host,
-                        sql_port,
-                        sql_database,
-                        sql_user,
-                        sql_password,
-                    ),
-                    timeout=startup_sql_timeout,
-                )
-                logger.info("OK: SQL Server connection established")
-            except asyncio.TimeoutError:
-                # Must precede OSError: asyncio.TimeoutError is builtins.TimeoutError,
-                # which is a subclass of OSError, so ordering it after would make
-                # this branch unreachable and mislabel timeouts as network errors.
-                logger.warning("SQL Server connection timed out during startup")
-                logger.warning("ERP sync will be disabled until SQL Server is available")
-            except (ConnectionError, OSError) as e:
-                logger.warning("SQL Server connection failed (network/system error): %s", str(e))
-                logger.warning("ERP sync will be disabled until SQL Server is configured")
-            except Exception as e:
-                # Catch-all for other SQL Server connection errors (authentication, database not found, etc.)
-                logger.warning("SQL Server connection failed: %s", str(e))
-                logger.warning("ERP sync will be disabled until SQL Server is configured")
-        elif sql_host and sql_database:
-            logger.warning(
-                "SQL Server credentials not configured. "
-                "Set SQL_SERVER_USER and SQL_SERVER_PASSWORD (or use Windows auth)."
-            )
-        else:
-            logger.warning(
-                "SQL Server credentials not configured. Set SQL_SERVER_HOST and SQL_SERVER_DATABASE in .env"
-            )
-    except (ValueError, AttributeError) as e:
-        # Configuration errors - invalid settings
-        logger.warning("Error initializing SQL Server connection (configuration error): %s", str(e))
-    except Exception as e:
-        # Other unexpected errors during initialization
-        logger.warning("Unexpected error initializing SQL Server connection: %s", str(e))
-
-    # Initialize enhanced connection pool in background (never block API startup)
-    if (
-        not RUNNING_UNDER_PYTEST
-        and getattr(settings, "USE_CONNECTION_POOL", True)
-        and getattr(settings, "SQL_SERVER_HOST", None)
-        and getattr(settings, "SQL_SERVER_DATABASE", None)
-        and sql_credentials_ready
-    ):
-
-        async def _init_connection_pool():
-            global connection_pool
-            try:
-                from backend.services.enhanced_connection_pool import (
-                    EnhancedSQLServerConnectionPool,
-                )
-
-                connection_pool = await asyncio.to_thread(
-                    EnhancedSQLServerConnectionPool,
-                    host=settings.SQL_SERVER_HOST,
-                    port=settings.SQL_SERVER_PORT,
-                    database=settings.SQL_SERVER_DATABASE,
-                    user=getattr(settings, "SQL_SERVER_USER", None),
-                    password=getattr(settings, "SQL_SERVER_PASSWORD", None),
-                    pool_size=getattr(settings, "POOL_SIZE", 10),
-                    max_overflow=getattr(settings, "MAX_OVERFLOW", 5),
-                    retry_attempts=getattr(settings, "CONNECTION_RETRY_ATTEMPTS", 3),
-                    retry_delay=getattr(settings, "CONNECTION_RETRY_DELAY", 1.0),
-                    health_check_interval=getattr(settings, "CONNECTION_HEALTH_CHECK_INTERVAL", 60),
-                )
-                logger.info("✓ Enhanced connection pool initialized")
-            except Exception as e:
-                logger.warning("Connection pool initialization failed: %s", str(e))
-
-        _spawn_background(_init_connection_pool(), "init-connection-pool")
-
-    # CRITICAL: Verify MongoDB is available (required)
-    try:
-        await db.command("ping")
-        logger.info("✅ MongoDB connection verified - MongoDB is required and available")
-    except Exception as e:
-        # MongoDB connection failed - check if we're in development mode
-        error_type = type(e).__name__
-        logger.error("❌ MongoDB is required but unavailable (%s): %s", error_type, e)
-
-        # In development, allow app to run without MongoDB
-        if os.getenv("ENVIRONMENT", "development").lower() in ["development", "dev"]:
-            logger.warning(
-                "⚠️ Running in DEVELOPMENT mode without MongoDB - some features may be limited"
-            )
-        else:
-            logger.error(
-                "Application cannot start without MongoDB. Please ensure MongoDB is running."
-            )
-            raise SystemExit(
-                f"MongoDB is required but unavailable ({error_type}). Please start MongoDB and try again."
-            ) from e
-
-    # Optional bootstrap seeding for controlled dev/test environments only.
+async def _init_auth(db_instance):
+    from backend.config import settings
+    from backend.db.initialization import init_default_users, init_mock_erp_data
+    import logging
+    logger = logging.getLogger("stock-verify")
     try:
         if getattr(settings, "AUTO_SEED_DEFAULT_USERS", False):
-            await init_default_users(db)
+            await init_default_users(db_instance)
             logger.info("OK: Default users initialized")
         else:
             logger.info("Default user seeding disabled")
 
         if getattr(settings, "AUTO_SEED_MOCK_ERP_DATA", False):
-            await init_mock_erp_data(db)
+            await init_mock_erp_data(db_instance)
             logger.info("OK: Mock ERP data check complete")
         else:
             logger.info("Mock ERP data seeding disabled")
@@ -541,85 +354,68 @@ async def lifespan(app: FastAPI):
             f"Could not initialize optional seed data (may be due to MongoDB unavailability): {str(e)}"
         )
 
-    # Run migrations
+# Create the main app with lifespan
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from backend.core.startup import (
+        StartupContext, init_redis_services, init_mdns_service,
+        init_sql_server, init_connection_pool, verify_mongodb,
+        run_migrations, init_auto_sync, start_sync_services,
+        save_port_info, stop_services
+    )
+
+    logger.info("🚀 Starting StockVerify application...")
+    global scheduled_export_service, sync_conflicts_service, auto_sync_manager
+    ctx = StartupContext()
+    
+    # Initialize runtime globals
+    set_client(client)
+    set_db(db)
+    set_cache_service(cache_service)
+    set_refresh_token_service(refresh_token_service)
+
+    # Phase 1: Initialize Redis and related services
+    redis_service, pubsub_service = await init_redis_services()
+
+    # Start mDNS service
+    await init_mdns_service()
+
+    # Initialize SQL Server connection
+    sql_credentials_ready = await init_sql_server(sql_connector, count_lines_router=None)
+    # Note: count_lines_router is imported locally in the original, we will do it here
     try:
-        await migration_manager.ensure_indexes()
-        await migration_manager.run_migrations()
-        logger.info("OK: Migrations completed")
-    except DatabaseError as e:
-        logger.warning(
-            f"Database error during migrations (may be due to MongoDB unavailability): {str(e)}"
-        )
+        from backend.api.count_lines_api import router as count_lines_router
+        count_lines_router.sql_connector = sql_connector
+        logger.info("✓ SQL connector attached to count_lines_router")
     except Exception as e:
-        # Catch-all for migration errors (index creation failures, etc.)
-        logger.warning("Migration error (may be due to MongoDB unavailability): %s", str(e))
+        logger.warning("Failed to attach SQL connector to count_lines_router: %s", str(e))
 
-    # Initialize auto-sync manager (monitors SQL Server and auto-syncs when available)
-    global auto_sync_manager
-    try:
-        # Gate the auto-sync manager on the feature flag ONLY — not on whether
-        # SQL happened to be reachable at boot. The manager runs its own
-        # connection monitor (check_interval) and recovers when SQL comes back,
-        # so tying it to startup connectivity would permanently disable
-        # auto-recovery after a transient ERP outage during deploy.
-        auto_sync_enabled = bool(getattr(settings, "AUTO_SYNC_ENABLED", False))
-        auto_sync_manager = AutoSyncManager(
-            sql_connector=sql_connector,
-            mongo_db=db,
-            sync_interval=getattr(settings, "AUTO_SYNC_INTERVAL", 3600),
-            check_interval=30,  # Check connection every 30 seconds
-            enabled=auto_sync_enabled,
-        )
+    # Initialize connection pool in background
+    if (
+        not RUNNING_UNDER_PYTEST
+        and getattr(settings, "USE_CONNECTION_POOL", True)
+        and getattr(settings, "SQL_SERVER_HOST", None)
+        and getattr(settings, "SQL_SERVER_DATABASE", None)
+        and sql_credentials_ready
+    ):
+        ctx.spawn_background(init_connection_pool(ctx), "init-connection-pool")
 
-        if auto_sync_enabled:
-            # Set callbacks for admin notifications
-            async def on_connection_restored():
-                logger.info("📢 SQL Server connection restored - sync will start automatically")
-                # Could send notification to admin panel here
+    # Verify MongoDB
+    await verify_mongodb(db)
 
-            async def on_connection_lost():
-                logger.warning("📢 SQL Server connection lost - sync paused")
-                # Could send notification to admin panel here
+    # Bootstrap
+    await _init_auth(db)
 
-            async def on_sync_complete():
-                logger.info("📢 Sync completed successfully")
-                # Could send notification to admin panel here
+    # Migrations
+    await run_migrations(migration_manager)
 
-            auto_sync_manager.set_callbacks(
-                on_connection_restored=on_connection_restored,
-                on_connection_lost=on_connection_lost,
-                on_sync_complete=on_sync_complete,
-            )
+    # Auto sync
+    await init_auto_sync(auto_sync_manager, sql_connector, db, ctx)
 
-            _spawn_background(auto_sync_manager.start(), "auto-sync-manager-start")
-            logger.info("✅ Auto-sync manager starting (background)")
-        else:
-            logger.info("Auto-sync manager disabled")
+    # Start ERP and Change Detection sync
+    await start_sync_services(erp_sync_service, change_detection_sync)
 
-        # Register with API router
-        set_auto_sync_manager(auto_sync_manager)
-    except Exception as e:
-        logger.warning("Auto-sync manager initialization failed: %s", str(e))
-        auto_sync_manager = None
-
-    # Start ERP sync service (full sync)
-    if erp_sync_service:
-        try:
-            # SQLSyncService.start() is now async
-            await erp_sync_service.start()
-            logger.info("✓ ERP sync service started")
-        except Exception as e:
-            logger.error("Failed to start ERP sync service: %s", str(e))
-
-    # Start change detection sync service
-    if change_detection_sync:
-        try:
-            # ChangeDetectionSyncService.start() is already async
-            await change_detection_sync.start()
-        except Exception as e:
-            logger.error("Failed to start change detection sync service: %s", str(e))
-
-    # Start database health monitoring
+    # Database health monitoring
     try:
         database_health_service.start()
         logger.info("OK: Database health monitoring started")
@@ -634,25 +430,23 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Cache service error: %s", str(e))
 
-    # Initialize auth dependencies for routers (avoid circular imports)
+    # Auth deps
     try:
         init_auth_dependencies(db, SECRET_KEY, ALGORITHM)
         logger.info("OK: Auth dependencies initialized")
     except Exception as e:
         logger.error("Failed to initialize auth dependencies: %s", str(e))
 
-    # Initialize Lock Service
+    # Lock service
     try:
         lock_service = LockService(db)
         await lock_service.initialize()
         logger.info("✓ Lock service initialized")
     except Exception as e:
         logger.error("Failed to initialize lock service: %s", str(e))
-        # We might want to raise here if strict locking is critical,
-        # but for now log error.
-        lock_service = None  # fallback? Or just fail.
+        lock_service = None
 
-    # Initialize Variant Service (Rule 5)
+    # Variant Service
     try:
         variant_service = VariantService(db)
         logger.info("✓ Variant service initialized for Rule 5 compliance")
@@ -660,39 +454,35 @@ async def lifespan(app: FastAPI):
         logger.error("Failed to initialize variant service: %s", str(e))
         variant_service = None
 
-    # Initialize Snapshot Service (Rule 2 Mandatory)
+    # Snapshot Service
     try:
         from backend.services.snapshot_service import SnapshotService
-
         snapshot_service = SnapshotService(db)
         logger.info("✓ Snapshot service initialized for Rule 2 compliance")
     except Exception as e:
         logger.error("Failed to initialize snapshot service: %s", str(e))
         snapshot_service = None
 
-    # Initialize count_lines_api with dependencies
+    # CountLines API
     try:
         from backend.api.count_lines_api import init_count_lines_api
-
-        # Use global activity_log_service
-
         init_count_lines_api(
             activity_log_service,
             lock_service,
             snapshot_service,
             variant_service,
         )
-        logger.info("✓ CountLines API initialized with dependencies (including VariantService)")
+        logger.info("✓ CountLines API initialized with dependencies")
     except Exception as e:
         logger.error("Failed to initialize CountLines API: %s", str(e))
+
     try:
-        # Scheduled export service
         scheduled_export_service = ScheduledExportService(db)
         scheduled_export_service.start()
     except Exception as e:
         logger.error("Failed to start scheduled export service: %s", str(e))
 
-    # Initialize enrichment service
+    # Enrichment
     if EnrichmentService is not None and init_enrichment_api is not None:
         try:
             enrichment_svc = EnrichmentService(db)
@@ -701,10 +491,9 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error("Failed to initialize enrichment service: %s", str(e))
 
-    # Initialize enterprise services
+    # Enterprise Services
     if g.ENTERPRISE_AVAILABLE:
         try:
-            # Enterprise Audit Service
             app.state.enterprise_audit = EnterpriseAuditService(db)
             await app.state.enterprise_audit.initialize()
         except Exception as e:
@@ -712,7 +501,6 @@ async def lifespan(app: FastAPI):
             logger.warning("Enterprise audit service not available: %s", str(e))
 
         try:
-            # Enterprise Security Service
             app.state.enterprise_security = EnterpriseSecurityService(db)
             await app.state.enterprise_security.initialize()
         except Exception as e:
@@ -720,7 +508,6 @@ async def lifespan(app: FastAPI):
             logger.warning("Enterprise security service not available: %s", str(e))
 
         try:
-            # Feature Flags Service
             app.state.feature_flags = FeatureFlagService(db)
             await app.state.feature_flags.initialize()
         except Exception as e:
@@ -728,140 +515,52 @@ async def lifespan(app: FastAPI):
             logger.warning("Feature flags service not available: %s", str(e))
 
         try:
-            # Data Governance Service
             app.state.data_governance = DataGovernanceService(db)
             await app.state.data_governance.initialize()
         except Exception as e:
             app.state.data_governance = None
             logger.warning("Data governance service not available: %s", str(e))
     else:
-        # Set None for enterprise services if not available
         app.state.enterprise_audit = None
         app.state.enterprise_security = None
         app.state.feature_flags = None
         app.state.data_governance = None
 
+    # Sync conflicts
     try:
-        # Sync conflicts service
         sync_conflicts_service = SyncConflictsService(db)
         logger.info("✓ Sync conflicts service initialized")
     except Exception as e:
         logger.error("Failed to initialize sync conflicts service: %s", str(e))
 
     try:
-        # Set monitoring service for metrics API
         set_monitoring_service(monitoring_service)
         logger.info("✓ Monitoring service connected to metrics API")
     except Exception as e:
         logger.error("Failed to set monitoring service: %s", str(e))
 
     try:
-        # Initialize ERP API
         init_erp_api(db, cache_service, sql_connector)
         logger.info("✓ ERP API initialized")
     except Exception as e:
         logger.error("Failed to initialize ERP API: %s", str(e))
 
     try:
-        # Initialize Enhanced Item API
         init_enhanced_api(db, cache_service, monitoring_service, sql_connector)
         logger.info("✓ Enhanced Item API initialized")
     except Exception as e:
         logger.error("Failed to initialize Enhanced Item API: %s", str(e))
 
     try:
-        # Initialize verification API
         init_verification_api(db, cache_service, erp_sync_service)
         logger.info("✓ Item verification API initialized")
     except Exception as e:
         logger.error("Failed to initialize verification API: %s", str(e))
 
-    # Startup checklist verification
-    startup_checklist = {
-        "mongodb": False,
-        "sql_server": False,
-        "cache": False,
-        "auth": False,
-        "services": False,
-    }
-
-    # Verify MongoDB
-    try:
-        await db.command("ping")
-        startup_checklist["mongodb"] = True
-        logger.info("✓ Startup Check: MongoDB connected")
-    except Exception as e:
-        logger.warning("⚠️  Startup Check: MongoDB not connected - %s", str(e))
-
-    # Verify SQL Server (optional)
-    try:
-        sql_ok = False
-        if sql_connector:
-            sql_ok = await asyncio.wait_for(
-                asyncio.to_thread(sql_connector.test_connection),
-                timeout=3,
-            )
-        if sql_ok:
-            startup_checklist["sql_server"] = True
-            logger.info("✓ Startup Check: SQL Server connected")
-        else:
-            logger.info("ℹ️  Startup Check: SQL Server not configured (optional)")
-    except asyncio.TimeoutError:
-        logger.info("ℹ️  Startup Check: SQL Server not available - timeout")
-    except Exception as e:
-        logger.info("ℹ️  Startup Check: SQL Server not available - %s", str(e))
-
-    # Verify Cache
-    try:
-        cache_stats = await cache_service.get_stats()
-        logger.info(
-            "✓ Startup Check: Cache initialized (%s)", cache_stats.get("backend", "unknown")
-        )
-    except Exception as e:
-        logger.warning("⚠️ Startup Check: Cache service warning: %s", str(e))
-
-    # Verify Auth
-    try:
-        from backend.auth.dependencies import auth_deps
-
-        if auth_deps._initialized:
-            startup_checklist["auth"] = True
-            logger.info("✓ Startup Check: Auth initialized")
-    except Exception as e:
-        logger.warning("⚠️  Startup Check: Auth error - %s", str(e))
-
-    # Verify Services
-    services_running = []
-    # if erp_sync_service:
-    #     services_running.append("ERP Sync")
-    if scheduled_export_service:
-        services_running.append("Scheduled Export")
-    if sync_conflicts_service:
-        services_running.append("Sync Conflicts")
-    if monitoring_service:
-        services_running.append("Monitoring")
-    if database_health_service:
-        services_running.append("Database Health")
-
-    if services_running:
-        startup_checklist["services"] = True
-        logger.info("✓ Startup Check: %s services running", len(services_running))
-
-    # Log startup summary
-    critical_services = ["mongodb", "auth"]
-    all_critical_ok = all(startup_checklist[svc] for svc in critical_services)
-
-    if all_critical_ok:
-        logger.info("✅ Startup Checklist: All critical services OK")
-    else:
-        failed = [svc for svc in critical_services if not startup_checklist[svc]]
-        logger.warning("⚠️  Startup Checklist: Critical services failed - %s", ", ".join(failed))
-
-    # Initialize search service
+    # Search service
     try:
         from backend.db.runtime import get_db
         from backend.services.search_service import init_search_service
-
         database = get_db()
         init_search_service(database)
         logger.info("✓ Search service initialized successfully")
@@ -870,166 +569,63 @@ async def lifespan(app: FastAPI):
 
     logger.info("OK: Application startup complete")
 
-    # Inject services into runtime globals
-
-    # Core Services
+    # Inject services into globals
     g.db = db
-
     g.cache_service = cache_service
-
     g.rate_limiter = rate_limiter
-
     g.concurrent_handler = concurrent_handler
-
     g.activity_log_service = activity_log_service
-
     g.error_log_service = error_log_service
-
     g.refresh_token_service = refresh_token_service
-
     g.batch_operations = batch_operations
-
     g.migration_manager = migration_manager
-
-    # Functional Services
+    
     g.scheduled_export_service = scheduled_export_service
-
     g.sync_conflicts_service = sync_conflicts_service
-
     g.monitoring_service = monitoring_service
-
     g.database_health_service = database_health_service
-
     g.auto_sync_manager = auto_sync_manager
 
     if g.ENTERPRISE_AVAILABLE:
         g.enterprise_audit_service = getattr(app.state, "enterprise_audit", None)
-
         g.enterprise_security_service = getattr(app.state, "enterprise_security", None)
 
-    logger.info("✓ Global services initialized")
-
-    # Save backend port info (replaces deprecated on_event("startup"))
-    try:
-        port_str = os.getenv("PORT", str(getattr(settings, "PORT", 8001)))
-        port = int(port_str)
-    except Exception:
-        port = 8001
-
-    try:
-        local_ip = PortDetector.get_local_ip()
-
-        # Check for SSL certificates to determine protocol
-        # project_root is defined at top of file as backend/
-        repo_root = project_root.parent
-        default_key = repo_root / "nginx" / "ssl" / "privkey.pem"
-        default_cert = repo_root / "nginx" / "ssl" / "fullchain.pem"
-
-        ssl_keyfile = os.getenv("SSL_KEYFILE", str(default_key))
-        ssl_certfile = os.getenv("SSL_CERTFILE", str(default_cert))
-        use_ssl = os.path.exists(ssl_keyfile) and os.path.exists(ssl_certfile)
-        protocol = "https" if use_ssl else "http"
-
-        save_backend_info(port, local_ip, protocol)
-    except Exception as e:
-        logger.error("Error saving backend port info: %s", e)
+    save_port_info(project_root)
 
     yield
 
-    # Shutdown with timeout handling
+    # Shutdown
     logger.info("🛑 Shutting down application...")
     shutdown_start = time.time()
-    shutdown_timeout = 30  # 30 seconds max for graceful shutdown
-
-    # Cancel any still-pending fire-and-forget startup tasks
-    for task in list(background_tasks):
+    
+    for task in list(ctx.background_tasks):
         if not task.done():
             task.cancel()
-    if background_tasks:
-        await asyncio.gather(*background_tasks, return_exceptions=True)
+    if ctx.background_tasks:
+        await asyncio.gather(*ctx.background_tasks, return_exceptions=True)
 
-    shutdown_tasks = []
-
-    # Stop sync services
-    if erp_sync_service is not None:
-        erp_sync = erp_sync_service  # Type narrowing for Pyright
-
-        async def stop_erp_sync():
-            try:
-                await erp_sync.stop()
-                logger.info("✓ ERP sync service stopped")
-            except Exception as e:
-                logger.error("Error stopping ERP sync service: %s", str(e))
-
-        shutdown_tasks.append(stop_erp_sync())
-
-    # Stop scheduled export service
-    if scheduled_export_service:
-
-        async def stop_export_service():
-            try:
-                await scheduled_export_service.stop()
-                logger.info("✓ Scheduled export service stopped")
-            except Exception as e:
-                logger.error("Error stopping scheduled export service: %s", str(e))
-
-        shutdown_tasks.append(stop_export_service())
-
-    # Stop database health monitoring
-    async def stop_health_monitoring():
-        try:
-            await database_health_service.stop()
-            logger.info("✓ Database health monitoring stopped")
-        except Exception as e:
-            logger.error("Error stopping database health monitoring: %s", str(e))
-
-    shutdown_tasks.append(stop_health_monitoring())
-
-    # Stop auto-sync manager
-    async def stop_auto_sync():
-        if auto_sync_manager:
-            try:
-                await auto_sync_manager.stop()
-                logger.info("✅ Auto-sync manager stopped")
-            except Exception as e:
-                logger.error("Error stopping auto-sync manager: %s", e)
-
-    shutdown_tasks.append(stop_auto_sync())
-
-    # Phase 1: Stop Pub/Sub and Redis services
-    async def stop_redis_services():
-        try:
-            if pubsub_service:
-                await pubsub_service.stop()
-                logger.info("✓ Pub/Sub service stopped")
-
-            await close_redis()
-            logger.info("✓ Redis connection closed")
-        except Exception as e:
-            logger.error("Error stopping Redis services: %s", str(e))
-
-    shutdown_tasks.append(stop_redis_services())
-
-    # Execute shutdown tasks with timeout
+    shutdown_tasks = await stop_services(
+        ctx, auto_sync_manager, erp_sync_service, scheduled_export_service,
+        database_health_service, pubsub_service
+    )
+    
     try:
         await asyncio.wait_for(
             asyncio.gather(*shutdown_tasks, return_exceptions=True),
-            timeout=shutdown_timeout,
+            timeout=30,
         )
     except TimeoutError:
-        logger.warning("⚠️  Shutdown timeout after %ss, forcing shutdown...", shutdown_timeout)
+        logger.warning("⚠️  Shutdown timeout forcing shutdown...")
     except Exception as e:
         logger.error("Error during shutdown: %s", str(e))
 
-    # Close connection pool (blocking operation)
-    if connection_pool:
+    if ctx.connection_pool:
         try:
-            connection_pool.close_all()
+            ctx.connection_pool.close_all()
             logger.info("✓ Connection pool closed")
         except Exception as e:
             logger.error("Error closing connection pool: %s", str(e))
 
-    # Close MongoDB connection
     try:
         if "client" in globals() and client:
             client.close()
@@ -1037,12 +633,11 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error("Error closing MongoDB connection: %s", str(e))
 
-    # Stop mDNS service
+    from backend.services.mdns_service import stop_mdns
     try:
         await stop_mdns()
         logger.info("✓ mDNS service stopped")
     except Exception as e:
         logger.error("Error stopping mDNS service: %s", str(e))
 
-    shutdown_duration = time.time() - shutdown_start
-    logger.info("✓ Application shutdown complete (took %.2fs)", shutdown_duration)
+    logger.info("✓ Application shutdown complete (took %.2fs)", time.time() - shutdown_start)

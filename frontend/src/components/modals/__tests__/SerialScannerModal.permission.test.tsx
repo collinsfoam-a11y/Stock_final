@@ -1,7 +1,7 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { Linking } from "react-native";
 
-import SerialScannerModal from "../SerialScannerModal";
+import { SerialScannerModal } from "../SerialScannerModal";
 
 const mockRequestPermission = jest.fn();
 const mockUseCameraPermissions = jest.fn();

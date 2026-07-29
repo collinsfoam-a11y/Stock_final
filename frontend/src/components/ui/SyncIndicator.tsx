@@ -8,4 +8,4 @@ export function SyncIndicator(_props: SyncIndicatorProps) {
   return <SyncStatusPill />;
 }
 
-export default SyncIndicator;
+

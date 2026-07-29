@@ -1,12 +1,14 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import React, { useMemo } from "react";
-import { StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Switch, Text, TextInput, View } from "react-native";
 
-import ModernCard from "@/components/ui/ModernCard";
-import ModernInput from "@/components/ui/ModernInput";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { ModernInput } from "@/components/ui/ModernInput";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getDecorativeIconProps } from "@/utils/accessibility";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 type DamageType = "returnable" | "nonreturnable";
 
@@ -258,13 +260,13 @@ export function EvidenceNotesSection({
             </Text>
 
             <View style={styles.damageTypeContainer}>
-              <TouchableOpacity
+              <AppTouchable
                 style={[
                   styles.damageTypeButton,
                   damageType === "returnable" && styles.damageTypeSelected,
                 ]}
                 onPress={() => onDamageTypeChange("returnable")}
-              >
+ >
                 <Text
                   style={[
                     styles.damageTypeText,
@@ -273,15 +275,15 @@ export function EvidenceNotesSection({
                 >
                   Returnable
                 </Text>
-              </TouchableOpacity>
+              </AppTouchable>
 
-              <TouchableOpacity
+              <AppTouchable
                 style={[
                   styles.damageTypeButton,
                   damageType === "nonreturnable" && styles.damageTypeSelected,
                 ]}
                 onPress={() => onDamageTypeChange("nonreturnable")}
-              >
+ >
                 <Text
                   style={[
                     styles.damageTypeText,
@@ -290,7 +292,7 @@ export function EvidenceNotesSection({
                 >
                   Non-Returnable
                 </Text>
-              </TouchableOpacity>
+              </AppTouchable>
             </View>
 
             <View style={{ marginTop: uiTokens.spacing.md }}>
@@ -308,10 +310,10 @@ export function EvidenceNotesSection({
             </View>
 
             <View style={styles.photoContainer}>
-              <TouchableOpacity
+              <AppTouchable
                 style={[styles.photoButton, damagePhoto && styles.photoButtonSuccess]}
                 onPress={onTakeDamagePhoto}
-              >
+ >
                 <Ionicons
                   {...decorativeIconProps}
                   name={damagePhoto ? "checkmark-circle" : "camera"}
@@ -326,7 +328,7 @@ export function EvidenceNotesSection({
                 >
                   {damagePhoto ? "Update Photo" : "Capture Photo"}
                 </Text>
-              </TouchableOpacity>
+              </AppTouchable>
 
               {damagePhoto && (
                 <View style={styles.photoPreviewWrapper}>
@@ -337,16 +339,15 @@ export function EvidenceNotesSection({
                     color={uiTokens.colors.success}
                   />
                   <Text style={styles.photoPreviewText}>Photo captured</Text>
-                  <TouchableOpacity onPress={onRemoveDamagePhoto}>
+                  <AppTouchable onPress={onRemoveDamagePhoto} >
                     <Text style={styles.photoRemoveText}>Remove</Text>
-                  </TouchableOpacity>
+                  </AppTouchable>
                 </View>
               )}
             </View>
           </View>
         )}
       </View>
-
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Item Photos (Optional)</Text>
 
@@ -360,23 +361,26 @@ export function EvidenceNotesSection({
                   size={32}
                   color={colorWithAlpha(uiTokens.colors.accent, 0.45)}
                 />
-                <TouchableOpacity
+                <AppTouchable
                   style={styles.removePhotoBadge}
                   onPress={() => onRemoveItemPhoto(index)}
-                >
+                  accessibilityLabel="Remove photo">
                   <Ionicons
                     {...decorativeIconProps}
                     name="close-circle"
                     size={20}
                     color={uiTokens.colors.error}
                   />
-                </TouchableOpacity>
+                </AppTouchable>
               </ModernCard>
             </View>
           ))}
 
           {itemPhotos.length < 3 && (
-            <TouchableOpacity style={styles.addPhotoCard} onPress={onAddItemPhoto}>
+            <AppTouchable
+              style={styles.addPhotoCard}
+              onPress={onAddItemPhoto}
+ >
               <Ionicons
                 {...decorativeIconProps}
                 name="add-circle-outline"
@@ -384,11 +388,10 @@ export function EvidenceNotesSection({
                 color={uiTokens.colors.accent}
               />
               <Text style={styles.addPhotoSubtext}>Add Photo</Text>
-            </TouchableOpacity>
+            </AppTouchable>
           )}
         </View>
       </View>
-
       <View style={styles.section}>
         <ModernInput
           value={varianceRemark}
@@ -397,7 +400,6 @@ export function EvidenceNotesSection({
           label="Variance Remark"
         />
       </View>
-
       <View style={styles.section}>
         <ModernInput
           value={remark}

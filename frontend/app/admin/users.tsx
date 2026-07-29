@@ -8,12 +8,6 @@ import { View, Text, StyleSheet, Alert, RefreshControl } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { usePermission } from "../../src/hooks/usePermission";
-import {
-  LoadingSpinner,
-  AnimatedPressable,
-  ModernCard,
-  ScreenContainer,
-} from "../../src/components/ui";
 import { UserFiltersBar } from "../../src/components/admin/users/UserFiltersBar";
 import { UserFormModal } from "../../src/components/admin/users/UserFormModal";
 import { UsersTable } from "../../src/components/admin/users/UsersTable";
@@ -32,6 +26,10 @@ import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 
 export default function UsersScreen() {
   const router = useRouter();

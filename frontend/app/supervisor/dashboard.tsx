@@ -37,19 +37,16 @@ import {
   WarehouseOption,
   ZoneOption,
 } from "../../src/components/supervisor/dashboard/supervisorDashboardShared";
-import {
-  ActivityType,
-  AnimatedPressable,
-  ModernCard,
-  ScreenContainer,
-  SpeedDialAction,
-  SpeedDialMenu,
-} from "../../src/components/ui";
 import { useUiTokens } from "../../src/hooks/useUiTokens";
 import { createSession, getSessions, getWarehouses, getZones } from "../../src/services/api/api";
-import { theme } from "../../src/styles/modernDesignSystem";
+import { theme } from "@/theme/unified";
 import { colorWithAlpha } from "../../src/theme/themeTokens";
 import { Session } from "../../src/types";
+import { ActivityType } from "@/components/ui/ActivityFeedItem";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
+import { SpeedDialAction, SpeedDialMenu } from "@/components/ui/SpeedDialMenu";
 
 export default function SupervisorDashboard() {
   const router = useRouter();

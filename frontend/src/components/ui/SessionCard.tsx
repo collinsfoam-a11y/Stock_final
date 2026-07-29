@@ -9,7 +9,7 @@
  */
 
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from "react-native";
+import { View, Text, StyleSheet, ViewStyle } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -27,11 +27,13 @@ import {
 } from "../../styles/unifiedSystem";
 import { StatusBadge } from "./StatusBadge";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { semanticColors as uiSemanticColors } from "@/theme/unified";
 import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 import { haptics } from "@/services/haptics";
 
-const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+import { AppTouchable } from "@/components/ui/AppTouchable";
+
+const AnimatedAppTouchable = Animated.createAnimatedComponent(AppTouchable);
 
 type SessionStatus = "active" | "completed" | "paused" | "pending";
 
@@ -120,7 +122,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
 
   return (
     <Animated.View entering={FadeInDown.delay(index * 50).springify()} style={[animatedStyle]}>
-      <AnimatedTouchableOpacity
+      <AnimatedAppTouchable
         {...getAccessibleButtonProps({ label: `Session ${name}`, hint: "View session details" })}
         style={[styles.container, style]}
         onPress={() => {
@@ -187,17 +189,17 @@ export const SessionCard: React.FC<SessionCardProps> = ({
           </View>
 
           {onResume && status !== "completed" && (
-            <TouchableOpacity
+            <AppTouchable
               {...getAccessibleButtonProps({ label: `Resume session ${name}` })}
               style={styles.resumeButton}
               onPress={() => {
                 void haptics.light();
                 onResume();
               }}
-            >
+              accessibilityLabel="Start">
               <Ionicons {...getDecorativeIconProps()} name="play" size={14} color={uiSemanticColors.text.inverse} />
               <Text style={styles.resumeText}>Resume</Text>
-            </TouchableOpacity>
+            </AppTouchable>
           )}
         </View>
 
@@ -208,7 +210,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
             <Text style={styles.countLabel}>items</Text>
           </View>
         )}
-      </AnimatedTouchableOpacity>
+      </AnimatedAppTouchable>
     </Animated.View>
   );
 };
@@ -343,4 +345,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SessionCard;
+

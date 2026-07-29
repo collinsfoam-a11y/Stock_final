@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Toast } from "./Toast";
 import { ToastData, toastService } from "../../services/toastService";
 import { useUiTokens } from "../../hooks/useUiTokens";
-import { zIndex } from "../../theme";
+import { zIndex } from "@/theme/designTokens";
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastData[]>([]);

@@ -31,7 +31,7 @@ from backend.services.lock_manager import LockManager, get_lock_manager
 from backend.services.redis_service import get_redis
 from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.sync_conflicts_service import SyncConflictsService
-from backend.services.transaction_manager import mongo_transaction
+from backend.core.uow import MongoUnitOfWork
 from backend.services.validation_service import ValidationService
 
 logger = logging.getLogger(__name__)
@@ -1023,13 +1023,13 @@ async def _handle_duplicate_count_line(
     new_line_data["previous_version_id"] = previous_line_id
     new_line_data["recount_of_id"] = root_recount_id
 
-    async with mongo_transaction(db.client) as tx:
+    async with MongoUnitOfWork(db.client) as uow:
         await write_service.process_write(
             {"operation": "insert_one", "document": new_line_data},
             context={
                 "session": session,
                 "username": username,
-                "db_session": tx,
+                "db_session": uow.session,
                 "skip_session_totals_update": True,
             },
         )
@@ -1053,7 +1053,7 @@ async def _handle_duplicate_count_line(
                 "session": session,
                 "username": username,
                 "session_id": session_id,
-                "db_session": tx,
+                "db_session": uow.session,
             },
         )
     return "Rejected count line superseded by new recount version"

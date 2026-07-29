@@ -388,4 +388,4 @@ export const resetFilterStore = async () => {
   await clearLegacySharedFilterStorage();
 };
 
-export default useFilterStore;
+

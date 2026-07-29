@@ -5,14 +5,15 @@
  */
 
 import * as React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { View, Text, StyleSheet, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
 
 import { useTheme } from "../../hooks/useTheme";
 import { useSettingsStore } from "../../store/settingsStore";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { semanticColors as uiSemanticColors } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 interface ThemePickerProps {
   compact?: boolean;
 }
@@ -33,7 +34,7 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => 
             { value: "light" as const, label: "Light", icon: "sunny-outline" },
             { value: "dark" as const, label: "Dark", icon: "moon-outline" },
           ].map((mode) => (
-            <TouchableOpacity
+            <AppTouchable
               key={mode.value}
               style={[
                 styles.modeButton,
@@ -45,7 +46,7 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => 
                 }
                 setSetting("theme", mode.value);
               }}
-            >
+ >
               <Ionicons
                 name={mode.icon as any}
                 size={18}
@@ -62,7 +63,7 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => 
               >
                 {mode.label}
               </Text>
-            </TouchableOpacity>
+            </AppTouchable>
           ))}
         </View>
       </View>
@@ -105,4 +106,3 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ThemePicker;

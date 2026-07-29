@@ -7,7 +7,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   View,
   Text,
-  TouchableOpacity,
   Modal,
   StyleSheet,
   ScrollView,
@@ -40,7 +39,9 @@ import {
   fontSize,
   fontWeight,
   radius as borderRadius,
-} from "@/theme/legacyCompat";
+} from "@/theme/unified";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface SerialScannerModalProps {
   visible: boolean;
@@ -402,32 +403,38 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
                 style={{ marginTop: spacing.md }}
               />
             ) : canAskPermission ? (
-              <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+              <AppTouchable
+                style={styles.permissionButton}
+                onPress={requestPermission}
+ >
                 <Text style={styles.permissionButtonText}>Grant Permission</Text>
-              </TouchableOpacity>
+              </AppTouchable>
             ) : (
-              <TouchableOpacity style={styles.permissionButton} onPress={handleOpenSettings}>
+              <AppTouchable
+                style={styles.permissionButton}
+                onPress={handleOpenSettings}
+ >
                 <Text style={styles.permissionButtonText}>Open Settings</Text>
-              </TouchableOpacity>
+              </AppTouchable>
             )}
 
-            <TouchableOpacity
+            <AppTouchable
               style={[styles.permissionButton, styles.permissionSecondaryButton]}
               onPress={() => setShowManualInput(true)}
-            >
+ >
               <Text style={[styles.permissionButtonText, styles.permissionSecondaryButtonText]}>
                 Use Manual Entry
               </Text>
-            </TouchableOpacity>
+            </AppTouchable>
 
-            <TouchableOpacity
+            <AppTouchable
               style={[styles.permissionButton, styles.permissionSecondaryButton]}
               onPress={onClose}
-            >
+ >
               <Text style={[styles.permissionButtonText, styles.permissionSecondaryButtonText]}>
                 Close
               </Text>
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
 
           {/* Manual Input Overlay */}
@@ -443,9 +450,11 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
             >
               <View style={styles.manualHeader}>
                 <Text style={styles.manualTitle}>Manual / Bulk Input</Text>
-                <TouchableOpacity onPress={() => setShowManualInput(false)}>
+                <AppTouchable
+                  onPress={() => setShowManualInput(false)}
+                  accessibilityLabel="Close">
                   <Ionicons name="close" size={28} color={colors.neutral[900]} />
-                </TouchableOpacity>
+                </AppTouchable>
               </View>
 
               <Text style={styles.manualHelperText}>
@@ -462,12 +471,12 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
                 autoCorrect={false}
               />
 
-              <TouchableOpacity
+              <AppTouchable
                 style={[styles.doneButton, { margin: spacing.lg }]}
                 onPress={handleBulkProcess}
-              >
+ >
                 <Text style={styles.doneButtonText}>Process Serials</Text>
-              </TouchableOpacity>
+              </AppTouchable>
             </KeyboardAvoidingView>
           </Modal>
         </View>
@@ -503,9 +512,12 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
               },
             ]}
           >
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <AppTouchable
+              style={styles.closeButton}
+              onPress={onClose}
+              accessibilityLabel="Close">
               <Ionicons name="close" size={28} color={colors.white} />
-            </TouchableOpacity>
+            </AppTouchable>
             <View style={styles.titleContainer}>
               <Text style={styles.title}>Scan Serial Number</Text>
               {itemName && (
@@ -568,25 +580,25 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
             </View>
 
             {scanPaused && (
-              <TouchableOpacity
+              <AppTouchable
                 style={[
                   styles.doneButton,
                   { marginBottom: spacing.md, backgroundColor: colors.success[600] },
                 ]}
                 onPress={handleResumeScan}
-              >
+                accessibilityLabel="Scan">
                 <Ionicons name="scan-outline" size={22} color={colors.white} />
                 <Text style={styles.doneButtonText}>Scan Next Serial</Text>
-              </TouchableOpacity>
+              </AppTouchable>
             )}
 
             {detectedCodes.length > 0 && (
               <View style={styles.detectedList}>
                 <View style={styles.detectedHeader}>
                   <Text style={styles.detectedLabel}>Detected Codes ({detectedCodes.length})</Text>
-                  <TouchableOpacity onPress={handleResetDetected}>
+                  <AppTouchable onPress={handleResetDetected} >
                     <Text style={styles.detectedResetText}>Reset</Text>
-                  </TouchableOpacity>
+                  </AppTouchable>
                 </View>
                 <ScrollView
                   style={styles.detectedScroll}
@@ -594,7 +606,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
                   keyboardShouldPersistTaps="handled"
                 >
                   {detectedCodes.map((candidate) => (
-                    <TouchableOpacity
+                    <AppTouchable
                       key={candidate.code}
                       style={[
                         styles.detectedRow,
@@ -603,7 +615,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
                       activeOpacity={0.8}
                       onPress={() => handleDetectedCodePress(candidate)}
                       disabled={candidate.status !== "ready"}
-                    >
+ >
                       <View style={styles.detectedRowContent}>
                         <Text style={styles.detectedCode}>{candidate.code}</Text>
                         <Text style={styles.detectedMessage}>{candidate.message}</Text>
@@ -626,7 +638,7 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
                               : "Skip"}
                         </Text>
                       </View>
-                    </TouchableOpacity>
+                    </AppTouchable>
                   ))}
                 </ScrollView>
               </View>
@@ -642,21 +654,24 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
               </View>
             )}
 
-            <TouchableOpacity style={styles.doneButton} onPress={onClose}>
+            <AppTouchable
+              style={styles.doneButton}
+              onPress={onClose}
+              accessibilityLabel="Confirm">
               <Ionicons name="checkmark" size={24} color={colors.white} />
               <Text style={styles.doneButtonText}>Done ({existingSerials.length} serials)</Text>
-            </TouchableOpacity>
+            </AppTouchable>
 
-            <TouchableOpacity
+            <AppTouchable
               style={[
                 styles.doneButton,
                 { marginTop: spacing.sm, backgroundColor: colors.neutral[700] },
               ]}
               onPress={() => setShowManualInput(true)}
-            >
+              accessibilityLabel="Edit">
               <Ionicons name="create-outline" size={24} color={colors.white} />
               <Text style={styles.doneButtonText}>Manual / Bulk Paste</Text>
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
         </View>
 
@@ -673,9 +688,11 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
           >
             <View style={styles.manualHeader}>
               <Text style={styles.manualTitle}>Manual / Bulk Input</Text>
-              <TouchableOpacity onPress={() => setShowManualInput(false)}>
+              <AppTouchable
+                onPress={() => setShowManualInput(false)}
+                accessibilityLabel="Close">
                 <Ionicons name="close" size={28} color={colors.neutral[900]} />
-              </TouchableOpacity>
+              </AppTouchable>
             </View>
 
             <Text style={styles.manualHelperText}>
@@ -692,12 +709,12 @@ export const SerialScannerModal: React.FC<SerialScannerModalProps> = ({
               autoCorrect={false}
             />
 
-            <TouchableOpacity
+            <AppTouchable
               style={[styles.doneButton, { margin: spacing.lg }]}
               onPress={handleBulkProcess}
-            >
+ >
               <Text style={styles.doneButtonText}>Process Serials</Text>
-            </TouchableOpacity>
+            </AppTouchable>
           </KeyboardAvoidingView>
         </Modal>
       </View>
@@ -1061,4 +1078,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SerialScannerModal;
+
+

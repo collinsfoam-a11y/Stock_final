@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import React, { useMemo } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
@@ -12,6 +12,8 @@ import {
   getMinimumTouchTargetStyle,
   OPERATIONAL_HIT_SLOP,
 } from "@/utils/accessibility";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface CountQuantitySectionProps {
   isSplitMode: boolean;
@@ -242,7 +244,7 @@ export function CountQuantitySection({
           </View>
         </View>
 
-        <TouchableOpacity
+        <AppTouchable
           {...getAccessibleToggleProps({
             label: isSplitMode ? "Switch to piece count mode" : "Switch to split count mode",
             selected: isSplitMode,
@@ -259,7 +261,7 @@ export function CountQuantitySection({
                 : colorWithAlpha(uiTokens.colors.accent, 0.32),
             },
           ]}
-        >
+ >
           <Ionicons
             {...decorativeIconProps}
             name={isSplitMode ? "grid" : "grid-outline"}
@@ -276,11 +278,10 @@ export function CountQuantitySection({
           >
             {isSplitMode ? "Piece Count" : "Split Count"}
           </Text>
-        </TouchableOpacity>
+        </AppTouchable>
       </View>
-
       <View style={styles.quantityContainer}>
-        <TouchableOpacity
+        <AppTouchable
           {...getAccessibleButtonProps({
             label: "Decrease counted quantity",
             disabled: isSplitMode,
@@ -298,15 +299,14 @@ export function CountQuantitySection({
           ]}
           onPress={onDecrement}
           disabled={isSplitMode}
-          activeOpacity={0.7}
-        >
+          activeOpacity={0.7}>
           <Ionicons
             {...decorativeIconProps}
             name="remove"
             size={28}
             color={isSplitMode ? uiTokens.colors.textMuted : uiTokens.colors.textPrimary}
           />
-        </TouchableOpacity>
+        </AppTouchable>
 
         <View
           style={[
@@ -337,7 +337,7 @@ export function CountQuantitySection({
           />
         </View>
 
-        <TouchableOpacity
+        <AppTouchable
           {...getAccessibleButtonProps({
             label: "Increase counted quantity",
             disabled: isSplitMode,
@@ -353,17 +353,15 @@ export function CountQuantitySection({
           ]}
           onPress={onIncrement}
           disabled={isSplitMode}
-          activeOpacity={0.7}
-        >
+          activeOpacity={0.7}>
           <Ionicons
             {...decorativeIconProps}
             name="add"
             size={28}
             color={isSplitMode ? uiTokens.colors.textMuted : uiTokens.colors.surfaceElevated}
           />
-        </TouchableOpacity>
+        </AppTouchable>
       </View>
-
       {isSplitMode && (
         <View style={styles.splitCountContainer}>
           <Text style={styles.helperText}>
@@ -388,30 +386,29 @@ export function CountQuantitySection({
                 accessibilityLabel={`Split count ${index + 1}`}
               />
 
-              <TouchableOpacity
+              <AppTouchable
                 {...getAccessibleButtonProps({
                   label: `Remove split count ${index + 1}`,
                   hitSlop: OPERATIONAL_HIT_SLOP.standard,
                 })}
                 onPress={() => onRemoveSplitCount(index)}
-                style={styles.removeButton}
-              >
+                style={styles.removeButton}>
                 <Ionicons
                   {...decorativeIconProps}
                   name="remove-circle"
                   size={24}
                   color={uiTokens.colors.error}
                 />
-              </TouchableOpacity>
+              </AppTouchable>
             </View>
           ))}
 
           <View style={styles.actionRow}>
-            <TouchableOpacity
+            <AppTouchable
               {...getAccessibleButtonProps({ label: "Add split count row" })}
               style={styles.addSplitButton}
               onPress={onAddSplitCount}
-            >
+ >
               <Ionicons
                 {...decorativeIconProps}
                 name="add-circle"
@@ -419,23 +416,22 @@ export function CountQuantitySection({
                 color={uiTokens.colors.surfaceElevated}
               />
               <Text style={styles.addSplitButtonText}>Add Piece</Text>
-            </TouchableOpacity>
+            </AppTouchable>
 
-            <TouchableOpacity
+            <AppTouchable
               {...getAccessibleButtonProps({
                 label: "Clear all split counts",
                 hitSlop: OPERATIONAL_HIT_SLOP.standard,
               })}
               style={styles.clearButton}
-              onPress={onClearSplitCounts}
-            >
+              onPress={onClearSplitCounts}>
               <Ionicons
                 {...decorativeIconProps}
                 name="trash-outline"
                 size={20}
                 color={uiTokens.colors.error}
               />
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
         </View>
       )}

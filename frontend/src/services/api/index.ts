@@ -1,10 +1,7 @@
 export * from "./api";
 export * from "./authApi";
 export * from "./reportApi";
-export * from "./enhancedApi";
-export * from "./enhancedApiClient";
-export * from "./enhancedDatabaseApi";
 export * from "./enrichmentApi";
 export * from "./itemVerificationApi";
-export * from "./notesApi";
+
 export * from "./userWorkflowApi";

@@ -12,16 +12,7 @@
  */
 
 import React from "react";
-import {
-  TouchableOpacity,
-  Text,
-  ActivityIndicator,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-  Platform,
-  View,
-} from "react-native";
+import { Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle, Platform, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -31,7 +22,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { modernColors, modernAnimations } from "../../styles/modernDesignSystem";
+import { modernColors, modernAnimations } from "@/theme/unified";
 import {
   colors,
   semanticColors,
@@ -39,12 +30,14 @@ import {
   spacing,
   textStyles,
   touchTargets,
-} from "@/theme/legacyCompat";
+} from "@/theme/unified";
 import { useThemeContextSafe } from "../../context/ThemeContext";
 import { getDecorativeIconProps } from "@/utils/accessibility";
 import { haptics } from "@/services/haptics";
 
-const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+import { AppTouchable } from "@/components/ui/AppTouchable";
+
+const AnimatedAppTouchable = Animated.createAnimatedComponent(AppTouchable);
 
 export type ButtonVariant =
   | "primary"
@@ -299,7 +292,7 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   const renderButton = () => {
     const buttonStyle = [getButtonStyles(), style];
     const isWeb = Platform.OS === "web";
-    const Component = isWeb ? TouchableOpacity : AnimatedTouchableOpacity;
+    const Component = isWeb ? AppTouchable : AnimatedAppTouchable;
 
     const finalAccessibilityLabel = loading
       ? `Loading, ${accessibilityLabel || title}`
@@ -398,4 +391,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ModernButton;
+
+

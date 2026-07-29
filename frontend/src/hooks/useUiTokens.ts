@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { colors, gradients, radius, semanticColors, shadows } from "../theme/legacyCompat";
+import { colors, gradients, radius, semanticColors, shadows } from "@/theme/unified";
 import { useThemeContextSafe } from "../context/ThemeContext";
 import { createThemeTokens, type ThemeTokens } from "../theme/themeTokens";
 import { flags } from "../constants/flags";

@@ -23,14 +23,16 @@ import * as Haptics from "expo-haptics";
 import {
   ItemVerificationAPI,
   VarianceItem,
-} from "../../src/domains/inventory/services/itemVerificationApi";
-import { ItemFilters, FilterValues } from "../../src/domains/inventory/components/ItemFilters";
-import { ScreenContainer, ModernCard, AnimatedPressable } from "../../src/components/ui";
+} from "../../src/features/inventory/services/itemVerificationApi";
+import { ItemFilters, FilterValues } from "../../src/features/inventory/components/ItemFilters";
 import { useSettingsStore } from "../../src/store/settingsStore";
-import { theme } from "../../src/styles/modernDesignSystem";
+import { theme } from "@/theme/unified";
 import { toastService } from "../../src/services/toastService";
 import { saveArrayBufferExport } from "../../src/utils/fileExport";
 import { safeBackNavigation } from "@/utils/navigation";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 
 export default function VariancesScreen() {
   const router = useRouter();

@@ -13,16 +13,7 @@
  */
 
 import React, { useCallback, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-  ViewStyle,
-  Alert,
-  LayoutChangeEvent,
-} from "react-native";
+import { View, Text, StyleSheet, Platform, ViewStyle, Alert, LayoutChangeEvent } from "react-native";
 import { BlurView } from "expo-blur";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
@@ -41,6 +32,8 @@ import { useAuthStore } from "../../store/authStore";
 import { useThemeContext } from "../../context/ThemeContext";
 import { safeBackNavigation } from "../../utils/navigation";
 import type { UserRole } from "../../utils/roleNavigation";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 // ============================================================================
 // Types
@@ -114,16 +107,16 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = ({
 
   return (
     <Animated.View style={animatedStyle}>
-      <TouchableOpacity
+      <AppTouchable
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={[styles.actionButton, { backgroundColor }]}
         activeOpacity={0.8}
         testID={testID}
-      >
+        accessibilityLabel={testID || "Header button"}>
         <Ionicons name={icon} size={size} color={iconColor} />
-      </TouchableOpacity>
+      </AppTouchable>
     </Animated.View>
   );
 };
@@ -472,4 +465,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ScreenHeader;
+

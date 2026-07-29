@@ -8,7 +8,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
   Platform,
   useWindowDimensions,
@@ -23,7 +22,8 @@ import { useAuthStore } from "../../store/authStore";
 import { layout, spacing, typography, breakpoints } from "../../styles/globalStyles";
 import { ADMIN_NAV_GROUPS, AdminNavItem } from "./adminNavShared";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { semanticColors as uiSemanticColors } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 interface AdminSidebarProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -134,7 +134,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
             )}
 
             {onToggleCollapse && (
-              <TouchableOpacity
+              <AppTouchable
                 style={[
                   styles.collapseButton,
                   { backgroundColor: activeBackground, borderColor: subtleBorder },
@@ -149,7 +149,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   size={18}
                   color={theme.colors.text}
                 />
-              </TouchableOpacity>
+              </AppTouchable>
             )}
           </View>
 
@@ -177,11 +177,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
             return (
               <View key={group.title} style={styles.group}>
                 {!collapsed && (
-                  <TouchableOpacity
+                  <AppTouchable
                     style={styles.groupHeader}
                     onPress={() => toggleGroup(group.title)}
                     activeOpacity={0.7}
-                  >
+ >
                     <Text style={[styles.groupTitle, { color: theme.colors.textSecondary }]}>
                       {group.title}
                     </Text>
@@ -190,9 +190,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                       size={16}
                       color={theme.colors.textSecondary}
                     />
-                  </TouchableOpacity>
+                  </AppTouchable>
                 )}
-
                 {(!collapsed && isExpanded) || collapsed ? (
                   <View style={styles.groupItems}>
                     {group.items.map((item) => {
@@ -203,7 +202,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                         : "transparent";
 
                       return (
-                        <TouchableOpacity
+                        <AppTouchable
                           key={item.key}
                           style={[
                             styles.item,
@@ -243,7 +242,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                               )}
                             </>
                           )}
-                        </TouchableOpacity>
+                        </AppTouchable>
                       );
                     })}
                   </View>
@@ -255,7 +254,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
         {/* Logout Button */}
         {!collapsed && (
-          <TouchableOpacity
+          <AppTouchable
             style={[styles.logoutButton, { borderTopColor: theme.colors.border }]}
             onPress={handleLogout}
             activeOpacity={0.7}
@@ -264,7 +263,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           >
             <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
             <Text style={[styles.logoutLabel, { color: theme.colors.error }]}>Logout</Text>
-          </TouchableOpacity>
+          </AppTouchable>
         )}
       </BlurView>
     </View>

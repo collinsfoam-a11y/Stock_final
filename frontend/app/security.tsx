@@ -8,11 +8,11 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { useAuthStore } from "../src/store/authStore";
 import { useSettingsStore } from "../src/store/settingsStore";
-import ModernHeader from "../src/components/ui/ModernHeader";
-import ModernCard from "../src/components/ui/ModernCard";
-import ModernInput from "../src/components/ui/ModernInput";
-import ModernButton from "../src/components/ui/ModernButton";
-import { spacing, typography, borderRadius } from "@/theme/legacyCompat";
+import { ModernHeader } from "../src/components/ui/ModernHeader";
+import { ModernCard } from "../src/components/ui/ModernCard";
+import { ModernInput } from "../src/components/ui/ModernInput";
+import { ModernButton } from "../src/components/ui/ModernButton";
+import { spacing, typography, borderRadius } from "@/theme/unified";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";

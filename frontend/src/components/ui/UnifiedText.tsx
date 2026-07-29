@@ -19,7 +19,7 @@ import {
   lineHeight,
   colors,
   semanticColors,
-} from "@/theme/legacyCompat";
+} from "@/theme/unified";
 
 // ==========================================
 // TYPES
@@ -160,4 +160,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default UnifiedText;
+

@@ -3,17 +3,11 @@
  */
 
 import React from "react";
-import {
-  TextInput,
-  View,
-  Text,
-  StyleSheet,
-  TextInputProps,
-  TouchableOpacity,
-  Platform,
-} from "react-native";
+import { TextInput, View, Text, StyleSheet, TextInputProps, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -77,26 +71,25 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             placeholderTextColor={theme.colors.placeholder}
             {...(Platform.OS === "web"
               ? {
-                  // Web-specific props to ensure input works
-                  autoComplete: textInputProps.autoComplete || "off",
-                  spellCheck:
-                    textInputProps.spellCheck !== undefined ? textInputProps.spellCheck : true,
-                }
+                // Web-specific props to ensure input works
+                autoComplete: textInputProps.autoComplete || "off",
+                spellCheck:
+                  textInputProps.spellCheck !== undefined ? textInputProps.spellCheck : true,
+              }
               : {})}
             {...textInputProps}
           />
           {rightIcon && (
-            <TouchableOpacity
+            <AppTouchable
               onPress={onRightIconPress}
               style={styles.rightIcon}
-              activeOpacity={0.7}
-            >
+              activeOpacity={0.7}>
               <Ionicons
                 name={rightIcon}
                 size={20}
                 color={rightIconColor || theme.colors.placeholder}
               />
-            </TouchableOpacity>
+            </AppTouchable>
           )}
         </View>
         {error && <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>}

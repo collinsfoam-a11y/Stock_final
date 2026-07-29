@@ -13,7 +13,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { usePermission } from "../../src/hooks/usePermission";
 import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
-import ModernCard from "../../src/components/ui/ModernCard";
+import { ModernCard } from "../../src/components/ui/ModernCard";
 import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import {

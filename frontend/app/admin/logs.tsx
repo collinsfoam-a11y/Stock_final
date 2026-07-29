@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, Text, StyleSheet, TextInput } from "react-native";
-import { AnimatedPressable, ScreenContainer } from "@/components/ui";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { usePermission } from "../../src/hooks/usePermission";
@@ -9,6 +8,8 @@ import { useSettingsStore } from "../../src/store/settingsStore";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 
 export default function LogsScreen() {
   const router = useRouter();

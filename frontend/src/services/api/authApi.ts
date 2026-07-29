@@ -10,14 +10,14 @@ import type {
   ChangePasswordResponse,
   ChangePinResponse,
   UserSettings,
-} from "../../domains/auth/types";
+} from "../../features/auth/types";
 
 export type {
   ChangePasswordResponse,
   ChangePinResponse,
   UserSettings,
   UserSettingsColumnVisibility,
-} from "../../domains/auth/types";
+} from "../../features/auth/types";
 
 /**
  * Authentication API methods
@@ -105,4 +105,3 @@ export const authApi = {
   },
 };
 
-export default authApi;

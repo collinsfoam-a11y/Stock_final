@@ -21,7 +21,7 @@ import {
   type RadiusKey,
   type ShadowKey,
   type SpacingKey,
-} from "@/theme/legacyCompat";
+} from "@/theme/unified";
 
 // ==========================================
 // TYPES
@@ -153,4 +153,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default UnifiedView;
+

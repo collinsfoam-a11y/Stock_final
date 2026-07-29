@@ -1,3 +1,4 @@
+import { AppTouchable } from "@/components/ui/AppTouchable";
 import React from "react";
 import { render } from "@testing-library/react-native";
 import { EmptyState } from "../EmptyState";
@@ -24,11 +25,12 @@ jest.mock("../ModernButton", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const ReactActual = require("react");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { Text, TouchableOpacity } = require("react-native");
+  const { Text } = require("react-native");
+  const { AppTouchable } = require("@/components/ui/AppTouchable");
   return {
     ModernButton: ({ title, onPress }: any) =>
       ReactActual.createElement(
-        TouchableOpacity,
+        AppTouchable,
         { onPress },
         ReactActual.createElement(Text, null, title)
       ),

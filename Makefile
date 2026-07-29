@@ -1,7 +1,7 @@
 # Makefile for STOCK_VERIFY CI and Development Tasks
 # Usage: make <target>
 
-.PHONY: help ci test lint format typecheck pre-commit install clean eval security secrets agent-ci agent-python agent-node audit-count-line-names
+.PHONY: help ci test lint format typecheck pre-commit install clean eval security secrets agent-ci agent-python agent-node audit-count-line-names audit-loop audit-loop-quick audit-loop-deep
 
 PYTHON := ./scripts/python.sh
 
@@ -18,6 +18,9 @@ help:
 	@echo "✅ Quality Assurance:"
 	@echo "  make ci          - Run all CI checks (Python + Node.js)"
 	@echo "  make agent-ci    - Run compact agent-friendly CI checks"
+	@echo "  make audit-loop  - Run the standard read-only AI codebase audit evidence loop"
+	@echo "  make audit-loop-quick - Run the fast critical-path audit profile"
+	@echo "  make audit-loop-deep - Run deep audit checks, including network dependency scans"
 	@echo "  make test        - Run all tests"
 	@echo "  make lint        - Run all linters"
 	@echo "  make format      - Format all code"
@@ -152,6 +155,15 @@ agent-python:
 
 agent-node:
 	@./scripts/agent_ci.sh node
+
+audit-loop:
+	@$(PYTHON) scripts/codebase_audit_loop.py --profile standard
+
+audit-loop-quick:
+	@$(PYTHON) scripts/codebase_audit_loop.py --profile quick
+
+audit-loop-deep:
+	@$(PYTHON) scripts/codebase_audit_loop.py --profile deep
 
 audit-count-line-names:
 	@echo "Running read-only count line item-name audit..."

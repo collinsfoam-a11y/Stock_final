@@ -24,7 +24,8 @@ async def test_get_session_by_id_supports_canonical_session_lookup(monkeypatch):
         }
     )
 
-    monkeypatch.setattr(app_factory, "db", mock_db)
+    import backend.app.root_router as root_router
+    monkeypatch.setattr(root_router, "db", mock_db)
 
     session = await app_factory.get_session_by_id(
         "session-123",

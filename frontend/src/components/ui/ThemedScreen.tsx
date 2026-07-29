@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useThemeContext } from "../../context/ThemeContext";
 import { PatternBackground } from "./PatternBackground";
 
-import { shadows as unifiedShadows } from "@/theme/legacyCompat";
+import { shadows as unifiedShadows } from "@/theme/unified";
 interface ThemedScreenProps {
   children: React.ReactNode;
   style?: ViewStyle;
@@ -267,4 +267,4 @@ export const ThemedText: React.FC<ThemedTextProps> = ({
   return <Text style={[textStyle, style]}>{children}</Text>;
 };
 
-export default ThemedScreen;
+

@@ -11,8 +11,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import ModernHeader from "@/components/ui/ModernHeader";
-import ModernButton from "@/components/ui/ModernButton";
+import { ModernHeader } from "@/components/ui/ModernHeader";
+import { ModernButton } from "@/components/ui/ModernButton";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { getTokenShadowStyle } from "@/theme/themeTokens";
 import { flags } from "@/constants/flags";
@@ -76,4 +76,4 @@ export function ScanMissingSession() {
   );
 }
 
-export default ScanMissingSession;
+

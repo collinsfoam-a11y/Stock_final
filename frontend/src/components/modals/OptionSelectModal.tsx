@@ -1,5 +1,5 @@
 import React from "react";
-import { FlatList, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { FlatList, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import {
   colors,
   fontSize,
@@ -7,7 +7,9 @@ import {
   radius as borderRadius,
   semanticColors,
   spacing,
-} from "@/theme/legacyCompat";
+} from "@/theme/unified";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface OptionSelectModalProps {
   visible: boolean;
@@ -38,9 +40,12 @@ export const OptionSelectModal: React.FC<OptionSelectModalProps> = ({
               </Pressable>
             )}
           />
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+          <AppTouchable
+            style={styles.closeButton}
+            onPress={onClose}
+ >
             <Text style={styles.closeButtonText}>Close</Text>
-          </TouchableOpacity>
+          </AppTouchable>
         </View>
       </View>
     </Modal>

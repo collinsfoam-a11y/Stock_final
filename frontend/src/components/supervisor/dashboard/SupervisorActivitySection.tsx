@@ -2,11 +2,12 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
-
-import { ActivityFeedItem, AnimatedPressable, ModernCard } from "@/components/ui";
 import { ActivityItem } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { theme } from "@/styles/modernDesignSystem";
+import { theme } from "@/styles/unifiedSystem";
+import { ActivityFeedItem } from "@/components/ui/ActivityFeedItem";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { ModernCard } from "@/components/ui/ModernCard";
 
 interface SupervisorActivitySectionProps {
   activities: ActivityItem[];

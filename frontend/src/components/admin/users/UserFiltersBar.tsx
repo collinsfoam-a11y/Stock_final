@@ -1,12 +1,11 @@
 import React, { useMemo } from "react";
 import { StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-
-import { AnimatedPressable } from "@/components/ui";
 import { userTextStyles } from "@/components/admin/users/userManagementShared";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 
 interface UserFiltersBarProps {
   activeFilter: boolean | null;

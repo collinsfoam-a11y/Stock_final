@@ -17,7 +17,6 @@ import { getConflicts, resolveConflict } from "../../src/services/offline/offlin
 import { getOfflineQueue } from "../../src/services/offline/offlineStorage";
 import { forceSync } from "../../src/services/syncService";
 import { summarizeForceSyncResult } from "../../src/components/supervisor/offlineQueueFeedback";
-import { ModernCard, AnimatedPressable, StatsCard } from "../../src/components/ui";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
@@ -25,6 +24,9 @@ import {
   createOperationalStyleBridge,
   type OperationalStyleBridge,
 } from "@/theme/operationalStyleBridge";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { StatsCard } from "@/components/ui/StatsCard";
 
 export default function OfflineQueueScreen() {
   const router = useRouter();

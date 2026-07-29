@@ -17,7 +17,7 @@ from backend.services.governance_guard import (
     write_authority,
 )
 from backend.services.projection_write_service import ProjectionWriteService
-from backend.services.transaction_manager import mongo_transaction
+from backend.core.uow import MongoUnitOfWork
 from backend.services.validation_service import ValidationService
 
 
@@ -288,11 +288,11 @@ class SessionLifecycleService:
         _transaction_started: bool = False,
     ) -> dict[str, Any]:
         if db_session is None and not _transaction_started:
-            async with mongo_transaction(self.db.client) as tx:
+            async with MongoUnitOfWork(self.db.client) as uow:
                 return await self.create_session(
                     session_doc=session_doc,
                     username=username,
-                    db_session=tx,
+                    db_session=uow.session,
                     _transaction_started=True,
                 )
 
@@ -355,13 +355,13 @@ class SessionLifecycleService:
         _transaction_started: bool = False,
     ) -> dict[str, Any]:
         if db_session is None and not _transaction_started:
-            async with mongo_transaction(self.db.client) as tx:
+            async with MongoUnitOfWork(self.db.client) as uow:
                 return await self.transition_session(
                     session_id=session_id,
                     target_status=target_status,
                     actor=actor,
                     note=note,
-                    db_session=tx,
+                    db_session=uow.session,
                     expected_version=expected_version,
                     _transaction_started=True,
                 )
@@ -632,11 +632,11 @@ class SessionLifecycleService:
         _transaction_started: bool = False,
     ) -> dict[str, Any]:
         if db_session is None and not _transaction_started:
-            async with mongo_transaction(self.db.client) as tx:
+            async with MongoUnitOfWork(self.db.client) as uow:
                 return await self.create_recount_request(
                     recount_doc=recount_doc,
                     actor=actor,
-                    db_session=tx,
+                    db_session=uow.session,
                     _transaction_started=True,
                 )
 
@@ -696,13 +696,13 @@ class SessionLifecycleService:
         _transaction_started: bool = False,
     ) -> dict[str, Any]:
         if db_session is None and not _transaction_started:
-            async with mongo_transaction(self.db.client) as tx:
+            async with MongoUnitOfWork(self.db.client) as uow:
                 return await self.transition_recount_request(
                     recount_id=recount_id,
                     target_status=target_status,
                     actor=actor,
                     fields=fields,
-                    db_session=tx,
+                    db_session=uow.session,
                     _transaction_started=True,
                 )
 
@@ -902,10 +902,10 @@ class SessionLifecycleService:
                 db_session=db_session,
             )
 
-        async with mongo_transaction(self.db.client) as tx:
+        async with MongoUnitOfWork(self.db.client) as uow:
             return await self._finalize_session_canonical_core(
                 session_id=session_id,
                 actor=actor,
                 note=note,
-                db_session=tx,
+                db_session=uow.session,
             )

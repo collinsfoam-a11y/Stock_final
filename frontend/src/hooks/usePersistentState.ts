@@ -104,4 +104,4 @@ export async function clearAllPersistentState(): Promise<void> {
   await AsyncStorage.multiRemove(stateKeys);
 }
 
-export default usePersistentState;
+

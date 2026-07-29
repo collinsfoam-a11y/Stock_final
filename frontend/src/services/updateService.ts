@@ -16,7 +16,3 @@ export const resolveAppUpdateUrl = (
   return getConfiguredAppUpdateUrl();
 };
 
-export default {
-  getConfiguredAppUpdateUrl,
-  resolveAppUpdateUrl,
-};

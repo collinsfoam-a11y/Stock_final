@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { SearchableSelectModal } from "../modals/SearchableSelectModal";
 import { Modal } from "../ui/Modal";
-import ModernInput from "../ui/ModernInput";
+import { ModernInput } from "../ui/ModernInput";
 import { theme } from "../../styles/unifiedSystem";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { semanticColors as uiSemanticColors } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 export interface AssignableStaffUser {
   username: string;
   full_name?: string | null;
@@ -83,16 +84,16 @@ export default function RecountAssignmentModal({
 
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Assign To</Text>
-            <TouchableOpacity
+            <AppTouchable
               style={styles.selector}
               onPress={() => setPickerVisible(true)}
               activeOpacity={0.8}
               disabled={loading || staffOptions.length === 0}
-            >
+ >
               <Text style={[styles.selectorText, !selectedAssignee && styles.selectorPlaceholder]}>
                 {staffOptions.length === 0 ? "No active staff available" : selectedLabel}
               </Text>
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
 
           <ModernInput
@@ -108,16 +109,16 @@ export default function RecountAssignmentModal({
           />
 
           <View style={styles.actions}>
-            <TouchableOpacity
+            <AppTouchable
               style={[styles.button, styles.cancelButton]}
               onPress={onClose}
               disabled={loading}
               activeOpacity={0.8}
-            >
+ >
               <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
+            </AppTouchable>
 
-            <TouchableOpacity
+            <AppTouchable
               style={[
                 styles.button,
                 styles.confirmButton,
@@ -126,17 +127,16 @@ export default function RecountAssignmentModal({
               onPress={() => void handleSubmit()}
               disabled={!selectedAssignee || loading}
               activeOpacity={0.8}
-            >
+ >
               {loading ? (
                 <ActivityIndicator color={uiSemanticColors.text.inverse} />
               ) : (
                 <Text style={styles.confirmText}>Assign Recount</Text>
               )}
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
         </View>
       </Modal>
-
       <SearchableSelectModal
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}

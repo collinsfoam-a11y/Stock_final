@@ -42,7 +42,7 @@ export function usePerformanceMonitor(
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [performanceWarning, setPerformanceWarning] = useState(false);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFrameTimeRef = useRef<number>(performance.now());
   const frameCountRef = useRef<number>(0);
 

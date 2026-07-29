@@ -159,11 +159,15 @@ async def test_process_count_line_op_drops_object_id_from_recount_update(monkeyp
         lambda *_args, **_kwargs: True,
     )
 
-    @asynccontextmanager
-    async def _fake_transaction(_client):
-        yield None
+    class FakeUOW:
+        def __init__(self, client):
+            self.session = None
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            pass
 
-    monkeypatch.setattr("backend.api.sync_batch_api.mongo_transaction", _fake_transaction)
+    monkeypatch.setattr("backend.api.sync_batch_api.MongoUnitOfWork", FakeUOW)
 
     message = await _process_count_line_op(
         {

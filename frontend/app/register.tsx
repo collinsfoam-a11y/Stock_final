@@ -1,13 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -15,14 +7,16 @@ import { useAuthStore } from "@/store/authStore";
 import { registerUser } from "@/services/api/api";
 import { createLogger } from "@/services/logging";
 import { toastService } from "@/services/toastService";
-import ModernButton from "@/components/ui/ModernButton";
-import ModernCard from "@/components/ui/ModernCard";
-import ModernHeader from "@/components/ui/ModernHeader";
-import ModernInput from "@/components/ui/ModernInput";
+import { ModernButton } from "@/components/ui/ModernButton";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { ModernHeader } from "@/components/ui/ModernHeader";
+import { ModernInput } from "@/components/ui/ModernInput";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { getRouteForRole, type UserRole } from "@/utils/roleNavigation";
 import { safeBackNavigation } from "@/utils/navigation";
 import { getFlag } from "@/constants/flags";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 type RegisterFormData = {
   username: string;
@@ -208,7 +202,6 @@ export default function Register() {
         showBackButton
         onBackPress={handleBackToLogin}
       />
-
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -305,11 +298,11 @@ export default function Register() {
               <Text style={[styles.loginLinkText, { color: uiTokens.colors.textSecondary }]}>
                 Already have an account?
               </Text>
-              <TouchableOpacity onPress={handleBackToLogin}>
+              <AppTouchable onPress={handleBackToLogin} >
                 <Text style={[styles.loginLinkButton, { color: uiTokens.colors.accent }]}>
                   Sign in
                 </Text>
-              </TouchableOpacity>
+              </AppTouchable>
             </View>
           </ModernCard>
         </ScrollView>

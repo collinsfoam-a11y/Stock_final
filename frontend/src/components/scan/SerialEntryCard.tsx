@@ -1,9 +1,11 @@
 import React, { useMemo } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { SerialEntryData } from "@/types/scan";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface SerialEntryCardProps {
   entry: SerialEntryData;
@@ -74,11 +76,13 @@ export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.label}>Unit #{index + 1}</Text>
-        <TouchableOpacity style={styles.removeButton} onPress={onRemove}>
+        <AppTouchable
+          style={styles.removeButton}
+          onPress={onRemove}
+          accessibilityLabel="Delete">
           <Ionicons name="trash-outline" size={18} color={uiTokens.colors.error} />
-        </TouchableOpacity>
+        </AppTouchable>
       </View>
-
       <TextInput
         style={[
           styles.input,
@@ -97,7 +101,6 @@ export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
         autoCapitalize="characters"
         autoCorrect={false}
       />
-
       {validationError && <Text style={styles.errorText}>{validationError}</Text>}
     </View>
   );

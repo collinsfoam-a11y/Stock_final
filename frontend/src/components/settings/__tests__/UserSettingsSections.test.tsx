@@ -1,3 +1,4 @@
+import { AppTouchable } from "@/components/ui/AppTouchable";
 import React from "react";
 import { Alert } from "react-native";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
@@ -123,9 +124,9 @@ jest.mock("../../ui/AnimatedPressable", () => ({
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const ReactActual = require("react");
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { TouchableOpacity } = require("react-native");
+    const { AppTouchable } = require("@/components/ui/AppTouchable");
     return ReactActual.createElement(
-      TouchableOpacity,
+      AppTouchable,
       { onPress, disabled },
       children
     );

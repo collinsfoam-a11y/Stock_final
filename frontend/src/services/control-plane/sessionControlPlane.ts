@@ -12,7 +12,7 @@ import {
   createSessionStatusChangedEvent,
   isSessionStartedEvent,
   type SessionEvent,
-} from "@/domain/events/sessionEvents";
+} from "@/core/events/sessionEvents";
 import {
   bindServerSessionId,
   buildSessionLocationKey,
@@ -618,7 +618,7 @@ export const finalizeSessionCommand = async (
   }
 };
 
-export const recordSessionHeartbeatCommand = async (sessionId: string) => {
+const recordSessionHeartbeatCommand = async (sessionId: string) => {
   if (!controlPlaneFlags.enableEventDrivenSessions) {
     return null;
   }
@@ -648,7 +648,7 @@ export const recordSessionHeartbeatCommand = async (sessionId: string) => {
   return projected;
 };
 
-export const syncPendingSessionEvents = async (): Promise<{
+const syncPendingSessionEvents = async (): Promise<{
   success: number;
   failed: number;
   total: number;

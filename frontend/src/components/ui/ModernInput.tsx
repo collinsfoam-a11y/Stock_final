@@ -12,7 +12,6 @@ import {
   StyleSheet,
   ViewStyle,
   TextStyle,
-  TouchableOpacity,
   type KeyboardTypeOptions,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -24,11 +23,13 @@ import {
   fontSize,
   fontWeight,
   textStyles,
-} from "@/theme/legacyCompat";
+} from "@/theme/unified";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { haptics } from "@/services/haptics";
 import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface ModernInputProps {
   label?: string;
@@ -170,13 +171,12 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           {required && <Text style={styles.required}> *</Text>}
         </Text>
       )}
-
       <Pressable
         style={[getInputContainerStyles(), style]}
         onPress={() => inputRef.current?.focus()}
       >
         {icon && (
-          <TouchableOpacity
+          <AppTouchable
             onPress={() => {
               void haptics.light();
               onIconPress?.();
@@ -187,15 +187,14 @@ export const ModernInput: React.FC<ModernInputProps> = ({
               ? getAccessibleButtonProps({
                   label: `${label || "Input"} action`,
                 })
-              : {})}
-          >
+              : {})}>
             <Ionicons
               {...getDecorativeIconProps()}
               name={icon}
               size={20}
               color={error ? uiTokens.colors.error : uiTokens.colors.textSecondary}
             />
-          </TouchableOpacity>
+          </AppTouchable>
         )}
 
         <TextInput
@@ -227,36 +226,34 @@ export const ModernInput: React.FC<ModernInputProps> = ({
         />
 
         {showClear && (
-          <TouchableOpacity
+          <AppTouchable
             onPress={handleClear}
             style={styles.iconContainer}
             {...getAccessibleButtonProps({
               label: `Clear ${label || "input"}`,
-            })}
-          >
+            })}>
             <Ionicons {...getDecorativeIconProps()} name="close-circle" size={20} color={uiTokens.colors.textSecondary} />
-          </TouchableOpacity>
+          </AppTouchable>
         )}
 
         {showPasswordToggle && (
-          <TouchableOpacity
+          <AppTouchable
             onPress={togglePasswordVisibility}
             style={styles.iconContainer}
             {...getAccessibleButtonProps({
               label: isPasswordVisible ? "Hide password" : "Show password",
-            })}
-          >
+            })}>
             <Ionicons
               {...getDecorativeIconProps()}
               name={isPasswordVisible ? "eye-off" : "eye"}
               size={20}
               color={uiTokens.colors.textSecondary}
             />
-          </TouchableOpacity>
+          </AppTouchable>
         )}
 
         {rightIcon && !showPasswordToggle && !showClear && (
-          <TouchableOpacity
+          <AppTouchable
             onPress={() => {
               void haptics.light();
               onRightIconPress?.();
@@ -267,13 +264,11 @@ export const ModernInput: React.FC<ModernInputProps> = ({
               ? getAccessibleButtonProps({
                   label: `${label || "Input"} right action`,
                 })
-              : {})}
-          >
+              : {})}>
             <Ionicons {...getDecorativeIconProps()} name={rightIcon} size={20} color={uiTokens.colors.textSecondary} />
-          </TouchableOpacity>
+          </AppTouchable>
         )}
       </Pressable>
-
       {Boolean(error) && <Text style={styles.errorText}>{error}</Text>}
       {!error && Boolean(helperText) && <Text style={styles.helperText}>{helperText}</Text>}
     </View>
@@ -301,4 +296,5 @@ const styles = StyleSheet.create({
     marginTop: unifiedSpacing.xs,
   },
 });
-export default ModernInput;
+
+

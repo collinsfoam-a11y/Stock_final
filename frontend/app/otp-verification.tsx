@@ -11,10 +11,10 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import ModernHeader from "../src/components/ui/ModernHeader";
-import ModernCard from "../src/components/ui/ModernCard";
-import ModernInput from "../src/components/ui/ModernInput";
-import ModernButton from "../src/components/ui/ModernButton";
+import { ModernHeader } from "../src/components/ui/ModernHeader";
+import { ModernCard } from "../src/components/ui/ModernCard";
+import { ModernInput } from "../src/components/ui/ModernInput";
+import { ModernButton } from "../src/components/ui/ModernButton";
 import apiClient from "../src/services/httpClient";
 import { toastService } from "../src/services/toastService";
 import { useAuthStore } from "../src/store/authStore";
@@ -69,7 +69,7 @@ export default function OtpVerificationScreen() {
           alignSelf: "center",
           width: "100%",
           justifyContent: "center",
-          paddingTop: uiTokens.spacing.xxl,
+          paddingTop: uiTokens.spacing["2xl"],
         },
         iconContainer: {
           width: 80,

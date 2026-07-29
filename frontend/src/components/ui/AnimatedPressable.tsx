@@ -17,7 +17,7 @@ import {
 import * as Haptics from "expo-haptics";
 
 import { useReducedMotion } from "@/hooks/useReducedMotion";
-import { radius } from "@/theme/legacyCompat";
+import { radius } from "@/theme/unified";
 import { getAccessibleButtonProps } from "@/utils/accessibility";
 import { getOperationalMotionDuration } from "@/utils/motion";
 import { useUiTokens } from "@/hooks/useUiTokens";
@@ -187,4 +187,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AnimatedPressable;
+

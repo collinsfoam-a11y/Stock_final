@@ -11,7 +11,7 @@
 
 import { useRef, useEffect, useCallback } from "react";
 import { Animated, Easing } from "react-native";
-import { duration, easing, animationPresets } from "../theme/legacyCompat";
+import { duration, easing, animationPresets } from "@/theme/unified";
 
 // ==========================================
 // TYPES
@@ -307,11 +307,3 @@ export function useSlide(direction: "left" | "right" | "up" | "down" = "up", dis
 }
 
 // Export all hooks
-export default {
-  useEntryAnimation,
-  useStaggeredEntry,
-  useFadeIn,
-  useScalePress,
-  usePulse,
-  useSlide,
-};

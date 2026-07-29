@@ -42,7 +42,7 @@ class TestCacheService:
     @pytest.fixture
     def cache_service(self):
         """Create a cache service instance with in-memory fallback"""
-        with patch("backend.services.cache_service.REDIS_AVAILABLE", False):
+        with patch("backend.services.cache.manager.REDIS_AVAILABLE", False):
             service = CacheService()
             yield service
 
@@ -111,7 +111,7 @@ class TestCacheServiceWithRedis:
         """Should fallback to in-memory when Redis fails"""
         mock_redis.get.side_effect = Exception("Connection refused")
 
-        with patch("backend.services.cache_service.REDIS_AVAILABLE", True):
+        with patch("backend.services.cache.manager.REDIS_AVAILABLE", True):
             service = CacheService()
             service._redis = mock_redis
 

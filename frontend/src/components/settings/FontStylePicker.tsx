@@ -4,7 +4,7 @@ import * as Haptics from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useUiTokens } from "../../hooks/useUiTokens";
-import { typography } from "../../theme/legacyCompat";
+import { typography } from "@/theme/unified";
 import { colorWithAlpha } from "../../theme/themeTokens";
 import {
   FONT_STYLE_OPTIONS,
@@ -151,4 +151,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FontStylePicker;
+

@@ -10,7 +10,7 @@ import { selectionAsync } from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useUiTokens } from "../../hooks/useUiTokens";
-import { fontFamily, typography } from "../../theme/legacyCompat";
+import { fontFamily, typography } from "@/theme/unified";
 import { colorWithAlpha } from "../../theme/themeTokens";
 
 interface FontSizeSliderProps {
@@ -177,4 +177,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FontSizeSlider;
+

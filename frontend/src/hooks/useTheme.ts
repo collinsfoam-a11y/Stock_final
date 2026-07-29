@@ -1,6 +1,6 @@
 import { useColorScheme } from "react-native";
 import { useThemeContextSafe } from "../context/ThemeContext";
-import { colors, darkColors, semanticColors } from "@/theme/legacyCompat";
+import { colors, darkColors, semanticColors } from "@/theme/unified";
 
 type LegacyThemeColors = {
   primary: string;

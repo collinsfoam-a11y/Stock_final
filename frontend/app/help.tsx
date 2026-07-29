@@ -3,15 +3,17 @@
  */
 
 import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import ModernCard from "@/components/ui/ModernCard";
-import ModernHeader from "@/components/ui/ModernHeader";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { ModernHeader } from "@/components/ui/ModernHeader";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { safeBackNavigation } from "@/utils/navigation";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface HelpSection {
   title: string;
@@ -163,7 +165,6 @@ export default function HelpScreen() {
         showBackButton
         onBackPress={handleBack}
       />
-
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -200,7 +201,7 @@ export default function HelpScreen() {
 
               return (
                 <View key={itemIndex} style={styles.itemContainer}>
-                  <TouchableOpacity
+                  <AppTouchable
                     style={[
                       styles.questionContainer,
                       isExpanded && {
@@ -213,8 +214,7 @@ export default function HelpScreen() {
                     onPress={() => toggleItem(sectionIndex, itemIndex)}
                     activeOpacity={0.7}
                     accessibilityRole="button"
-                    accessibilityState={{ expanded: isExpanded }}
-                  >
+                    accessibilityState={{ expanded: isExpanded }}>
                     <View style={styles.questionContent}>
                       {item.icon && (
                         <Ionicons
@@ -233,8 +233,7 @@ export default function HelpScreen() {
                       size={20}
                       color={uiTokens.colors.textSecondary}
                     />
-                  </TouchableOpacity>
-
+                  </AppTouchable>
                   {isExpanded && (
                     <View
                       style={[

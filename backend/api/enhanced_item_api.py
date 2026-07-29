@@ -204,7 +204,7 @@ def _raise_item_not_found(barcode: str, response_time_ms: float) -> NoReturn:
 async def _resolve_lookup_context(
     session_id: Optional[str], rack_no: Optional[str]
 ) -> tuple[Optional[str], Optional[str]]:
-    context_rack = rack_no.strip().upper() if rack_no else None
+    context_rack = str(rack_no).strip().upper() if rack_no else None
     context_floor = None
     if not session_id:
         return context_floor, context_rack

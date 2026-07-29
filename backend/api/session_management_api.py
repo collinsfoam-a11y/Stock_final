@@ -78,6 +78,48 @@ class SessionDetail(BaseModel):
     finalized_by: Optional[str] = None
 
 
+
+class SessionStatusUpdateResponse(BaseModel):
+    success: bool
+    id: str
+    status: str
+    message: Optional[str] = None
+
+class FinalizeSessionResponse(BaseModel):
+    success: bool
+    id: str
+    status: str
+    finalized_at: str
+    finalized_by: str
+    message: str
+
+class CompleteSessionResponse(BaseModel):
+    success: bool
+    message: str
+
+class LogoutAllResponse(BaseModel):
+    success: bool
+    message: str
+    sessions_closed: int
+
+class BulkCloseResponse(BaseModel):
+    success: bool
+    message: str
+    processed: int
+    closed: int
+
+class AnalyticsData(BaseModel):
+    overall: dict
+    sessions_by_date: dict
+    variance_by_warehouse: dict
+    items_by_staff: dict
+    total_sessions: int
+
+class AnalyticsResponse(BaseModel):
+    success: bool
+    data: AnalyticsData
+
+
 class SessionStats(BaseModel):
     """Session statistics"""
 
@@ -1391,7 +1433,7 @@ async def get_user_workflows(
     return results
 
 
-@router.get("/analytics")
+@router.get("/analytics", response_model=AnalyticsResponse)
 async def get_sessions_analytics(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
@@ -1565,7 +1607,7 @@ async def session_heartbeat(
     )
 
 
-@router.put("/{session_id}/status")
+@router.put("/{session_id}/status", response_model=SessionStatusUpdateResponse)
 async def update_session_status(
     session_id: str,
     status: str = Query(..., description="New status"),
@@ -1759,7 +1801,7 @@ async def _complete_session_legacy_compatible(
     )
 
 
-@router.post("/{session_id}/finalize")
+@router.post("/{session_id}/finalize", response_model=FinalizeSessionResponse)
 async def finalize_session(
     session_id: str,
     request: Optional[SessionFinalizeRequest] = None,
@@ -1777,7 +1819,7 @@ async def finalize_session(
     )
 
 
-@router.post("/{session_id}/complete")
+@router.post("/{session_id}/complete", response_model=CompleteSessionResponse)
 async def complete_session(
     session_id: str,
     db: AsyncIOMotorDatabase = Depends(get_db),
@@ -1793,7 +1835,7 @@ async def complete_session(
     return await _complete_session_legacy_compatible(session_id, db, current_user, lock_manager)
 
 
-@router.get("/user/history")
+@router.get("/user/history", response_model=list[SessionDetail])
 async def get_user_session_history(
     limit: int = Query(10, ge=1, le=100),
     db: AsyncIOMotorDatabase = Depends(get_db),
@@ -1866,7 +1908,7 @@ async def check_session_integrity(
     )
 
 
-@router.post("/logout-all")
+@router.post("/logout-all", response_model=LogoutAllResponse)
 async def logout_all_sessions(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict[str, Any] = Depends(get_current_user),
@@ -1903,7 +1945,7 @@ class BulkSessionCloseRequest(BaseModel):
     force: bool = False
 
 
-@router.post("/bulk/close")
+@router.post("/bulk/close", response_model=BulkCloseResponse)
 async def bulk_close_sessions(
     request: BulkSessionCloseRequest,
     db: AsyncIOMotorDatabase = Depends(get_db),

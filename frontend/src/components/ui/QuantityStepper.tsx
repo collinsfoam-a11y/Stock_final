@@ -1,9 +1,11 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useThemeContext } from "../../context/ThemeContext";
 import { haptics } from "../../services/haptics";
 import { getDecorativeIconProps } from "../../utils/accessibility";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface Props {
   value: number;
@@ -38,7 +40,7 @@ export function QuantityStepper({ value, onChange, min = 0, max, disabled, testI
 
   return (
     <View style={[styles.container, disabled && { opacity: 0.6 }]} testID={testID}>
-      <TouchableOpacity
+      <AppTouchable
         onPress={() => handleChange(-1)}
         disabled={disabled || value <= min}
         style={[styles.button, buttonStyle, (disabled || value <= min) && styles.buttonDisabled]}
@@ -47,8 +49,7 @@ export function QuantityStepper({ value, onChange, min = 0, max, disabled, testI
         accessibilityState={{ disabled: disabled || value <= min }}
       >
         <Ionicons {...getDecorativeIconProps()} name="remove" size={20} color={theme.colors.text} />
-      </TouchableOpacity>
-
+      </AppTouchable>
       <View
         style={[
           styles.valueBox,
@@ -60,8 +61,7 @@ export function QuantityStepper({ value, onChange, min = 0, max, disabled, testI
       >
         <Text style={[styles.valueText, { color: theme.colors.text }]}>{value}</Text>
       </View>
-
-      <TouchableOpacity
+      <AppTouchable
         onPress={() => handleChange(1)}
         disabled={disabled || (typeof max === "number" && value >= max)}
         style={[
@@ -74,7 +74,7 @@ export function QuantityStepper({ value, onChange, min = 0, max, disabled, testI
         accessibilityState={{ disabled: disabled || (typeof max === "number" && value >= max) }}
       >
         <Ionicons {...getDecorativeIconProps()} name="add" size={20} color={theme.colors.text} />
-      </TouchableOpacity>
+      </AppTouchable>
     </View>
   );
 }
@@ -110,4 +110,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default QuantityStepper;
+

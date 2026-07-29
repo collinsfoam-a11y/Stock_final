@@ -15,7 +15,7 @@
 
 import React, { useCallback } from "react";
 import { Pressable, PressableProps, StyleProp, ViewStyle, Platform } from "react-native";
-import { hitSlop as hitSlopPresets, touchTargets } from "@/theme/legacyCompat";
+import { hitSlop as hitSlopPresets, touchTargets } from "@/theme/unified";
 
 // ==========================================
 // TYPES
@@ -191,4 +191,4 @@ export const TouchableHighlight: React.FC<TouchableHighlightProps> = ({
 };
 
 // Default export
-export default TouchableFeedback;
+

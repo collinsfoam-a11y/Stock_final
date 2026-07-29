@@ -126,4 +126,4 @@ export const StaggeredFadeIn: React.FC<StaggeredFadeInProps> = ({
   );
 };
 
-export default FadeIn;
+

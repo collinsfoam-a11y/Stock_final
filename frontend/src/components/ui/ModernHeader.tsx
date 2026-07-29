@@ -4,16 +4,16 @@
  */
 
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ViewStyle } from "react-native";
+import { View, Text, StyleSheet, StatusBar, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useAuthStore } from "../../store/authStore";
 import { useRouter } from "expo-router";
 
-import { spacing, typography } from "@/theme/legacyCompat";
+import { spacing, typography } from "@/theme/unified";
 import { BrandLogo } from "../branding/BrandLogo";
 
-import { semanticColors } from "@/theme/legacyCompat";
+import { semanticColors } from "@/theme/unified";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { getTokenShadowStyle } from "@/theme/themeTokens";
 import { flags } from "@/constants/flags";
@@ -21,6 +21,8 @@ import { safeBackNavigation } from "@/utils/navigation";
 import type { UserRole } from "@/utils/roleNavigation";
 import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 import { haptics } from "@/services/haptics";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface ModernHeaderProps {
   title?: string;
@@ -111,7 +113,6 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
         backgroundColor={uiTokens.colors.surface}
         translucent={false}
       />
-
       <View
         style={[
           styles.header,
@@ -124,21 +125,20 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
         {/* Left Section */}
         <View style={styles.leftSection}>
           {showBackButton ? (
-            <TouchableOpacity
+            <AppTouchable
               onPress={handleBackPress}
               style={styles.backButton}
               {...getAccessibleButtonProps({
                 label: "Go back",
                 hint: "Returns to the previous operational screen.",
-              })}
-            >
+              })}>
               <Ionicons
                 {...decorativeIconProps}
                 name="arrow-back"
                 size={24}
                 color={iconColor}
               />
-            </TouchableOpacity>
+            </AppTouchable>
           ) : !showLogo ? (
             <View style={styles.logoContainer}>
               <LogoWithBorder size={36} surfaceColor={uiTokens.colors.surface} />
@@ -192,24 +192,23 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
         <View style={styles.rightSection}>
           {rightComponent}
           {shouldShowSettings && (
-            <TouchableOpacity
+            <AppTouchable
               onPress={onPressSettings}
               style={styles.backButton}
               {...getAccessibleButtonProps({
                 label: "Open settings",
                 hint: "Opens settings for the current role.",
-              })}
-            >
+              })}>
               <Ionicons
                 {...decorativeIconProps}
                 name="settings-outline"
                 size={24}
                 color={iconColor}
               />
-            </TouchableOpacity>
+            </AppTouchable>
           )}
           {rightAction && (
-            <TouchableOpacity
+            <AppTouchable
               onPress={() => {
                 void haptics.light();
                 rightAction.onPress();
@@ -217,15 +216,14 @@ export const ModernHeader: React.FC<ModernHeaderProps> = ({
               style={styles.backButton}
               {...getAccessibleButtonProps({
                 label: rightAction.label ?? "Header action",
-              })}
-            >
+              })}>
               <Ionicons
                 {...decorativeIconProps}
                 name={rightAction.icon}
                 size={24}
                 color={iconColor}
               />
-            </TouchableOpacity>
+            </AppTouchable>
           )}
         </View>
       </View>
@@ -311,4 +309,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ModernHeader;
+
+

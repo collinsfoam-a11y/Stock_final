@@ -2,16 +2,18 @@ import React from "react";
 import { Animated, Platform, StyleSheet, View } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
-import AppShell from "../src/bootstrap/AppShell";
+
 import { useAuthStore } from "../src/store/authStore";
 import { useSettingsStore } from "../src/store/settingsStore";
 import { fontAssets } from "../src/constants/fontAssets";
 import { initializeApp } from "../src/bootstrap/initApp";
 import { BootLoadingView } from "../src/bootstrap/BootStateViews";
-import { zIndex } from "../src/theme";
+import { zIndex } from "@/theme/designTokens";
 
-const WebAppShell = Platform.OS === "web" ? AppShell : null;
+// Dynamically import AppShell so it doesn't inflate the root bundle size
 const LazyAppShell = React.lazy(() => import("../src/bootstrap/AppShell"));
+// React.lazy is fully supported on web in React 18+
+const WebAppShell = Platform.OS === "web" ? LazyAppShell : null;
 
 const BOOT_PROGRESS_READY_THRESHOLD = 80;
 const BOOT_PROGRESS_CHECK_MS = 2000;

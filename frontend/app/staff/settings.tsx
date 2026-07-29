@@ -13,8 +13,8 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { useAuthStore } from "../../src/store/authStore";
 import { useAppVersion } from "../../src/hooks/useAppVersion";
-import ModernCard from "../../src/components/ui/ModernCard";
-import ModernHeader from "../../src/components/ui/ModernHeader";
+import { ModernCard } from "../../src/components/ui/ModernCard";
+import { ModernHeader } from "../../src/components/ui/ModernHeader";
 import {
   SettingsActionRow,
   SettingsActionSection,

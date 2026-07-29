@@ -1,16 +1,11 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, TextInput, StyleSheet, ActivityIndicator } from "react-native";
 import { Modal } from "../ui/Modal";
 import { modernColors } from "@/styles/unifiedSystem";
 import { verifyPin } from "@/services/api/api"; // We will add this next
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { semanticColors as uiSemanticColors } from "@/theme/unified";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface PinEntryModalProps {
   visible: boolean;
@@ -132,25 +127,25 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
         </View>
 
         <View style={styles.actions}>
-          <TouchableOpacity
+          <AppTouchable
             style={[styles.button, styles.cancelButton]}
             onPress={handleClose}
             disabled={loading}
-          >
+ >
             <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
+          </AppTouchable>
 
-          <TouchableOpacity
+          <AppTouchable
             style={[styles.button, styles.primaryButton]}
             onPress={handleSubmit}
             disabled={loading}
-          >
+ >
             {loading ? (
               <ActivityIndicator color={uiSemanticColors.text.inverse} />
             ) : (
               <Text style={styles.primaryButtonText}>Authorize</Text>
             )}
-          </TouchableOpacity>
+          </AppTouchable>
         </View>
       </View>
     </Modal>

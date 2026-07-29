@@ -1,12 +1,14 @@
 import React, { useEffect } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { CameraView } from "@/services/device/expoCamera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import ModernButton from "@/components/ui/ModernButton";
-import { borderRadius, colors, spacing, typography } from "@/theme/legacyCompat";
+import { ModernButton } from "@/components/ui/ModernButton";
+import { borderRadius, colors, spacing, typography } from "@/theme/unified";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface ScanCameraOverlayProps {
   animatedCorners: any;
@@ -71,9 +73,12 @@ export function ScanCameraOverlay({
       >
         <SafeAreaView style={styles.cameraOverlay}>
           <View style={styles.cameraHeader}>
-            <TouchableOpacity onPress={onClose} style={styles.closeCameraButton}>
+            <AppTouchable
+              onPress={onClose}
+              style={styles.closeCameraButton}
+              accessibilityLabel="Close">
               <Ionicons name="close" size={28} color={colors.white} />
-            </TouchableOpacity>
+            </AppTouchable>
             <Text style={styles.cameraTitle}>Scan Barcode</Text>
           </View>
 
@@ -205,13 +210,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: spacing.xl,
-    backgroundColor: colors.gray[50],
+    backgroundColor: colors.neutral[50],
   },
   permissionText: {
     fontSize: typography.fontSize.lg,
     textAlign: "center",
     marginBottom: spacing.xl,
-    color: colors.gray[700],
+    color: colors.neutral[700],
     lineHeight: 28,
   },
 });

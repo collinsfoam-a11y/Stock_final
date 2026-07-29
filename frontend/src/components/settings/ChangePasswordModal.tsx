@@ -10,7 +10,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   Alert,
@@ -27,7 +26,8 @@ import {
   colors as uiColors,
   semanticColors as uiSemanticColors,
   shadows as uiShadows,
-} from "@/theme/legacyCompat";
+} from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 interface ChangePasswordModalProps {
   visible: boolean;
   onClose: () => void;
@@ -335,12 +335,12 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
                   autoCorrect={false}
                   editable={!loading}
                 />
-                <TouchableOpacity
+                <AppTouchable
                   style={styles.showButton}
                   onPress={() => setShowCurrentPassword(!showCurrentPassword)}
-                >
+ >
                   <Text style={styles.showButtonText}>{showCurrentPassword ? "Hide" : "Show"}</Text>
-                </TouchableOpacity>
+                </AppTouchable>
               </View>
             </View>
 
@@ -358,12 +358,12 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
                   autoCorrect={false}
                   editable={!loading}
                 />
-                <TouchableOpacity
+                <AppTouchable
                   style={styles.showButton}
                   onPress={() => setShowNewPassword(!showNewPassword)}
-                >
+ >
                   <Text style={styles.showButtonText}>{showNewPassword ? "Hide" : "Show"}</Text>
-                </TouchableOpacity>
+                </AppTouchable>
               </View>
             </View>
 
@@ -427,15 +427,15 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
             </View>
 
             <View style={styles.buttonContainer}>
-              <TouchableOpacity
+              <AppTouchable
                 style={[styles.button, styles.cancelButton]}
                 onPress={handleClose}
                 disabled={loading}
-              >
+ >
                 <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
-              </TouchableOpacity>
+              </AppTouchable>
 
-              <TouchableOpacity
+              <AppTouchable
                 style={[
                   styles.button,
                   styles.submitButton,
@@ -443,13 +443,13 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
                 ]}
                 onPress={handleSubmit}
                 disabled={!isValid || loading}
-              >
+ >
                 {loading ? (
                   <ActivityIndicator color={uiSemanticColors.text.inverse} size="small" />
                 ) : (
                   <Text style={[styles.buttonText, styles.submitButtonText]}>Change Password</Text>
                 )}
-              </TouchableOpacity>
+              </AppTouchable>
             </View>
           </ScrollView>
         </View>

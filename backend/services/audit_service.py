@@ -20,9 +20,12 @@ class AuditService:
         ip_address: Optional[str] = None,
         resource_id: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
     ) -> str:
         """
         Create a new audit log entry.
+        Accepts additional keyword arguments (e.g., `action`) for compatibility
+        with callers that pass extra parameters. Extraneous kwargs are safely ignored.
         """
         log_entry = AuditLog(
             event_type=event_type,

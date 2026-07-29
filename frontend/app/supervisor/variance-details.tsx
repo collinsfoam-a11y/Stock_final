@@ -14,9 +14,8 @@ import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
-import { ItemVerificationAPI } from "../../src/domains/inventory/services/itemVerificationApi";
+import { ItemVerificationAPI } from "../../src/features/inventory/services/itemVerificationApi";
 import { getAssignableStaffUsers } from "../../src/services/api/api";
-import { ScreenContainer, ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import RecountAssignmentModal, {
   type AssignableStaffUser,
@@ -24,6 +23,10 @@ import RecountAssignmentModal, {
 import { theme } from "../../src/styles/unifiedSystem";
 import { useToast } from "../../src/components/feedback/ToastProvider";
 import { safeBackNavigation } from "@/utils/navigation";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { StatsCard } from "@/components/ui/StatsCard";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 
 export default function VarianceDetailsScreen() {
   const { itemCode } = useLocalSearchParams();

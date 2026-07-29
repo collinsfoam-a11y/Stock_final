@@ -1262,7 +1262,7 @@ class TestCountLinesAPIEdgeCases:
     async def test_create_count_line_session_stats_error(self):
         """Test count line creation when session stats update fails"""
         mock_db = AsyncMock()
-        mock_db.client = None
+        mock_db.client = mock_db
         mock_db.sessions.find_one = AsyncMock(
             return_value={"id": "session123", "session_id": "session123", "status": "ACTIVE"}
         )
@@ -1324,7 +1324,7 @@ class TestCountLinesAPIEdgeCases:
     @pytest.mark.asyncio
     async def test_create_count_line_updates_session_barcode_by_dual_key(self):
         mock_db = AsyncMock()
-        mock_db.client = None
+        mock_db.client = mock_db
         mock_db.sessions.find_one = AsyncMock(
             return_value={"session_id": "session123", "id": "session123", "status": "ACTIVE"}
         )
@@ -1389,7 +1389,7 @@ class TestCountLinesAPIEdgeCases:
     async def test_create_count_line_auto_approves_zero_variance(self):
         """Zero-variance lines should not require supervisor verification."""
         mock_db = AsyncMock()
-        mock_db.client = None
+        mock_db.client = mock_db
         mock_db.sessions.find_one = AsyncMock(
             return_value={"id": "session123", "session_id": "session123", "status": "ACTIVE"}
         )

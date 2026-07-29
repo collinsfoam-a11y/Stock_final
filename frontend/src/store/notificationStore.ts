@@ -134,7 +134,7 @@ export const useNotificationStore = create<NotificationState>()(
 );
 
 // Polling hook for real-time notification updates
-let pollingInterval: NodeJS.Timeout | null = null;
+let pollingInterval: ReturnType<typeof setTimeout> | null = null;
 let appStateSubscription: { remove: () => void } | null = null;
 let visibilityChangeHandler: (() => void) | null = null;
 let currentAppState: AppStateStatus =

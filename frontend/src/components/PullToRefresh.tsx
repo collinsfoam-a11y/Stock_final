@@ -1,7 +1,7 @@
 import React from "react";
 import { ScrollView, RefreshControl } from "react-native";
 
-import { colors as uiColors } from "@/theme/legacyCompat";
+import { colors as uiColors } from "@/theme/unified";
 interface PullToRefreshProps {
   onRefresh: () => Promise<void> | void;
   refreshing: boolean;

@@ -1,6 +1,6 @@
 import { Platform, StyleSheet } from "react-native";
 
-import { colors, spacing, typography, borderRadius } from "@/theme/legacyCompat";
+import { colors, spacing, typography, borderRadius } from "@/theme/unified";
 import { zIndex } from "@/theme/designTokens";
 
 /**
@@ -11,7 +11,7 @@ import { zIndex } from "@/theme/designTokens";
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.gray[50],
+    backgroundColor: colors.neutral[50],
   },
   scrollContent: {
     padding: spacing.md,
@@ -30,7 +30,7 @@ export const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 34 : spacing.lg,
     backgroundColor: colors.white,
     borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
+    borderTopColor: colors.neutral[200],
   },
   headerActions: {
     flexDirection: "row",
@@ -91,17 +91,17 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: colors.neutral[200],
   },
   missingSessionTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[900],
+    color: colors.neutral[900],
     textAlign: "center",
   },
   missingSessionBody: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
+    color: colors.neutral[600],
     textAlign: "center",
     lineHeight: 22,
   },

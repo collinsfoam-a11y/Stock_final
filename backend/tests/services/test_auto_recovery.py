@@ -5,7 +5,7 @@ Backoff sleeps are patched to no-ops so retries run instantly.
 
 import pytest
 
-from backend.services import auto_recovery as ar_module
+from backend.services.resilience import auto_recovery as ar_module
 from backend.services.auto_recovery import AutoRecovery, RecoveryStrategy
 
 

@@ -13,13 +13,15 @@ import { View, Text, StyleSheet, Platform, useWindowDimensions } from "react-nat
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { RoleLayoutGuard } from "@/components/auth/RoleLayoutGuard";
 import { AdminSidebar, MobileNavDrawer, SupervisorSidebar } from "@/components/navigation";
-import { AnimatedPressable, ModernCard, ScreenContainer } from "@/components/ui";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useAuthStore } from "@/store/authStore";
 import { isSupervisorRouteEnabled } from "@/constants/roleFeatureFlags";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import type { ThemeTokens } from "@/theme/themeTokens";
 import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 
 const OFFLINE_BLOCKED_ROUTES = new Set([
   "activity-logs",

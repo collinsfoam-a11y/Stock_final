@@ -207,10 +207,3 @@ export const getLetterSpacing = (
 // EXPORT
 // ==========================================
 
-export default {
-  createTextStyles,
-  getFontSize,
-  getFontWeight,
-  getLineHeight,
-  getLetterSpacing,
-};

@@ -19,7 +19,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import { borderRadius, colors, semanticColors } from "@/theme/legacyCompat";
+import { borderRadius, colors, semanticColors } from "@/theme/unified";
 
 type BadgeVariant =
   | "success"
@@ -199,4 +199,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StatusBadge;
+

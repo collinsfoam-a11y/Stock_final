@@ -6,7 +6,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { ToastData, toastService } from "../../services/toastService";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { getTokenShadowStyle } from "../../theme/themeTokens";
-import { zIndex } from "../../theme";
+import { zIndex } from "@/theme/designTokens";
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastData[]>([]);

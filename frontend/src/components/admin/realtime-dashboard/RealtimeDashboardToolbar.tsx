@@ -1,11 +1,13 @@
 import React, { useMemo } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { DashboardConnectionState } from "@/components/admin/realtime-dashboard/realtimeDashboardLive";
 import { Summary } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface RealtimeDashboardToolbarProps {
   actionsDisabled?: boolean;
@@ -72,7 +74,7 @@ export function RealtimeDashboardToolbar({
         </View>
 
         <View style={styles.controlsRight}>
-          <TouchableOpacity
+          <AppTouchable
             {...getAccessibleButtonProps({
               label: `${autoRefresh ? "Disable" : "Enable"} realtime auto refresh`,
               disabled: actionsDisabled,
@@ -80,15 +82,14 @@ export function RealtimeDashboardToolbar({
             })}
             style={[styles.iconButton, actionsDisabled && styles.disabledButton]}
             onPress={onToggleAutoRefresh}
-            disabled={actionsDisabled}
-          >
+            disabled={actionsDisabled}>
             <Ionicons
               name={autoRefresh ? "sync" : "sync-outline"}
               size={20}
               color={autoRefresh ? uiTokens.colors.accent : uiTokens.colors.textSecondary}
             />
-          </TouchableOpacity>
-          <TouchableOpacity
+          </AppTouchable>
+          <AppTouchable
             {...getAccessibleButtonProps({
               label: "Open realtime dashboard column settings",
               disabled: actionsDisabled,
@@ -96,9 +97,9 @@ export function RealtimeDashboardToolbar({
             style={[styles.iconButton, actionsDisabled && styles.disabledButton]}
             onPress={onOpenColumnSettings}
             disabled={actionsDisabled}
-          >
+            accessibilityLabel="Options">
             <Ionicons name="options" size={20} color={uiTokens.colors.textPrimary} />
-          </TouchableOpacity>
+          </AppTouchable>
           <ExportButton
             disabled={actionsDisabled}
             label="ERPNext CSV"
@@ -113,11 +114,9 @@ export function RealtimeDashboardToolbar({
           />
         </View>
       </View>
-
       <Text style={styles.exportHelpText}>
         Blank ID inserts new rows. Keep ID to update existing ERPNext records.
       </Text>
-
       {summary && (
         <View style={styles.generationInfo}>
           <Text style={styles.generationText}>
@@ -146,14 +145,14 @@ function ExportButton({
   styles: ToolbarStyles;
 }) {
   return (
-    <TouchableOpacity
+    <AppTouchable
       {...getAccessibleButtonProps({ label: `Export ${label}`, disabled })}
       style={[styles.exportButton, disabled && styles.disabledButton]}
       onPress={onPress}
       disabled={disabled}
-    >
+ >
       <Text style={styles.exportButtonText}>{label}</Text>
-    </TouchableOpacity>
+    </AppTouchable>
   );
 }
 
@@ -171,7 +170,7 @@ function FilterButton({
   styles: ToolbarStyles;
 }) {
   return (
-    <TouchableOpacity
+    <AppTouchable
       {...getAccessibleButtonProps({
         label: `Show ${label.toLowerCase()} items`,
         disabled,
@@ -180,11 +179,11 @@ function FilterButton({
       style={[styles.filterButton, active && styles.filterButtonActive, disabled && styles.disabledButton]}
       onPress={onPress}
       disabled={disabled}
-    >
+ >
       <Text style={[styles.filterButtonText, active && styles.filterButtonTextActive]}>
         {label}
       </Text>
-    </TouchableOpacity>
+    </AppTouchable>
   );
 }
 

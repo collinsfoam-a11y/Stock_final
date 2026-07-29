@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from "react-native";
+import { View, Text, StyleSheet, Platform, Alert } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -19,7 +19,8 @@ import { font, radius, gap } from "@/theme/staffUiScale";
 // unifiedColors replaced by uiTokens semantic tokens throughout
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
-import { ScreenContainer } from "../../src/components/ui";
+import { AppTouchable } from "@/components/ui/AppTouchable";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 
 const getHistoryFailureReason = (error: unknown): string => {
   if (error instanceof Error && error.message) {
@@ -372,14 +373,14 @@ export default function HistoryScreen() {
                   <Text style={[styles.warningText, { color: uiTokens.colors.textSecondary }]}>
                     {loadWarning}
                   </Text>
-                  <TouchableOpacity
+                  <AppTouchable
                     style={styles.warningRetry}
                     onPress={onRefresh}
                     accessibilityRole="button"
                     accessibilityLabel="Retry live history refresh"
                   >
                     <Ionicons name="refresh" size={18} color={uiTokens.colors.warning} />
-                  </TouchableOpacity>
+                  </AppTouchable>
                 </View>
               ) : null
             }
@@ -403,7 +404,7 @@ export default function HistoryScreen() {
                     Could not load this session's count lines. Reason: {loadError} Pull down to
                     refresh or retry now.
                   </Text>
-                  <TouchableOpacity
+                  <AppTouchable
                     style={[
                       styles.retryButton,
                       {
@@ -419,7 +420,7 @@ export default function HistoryScreen() {
                     <Text style={[styles.retryButtonText, { color: uiTokens.colors.error }]}>
                       Retry
                     </Text>
-                  </TouchableOpacity>
+                  </AppTouchable>
                 </View>
               ) : (
                 <View style={styles.emptyContainer}>
@@ -437,10 +438,9 @@ export default function HistoryScreen() {
           />
         </PullToRefresh>
       )}
-
       <BottomSheet visible={filtersOpen} onClose={() => setFiltersOpen(false)} height={260}>
         <Text style={[styles.filterTitle, { color: uiTokens.colors.textPrimary }]}>Filters</Text>
-        <TouchableOpacity
+        <AppTouchable
           style={[
             styles.filterChip,
             {
@@ -461,7 +461,7 @@ export default function HistoryScreen() {
               });
             }
           }}
-        >
+ >
           <Ionicons
             name="checkmark-done-outline"
             size={18}
@@ -477,9 +477,8 @@ export default function HistoryScreen() {
           >
             Approved Only
           </Text>
-        </TouchableOpacity>
+        </AppTouchable>
       </BottomSheet>
-
       <PinEntryModal
         visible={pinModalVisible}
         onClose={() => {

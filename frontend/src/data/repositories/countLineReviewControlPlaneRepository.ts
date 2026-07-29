@@ -1,7 +1,7 @@
 import { CONTROL_PLANE_PROJECTION_VERSION } from "@/core/config/controlPlaneFlags";
-import type { CountLineReviewEvent } from "@/domain/events/countLineReviewEvents";
-import { applyCountLineReviewEventToSnapshot } from "@/domain/reducers/countLineReviewProjectionReducer";
-import type { ProjectedCountLineReviewSnapshot } from "@/domain/reducers/countLineReviewProjectionReducer";
+import type { CountLineReviewEvent } from "@/core/events/countLineReviewEvents";
+import { applyCountLineReviewEventToSnapshot } from "@/core/reducers/countLineReviewProjectionReducer";
+import type { ProjectedCountLineReviewSnapshot } from "@/core/reducers/countLineReviewProjectionReducer";
 import { getDb } from "@/db/localDb";
 
 type CountLineReviewEventRow = {
@@ -44,14 +44,14 @@ type CountLineReviewProjectionRow = {
 const nowIso = () => new Date().toISOString();
 
 const parseReviewEvent = (row: CountLineReviewEventRow): CountLineReviewEvent =>
-  ({
+  (({
     id: row.event_id,
     type: row.event_type as CountLineReviewEvent["type"],
     aggregateId: row.line_id,
     payload: JSON.parse(row.payload_json),
     meta: JSON.parse(row.metadata_json),
-    ts: row.event_ts,
-  }) as CountLineReviewEvent;
+    ts: row.event_ts
+  }) as CountLineReviewEvent);
 
 const toProjectedSnapshot = (
   row: CountLineReviewProjectionRow

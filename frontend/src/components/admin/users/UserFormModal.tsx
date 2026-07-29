@@ -10,8 +10,6 @@ import {
   View,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-
-import { AnimatedPressable, ModernCard } from "@/components/ui";
 import {
   USER_ROLE_OPTIONS,
   User,
@@ -21,6 +19,8 @@ import {
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { ModernCard } from "@/components/ui/ModernCard";
 
 const isE2E = process.env.EXPO_PUBLIC_E2E === "true";
 const isTablet = Platform.OS === "web";

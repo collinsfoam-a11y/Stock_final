@@ -6,17 +6,10 @@
 export { Modal } from "./Modal";
 export { SafeView } from "./SafeView";
 export * from "./Skeleton";
-export { AppButton } from "./AppButton";
-export type { AppButtonProps, AppButtonVariant, AppButtonSize } from "./AppButton";
-export { AppCard } from "./AppCard";
-export type { AppCardProps, AppCardVariant } from "./AppCard";
-export { AppInput } from "./AppInput";
-export type { AppInputProps } from "./AppInput";
 export { ConfirmDialog } from "./ConfirmDialog";
 export type { ConfirmDialogProps } from "./ConfirmDialog";
 export { SyncIndicator } from "./SyncIndicator";
 export type { SyncIndicatorProps } from "./SyncIndicator";
-export * from "./GlassCard";
 export { EmptyState } from "./EmptyState";
 export { LoadingSpinner } from "./LoadingSpinner";
 // Deprecated facades retained for incremental migration. New operational UI must use App*.
@@ -26,7 +19,6 @@ export { ModernInput } from "./ModernInput";
 export { ModernHeader } from "./ModernHeader";
 
 // Premium UI Components
-export { PremiumHeader } from "./PremiumHeader";
 export { ScreenHeader } from "./ScreenHeader";
 export type { ScreenHeaderProps } from "./ScreenHeader";
 export { StatusBadge } from "./StatusBadge";
@@ -38,7 +30,6 @@ export { default as OnlineStatus } from "./OnlineStatus";
 // Animation Components
 export { AnimatedPressable, AnimatedCard } from "./AnimatedPressable";
 export { FadeIn, StaggeredFadeIn } from "./FadeIn";
-export { AnimatedInput } from "./AnimatedInput";
 export { SuccessFeedback, ToastFeedback } from "./SuccessFeedback";
 export { SkeletonList, SkeletonGrid, SkeletonScreen } from "./SkeletonList";
 
@@ -48,11 +39,8 @@ export { FloatingScanButton } from "./FloatingScanButton";
 
 // Enhanced UI/UX Components (v2.1)
 export { AnimatedCounter } from "./AnimatedCounter";
-export { Shimmer, ShimmerPlaceholder } from "./Shimmer";
 export { ParticleField } from "./ParticleField";
-export { RippleButton } from "./RippleButton";
 export * from "./SyncStatusPill";
-export { EnhancedBottomSheet } from "./EnhancedBottomSheet";
 
 // Phase 4: Supervisor Dashboard Components
 export { StatsCard } from "./StatsCard";
@@ -106,8 +94,6 @@ export type { ResponsiveTextProps, TextVariant } from "./ResponsiveText";
 // Enhanced UI/UX Components (v3.0 - Best Practices Design Kit)
 export { MyPressable, PressablePresets } from "./MyPressable";
 export type { MyPressableProps } from "./MyPressable";
-export { EnhancedButton } from "./EnhancedButton";
-export type { EnhancedButtonProps, ButtonType, ButtonSize, IconPosition } from "./EnhancedButton";
 
 // Missing UI Components (Complete implementations found)
 export { AdminResponsiveGrid } from "./AdminResponsiveGrid";
@@ -115,8 +101,6 @@ export { InlineAlert } from "./InlineAlert";
 export type { InlineAlertType } from "./InlineAlert";
 export { MultiSelectList } from "./MultiSelectList";
 export type { SelectableItem, MultiSelectListProps } from "./MultiSelectList";
-export { SwipeCard } from "./SwipeCard";
-export type { SwipeAction, SwipeCardProps } from "./SwipeCard";
 export { SpeedDialMenu } from "./SpeedDialMenu";
 export type { SpeedDialAction, SpeedDialMenuProps } from "./SpeedDialMenu";
 export { ConfirmModal } from "./ConfirmModal";
@@ -127,8 +111,6 @@ export { Separator, SeparatorPresets } from "./Separator";
 export type { SeparatorProps, SeparatorOrientation } from "./Separator";
 export { AnimatedListItem, ListAnimationPresets } from "./AnimatedListItem";
 export type { AnimatedListItemProps } from "./AnimatedListItem";
-export { EnhancedInput } from "./EnhancedInput";
-export type { EnhancedInputProps, InputSize, LabelPosition } from "./EnhancedInput";
 
 // Unified Design System Components (v3.0 - Token-based)
 export { UnifiedText } from "./UnifiedText";

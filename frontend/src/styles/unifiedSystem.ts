@@ -1,2 +1,1 @@
-export * from "./modernDesignSystem";
-export { default } from "./modernDesignSystem";
+export * from "@/theme/unified";

@@ -4,23 +4,18 @@
  */
 
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  ScrollView,
-  Platform,
-  TouchableOpacity,
-  Alert,
-} from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Platform, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { ModernCard, AnimatedPressable, ScreenContainer } from "../../src/components/ui";
 import { theme } from "../../src/styles/unifiedSystem";
 import { useToast } from "../../src/components/feedback/ToastProvider";
 import { supervisorDecide, type SupervisorDecidePayload } from "../../src/services/api/approvalApi";
 import { safeBackNavigation } from "@/utils/navigation";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 
 export default function ObservationDetailScreen() {
   const router = useRouter();
@@ -65,7 +60,7 @@ export default function ObservationDetailScreen() {
         reason: `Supervisor ${action.toLowerCase()} from detail view`,
       });
       show(`Observation ${action.toLowerCase()}`, "success");
-      router.back();
+      safeBackNavigation(router);
     } catch (error: any) {
       show(error?.message || "Decision failed", "error");
     } finally {
@@ -101,12 +96,14 @@ export default function ObservationDetailScreen() {
   return (
     <ScreenContainer>
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => safeBackNavigation(router)} hitSlop={12}>
+        <AppTouchable
+          onPress={() => safeBackNavigation(router)}
+          hitSlop={12}
+          accessibilityLabel="Previous">
           <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
-        </TouchableOpacity>
+        </AppTouchable>
         <Text style={styles.title}>Observation Detail</Text>
       </View>
-
       <ScrollView contentContainerStyle={styles.content}>
         <ModernCard style={styles.card}>
           <View style={styles.row}>

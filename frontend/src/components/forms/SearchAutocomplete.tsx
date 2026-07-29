@@ -4,16 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  Keyboard,
-} from "react-native";
+import { View, Text, TextInput, StyleSheet, FlatList, ActivityIndicator, Keyboard } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
 import { useSettingsStore } from "../../store/settingsStore";
@@ -21,8 +12,9 @@ import { searchItems, SearchResult } from "../../services/enhancedSearchService"
 import { useStableDebouncedCallback } from "../../hooks/useDebouncedCallback";
 import { localDb } from "../../db/localDb";
 
-import { shadows as uiShadows } from "@/theme/legacyCompat";
+import { shadows as uiShadows } from "@/theme/unified";
 import { zIndex as uiZIndex } from "@/theme/designTokens";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 interface SearchAutocompleteProps {
   onSelectItem: (item: SearchResult) => void;
   onBarcodeScan?: (barcode: string) => void;
@@ -142,7 +134,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
     const matchType = item.matchType;
 
     return (
-      <TouchableOpacity
+      <AppTouchable
         style={[
           styles.resultItem,
           {
@@ -154,7 +146,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
         ]}
         onPress={() => handleSelectItem(item)}
         activeOpacity={0.7}
-      >
+ >
         <View style={styles.resultContent}>
           {/* Header: Name and Badge */}
           <View style={styles.resultHeader}>
@@ -251,14 +243,13 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
             )}
           </View>
         </View>
-
         <Ionicons
           name="chevron-forward"
           size={20}
           color={theme.colors.placeholder}
           style={{ opacity: 0.5 }}
         />
-      </TouchableOpacity>
+      </AppTouchable>
     );
   };
 
@@ -301,12 +292,15 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
         )}
 
         {query.length > 0 && !isSearching && (
-          <TouchableOpacity style={styles.clearButton} onPress={handleClear} activeOpacity={0.7}>
+          <AppTouchable
+            style={styles.clearButton}
+            onPress={handleClear}
+            activeOpacity={0.7}
+            accessibilityLabel="Clear">
             <Ionicons name="close-circle" size={20} color={theme.colors.placeholder} />
-          </TouchableOpacity>
+          </AppTouchable>
         )}
       </View>
-
       {showDropdown && (
         <View
           style={[

@@ -2,8 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView, TextInput, Alert, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { usePermission } from "../../src/hooks/usePermission";
-import { LoadingSpinner, ScreenContainer } from "../../src/components/ui";
-import ModernCard from "../../src/components/ui/ModernCard";
+import { ModernCard } from "../../src/components/ui/ModernCard";
 import { AnimatedPressable } from "../../src/components/ui/AnimatedPressable";
 import {
   getAvailablePermissions,
@@ -17,6 +16,8 @@ import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 
 const isWeb = Platform.OS === "web";
 

@@ -71,15 +71,11 @@ export {
 export type { AnimationTiming, FontSizeKey } from "./uiConstants";
 // Note: ShadowKey already exported from ./unified
 
-// Enhanced Colors
-export { lightSemanticColors, darkSemanticColors } from "./enhancedColors";
-
 // Typography
 export * from "./typography";
 
 // Existing theme files
 export * from "./themes";
-export * from "./designSystem";
 export * from "./themeTokens";
 
 // Theme Context (Provider, Hook, Types)

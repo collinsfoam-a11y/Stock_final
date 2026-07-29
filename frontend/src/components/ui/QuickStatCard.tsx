@@ -9,13 +9,7 @@
  */
 
 import React, { useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, StyleSheet, ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, {
@@ -34,8 +28,10 @@ import {
   modernShadows,
 } from "../../styles/unifiedSystem";
 
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
+import { AppTouchable } from "@/components/ui/AppTouchable";
+
+const AnimatedAppTouchable =
+  Animated.createAnimatedComponent(AppTouchable);
 
 type TrendDirection = "up" | "down" | "neutral";
 type CardVariant = "default" | "gradient" | "outline";
@@ -218,14 +214,14 @@ export const QuickStatCard: React.FC<QuickStatCardProps> = ({
         entering={FadeInUp.delay(index * 75).springify()}
         style={animatedStyle}
       >
-        <AnimatedTouchableOpacity
+        <AnimatedAppTouchable
           onPress={onPress}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
           activeOpacity={1}
         >
           {card}
-        </AnimatedTouchableOpacity>
+        </AnimatedAppTouchable>
       </Animated.View>
     );
   }
@@ -309,4 +305,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default QuickStatCard;
+

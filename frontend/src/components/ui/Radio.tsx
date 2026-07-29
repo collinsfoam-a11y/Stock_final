@@ -5,7 +5,7 @@
  */
 
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,9 +17,11 @@ import {
   spacing,
   textStyles,
   touchTargets,
-} from "@/theme/legacyCompat";
+} from "@/theme/unified";
 import { haptics } from "@/services/haptics";
 import { OPERATIONAL_HIT_SLOP } from "@/utils/accessibility";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 export interface RadioOption {
   value: string;
@@ -83,7 +85,7 @@ const RadioItem: React.FC<RadioItemProps> = ({
   }));
 
   return (
-    <TouchableOpacity
+    <AppTouchable
       style={styles.item}
       onPress={() => {
         void haptics.light();
@@ -113,7 +115,6 @@ const RadioItem: React.FC<RadioItemProps> = ({
           ]}
         />
       </View>
-
       <View style={styles.labelContainer}>
         <Text style={[styles.label, disabled && styles.labelDisabled]}>
           {option.label}
@@ -127,7 +128,7 @@ const RadioItem: React.FC<RadioItemProps> = ({
           </Text>
         )}
       </View>
-    </TouchableOpacity>
+    </AppTouchable>
   );
 };
 

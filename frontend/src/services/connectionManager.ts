@@ -38,7 +38,7 @@ const parseBackendPort = (value?: string | null): number | null => {
 class ConnectionManager {
   private static instance: ConnectionManager;
   private currentConnection: ConnectionInfo | null = null;
-  private healthCheckTimer: NodeJS.Timeout | null = null;
+  private healthCheckTimer: ReturnType<typeof setTimeout> | null = null;
   private listeners: ((connection: ConnectionInfo) => void)[] = [];
   private isInitialized = false;
 

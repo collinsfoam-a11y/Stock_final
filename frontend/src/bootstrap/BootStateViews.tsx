@@ -1,14 +1,9 @@
 import React from "react";
-import {
-  ActivityIndicator,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { modernColors, modernTypography } from "../styles/modernDesignSystem";
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
+import { modernColors, modernTypography } from "@/theme/unified";
 import { BrandLogo } from "../components/branding/BrandLogo";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface BootLoadingViewProps {
   initError: string | null;
@@ -77,7 +72,7 @@ export function BootLoadingView({
           <Text style={styles.errorTitle}>Startup needs attention</Text>
           <Text style={styles.errorText}>{friendlyError}</Text>
           {onRetry ? (
-            <TouchableOpacity
+            <AppTouchable
               accessibilityRole="button"
               accessibilityLabel="Retry app startup"
               activeOpacity={0.86}
@@ -89,7 +84,7 @@ export function BootLoadingView({
               <Text style={styles.retryButtonText}>
                 {isRetrying ? "Retrying..." : "Retry startup"}
               </Text>
-            </TouchableOpacity>
+            </AppTouchable>
           ) : null}
         </View>
       )}
@@ -101,7 +96,7 @@ interface BootErrorViewProps {
   initError: string;
 }
 
-export function BootErrorView({ initError }: BootErrorViewProps) {
+function BootErrorView({ initError }: BootErrorViewProps) {
   const friendlyError = getBootFriendlyError(initError);
 
   return (

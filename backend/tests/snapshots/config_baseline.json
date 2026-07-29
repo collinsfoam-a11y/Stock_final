@@ -1,0 +1,513 @@
+{
+  "description": "Application settings with validation",
+  "properties": {
+    "ACCESS_TOKEN_EXPIRE_MINUTES": {
+      "default": 15,
+      "minimum": 1,
+      "title": "Access Token Expire Minutes",
+      "type": "integer"
+    },
+    "ALLOWED_HOSTS": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Comma-separated trusted hostnames for Host header validation.",
+      "title": "Allowed Hosts"
+    },
+    "APP_NAME": {
+      "default": "Stock Count Application",
+      "title": "App Name",
+      "type": "string"
+    },
+    "APP_VERSION": {
+      "default": "1.0.0",
+      "title": "App Version",
+      "type": "string"
+    },
+    "AUTH_ACCESS_COOKIE_NAME": {
+      "default": "sv_access_token",
+      "description": "Cookie name used for the short-lived access token.",
+      "title": "Auth Access Cookie Name",
+      "type": "string"
+    },
+    "AUTH_COOKIE_DOMAIN": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional cookie domain override for browser authentication.",
+      "title": "Auth Cookie Domain"
+    },
+    "AUTH_COOKIE_SAMESITE": {
+      "default": "lax",
+      "description": "Browser SameSite setting for auth cookies: lax, strict, or none.",
+      "title": "Auth Cookie Samesite",
+      "type": "string"
+    },
+    "AUTH_REFRESH_COOKIE_NAME": {
+      "default": "sv_refresh_token",
+      "description": "Cookie name used for the refresh token.",
+      "title": "Auth Refresh Cookie Name",
+      "type": "string"
+    },
+    "AUTH_SINGLE_SESSION": {
+      "default": true,
+      "title": "Auth Single Session",
+      "type": "boolean"
+    },
+    "AUTO_LOGOUT_ENABLED": {
+      "default": true,
+      "title": "Auto Logout Enabled",
+      "type": "boolean"
+    },
+    "AUTO_SEED_DEFAULT_USERS": {
+      "default": false,
+      "description": "Seed default users for development or automated smoke environments.",
+      "title": "Auto Seed Default Users",
+      "type": "boolean"
+    },
+    "AUTO_SEED_MOCK_ERP_DATA": {
+      "default": false,
+      "description": "Seed mock ERP inventory for development or automated smoke environments.",
+      "title": "Auto Seed Mock Erp Data",
+      "type": "boolean"
+    },
+    "AUTO_SYNC_ENABLED": {
+      "default": false,
+      "title": "Auto Sync Enabled",
+      "type": "boolean"
+    },
+    "AUTO_SYNC_INTERVAL": {
+      "default": 3600,
+      "minimum": 60,
+      "title": "Auto Sync Interval",
+      "type": "integer"
+    },
+    "BLOCK_SANITIZATION_VIOLATIONS": {
+      "default": true,
+      "title": "Block Sanitization Violations",
+      "type": "boolean"
+    },
+    "CACHE_TTL": {
+      "default": 3600,
+      "minimum": 0,
+      "title": "Cache Ttl",
+      "type": "integer"
+    },
+    "CHANGE_DETECTION_INTERVAL": {
+      "default": 300,
+      "minimum": 60,
+      "title": "Change Detection Interval",
+      "type": "integer"
+    },
+    "CHANGE_DETECTION_SYNC_ENABLED": {
+      "default": true,
+      "title": "Change Detection Sync Enabled",
+      "type": "boolean"
+    },
+    "CONNECTION_HEALTH_CHECK_INTERVAL": {
+      "default": 60,
+      "description": "Health check interval in seconds",
+      "maximum": 3600,
+      "minimum": 10,
+      "title": "Connection Health Check Interval",
+      "type": "integer"
+    },
+    "CONNECTION_RETRY_ATTEMPTS": {
+      "default": 3,
+      "description": "Number of retry attempts for connection creation",
+      "maximum": 10,
+      "minimum": 1,
+      "title": "Connection Retry Attempts",
+      "type": "integer"
+    },
+    "CONNECTION_RETRY_DELAY": {
+      "default": 1.0,
+      "description": "Initial retry delay in seconds (exponential backoff)",
+      "maximum": 10.0,
+      "minimum": 0.1,
+      "title": "Connection Retry Delay",
+      "type": "number"
+    },
+    "CORS_ALLOW_ORIGINS": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cors Allow Origins"
+    },
+    "CORS_DEV_ORIGINS": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Additional CORS origins for development (comma-separated). Defaults include localhost variants.",
+      "title": "Cors Dev Origins"
+    },
+    "DB_NAME": {
+      "default": "stock_verification",
+      "title": "Db Name",
+      "type": "string"
+    },
+    "DEBUG": {
+      "default": false,
+      "title": "Debug",
+      "type": "boolean"
+    },
+    "ENABLE_LAN_ENFORCEMENT": {
+      "default": false,
+      "description": "Restrict inbound requests to private or loopback IP ranges.",
+      "title": "Enable Lan Enforcement",
+      "type": "boolean"
+    },
+    "ENVIRONMENT": {
+      "default": "development",
+      "description": "Environment: development, test, staging, production",
+      "title": "Environment",
+      "type": "string"
+    },
+    "ERP_SYNC_ENABLED": {
+      "default": true,
+      "title": "Erp Sync Enabled",
+      "type": "boolean"
+    },
+    "ERP_SYNC_INTERVAL": {
+      "default": 3600,
+      "minimum": 60,
+      "title": "Erp Sync Interval",
+      "type": "integer"
+    },
+    "FORCE_HTTPS": {
+      "default": false,
+      "title": "Force Https",
+      "type": "boolean"
+    },
+    "HOST": {
+      "default": "0.0.0.0",
+      "title": "Host",
+      "type": "string"
+    },
+    "JWT_ALGORITHM": {
+      "default": "HS256",
+      "title": "Jwt Algorithm",
+      "type": "string"
+    },
+    "JWT_REFRESH_SECRET": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "JWT refresh token secret - must be set via JWT_REFRESH_SECRET env var",
+      "title": "Jwt Refresh Secret"
+    },
+    "JWT_SECRET": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "JWT secret key (recommended to use env var)",
+      "title": "Jwt Secret"
+    },
+    "LOG_BACKUP_COUNT": {
+      "default": 5,
+      "minimum": 0,
+      "title": "Log Backup Count",
+      "type": "integer"
+    },
+    "LOG_FILE": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Log File"
+    },
+    "LOG_FORMAT": {
+      "default": "json",
+      "title": "Log Format",
+      "type": "string"
+    },
+    "LOG_LEVEL": {
+      "default": "INFO",
+      "title": "Log Level",
+      "type": "string"
+    },
+    "LOG_MAX_BYTES": {
+      "default": 10485760,
+      "minimum": 0,
+      "title": "Log Max Bytes",
+      "type": "integer"
+    },
+    "MAX_CONCURRENT": {
+      "default": 50,
+      "minimum": 1,
+      "title": "Max Concurrent",
+      "type": "integer"
+    },
+    "MAX_OVERFLOW": {
+      "default": 5,
+      "minimum": 0,
+      "title": "Max Overflow",
+      "type": "integer"
+    },
+    "METRICS_ENABLED": {
+      "default": true,
+      "title": "Metrics Enabled",
+      "type": "boolean"
+    },
+    "METRICS_HISTORY_SIZE": {
+      "default": 1000,
+      "minimum": 0,
+      "title": "Metrics History Size",
+      "type": "integer"
+    },
+    "MIN_CLIENT_VERSION": {
+      "default": "1.0.0",
+      "description": "Minimum required client/app version for compatibility",
+      "title": "Min Client Version",
+      "type": "string"
+    },
+    "MONGO_URL": {
+      "default": "mongodb://localhost:27017",
+      "title": "Mongo Url",
+      "type": "string"
+    },
+    "PI_SERVER_API_KEY": {
+      "default": "",
+      "description": "Bearer token for the pi-server sidecar (set via PI_SERVER_API_KEY env var)",
+      "title": "Pi Server Api Key",
+      "type": "string"
+    },
+    "PI_SERVER_URL": {
+      "default": "http://localhost:8045/v1",
+      "description": "URL for the pi-server sidecar",
+      "title": "Pi Server Url",
+      "type": "string"
+    },
+    "POOL_SIZE": {
+      "default": 10,
+      "minimum": 1,
+      "title": "Pool Size",
+      "type": "integer"
+    },
+    "PORT": {
+      "default": 8001,
+      "maximum": 65535,
+      "minimum": 1,
+      "title": "Port",
+      "type": "integer"
+    },
+    "QUEUE_SIZE": {
+      "default": 100,
+      "description": "Queue size for concurrent request handler",
+      "minimum": 1,
+      "title": "Queue Size",
+      "type": "integer"
+    },
+    "RATE_LIMIT_BURST": {
+      "default": 20,
+      "minimum": 1,
+      "title": "Rate Limit Burst",
+      "type": "integer"
+    },
+    "RATE_LIMIT_MAX_ATTEMPTS": {
+      "default": 5,
+      "minimum": 1,
+      "title": "Rate Limit Max Attempts",
+      "type": "integer"
+    },
+    "RATE_LIMIT_PER_MINUTE": {
+      "default": 100,
+      "minimum": 1,
+      "title": "Rate Limit Per Minute",
+      "type": "integer"
+    },
+    "RATE_LIMIT_TTL_SECONDS": {
+      "default": 300,
+      "minimum": 1,
+      "title": "Rate Limit Ttl Seconds",
+      "type": "integer"
+    },
+    "REDIS_URL": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Redis Url"
+    },
+    "REFRESH_TOKEN_EXPIRE_DAYS": {
+      "default": 30,
+      "minimum": 1,
+      "title": "Refresh Token Expire Days",
+      "type": "integer"
+    },
+    "SENTRY_DSN": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Sentry DSN for error tracking. Set via SENTRY_DSN env var.",
+      "title": "Sentry Dsn"
+    },
+    "SENTRY_ENVIRONMENT": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "development",
+      "description": "Sentry environment (defaults to ENVIRONMENT setting)",
+      "title": "Sentry Environment"
+    },
+    "SENTRY_PROFILES_SAMPLE_RATE": {
+      "default": 0.1,
+      "description": "Sentry profiling sample rate (0.0-1.0)",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Sentry Profiles Sample Rate",
+      "type": "number"
+    },
+    "SENTRY_TRACES_SAMPLE_RATE": {
+      "default": 0.1,
+      "description": "Sentry performance monitoring sample rate (0.0-1.0)",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Sentry Traces Sample Rate",
+      "type": "number"
+    },
+    "SESSION_TIMEOUT_MINUTES": {
+      "default": 480,
+      "minimum": 1,
+      "title": "Session Timeout Minutes",
+      "type": "integer"
+    },
+    "SQL_SERVER_DATABASE": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "SQL Server database (optional)",
+      "title": "Sql Server Database"
+    },
+    "SQL_SERVER_DRIVER": {
+      "default": "SQL Server",
+      "description": "ODBC driver name for SQL Server",
+      "title": "Sql Server Driver",
+      "type": "string"
+    },
+    "SQL_SERVER_HOST": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "SQL Server host (optional)",
+      "title": "Sql Server Host"
+    },
+    "SQL_SERVER_PASSWORD": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sql Server Password"
+    },
+    "SQL_SERVER_PORT": {
+      "default": 1433,
+      "title": "Sql Server Port",
+      "type": "integer"
+    },
+    "SQL_SERVER_USER": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sql Server User"
+    },
+    "STRICT_VALIDATION": {
+      "default": false,
+      "description": "When true, runtime validation raises governance violations on invariant errors.",
+      "title": "Strict Validation",
+      "type": "boolean"
+    },
+    "USE_CONNECTION_POOL": {
+      "default": true,
+      "title": "Use Connection Pool",
+      "type": "boolean"
+    },
+    "WORKERS": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Workers",
+      "type": "integer"
+    }
+  },
+  "title": "Settings",
+  "type": "object"
+}

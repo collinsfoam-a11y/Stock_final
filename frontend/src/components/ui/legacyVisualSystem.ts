@@ -1,4 +1,8 @@
-type LegacyClassification = "removable" | "wrapper-only" | "migration-required" | "approved-exception";
+type LegacyClassification =
+  | "removable"
+  | "wrapper-only"
+  | "migration-required"
+  | "approved-exception";
 
 export type LegacyVisualSystemEntry = {
   classification: LegacyClassification;
@@ -31,26 +35,6 @@ export const legacyVisualSystemRegistry = {
     classification: "wrapper-only",
     replacement: "AppInput",
     guidance: "Use AppInput for new work. PremiumInput is a compatibility adapter.",
-  },
-  GlassCard: {
-    classification: "approved-exception",
-    replacement: "AppCard",
-    guidance: "Allowed only in appearance/demo surfaces while migration is in progress.",
-  },
-  EnhancedButton: {
-    classification: "wrapper-only",
-    replacement: "AppButton",
-    guidance: "Use AppButton for new work. EnhancedButton remains only for legacy compatibility.",
-  },
-  EnhancedInput: {
-    classification: "wrapper-only",
-    replacement: "AppInput",
-    guidance: "Use AppInput for new work. EnhancedInput remains only for legacy compatibility.",
-  },
-  RippleButton: {
-    classification: "wrapper-only",
-    replacement: "AppButton",
-    guidance: "Use AppButton for new work. RippleButton remains only for legacy compatibility.",
   },
   AuroraBackground: {
     classification: "approved-exception",

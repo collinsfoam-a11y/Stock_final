@@ -10,15 +10,7 @@
  */
 
 import React, { useCallback, useMemo } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-  useWindowDimensions,
-  AccessibilityInfo,
-} from "react-native";
+import { View, Text, StyleSheet, Platform, useWindowDimensions, AccessibilityInfo } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -28,6 +20,8 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 import { modernColors } from "../../styles/unifiedSystem";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface PinKeypadProps {
   pin: string;
@@ -148,7 +142,7 @@ export function PinKeypad({
     }
 
     return (
-      <TouchableOpacity
+      <AppTouchable
         key={`key-${key}`}
         style={[
           styles.key,
@@ -193,7 +187,7 @@ export function PinKeypad({
             {key}
           </Text>
         )}
-      </TouchableOpacity>
+      </AppTouchable>
     );
   };
 

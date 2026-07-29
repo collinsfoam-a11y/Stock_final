@@ -15,7 +15,7 @@ import {
   modernGlass,
   modernAnimations,
   modernComponentSizes,
-} from "../styles/modernDesignSystem";
+} from "@/theme/unified";
 
 export type AppTheme = {
   colors: {

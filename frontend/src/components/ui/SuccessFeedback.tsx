@@ -9,7 +9,7 @@ import { Text, StyleSheet, Animated } from "react-native";
 import * as Haptics from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { colors as uiColors, semanticColors, shadows } from "@/theme/legacyCompat";
+import { colors as uiColors, semanticColors, shadows } from "@/theme/unified";
 interface SuccessFeedbackProps {
   visible: boolean;
   message?: string;
@@ -269,4 +269,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SuccessFeedback;
+

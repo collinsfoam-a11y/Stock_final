@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, Platform } from "react-native";
 
-import { semanticColors, colors } from "@/theme/legacyCompat";
+import { semanticColors, colors } from "@/theme/unified";
 export default function DebugPage() {
   return (
     <View

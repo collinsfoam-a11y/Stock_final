@@ -1,26 +1,19 @@
 import React from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { AppInput } from "@/components/ui/AppInput";
+import { ModernInput } from "@/components/ui/ModernInput";
 import {
   WarehouseOption,
   ZoneOption,
 } from "@/components/supervisor/dashboard/supervisorDashboardShared";
 import { theme } from "@/styles/unifiedSystem";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { semanticColors as uiSemanticColors } from "@/theme/unified";
 import { haptics } from "@/services/haptics";
 import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface CreateSessionModalProps {
   isCreatingSession: boolean;
@@ -67,16 +60,16 @@ export function CreateSessionModal({
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create New Session</Text>
-              <TouchableOpacity
+              <AppTouchable
                 {...getAccessibleButtonProps({ label: "Close modal" })}
                 onPress={() => {
                   void haptics.light();
                   onClose();
                 }}
                 style={styles.modalCloseButton}
-              >
+                accessibilityLabel="Close">
                 <Ionicons name="close" size={24} color={theme.colors.text.primary} {...getDecorativeIconProps()} />
-              </TouchableOpacity>
+              </AppTouchable>
             </View>
 
             <ScrollView
@@ -89,7 +82,7 @@ export function CreateSessionModal({
                 <Text style={styles.stepLabel}>1. Select Location Type</Text>
                 <View style={styles.optionsGrid}>
                   {zones.map((zone) => (
-                    <TouchableOpacity
+                    <AppTouchable
                       key={zone.id}
                       {...getAccessibleButtonProps({
                         label: zone.zone_name,
@@ -103,7 +96,7 @@ export function CreateSessionModal({
                         void haptics.light();
                         onChangeLocationType(zone.zone_name);
                       }}
-                    >
+ >
                       <Text
                         style={[
                           styles.optionText,
@@ -112,7 +105,7 @@ export function CreateSessionModal({
                       >
                         {zone.zone_name}
                       </Text>
-                    </TouchableOpacity>
+                    </AppTouchable>
                   ))}
                 </View>
               </View>
@@ -125,7 +118,7 @@ export function CreateSessionModal({
                   ) : (
                     <View style={styles.optionsGrid}>
                       {warehouses.map((warehouse) => (
-                        <TouchableOpacity
+                        <AppTouchable
                           key={warehouse.id}
                           {...getAccessibleButtonProps({
                             label: warehouse.warehouse_name,
@@ -140,7 +133,7 @@ export function CreateSessionModal({
                             void haptics.light();
                             onChangeSelectedFloor(warehouse.warehouse_name);
                           }}
-                        >
+ >
                           <Text
                             style={[
                               styles.optionText,
@@ -150,7 +143,7 @@ export function CreateSessionModal({
                           >
                             {warehouse.warehouse_name}
                           </Text>
-                        </TouchableOpacity>
+                        </AppTouchable>
                       ))}
                     </View>
                   )}
@@ -160,17 +153,17 @@ export function CreateSessionModal({
               {selectedFloor && (
                 <View style={styles.stepContainer}>
                   <Text style={styles.stepLabel}>3. Rack / Shelf Identifier</Text>
-                  <AppInput
+                  <ModernInput
                     value={rackName}
                     onChangeText={onChangeRackName}
                     placeholder="e.g. RACK-A1"
-                    leftIcon="grid-outline"
+                    icon="grid-outline"
                     autoCapitalize="characters"
                   />
                 </View>
               )}
 
-              <TouchableOpacity
+              <AppTouchable
                 {...getAccessibleButtonProps({
                   label: "Start Session",
                   disabled: !locationType || !selectedFloor || !rackName.trim() || isCreatingSession,
@@ -186,13 +179,13 @@ export function CreateSessionModal({
                   onSubmit();
                 }}
                 disabled={!locationType || !selectedFloor || !rackName.trim() || isCreatingSession}
-              >
+ >
                 {isCreatingSession ? (
                   <ActivityIndicator color={uiSemanticColors.text.inverse} />
                 ) : (
                   <Text style={styles.createButtonText}>Start Session</Text>
                 )}
-              </TouchableOpacity>
+              </AppTouchable>
 
               <View style={styles.bottomSpacer} />
             </ScrollView>

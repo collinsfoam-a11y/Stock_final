@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 
@@ -15,12 +15,14 @@ import {
   SettingsTextInputRow,
   UserSettingsSections,
 } from "../../src/components/settings";
-import { ScreenContainer } from "../../src/components/ui";
-import ModernCard from "../../src/components/ui/ModernCard";
+import { ModernCard } from "../../src/components/ui/ModernCard";
 import { getSystemSettings, updateSystemSettings } from "../../src/services/api";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { colorWithAlpha } from "../../src/theme/themeTokens";
 import { safeBackNavigation } from "@/utils/navigation";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 
 type SystemSettings = Record<string, unknown>;
 type SettingsIcon = React.ComponentProps<typeof SettingsTextInputRow>["icon"];
@@ -154,7 +156,7 @@ export default function MasterSettingsScreen() {
 
   const saveDisabled = offlineMode || saving || !settings;
   const saveButton = (
-    <TouchableOpacity
+    <AppTouchable
       accessibilityRole="button"
       accessibilityLabel="Save system settings"
       disabled={saveDisabled}
@@ -181,7 +183,7 @@ export default function MasterSettingsScreen() {
           </Text>
         </>
       )}
-    </TouchableOpacity>
+    </AppTouchable>
   );
 
   const header = {

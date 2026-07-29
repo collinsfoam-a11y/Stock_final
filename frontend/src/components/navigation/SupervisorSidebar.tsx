@@ -4,15 +4,7 @@
  */
 
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  useWindowDimensions,
-  ViewStyle,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, useWindowDimensions, ViewStyle } from "react-native";
 import { useRouter, useSegments } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
@@ -20,7 +12,9 @@ import { useAuthStore } from "../../store/authStore";
 import { layout, spacing, typography, breakpoints } from "../../styles/globalStyles";
 import { SUPERVISOR_NAV_GROUPS, type SupervisorNavItem } from "./supervisorNavShared";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { semanticColors as uiSemanticColors } from "@/theme/unified";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface SupervisorSidebarProps {
   collapsed?: boolean;
@@ -129,7 +123,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
           )}
 
           {onToggleCollapse && (
-            <TouchableOpacity
+            <AppTouchable
               style={[
                 styles.collapseButton,
                 { backgroundColor: activeBackground, borderColor: subtleBorder },
@@ -146,7 +140,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                 size={18}
                 color={theme.colors.text}
               />
-            </TouchableOpacity>
+            </AppTouchable>
           )}
         </View>
 
@@ -191,11 +185,11 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
               ]}
             >
               {!collapsed && (
-                <TouchableOpacity
+                <AppTouchable
                   style={styles.groupHeader}
                   onPress={() => toggleGroup(group.title)}
                   activeOpacity={0.7}
-                >
+ >
                   <Text style={[styles.groupTitle, { color: theme.colors.textSecondary }]}>
                     {group.title}
                   </Text>
@@ -204,9 +198,8 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                     size={16}
                     color={theme.colors.textSecondary}
                   />
-                </TouchableOpacity>
+                </AppTouchable>
               )}
-
               {(!collapsed && isExpanded) || collapsed ? (
                 <View style={styles.groupItems}>
                   {group.items.map((item) => {
@@ -217,7 +210,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                       : "transparent";
 
                     return (
-                      <TouchableOpacity
+                      <AppTouchable
                         key={item.key}
                         style={[
                           styles.item,
@@ -257,7 +250,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                             )}
                           </>
                         )}
-                      </TouchableOpacity>
+                      </AppTouchable>
                     );
                   })}
                 </View>
@@ -266,10 +259,9 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
           );
         })}
       </ScrollView>
-
       {/* Logout Button */}
       {!collapsed && (
-        <TouchableOpacity
+        <AppTouchable
           style={[
             styles.logoutButton,
             {
@@ -284,7 +276,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
         >
           <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
           <Text style={[styles.logoutLabel, { color: theme.colors.error }]}>Logout</Text>
-        </TouchableOpacity>
+        </AppTouchable>
       )}
     </View>
   );

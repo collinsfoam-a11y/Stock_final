@@ -9,7 +9,7 @@ import type {
   ReportPreviewData,
   ReportType,
   ReportTypeInfo,
-} from "../../domains/reports/types";
+} from "../../features/reports/types";
 
 export type {
   ExportFormat,
@@ -18,7 +18,7 @@ export type {
   ReportPreviewData,
   ReportType,
   ReportTypeInfo,
-} from "../../domains/reports/types";
+} from "../../features/reports/types";
 
 export interface ReportFilterOptionsResponse {
   report_type: ReportType;
@@ -190,7 +190,7 @@ export const reportApi = {
 };
 
 // Helper function to trigger download
-export async function downloadReport(
+async function downloadReport(
   params: GenerateReportParams,
   filename?: string,
 ): Promise<void> {
@@ -211,4 +211,3 @@ export async function downloadReport(
   window.URL.revokeObjectURL(url);
 }
 
-export default reportApi;

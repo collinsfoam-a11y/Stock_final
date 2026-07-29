@@ -1,5 +1,5 @@
 import React from "react";
-import { ActivityIndicator, Modal, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Modal, Text, View } from "react-native";
 import { BlurView } from "expo-blur";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
@@ -8,6 +8,8 @@ import { ModernCard } from "@/components/ui/ModernCard";
 import { DateRangePicker } from "@/components/forms/DateRangePicker";
 import type { ThemeTokens } from "@/theme/themeTokens";
 import { getAccessibleButtonProps } from "@/utils/accessibility";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface DashboardReportModalProps {
   generating: boolean;
@@ -42,9 +44,11 @@ export function DashboardReportModal({
         <ModernCard variant="outlined" elevation="none" style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Generate Report</Text>
-            <TouchableOpacity onPress={onClose} {...getAccessibleButtonProps({ label: "Close report dialog" })}>
+            <AppTouchable
+              onPress={onClose}
+              {...getAccessibleButtonProps({ label: "Close report dialog" })}>
               <Ionicons name="close" size={24} color={uiTokens.colors.textSecondary} />
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
           <View style={styles.modalBody}>
             <Text style={styles.modalLabel}>Date Range</Text>
@@ -64,14 +68,14 @@ export function DashboardReportModal({
                   ["json", "code-outline", "JSON"],
                 ] as const
               ).map(([format, icon, label]) => (
-                <TouchableOpacity
+                <AppTouchable
                   key={format}
                   style={[
                     styles.formatOption,
                     reportFormat === format && styles.formatOptionActive,
                   ]}
                   onPress={() => onReportFormatChange(format)}
-                >
+                  accessibilityLabel="Select report format">
                   <Ionicons
                     name={icon}
                     size={20}
@@ -91,7 +95,7 @@ export function DashboardReportModal({
                   >
                     {label}
                   </Text>
-                </TouchableOpacity>
+                </AppTouchable>
               ))}
             </View>
           </View>

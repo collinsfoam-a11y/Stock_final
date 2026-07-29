@@ -2,7 +2,7 @@ import React from "react";
 
 import { OptionSelectModal } from "@/components/modals/OptionSelectModal";
 import { SerialScannerModal } from "@/components/modals/SerialScannerModal";
-import { DatePickerState } from "@/domains/inventory/hooks/scan/useFlexibleDateField";
+import { DatePickerState } from "@/features/inventory/hooks/scan/useFlexibleDateField";
 
 interface PickerFieldControls {
   closePicker: () => void;

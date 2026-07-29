@@ -4,10 +4,11 @@
  */
 
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 interface QuickAction {
   id: string;
   label: string;
@@ -38,7 +39,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
         contentContainerStyle={styles.scrollContent}
       >
         {actions.map((action) => (
-          <TouchableOpacity
+          <AppTouchable
             key={action.id}
             style={[
               styles.actionButton,
@@ -47,7 +48,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
               action.color && { backgroundColor: action.color + "20" },
             ]}
             onPress={action.onPress}
-          >
+            accessibilityLabel={action.label}>
             <View style={styles.actionIconContainer}>
               <Ionicons
                 name={action.icon}
@@ -66,7 +67,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
             >
               {action.label}
             </Text>
-          </TouchableOpacity>
+          </AppTouchable>
         ))}
       </ScrollView>
     </View>

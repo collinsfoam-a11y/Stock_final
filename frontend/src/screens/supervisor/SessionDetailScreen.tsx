@@ -8,7 +8,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
 import { Screen } from "@/components/layout/Screen";
-import ModernCard from "@/components/ui/ModernCard";
+import { ModernCard } from "@/components/ui/ModernCard";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 import RecountAssignmentModal, {
   type AssignableStaffUser,
@@ -16,7 +16,7 @@ import RecountAssignmentModal, {
 import { useToast } from "@/components/feedback/ToastProvider";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useSettingsStore } from "@/store/settingsStore";
-import { colors, spacing, typography, borderRadius, shadows } from "@/theme/legacyCompat";
+import { colors, spacing, typography, borderRadius, shadows } from "@/theme/unified";
 import { safeBackNavigation } from "@/utils/navigation";
 import {
   getSession,
@@ -34,9 +34,9 @@ type BadgeTone = "neutral" | "success" | "warning" | "error" | "info";
 
 const badgeToneStyles = {
   neutral: {
-    backgroundColor: colors.gray[100],
-    borderColor: colors.gray[200],
-    textColor: colors.gray[700],
+    backgroundColor: colors.neutral[100],
+    borderColor: colors.neutral[200],
+    textColor: colors.neutral[700],
   },
   success: {
     backgroundColor: colors.success[50],
@@ -380,7 +380,7 @@ export default function SessionDetail() {
 
   if (!loading && sessionMissing) {
     return (
-      <Screen padding={0} backgroundColor={colors.gray[50]}>
+      <Screen padding={0} backgroundColor={colors.neutral[50]}>
         <StatusBar style="dark" />
         <View style={styles.header}>
           <AnimatedPressable
@@ -389,7 +389,7 @@ export default function SessionDetail() {
             accessibilityRole="button"
             accessibilityLabel="Back to sessions"
           >
-            <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
+            <Ionicons name="arrow-back" size={22} color={colors.neutral[700]} />
           </AnimatedPressable>
           <Text style={styles.headerTitle}>Session Details</Text>
           <View style={styles.headerSpacer} />
@@ -418,7 +418,7 @@ export default function SessionDetail() {
 
   if (loading || !session) {
     return (
-      <Screen padding={0} backgroundColor={colors.gray[50]}>
+      <Screen padding={0} backgroundColor={colors.neutral[50]}>
         <StatusBar style="dark" />
         <View style={styles.header}>
           <AnimatedPressable
@@ -427,7 +427,7 @@ export default function SessionDetail() {
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
+            <Ionicons name="arrow-back" size={22} color={colors.neutral[700]} />
           </AnimatedPressable>
           <Text style={styles.headerTitle}>Session Details</Text>
           <View style={styles.headerSpacer} />
@@ -557,7 +557,7 @@ export default function SessionDetail() {
           <Ionicons
             name="list-outline"
             size={18}
-            color={activeTab === "toVerify" ? colors.white : colors.gray[600]}
+            color={activeTab === "toVerify" ? colors.white : colors.neutral[600]}
           />
           <Text style={[styles.tabText, activeTab === "toVerify" && styles.tabTextActive]}>
             To Verify ({toVerifyLines.length})
@@ -574,7 +574,7 @@ export default function SessionDetail() {
           <Ionicons
             name="checkmark-circle-outline"
             size={18}
-            color={activeTab === "verified" ? colors.white : colors.gray[600]}
+            color={activeTab === "verified" ? colors.white : colors.neutral[600]}
           />
           <Text style={[styles.tabText, activeTab === "verified" && styles.tabTextActive]}>
             Verified ({verifiedLines.length})
@@ -731,7 +731,7 @@ export default function SessionDetail() {
       <Ionicons
         name={activeTab === "toVerify" ? "list-outline" : "checkmark-circle"}
         size={64}
-        color={colors.gray[300]}
+        color={colors.neutral[300]}
       />
       <Text style={styles.emptyText}>
         {activeTab === "toVerify" ? "No items to verify" : "No verified items"}
@@ -740,7 +740,7 @@ export default function SessionDetail() {
   );
 
   return (
-    <Screen padding={0} backgroundColor={colors.gray[50]}>
+    <Screen padding={0} backgroundColor={colors.neutral[50]}>
       <StatusBar style="dark" />
 
       <Animated.View entering={getFadeInDown(50)} style={styles.header}>
@@ -750,7 +750,7 @@ export default function SessionDetail() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-back" size={22} color={colors.gray[700]} />
+          <Ionicons name="arrow-back" size={22} color={colors.neutral[700]} />
         </AnimatedPressable>
         <Text style={styles.headerTitle}>Session Details</Text>
         <View style={styles.headerSpacer} />
@@ -796,9 +796,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
-    backgroundColor: colors.gray[50],
+    backgroundColor: colors.neutral[50],
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: colors.neutral[200],
   },
   backButton: {
     width: 44,
@@ -806,7 +806,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: colors.neutral[200],
     alignItems: "center",
     justifyContent: "center",
     ...shadows.sm,
@@ -820,7 +820,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: colors.neutral[900],
   },
   loadingContainer: {
     flex: 1,
@@ -831,12 +831,12 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: typography.fontSize.base,
     marginTop: spacing.md,
-    color: colors.gray[700],
+    color: colors.neutral[700],
     textAlign: "center",
   },
   offlineMissingText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: colors.neutral[500],
     marginTop: spacing.sm,
     marginBottom: spacing.lg,
     textAlign: "center",
@@ -867,18 +867,18 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.gray[500],
+    color: colors.neutral[500],
     textTransform: "uppercase",
     letterSpacing: 0.6,
   },
   sessionTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: colors.neutral[900],
   },
   sessionSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
+    color: colors.neutral[600],
   },
   metricRow: {
     flexDirection: "row",
@@ -886,21 +886,21 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     flex: 1,
-    backgroundColor: colors.gray[50],
+    backgroundColor: colors.neutral[50],
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: colors.neutral[200],
     padding: spacing.md,
   },
   metricLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: colors.neutral[500],
     marginBottom: 4,
   },
   metricValue: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: colors.neutral[900],
   },
   metricValueDanger: {
     color: colors.error[600],
@@ -960,12 +960,12 @@ const styles = StyleSheet.create({
   noticeTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: colors.neutral[900],
   },
   noticeBody: {
     fontSize: typography.fontSize.sm,
     lineHeight: 18,
-    color: colors.gray[700],
+    color: colors.neutral[700],
   },
   tabContainer: {
     flexDirection: "row",
@@ -974,7 +974,7 @@ const styles = StyleSheet.create({
     padding: 4,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: colors.neutral[200],
   },
   tab: {
     flex: 1,
@@ -992,7 +992,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.gray[600],
+    color: colors.neutral[600],
   },
   tabTextActive: {
     color: colors.white,
@@ -1023,7 +1023,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     textAlign: "center",
     fontSize: typography.fontSize.base,
-    color: colors.gray[600],
+    color: colors.neutral[600],
   },
   lineCard: {
     marginBottom: spacing.md,
@@ -1039,7 +1039,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: colors.neutral[900],
   },
   badgeContainer: {
     flexDirection: "row",
@@ -1049,7 +1049,7 @@ const styles = StyleSheet.create({
   },
   lineCode: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[600],
+    color: colors.neutral[600],
     marginBottom: spacing.md,
   },
   qtyRow: {
@@ -1058,9 +1058,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     padding: spacing.sm,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.gray[50],
+    backgroundColor: colors.neutral[50],
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: colors.neutral[200],
   },
   qtyItem: {
     flex: 1,
@@ -1068,13 +1068,13 @@ const styles = StyleSheet.create({
   },
   qtyLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray[500],
+    color: colors.neutral[500],
     marginBottom: 4,
   },
   qtyValue: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray[900],
+    color: colors.neutral[900],
   },
   reasonBox: {
     backgroundColor: colors.warning[50],
@@ -1092,11 +1092,11 @@ const styles = StyleSheet.create({
   },
   reasonNote: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[700],
+    color: colors.neutral[700],
   },
   remark: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[700],
+    color: colors.neutral[700],
     fontStyle: "italic",
     marginBottom: spacing.sm,
   },

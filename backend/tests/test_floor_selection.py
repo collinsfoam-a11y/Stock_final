@@ -9,7 +9,7 @@ from backend.api.schemas import CountLineCreate
 def mock_db():
     """Mock MongoDB database"""
     db = MagicMock()
-    db.client = None
+    db.client = db
     db.sessions = MagicMock()
     db.session_snapshots = MagicMock()
     db.erp_items = MagicMock()

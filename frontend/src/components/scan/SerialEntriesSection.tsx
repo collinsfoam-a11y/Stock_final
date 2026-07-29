@@ -1,10 +1,12 @@
 import React, { useCallback, useMemo } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { SerialEntryData } from "@/types/scan";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { SerialEntryCard } from "./SerialEntryCard";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface SerialEntriesSectionProps {
   serialEntries: SerialEntryData[];
@@ -134,12 +136,13 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
           Scan or type serial numbers - quantity auto-updates ({serialEntries.length} scanned)
         </Text>
       </View>
-
-      <TouchableOpacity style={styles.scanButton} onPress={onOpenScanner}>
+      <AppTouchable
+        style={styles.scanButton}
+        onPress={onOpenScanner}
+        accessibilityLabel="Scan">
         <Ionicons name="scan" size={22} color={uiTokens.colors.surfaceElevated} />
         <Text style={styles.scanButtonText}>Scan Serial Numbers</Text>
-      </TouchableOpacity>
-
+      </AppTouchable>
       {serialValidationErrors.length > 0 && (
         <View style={styles.validationContainer}>
           {serialValidationErrors.map((error, index) => (
@@ -149,7 +152,6 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
           ))}
         </View>
       )}
-
       {/*
         ⚡ Bolt Performance Optimization:
         Replaced FlatList with standard mapping since scrollEnabled={false}.
@@ -162,11 +164,13 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
           </React.Fragment>
         ))}
       </View>
-
-      <TouchableOpacity style={styles.addButton} onPress={onAddSerial}>
+      <AppTouchable
+        style={styles.addButton}
+        onPress={onAddSerial}
+        accessibilityLabel="Add">
         <Ionicons name="add-circle-outline" size={20} color={uiTokens.colors.accentStrong} />
         <Text style={styles.addButtonText}>Add Serial Manually</Text>
-      </TouchableOpacity>
+      </AppTouchable>
     </View>
   );
 };

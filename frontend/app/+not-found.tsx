@@ -1,7 +1,7 @@
 import { Link, Stack } from "expo-router";
 import { StyleSheet, View, Text } from "react-native";
 
-import { semanticColors, colors } from "@/theme/legacyCompat";
+import { semanticColors, colors } from "@/theme/unified";
 export default function NotFoundScreen() {
   return (
     <>

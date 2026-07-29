@@ -21,7 +21,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useThemeContext } from "../../context/ThemeContext";
 
-import { shadows as uiShadows } from "@/theme/legacyCompat";
+import { shadows as uiShadows } from "@/theme/unified";
 interface LiveIndicatorProps {
   label?: string;
   color?: string;

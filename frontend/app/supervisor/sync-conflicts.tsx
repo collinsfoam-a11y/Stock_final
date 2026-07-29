@@ -29,13 +29,15 @@ import {
   batchResolveSyncConflicts,
   getSyncConflictStats,
 } from "../../src/services/api/api";
-import { ModernCard, StatsCard, AnimatedPressable } from "../../src/components/ui";
 import { safeBackNavigation } from "@/utils/navigation";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import {
   createOperationalStyleBridge,
   type OperationalStyleBridge,
 } from "@/theme/operationalStyleBridge";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { StatsCard } from "@/components/ui/StatsCard";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 
 interface SyncConflict {
   _id: string;

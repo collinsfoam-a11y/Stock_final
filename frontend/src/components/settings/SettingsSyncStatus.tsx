@@ -125,4 +125,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SettingsSyncStatus;
+

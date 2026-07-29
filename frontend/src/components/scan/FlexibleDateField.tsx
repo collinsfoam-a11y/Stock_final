@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Switch, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { DateFormatType } from "@/types/scan";
 import { useUiTokens } from "@/hooks/useUiTokens";
@@ -11,7 +11,9 @@ import {
 import type {
   DatePickerPart,
   DateParts,
-} from "@/domains/inventory/hooks/scan/useFlexibleDateField";
+} from "@/features/inventory/hooks/scan/useFlexibleDateField";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 const DATE_FORMAT_OPTIONS: {
   value: DateFormatType;
@@ -163,18 +165,17 @@ export const FlexibleDateField: React.FC<FlexibleDateFieldProps> = ({
     fullWidth?: boolean;
     onPress: () => void;
   }) => (
-    <TouchableOpacity
+    <AppTouchable
       style={[styles.smallPicker, fullWidth && styles.smallPickerFull]}
       onPress={onPress}
       {...getAccessibleButtonProps({
         label: `${label} ${placeholder} picker`,
         hint: `Opens the ${label.toLowerCase()} ${placeholder.toLowerCase()} selector.`,
-      })}
-    >
+      })}>
       <Text style={[styles.smallPickerText, !partValue && styles.placeholderText]}>
         {partValue || placeholder}
       </Text>
-    </TouchableOpacity>
+    </AppTouchable>
   );
 
   return (
@@ -202,14 +203,13 @@ export const FlexibleDateField: React.FC<FlexibleDateFieldProps> = ({
           thumbColor={enabled ? uiTokens.colors.surfaceElevated : uiTokens.colors.surface}
         />
       </View>
-
       {enabled && (
         <View style={styles.section}>
           <View style={styles.labelRow}>
             <Text style={styles.fieldLabel}>{label}</Text>
             <View style={styles.formatPicker}>
               {DATE_FORMAT_OPTIONS.map((option) => (
-                <TouchableOpacity
+                <AppTouchable
                   key={option.value}
                   style={[
                     styles.formatOption,
@@ -219,8 +219,7 @@ export const FlexibleDateField: React.FC<FlexibleDateFieldProps> = ({
                   {...getAccessibleButtonProps({
                     label: `${label} format ${option.label}`,
                     selected: format === option.value,
-                  })}
-                >
+                  })}>
                   <Text
                     style={[
                       styles.formatOptionText,
@@ -229,7 +228,7 @@ export const FlexibleDateField: React.FC<FlexibleDateFieldProps> = ({
                   >
                     {option.label}
                   </Text>
-                </TouchableOpacity>
+                </AppTouchable>
               ))}
             </View>
           </View>

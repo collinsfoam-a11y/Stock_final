@@ -89,7 +89,7 @@ const RULES = {
     severity: "P1",
     title: "Direct legacy theme import",
     guidance:
-      "Use useUiTokens, ThemeTokens, ScreenContainer, UnifiedText, or UnifiedView. Keep theme/unified and theme/modernDesign imports inside theme infrastructure.",
+      "Use @/theme/unified tokens or useUiTokens(). Keep legacyCompat, themeLegacy, and modernDesignSystem out of operational code.",
   },
   HARDCODED_COLOR: {
     id: "UI002",
@@ -495,10 +495,10 @@ function scanText(repoPath, text, options = {}) {
     if (!shouldCheckLine(lineNumber, changedLines)) return;
 
     if (
-      /from\s+["'][^"']*(?:theme\/(?:modernDesign|unified)|theme\\(?:modernDesign|unified))["']/.test(
+      /from\s+["'][^"']*(?:theme\/(?:legacyCompat|themeLegacy)|theme\\(?:legacyCompat|themeLegacy))["']/.test(
         line
       ) ||
-      /require\(\s*["'][^"']*(?:theme\/(?:modernDesign|unified)|theme\\(?:modernDesign|unified))["']/.test(
+      /require\(\s*["'][^"']*(?:theme\/(?:legacyCompat|themeLegacy)|theme\\(?:legacyCompat|themeLegacy))["']/.test(
         line
       )
     ) {

@@ -5,6 +5,7 @@
 
 import React, { ReactNode } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AppError } from "./errors";
 
 /**
  * Safely render a component with error boundary
@@ -63,7 +64,8 @@ export async function safeAsync<T>(
       requestError.code === "ERR_NETWORK" ||
       requestError.name === "AbortError"
     );
-    if (__DEV__ && !isHandledRequestError) {
+    const isExpectedAppError = err instanceof AppError && (err.severity === "USER" || err.severity === "NETWORK");
+    if (__DEV__ && !isHandledRequestError && !isExpectedAppError) {
       console.error("Safe async error:", err);
     }
     if (onError) {

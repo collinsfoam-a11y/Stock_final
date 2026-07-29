@@ -28,4 +28,4 @@ export function safeBackNavigation(router: SafeNavigationRouter, options: SafeBa
   router.replace(resolveSafeBackFallback(options));
 }
 
-export default safeBackNavigation;
+

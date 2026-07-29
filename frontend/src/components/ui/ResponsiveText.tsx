@@ -13,7 +13,7 @@ import React from "react";
 import { Text, TextProps, useWindowDimensions, Platform } from "react-native";
 import { useThemeContext } from "../../context/ThemeContext";
 
-import { colors as uiColors } from "@/theme/legacyCompat";
+import { colors as uiColors } from "@/theme/unified";
 export type TextVariant = "display" | "heading" | "subheading" | "body" | "label" | "caption";
 
 export interface ResponsiveTextProps extends TextProps {
@@ -116,4 +116,4 @@ export const ResponsiveText: React.FC<ResponsiveTextProps> = ({
   );
 };
 
-export default ResponsiveText;
+

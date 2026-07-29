@@ -18,6 +18,13 @@ def validate_environment() -> None:
     Raises:
         ValueError: If required environment variables are missing or invalid
     """
+    from dotenv import load_dotenv
+    from pathlib import Path
+    
+    # Ensure variables from backend/.env are loaded into os.environ
+    env_path = Path(__file__).parent.parent / ".env"
+    load_dotenv(env_path)
+
     errors = []
 
     # Required variables

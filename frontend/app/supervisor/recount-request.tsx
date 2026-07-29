@@ -4,22 +4,18 @@
  */
 
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, TextInput, ScrollView, Alert, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useToast } from "../../src/components/feedback/ToastProvider";
-import { ModernCard, AnimatedPressable, ScreenContainer } from "../../src/components/ui";
 import { theme } from "../../src/styles/unifiedSystem";
 import { createRecountRequest } from "../../src/services/api/approvalApi";
+import { safeBackNavigation } from "@/utils/navigation";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 
 export default function RecountRequestScreen() {
   const router = useRouter();
@@ -50,7 +46,7 @@ export default function RecountRequestScreen() {
         is_blind: isBlind,
       });
       show("Recount request created", "success");
-      router.back();
+      safeBackNavigation(router);
     } catch (error: any) {
       show(error?.message || "Failed to create recount request", "error");
     } finally {
@@ -61,12 +57,14 @@ export default function RecountRequestScreen() {
   return (
     <ScreenContainer>
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+        <AppTouchable
+          onPress={() => safeBackNavigation(router)}
+          hitSlop={12}
+          accessibilityLabel="Previous">
           <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
-        </TouchableOpacity>
+        </AppTouchable>
         <Text style={styles.screenTitle}>Request Recount</Text>
       </View>
-
       <ScrollView contentContainerStyle={styles.content}>
         <ModernCard style={styles.card}>
           <Text style={styles.label}>Scope</Text>
@@ -74,13 +72,13 @@ export default function RecountRequestScreen() {
             {["ITEM", "BATCH", "SERIAL", "LOCATION", "SESSION"].map((item) => {
               const active = scope === item;
               return (
-                <TouchableOpacity
+                <AppTouchable
                   key={item}
                   style={[styles.chip, active && styles.chipActive]}
                   onPress={() => setScope(item)}
-                >
+ >
                   <Text style={[styles.chipText, active && styles.chipTextActive]}>{item}</Text>
-                </TouchableOpacity>
+                </AppTouchable>
               );
             })}
           </ScrollView>
@@ -97,10 +95,10 @@ export default function RecountRequestScreen() {
             textAlignVertical="top"
           />
 
-          <TouchableOpacity
+          <AppTouchable
             style={styles.toggleRow}
             onPress={() => setIsBlind((prev) => !prev)}
-          >
+            accessibilityLabel="Toggle blind recount">
             <View style={[styles.toggleBox, isBlind && styles.toggleBoxActive]}>
               <Ionicons
                 name={isBlind ? "checkbox" : "square-outline"}
@@ -114,7 +112,7 @@ export default function RecountRequestScreen() {
                 Hide original count, variance, and remark from recounting staff
               </Text>
             </View>
-          </TouchableOpacity>
+          </AppTouchable>
 
           <AnimatedPressable
             style={[styles.submitButton, Platform.select({ web: styles.submitButtonWeb })]}
@@ -223,7 +221,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   submitText: {
-    color: "#fff",
+    color: theme.colors.text.inverse,
     ...theme.typography.h6,
     fontWeight: "600",
   },

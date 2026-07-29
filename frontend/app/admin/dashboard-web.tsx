@@ -26,7 +26,6 @@ import {
   startService,
   stopService,
 } from "../../src/services/api";
-import { ModernCard } from "../../src/components/ui";
 import { ScreenContainer } from "../../src/components/ui/ScreenContainer";
 import {
   DashboardAnalyticsPanel,
@@ -51,6 +50,7 @@ import {
 import { ADMIN_NAV_GROUPS } from "../../src/components/navigation/adminNavShared";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { ModernCard } from "@/components/ui/ModernCard";
 
 export default function DashboardWeb() {
   const router = useRouter();

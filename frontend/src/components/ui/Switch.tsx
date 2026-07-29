@@ -5,7 +5,7 @@
  */
 
 import React from "react";
-import { TouchableOpacity, StyleSheet, ViewStyle } from "react-native";
+import { StyleSheet, ViewStyle } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -15,7 +15,8 @@ import Animated, {
 import { colorPalette } from "@/theme/designTokens";
 import { haptics } from "@/services/haptics";
 
-import { shadows as uiShadows } from "@/theme/legacyCompat";
+import { shadows as uiShadows } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 export type SwitchSize = "sm" | "md" | "lg";
 
 interface SwitchProps {
@@ -75,7 +76,7 @@ export const Switch: React.FC<SwitchProps> = ({
   };
 
   return (
-    <TouchableOpacity
+    <AppTouchable
       onPress={handlePress}
       disabled={disabled}
       activeOpacity={0.8}
@@ -108,7 +109,7 @@ export const Switch: React.FC<SwitchProps> = ({
           ]}
         />
       </Animated.View>
-    </TouchableOpacity>
+    </AppTouchable>
   );
 };
 

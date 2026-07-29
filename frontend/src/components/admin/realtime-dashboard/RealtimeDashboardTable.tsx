@@ -1,5 +1,5 @@
 import React from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { VirtualList } from "@/components/common/VirtualList";
 
@@ -13,6 +13,8 @@ import {
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 const ROW_HEIGHT = 48;
 const DEFAULT_COLUMN_WIDTH = 120;
@@ -46,7 +48,7 @@ const TableRow = React.memo(function TableRow({
   visibleColumns,
 }: TableRowProps) {
   return (
-    <TouchableOpacity
+    <AppTouchable
       {...getAccessibleButtonProps({
         label: `Open item ${item.item_code || item.barcode || item.id}`,
       })}
@@ -56,7 +58,7 @@ const TableRow = React.memo(function TableRow({
         item.verified && styles.tableRowVerified,
       ]}
       onPress={() => onItemPress(item)}
-    >
+ >
       {visibleColumns.map((column) => (
         <View
           key={column.field}
@@ -78,7 +80,7 @@ const TableRow = React.memo(function TableRow({
           </Text>
         </View>
       ))}
-    </TouchableOpacity>
+    </AppTouchable>
   );
 });
 
@@ -127,7 +129,7 @@ export function RealtimeDashboardTable({
                 const isSorted = column.sortable && sortBy === column.field;
 
                 return (
-                  <TouchableOpacity
+                  <AppTouchable
                     {...getAccessibleButtonProps({
                       label: `Sort by ${column.label}`,
                       disabled: !column.sortable,
@@ -140,7 +142,7 @@ export function RealtimeDashboardTable({
                     ]}
                     onPress={() => column.sortable && onSort(column.field)}
                     disabled={!column.sortable}
-                  >
+ >
                     <Text style={styles.tableHeaderText}>{column.label}</Text>
                     {isSorted && (
                       <Ionicons
@@ -149,7 +151,7 @@ export function RealtimeDashboardTable({
                         color={uiTokens.colors.accent}
                       />
                     )}
-                  </TouchableOpacity>
+                  </AppTouchable>
                 );
               })}
             </View>
@@ -176,9 +178,8 @@ export function RealtimeDashboardTable({
           </View>
         </ScrollView>
       </View>
-
       <View style={styles.pagination}>
-        <TouchableOpacity
+        <AppTouchable
           {...getAccessibleButtonProps({
             label: "Previous realtime dashboard page",
             disabled: !pagination.has_prev,
@@ -186,15 +187,15 @@ export function RealtimeDashboardTable({
           style={[styles.pageButton, !pagination.has_prev && styles.pageButtonDisabled]}
           onPress={() => onPageChange(pagination.page - 1)}
           disabled={!pagination.has_prev}
-        >
+          accessibilityLabel="Previous">
           <Ionicons name="chevron-back" size={20} color={uiTokens.colors.surface} />
-        </TouchableOpacity>
+        </AppTouchable>
 
         <Text style={styles.pageInfo}>
           Page {pagination.page} of {pagination.total_pages}
         </Text>
 
-        <TouchableOpacity
+        <AppTouchable
           {...getAccessibleButtonProps({
             label: "Next realtime dashboard page",
             disabled: !pagination.has_next,
@@ -202,9 +203,9 @@ export function RealtimeDashboardTable({
           style={[styles.pageButton, !pagination.has_next && styles.pageButtonDisabled]}
           onPress={() => onPageChange(pagination.page + 1)}
           disabled={!pagination.has_next}
-        >
+          accessibilityLabel="Next">
           <Ionicons name="chevron-forward" size={20} color={uiTokens.colors.surface} />
-        </TouchableOpacity>
+        </AppTouchable>
       </View>
     </>
   );
@@ -270,7 +271,7 @@ const createStyles = (uiTokens: TableTokens) =>
     emptyState: {
       alignItems: "center",
       justifyContent: "center",
-      paddingVertical: uiTokens.spacing.xxl,
+      paddingVertical: uiTokens.spacing["2xl"],
     },
     emptyText: {
       marginTop: uiTokens.spacing.md,

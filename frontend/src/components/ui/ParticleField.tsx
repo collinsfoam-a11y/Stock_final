@@ -25,7 +25,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useThemeContext } from "../../context/ThemeContext";
 
-import { shadows as uiShadows } from "@/theme/legacyCompat";
+import { shadows as uiShadows } from "@/theme/unified";
 import { warnDeprecatedVisualSystem } from "./legacyVisualSystem";
 interface Particle {
   id: number;
@@ -192,4 +192,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ParticleField;
+

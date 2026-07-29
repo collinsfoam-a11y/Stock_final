@@ -10,7 +10,7 @@
  */
 
 import React, { useEffect } from "react";
-import { StyleSheet, TouchableOpacity, Text, View, ViewStyle } from "react-native";
+import { StyleSheet, Text, View, ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, {
@@ -29,8 +29,9 @@ import {
   modernShadows,
 } from "../../styles/unifiedSystem";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
-const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+import { semanticColors as uiSemanticColors } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
+const AnimatedAppTouchable = Animated.createAnimatedComponent(AppTouchable);
 
 type FABSize = "mini" | "default" | "extended";
 
@@ -124,7 +125,7 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   return (
     <View style={[styles.wrapper, getPositionStyle(), style]}>
       <Animated.View style={[animatedStyle]}>
-        <AnimatedTouchableOpacity
+        <AnimatedAppTouchable
           onPress={onPress}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
@@ -152,7 +153,7 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
               </Text>
             </View>
           )}
-        </AnimatedTouchableOpacity>
+        </AnimatedAppTouchable>
       </Animated.View>
 
       {/* Glow effect */}
@@ -222,4 +223,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FloatingActionButton;
+

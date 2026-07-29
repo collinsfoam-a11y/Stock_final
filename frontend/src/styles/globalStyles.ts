@@ -21,7 +21,7 @@ import {
   spacing as legacySpacing,
   textStyles,
   touchTargets,
-} from "../theme/legacyCompat";
+} from "@/theme/unified";
 
 const hexToRgba = (hex: string, alpha: number): string => {
   const normalized = hex.replace("#", "").trim();

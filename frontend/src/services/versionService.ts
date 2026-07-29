@@ -83,4 +83,4 @@ export const versionApi = {
   getBackendVersion,
 };
 
-export default versionApi;
+

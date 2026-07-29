@@ -70,6 +70,8 @@ async def test_should_run_nightly_sync_hour_and_once_per_day(
             return fixed_now
 
     monkeypatch.setattr(sql_sync_service, "datetime", FixedDateTime)
+    import backend.services.sync.nightly as sync_nightly
+    monkeypatch.setattr(sync_nightly, "datetime", FixedDateTime)
 
     service = _make_service()
     service.nightly_sync_hour = 2

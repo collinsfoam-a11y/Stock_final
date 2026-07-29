@@ -242,6 +242,6 @@ const createStyles = (uiTokens: ActivityFeedTokens) =>
     divider: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: uiTokens.colors.border,
-      marginLeft: uiTokens.spacing.xxl,
+      marginLeft: uiTokens.spacing["2xl"],
     },
   });

@@ -1,5 +1,5 @@
 import React from "react";
-import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
@@ -10,6 +10,8 @@ import { SimpleLineChart } from "@/components/charts/SimpleLineChart";
 import { SimplePieChart } from "@/components/charts/SimplePieChart";
 import { DateRangePicker } from "@/components/forms/DateRangePicker";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 type DashboardTab = "overview" | "monitoring" | "reports" | "analytics" | "diagnosis";
 
@@ -24,7 +26,7 @@ export function DashboardTabBar({ activeTab, onChangeTab, styles, tabs }: Dashbo
   return (
     <View style={styles.tabsContainer}>
       {tabs.map((tab) => (
-        <TouchableOpacity
+        <AppTouchable
           key={tab}
           onPress={() => onChangeTab(tab)}
           style={[styles.tab, activeTab === tab && styles.activeTab]}
@@ -34,7 +36,7 @@ export function DashboardTabBar({ activeTab, onChangeTab, styles, tabs }: Dashbo
           <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
           </Text>
-        </TouchableOpacity>
+        </AppTouchable>
       ))}
     </View>
   );
@@ -516,14 +518,17 @@ export function DashboardDiagnosisPanel({
                   <Text style={styles.issueTitle}>{issue.title || issue.type}</Text>
                   <Text style={styles.issueDesc}>{issue.description || issue.message}</Text>
                   {issue.auto_fix_available && (
-                    <TouchableOpacity style={styles.autoFixButton} onPress={() => onAutoFix(issue)}>
+                    <AppTouchable
+                      style={styles.autoFixButton}
+                      onPress={() => onAutoFix(issue)}
+ >
                       <Ionicons
                         name="build-outline"
                         size={14}
                         color={uiTokens.colors.accent}
                       />
                       <Text style={styles.autoFixText}>Auto-Fix Available</Text>
-                    </TouchableOpacity>
+                    </AppTouchable>
                   )}
                 </View>
                 <View style={styles.issueTime}>

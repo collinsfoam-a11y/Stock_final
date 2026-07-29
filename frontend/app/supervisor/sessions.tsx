@@ -14,11 +14,13 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
 import { getSessions } from "../../src/services/api/api";
-import { ModernCard, AnimatedPressable, ScreenContainer } from "../../src/components/ui";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { theme } from "../../src/styles/unifiedSystem";
 import { useToast } from "../../src/components/feedback/ToastProvider";
 import { safeBackNavigation } from "@/utils/navigation";
+import { ModernCard } from "@/components/ui/ModernCard";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { ScreenContainer } from "@/components/ui/ScreenContainer";
 
 export default function SessionsList() {
   const router = useRouter();

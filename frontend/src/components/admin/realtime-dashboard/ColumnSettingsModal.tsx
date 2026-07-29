@@ -1,11 +1,13 @@
 import React, { useMemo } from "react";
-import { Modal, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import { Modal, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { Column } from "@/components/admin/realtime-dashboard/realtimeDashboardShared";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface ColumnSettingsModalProps {
   columns: Column[];
@@ -39,13 +41,13 @@ export function ColumnSettingsModal({
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Column Settings</Text>
-            <TouchableOpacity
+            <AppTouchable
               {...getAccessibleButtonProps({ label: "Close column settings" })}
               onPress={onClose}
               style={styles.closeButton}
-            >
+              accessibilityLabel="Close">
               <Ionicons name="close" size={22} color={uiTokens.colors.textPrimary} />
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
 
           <Text style={styles.modalSubtitle}>Toggle columns to show or hide them in the table</Text>
@@ -75,20 +77,20 @@ export function ColumnSettingsModal({
           </ScrollView>
 
           <View style={styles.modalActions}>
-            <TouchableOpacity
+            <AppTouchable
               {...getAccessibleButtonProps({ label: "Reset visible columns to defaults" })}
               style={styles.resetButton}
               onPress={onResetDefaults}
-            >
+ >
               <Text style={styles.resetButtonText}>Reset to Defaults</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </AppTouchable>
+            <AppTouchable
               {...getAccessibleButtonProps({ label: "Apply column settings" })}
               style={styles.doneButton}
               onPress={onClose}
-            >
+ >
               <Text style={styles.doneButtonText}>Done</Text>
-            </TouchableOpacity>
+            </AppTouchable>
           </View>
         </View>
       </View>

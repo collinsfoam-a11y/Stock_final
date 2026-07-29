@@ -1,9 +1,11 @@
 import React, { useMemo } from "react";
-import { ActivityIndicator, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
-import ModernCard from "@/components/ui/ModernCard";
+import { ActivityIndicator, StyleSheet, Switch, Text, View } from "react-native";
+import { ModernCard } from "@/components/ui/ModernCard";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getStockQty } from "@/utils/itemBatchUtils";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface BatchVariantsSectionProps {
   variants: any[];
@@ -150,7 +152,6 @@ export const BatchVariantsSection: React.FC<BatchVariantsSectionProps> = ({
           />
         </View>
       </View>
-
       {variants.length === 0 ? (
         <Text
           style={[
@@ -179,12 +180,12 @@ export const BatchVariantsSection: React.FC<BatchVariantsSectionProps> = ({
                 .join(":");
 
             return (
-              <TouchableOpacity
+              <AppTouchable
                 key={variantKey}
                 onPress={() => onSelectVariant(variant.barcode)}
                 activeOpacity={0.8}
                 disabled={!canSelect}
-              >
+ >
                 <ModernCard style={styles.card}>
                   <View style={styles.row}>
                     <View style={styles.info}>
@@ -229,7 +230,7 @@ export const BatchVariantsSection: React.FC<BatchVariantsSectionProps> = ({
                     </View>
                   </View>
                 </ModernCard>
-              </TouchableOpacity>
+              </AppTouchable>
             );
           })}
         </View>

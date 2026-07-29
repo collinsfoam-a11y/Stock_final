@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import ModernButton from "@/components/ui/ModernButton";
+import { ModernButton } from "@/components/ui/ModernButton";
 import { useUiTokens } from "@/hooks/useUiTokens";
 
 interface ItemSubmitBarProps {

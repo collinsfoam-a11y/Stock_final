@@ -9,7 +9,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   Pressable,
   Platform,
   KeyboardAvoidingView,
@@ -29,7 +28,8 @@ import { useTheme } from "../../hooks/useTheme";
 import { BlurView } from "expo-blur";
 import { haptics } from "@/services/haptics";
 
-import { shadows as uiShadows } from "@/theme/legacyCompat";
+import { shadows as uiShadows } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export interface ModalProps {
@@ -173,7 +173,7 @@ export const Modal: React.FC<ModalProps> = ({
                     <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
                   )}
                   {showCloseButton && (
-                    <TouchableOpacity
+                    <AppTouchable
                       onPress={() => {
                         void haptics.light();
                         onClose();
@@ -184,7 +184,7 @@ export const Modal: React.FC<ModalProps> = ({
                       accessibilityLabel="Close"
                     >
                       <Ionicons name="close" size={24} color={theme.colors.textSecondary} />
-                    </TouchableOpacity>
+                    </AppTouchable>
                   )}
                 </View>
               )}

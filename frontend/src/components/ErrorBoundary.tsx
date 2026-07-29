@@ -9,8 +9,8 @@ import { View, Text, StyleSheet, ScrollView } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary";
 import { errorReporter } from "../services/errorRecovery";
-import { modernColors, modernTypography, modernSpacing } from "../styles/modernDesignSystem";
-import { AppButton } from "./ui/AppButton";
+import { modernColors, modernTypography, modernSpacing } from "@/theme/unified";
+import { ModernButton } from "./ui/ModernButton";
 
 interface Props {
   children: ReactNode;
@@ -57,7 +57,7 @@ const ErrorFallback = ({
         )}
 
         <View style={styles.buttonContainer}>
-          <AppButton
+          <ModernButton
             title="Try Again"
             onPress={resetErrorBoundary}
             variant="primary"

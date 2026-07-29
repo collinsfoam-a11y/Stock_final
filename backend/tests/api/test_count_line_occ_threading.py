@@ -47,14 +47,14 @@ def _count_line() -> dict:
 
 
 def _patch_transaction(monkeypatch) -> MagicMock:
-    """Replace mongo_transaction with a no-op async context manager."""
+    """Replace MongoUnitOfWork with a no-op async context manager."""
     tx = MagicMock(name="tx")
 
     @asynccontextmanager
     async def _fake_tx(_client):
         yield tx
 
-    monkeypatch.setattr(clr, "mongo_transaction", _fake_tx)
+    monkeypatch.setattr(clr, "MongoUnitOfWork", _fake_tx)
     return tx
 
 

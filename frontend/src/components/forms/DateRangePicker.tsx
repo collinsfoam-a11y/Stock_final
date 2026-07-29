@@ -4,13 +4,7 @@
  */
 
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, Platform } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
@@ -19,6 +13,8 @@ import {
   modernTypography,
   modernBorderRadius,
 } from "@/styles/unifiedSystem";
+
+import { AppTouchable } from "@/components/ui/AppTouchable";
 
 interface DateRangePickerProps {
   startDate: Date;
@@ -50,10 +46,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
       <View style={styles.dateRow}>
-        <TouchableOpacity
+        <AppTouchable
           style={styles.dateButton}
           onPress={() => setShowStartPicker(true)}
-        >
+ >
           <Ionicons
             name="calendar"
             size={20}
@@ -63,7 +59,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             <Text style={styles.dateLabel}>Start Date</Text>
             <Text style={styles.dateValue}>{formatDate(startDate)}</Text>
           </View>
-        </TouchableOpacity>
+        </AppTouchable>
 
         <Ionicons
           name="arrow-forward"
@@ -71,10 +67,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           color={modernColors.text.secondary}
         />
 
-        <TouchableOpacity
+        <AppTouchable
           style={styles.dateButton}
           onPress={() => setShowEndPicker(true)}
-        >
+ >
           <Ionicons
             name="calendar"
             size={20}
@@ -84,9 +80,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             <Text style={styles.dateLabel}>End Date</Text>
             <Text style={styles.dateValue}>{formatDate(endDate)}</Text>
           </View>
-        </TouchableOpacity>
+        </AppTouchable>
       </View>
-
       {showStartPicker && (
         <DateTimePicker
           value={startDate}
@@ -101,7 +96,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           maximumDate={endDate}
         />
       )}
-
       {showEndPicker && (
         <DateTimePicker
           value={endDate}

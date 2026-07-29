@@ -1,11 +1,12 @@
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { AppInput } from "@/components/ui/AppInput";
-import { modernColors } from "@/styles/modernDesignSystem";
+import { ModernInput } from "@/components/ui/ModernInput";
+import { modernColors } from "@/theme/unified";
 import { DEFAULT_FLOOR_OPTIONS } from "@/config/location";
 
-import { semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { semanticColors as uiSemanticColors } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 export type LocationVerificationSectionProps = {
   floorNo?: string | null;
   rackNo?: string | null;
@@ -82,7 +83,6 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
           Optional
         </Text>
       </View>
-
       <View style={{ flexDirection: "row", gap: 12 }}>
         {/* Floor chips */}
         <View style={{ flex: 1 }}>
@@ -91,7 +91,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
             {OPTIONS.map((opt) => {
               const active = floorNo === opt;
               return (
-                <TouchableOpacity
+                <AppTouchable
                   key={opt}
                   style={{
                     paddingHorizontal: 10,
@@ -113,7 +113,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                   >
                     {opt}
                   </Text>
-                </TouchableOpacity>
+                </AppTouchable>
               );
             })}
           </View>
@@ -121,12 +121,12 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
 
         {/* Rack input */}
         <View style={{ flex: 1 }}>
-          <AppInput
+          <ModernInput
             label="Rack"
             value={rackNo || ""}
             onChangeText={(text) => onChangeRack(text)}
             placeholder="Enter rack"
-            leftIcon="layers-outline"
+            icon="layers-outline"
             testID="input-rack"
           />
 
@@ -141,7 +141,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
               }}
             >
               {rackSuggestions.map((sugg) => (
-                <TouchableOpacity
+                <AppTouchable
                   key={`sugg-${sugg}`}
                   style={{ paddingHorizontal: 10, paddingVertical: 8 }}
                   onPress={() => onChangeRack(sugg)}
@@ -149,7 +149,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                   testID={`suggest-rack-${sugg.replace(/\s+/g, "-").toLowerCase()}`}
                 >
                   <Text style={{ color: modernColors.text.primary }}>{sugg}</Text>
-                </TouchableOpacity>
+                </AppTouchable>
               ))}
             </View>
           )}
@@ -166,7 +166,7 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
               >
                 <Text style={{ color: modernColors.text.secondary }}>Recent Racks</Text>
                 {onClearRecentRacks && (
-                  <TouchableOpacity
+                  <AppTouchable
                     onPress={onClearRecentRacks}
                     accessibilityLabel="Clear recent racks"
                     testID="btn-clear-recent-racks"
@@ -179,12 +179,12 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                     >
                       Clear
                     </Text>
-                  </TouchableOpacity>
+                  </AppTouchable>
                 )}
               </View>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                 {recentRacks.map((r) => (
-                  <TouchableOpacity
+                  <AppTouchable
                     key={`rack-${r}`}
                     style={{
                       paddingHorizontal: 10,
@@ -206,14 +206,13 @@ export const LocationVerificationSection: React.FC<LocationVerificationSectionPr
                     >
                       {r}
                     </Text>
-                  </TouchableOpacity>
+                  </AppTouchable>
                 ))}
               </View>
             </View>
           )}
         </View>
       </View>
-
       {/* Verified by & Date/Time */}
       <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
         <View style={{ flex: 1 }}>

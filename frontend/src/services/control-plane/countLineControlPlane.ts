@@ -7,8 +7,8 @@ import {
   createCountLineRecordedEvent,
   type CountLineRecordedPayload,
   type InventoryEvent,
-} from "@/domain/events/inventoryEvents";
-import { enforceCountLinePolicies } from "@/domain/policies/inventoryPolicies";
+} from "@/core/events/inventoryEvents";
+import { enforceCountLinePolicies } from "@/core/policies/inventoryPolicies";
 import {
   bindInventoryServerLineId,
   getPendingInventoryEvents,
@@ -310,7 +310,7 @@ export const submitCountLineCommand = async (countData: CreateCountLinePayload):
   }
 };
 
-export const syncPendingCountLineEvents = async (): Promise<{
+const syncPendingCountLineEvents = async (): Promise<{
   success: number;
   failed: number;
   total: number;
@@ -512,7 +512,7 @@ export const getProjectedScanStatusRead = async (
   return null;
 };
 
-export const getControlPlaneReadMetrics = () => ({
+const getControlPlaneReadMetrics = () => ({
   projectionReads: getControlPlaneMetric("projection_read_hit_count"),
   projectionFallbacks: getControlPlaneMetric("projection_fallback_count"),
   strictReadErrors: getControlPlaneMetric("projection_strict_error_count"),

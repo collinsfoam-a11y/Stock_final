@@ -8,7 +8,7 @@ import { useSettingsStore } from "../../store/settingsStore";
 import type { Settings } from "../../store/settingsStore";
 import { colorWithAlpha } from "../../theme/themeTokens";
 import { resolveAppUpdateUrl } from "../../services/updateService";
-import ModernCard from "../ui/ModernCard";
+import { ModernCard } from "../ui/ModernCard";
 import {
   SettingsActionRow as SettingRow,
   SettingsSectionDivider as SectionDivider,
@@ -753,4 +753,3 @@ const styles = StyleSheet.create({
   },
 });
 
-export default UserSettingsSections;

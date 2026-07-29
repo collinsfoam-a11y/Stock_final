@@ -718,7 +718,7 @@ def _setup_cache_and_redis(monkeypatch, server_module) -> Any:
     from unittest.mock import AsyncMock
 
     from backend.services.cache_service import CacheService
-    from backend.services import lock_manager as lock_manager_module
+    from backend.services.locking import redis_manager as lock_manager_module
     from backend.services.runtime import set_cache_service
 
     mock_cache = CacheService(redis_url=None)  # Force in-memory
@@ -728,7 +728,7 @@ def _setup_cache_and_redis(monkeypatch, server_module) -> Any:
     monkeypatch.setattr(lock_manager_module, "_lock_manager", None)
 
     # Setup fake Redis service
-    from backend.services import redis_service as redis_module
+    from backend.services.cache import redis_connection as redis_module
     from backend.services.redis_service import get_redis as redis_dependency
 
     fake_redis_service = _FakeRedisService()
@@ -879,6 +879,9 @@ class _FakeRedisService:
     async def incr(self, _key: str) -> int:
         return 1
 
+    async def eval(self, script, num_keys, *keys_and_args):
+        return 1
+
     async def decr(self, _key: str) -> int:
         return 0
 
@@ -908,6 +911,10 @@ class _FakeRedisService:
 
     async def zrange(self, *_args, **_kwargs):
         return []
+
+    async def eval(self, script: str, num_keys: int, *keys_and_args) -> int:
+        """Stub eval for Lua scripts — returns 1 to simulate successful execution."""
+        return 1
 
     async def publish(self, *_args, **_kwargs):
         return 0

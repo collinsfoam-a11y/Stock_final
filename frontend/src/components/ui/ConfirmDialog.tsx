@@ -8,4 +8,4 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
   return <ConfirmModal {...props} />;
 }
 
-export default ConfirmDialog;
+

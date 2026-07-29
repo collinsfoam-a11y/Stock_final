@@ -10,15 +10,7 @@
  */
 
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ViewStyle,
-  StyleProp,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, ViewStyle, StyleProp, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import Animated, {
@@ -28,17 +20,18 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { modernColors, modernSpacing, modernAnimations } from "../../styles/modernDesignSystem";
+import { modernColors, modernSpacing, modernAnimations } from "@/theme/unified";
 import {
   semanticColors,
   radius as unifiedRadius,
   spacing as unifiedSpacing,
   textStyles,
-} from "@/theme/legacyCompat";
+} from "@/theme/unified";
 import { useThemeContextSafe } from "../../context/ThemeContext";
 
-import { shadows as unifiedShadows } from "@/theme/legacyCompat";
-const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+import { shadows as unifiedShadows } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
+const AnimatedAppTouchable = Animated.createAnimatedComponent(AppTouchable);
 const AnimatedView = Animated.createAnimatedComponent(View);
 
 const operationalShadows: Record<CardElevation, ViewStyle> = {
@@ -250,7 +243,7 @@ export const ModernCard: React.FC<ModernCardProps> = ({
     const isWeb = Platform.OS === "web";
     let Component: React.ComponentType<any> = isWeb ? View : AnimatedView;
     if (onPress) {
-      Component = isWeb ? TouchableOpacity : AnimatedTouchableOpacity;
+      Component = isWeb ? AppTouchable : AnimatedAppTouchable;
     }
 
     const props = {
@@ -329,4 +322,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ModernCard;
+

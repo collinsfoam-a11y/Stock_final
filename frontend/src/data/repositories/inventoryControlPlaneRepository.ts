@@ -1,12 +1,12 @@
 import { CONTROL_PLANE_PROJECTION_VERSION } from "@/core/config/controlPlaneFlags";
-import type { InventoryEvent } from "@/domain/events/inventoryEvents";
-import { isCountLineRecordedEvent } from "@/domain/events/inventoryEvents";
+import type { InventoryEvent } from "@/core/events/inventoryEvents";
+import { isCountLineRecordedEvent } from "@/core/events/inventoryEvents";
 import {
   buildProjectedBatchRecords,
   buildProjectedCountLineRecord,
   buildProjectedItemSnapshot,
   type ProjectedItemSnapshot,
-} from "@/domain/reducers/inventoryProjectionReducer";
+} from "@/core/reducers/inventoryProjectionReducer";
 import { getDb } from "@/db/localDb";
 import type * as SQLite from "expo-sqlite";
 
@@ -486,7 +486,7 @@ export const rebuildInventoryProjections = async (): Promise<void> => {
   });
 };
 
-export const getProjectedCountLinesBySession = async (
+const getProjectedCountLinesBySession = async (
   sessionId: string
 ): Promise<ProjectedCountLineRow[]> => {
   return getProjectedCountLinesBySessionIds([sessionId]);
@@ -523,7 +523,7 @@ export const getProjectedCountLinesBySessionIds = async (
   );
 };
 
-export const getProjectedUnsyncedCountLinesBySession = async (
+const getProjectedUnsyncedCountLinesBySession = async (
   sessionId: string
 ): Promise<ProjectedCountLineRow[]> => {
   const db = await getDb();
@@ -550,7 +550,7 @@ export const getProjectedUnsyncedCountLinesBySession = async (
   );
 };
 
-export const getProjectedScanStatus = async (
+const getProjectedScanStatus = async (
   sessionId: string,
   itemCode: string
 ): Promise<{
@@ -624,7 +624,7 @@ export const getProjectedScanStatusBySessionIds = async (
   };
 };
 
-export const getProjectedSessionStats = async (
+const getProjectedSessionStats = async (
   sessionId: string
 ): Promise<{
   scannedItems: number;
@@ -677,7 +677,7 @@ export const getProjectedSessionStatsBySessionIds = async (
   };
 };
 
-export const hasProjectedItemActivity = async (
+const hasProjectedItemActivity = async (
   sessionId: string,
   itemCode: string
 ): Promise<boolean> => {

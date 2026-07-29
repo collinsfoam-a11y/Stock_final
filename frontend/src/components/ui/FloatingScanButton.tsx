@@ -11,7 +11,7 @@
  */
 
 import React, { useEffect } from "react";
-import { TouchableOpacity, StyleSheet, ViewStyle, Platform } from "react-native";
+import { StyleSheet, ViewStyle, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
@@ -25,7 +25,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { useThemeContext } from "../../context/ThemeContext";
 
-import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/legacyCompat";
+import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
+import { AppTouchable } from "@/components/ui/AppTouchable";
 interface FloatingScanButtonProps {
   onPress: () => void;
   style?: ViewStyle;
@@ -34,7 +35,7 @@ interface FloatingScanButtonProps {
   testID?: string;
 }
 
-const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+const AnimatedTouchable = Animated.createAnimatedComponent(AppTouchable);
 const AnimatedGradient = Animated.createAnimatedComponent(LinearGradient);
 
 export const FloatingScanButton: React.FC<FloatingScanButtonProps> = ({
@@ -197,4 +198,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FloatingScanButton;
+

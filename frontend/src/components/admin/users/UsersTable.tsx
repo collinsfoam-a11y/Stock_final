@@ -10,8 +10,6 @@ import {
   type ViewStyle,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-
-import { AnimatedPressable } from "@/components/ui";
 import {
   getOperationalActionColor,
   getRoleBadgeStyle,
@@ -25,6 +23,7 @@ import { VirtualList } from "@/components/common/VirtualList";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 import { getAccessibleButtonProps, getMinimumTouchTargetStyle } from "@/utils/accessibility";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 
 const { width } = Dimensions.get("window");
 const isWeb = Platform.OS === "web";
