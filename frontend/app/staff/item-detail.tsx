@@ -48,6 +48,14 @@ import { safeBackNavigation } from "@/utils/navigation";
 import { createItemDetailStyles } from "@/styles/screens/ItemDetail.styles";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { BatchVariantData } from "@/components/scan/BatchVariantsSection";
+import { createCountLine } from "@/services/api/api";
+import { toastService } from "@/services/toastService";
+import { generateUUID } from "@/utils/uuid";
+import {
+  buildBulkCountLineJobs,
+  resolveNewBatchIdentity,
+} from "@/features/inventory/hooks/scan/bulkBatchSubmission";
 
 const formatMetricNumber = (value: number | undefined | null): string => {
   if (typeof value !== "number" || !Number.isFinite(value)) return "---";
@@ -109,12 +117,17 @@ export default function ItemDetailScreen() {
   const [quantity, setQuantity] = useState("0");
   const [mrp, setMrp] = useState("");
   const [condition] = useState("Good");
+  const [batchCounts, setBatchCounts] = useState<Record<string, string>>({});
+  const [newBatches, setNewBatches] = useState<BatchVariantData[]>([]);
+
   const styles = useMemo(
     () => createItemDetailStyles(uiTokens, insets.bottom),
     [insets.bottom, uiTokens]
   );
 
   const handleBackPress = useCallback(() => {
+    setBatchCounts({});
+    setNewBatches([]);
     safeBackNavigation(router, {
       sessionFallbackHref: normalizedSessionId
         ? `/staff/scan?sessionId=${encodeURIComponent(normalizedSessionId)}`
@@ -256,6 +269,30 @@ export default function ItemDetailScreen() {
     resetSerialState,
   ]);
 
+  const handleBatchCountChange = useCallback((batchBarcode: string, qty: string) => {
+    setBatchCounts((prev) => ({ ...prev, [batchBarcode]: qty }));
+  }, []);
+
+  const handleAddNewBatch = useCallback((batch: BatchVariantData) => {
+    setNewBatches((prev) => [...prev, { ...batch, clientId: batch.clientId || generateUUID() }]);
+  }, []);
+
+  const handleRemoveNewBatch = useCallback((index: number) => {
+    setNewBatches((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleNewBatchCountChange = useCallback((index: number, qty: string) => {
+    setNewBatches((prev) =>
+      prev.map((batch, i) => (i === index ? { ...batch, quantity: qty } : batch))
+    );
+  }, []);
+
+  const hasBulkEntries = useMemo(() => {
+    const hasExistingBatchQty = Object.values(batchCounts).some((qty) => parseFloat(qty) > 0);
+    const hasNewBatchQty = newBatches.some((b) => parseFloat(b.quantity) > 0);
+    return hasExistingBatchQty || hasNewBatchQty;
+  }, [batchCounts, newBatches]);
+
   const { submitting, submitCountdown, handleSubmitPress, cancelSubmit } =
     useDeferredItemSubmission({
       barcode: displayBarcode,
@@ -289,7 +326,83 @@ export default function ItemDetailScreen() {
       recountTargetId,
       blindRecountRequired,
       recountBlockedReason,
-      onSuccess: handleBackPress,
+      allowZeroQuantity: hasBulkEntries,
+      onSuccess: async () => {
+        if (!hasBulkEntries) {
+          handleBackPress();
+          return;
+        }
+
+        const jobs = buildBulkCountLineJobs({
+          sessionId: normalizedSessionId,
+          item,
+          condition,
+          currentFloor,
+          currentRack,
+          batchCounts,
+          newBatches,
+        });
+
+        if (jobs.length === 0) {
+          handleBackPress();
+          return;
+        }
+
+        // allSettled, not all: a rejection must not leave the remaining requests
+        // unaccounted for, and it must not navigate away as if everything landed.
+        const results = await Promise.allSettled(
+          jobs.map((job) => createCountLine(job.payload))
+        );
+
+        const failed = jobs.filter((_, index) => results[index]?.status === "rejected");
+        if (failed.length === 0) {
+          handleBackPress();
+          return;
+        }
+
+        // Drop the entries that did land so the retry only resubmits the failures.
+        // The deterministic idempotency keys make a full resubmit safe anyway;
+        // this keeps the on-screen state honest about what is still outstanding.
+        const survivingBarcodes = new Set(
+          failed
+            .filter((job) => job.origin.kind === "existing")
+            .map((job) => (job.origin as { kind: "existing"; barcode: string }).barcode)
+        );
+        const survivingIdentities = new Set(
+          failed
+            .filter((job) => job.origin.kind === "new")
+            .map((job) => (job.origin as { kind: "new"; identity: string }).identity)
+        );
+
+        setBatchCounts((prev) =>
+          Object.fromEntries(
+            Object.entries(prev).filter(([barcode, qty]) => {
+              const parsed = parseFloat(qty);
+              const wasSubmitted = Number.isFinite(parsed) && parsed > 0;
+              return !wasSubmitted || survivingBarcodes.has(barcode);
+            })
+          )
+        );
+        setNewBatches((prev) =>
+          prev.filter((batch) => {
+            const parsed = parseFloat(batch.quantity);
+            const wasSubmitted = Number.isFinite(parsed) && parsed > 0;
+            return !wasSubmitted || survivingIdentities.has(resolveNewBatchIdentity(batch));
+          })
+        );
+
+        const firstError = results.find((result) => result.status === "rejected");
+        console.error(
+          "Failed to submit bulk batches",
+          firstError && firstError.status === "rejected" ? firstError.reason : undefined
+        );
+        toastService.show(
+          `${failed.length} of ${jobs.length} batch ${
+            jobs.length === 1 ? "entry" : "entries"
+          } failed to save. The rest were recorded — retry the remaining ${failed.length}.`,
+          { type: "error" }
+        );
+      },
     });
   useItemDraftAutosave({
     currentFloor,
@@ -583,14 +696,12 @@ export default function ItemDetailScreen() {
                     error={batchError}
                     showZeroStock={showZeroStock}
                     onToggleShowZeroStock={setShowZeroStock}
-                    onSelectVariant={(variantBarcode) => {
-                      router.replace({
-                        pathname: "/staff/item-detail",
-                        params: normalizedSessionId
-                          ? { barcode: variantBarcode, sessionId: normalizedSessionId }
-                          : { barcode: variantBarcode },
-                      });
-                    }}
+                    batchCounts={batchCounts}
+                    onBatchCountChange={handleBatchCountChange}
+                    newBatches={newBatches}
+                    onAddNewBatch={handleAddNewBatch}
+                    onRemoveNewBatch={handleRemoveNewBatch}
+                    onNewBatchCountChange={handleNewBatchCountChange}
                   />
                 </>
               )}
@@ -622,7 +733,7 @@ export default function ItemDetailScreen() {
         </ScrollView>
 
         <ItemSubmitBar
-          canSubmit={canSubmit}
+          canSubmit={canSubmit || hasBulkEntries}
           submitting={submitting}
           submitCountdown={submitCountdown}
           onCancelSubmit={cancelSubmit}

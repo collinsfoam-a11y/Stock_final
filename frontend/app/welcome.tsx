@@ -3,10 +3,7 @@ import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 
 import { semanticColors, colors } from "@/theme/unified";
 const WelcomeScreen = React.lazy(() =>
-  (Platform.OS === "web"
-    ? import("../src/screens/routes/WelcomeScreen.web")
-    : import("../src/screens/routes/WelcomeScreen.native")
-  ).then((module) => ({ default: module.WelcomeScreen }))
+  import("../src/screens/routes/WelcomeScreen").then((module) => ({ default: module.WelcomeScreen }))
 );
 
 export default function WelcomeRoute() {

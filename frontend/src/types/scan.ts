@@ -68,6 +68,7 @@ export interface CreateCountLinePayload {
   recount_of_id?: string;
   item_code: string;
   item_name?: string;
+  barcode?: string;
   batch_id?: string;
   counted_qty: number;
   damaged_qty?: number;

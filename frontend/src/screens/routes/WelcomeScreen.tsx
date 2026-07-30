@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
@@ -110,7 +110,18 @@ const styles = StyleSheet.create({
     borderColor: semanticColors.border.default,
     backgroundColor: semanticColors.background.primary,
     padding: 28,
-    boxShadow: "0px 16px 40px rgba(15, 23, 42, 0.08)",
+    ...Platform.select({
+      web: {
+        boxShadow: "0px 16px 40px rgba(15, 23, 42, 0.08)" as any,
+      },
+      default: {
+        elevation: 12,
+        shadowColor: "rgba(15, 23, 42, 1)",
+        shadowOffset: { width: 0, height: 16 },
+        shadowOpacity: 0.08,
+        shadowRadius: 40,
+      },
+    }),
   },
   heroPanel: {
     justifyContent: "space-between",

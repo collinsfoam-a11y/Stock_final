@@ -64,7 +64,10 @@ const isLocalHostname = (hostname?: string | null): boolean => {
     hostname === "localhost" ||
     hostname === "127.0.0.1" ||
     hostname === "::1" ||
-    hostname === "[::1]"
+    hostname === "[::1]" ||
+    hostname.startsWith("192.168.") ||
+    hostname.startsWith("10.") ||
+    hostname.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./) !== null
   );
 };
 
@@ -75,6 +78,14 @@ const getConfiguredBackendPortUrl = (): string | null => {
   if (Platform.OS === "web" && typeof window !== "undefined") {
     const protocol = window.location.protocol === "https:" ? "https" : "http";
     const hostname = window.location.hostname || "localhost";
+    
+    // If we're on a public domain (like app.lavanyaemart.app), 
+    // do NOT append the local backend port. Assume the backend is proxied 
+    // on the same origin via a reverse proxy (e.g. Cloudflare routing /api to 8001)
+    if (!isLocalHostname(hostname)) {
+      return `${protocol}://${hostname}`;
+    }
+    
     return `${protocol}://${hostname}:${envPort}`;
   }
 
@@ -86,10 +97,24 @@ const shouldPreferConfiguredPortUrl = (): boolean => {
   if (Platform.OS !== "web" || typeof window === "undefined") {
     return true;
   }
-  return isLocalHostname(window.location.hostname);
+  // We prefer the configured port URL now because we handle public domains inside it
+  return true;
 };
 
 const getInitialBackendUrl = (): string => {
+  // When running on a public domain via Cloudflare, route API to api.* subdomain
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname && !isLocalHostname(hostname) && hostname !== "localhost") {
+      const protocol = window.location.protocol === "https:" ? "https" : "http";
+      // Replace "app." prefix with "api.", or prepend "api." if no "app." prefix
+      const apiHost = hostname.startsWith("app.")
+        ? hostname.replace(/^app\./, "api.")
+        : `api.${hostname}`;
+      return `${protocol}://${apiHost}`;
+    }
+  }
+
   const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
   if (envUrl) return stripTrailingSlash(envUrl);
 

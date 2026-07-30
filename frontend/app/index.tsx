@@ -3,10 +3,7 @@ import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 
 import { semanticColors, colors } from "@/theme/unified";
 const IndexScreen = React.lazy(() =>
-  (Platform.OS === "web"
-    ? import("../src/screens/routes/IndexScreen.web")
-    : import("../src/screens/routes/IndexScreen.native")
-  ).then((module) => ({ default: module.IndexScreen }))
+  import("../src/screens/routes/IndexScreen").then((module) => ({ default: module.IndexScreen }))
 );
 
 export default function Index() {

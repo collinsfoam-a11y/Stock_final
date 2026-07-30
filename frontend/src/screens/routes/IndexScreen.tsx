@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/authStore";
 import { getRouteForRole, UserRole } from "@/utils/roleNavigation";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
+
 function IndexScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -64,7 +65,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: uiColors.neutral[200],
     backgroundColor: uiSemanticColors.text.inverse,
-    boxShadow: "0px 16px 40px rgba(15, 23, 42, 0.08)",
+    ...Platform.select({
+      web: {
+        boxShadow: "0px 16px 40px rgba(15, 23, 42, 0.08)" as any,
+      },
+      default: {
+        elevation: 8,
+        shadowColor: "rgba(15, 23, 42, 1)",
+        shadowOffset: { width: 0, height: 16 },
+        shadowOpacity: 0.08,
+        shadowRadius: 40,
+      },
+    }),
   },
   eyebrow: {
     fontSize: 12,

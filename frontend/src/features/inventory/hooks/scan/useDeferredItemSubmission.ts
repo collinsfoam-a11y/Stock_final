@@ -43,6 +43,7 @@ interface UseDeferredItemSubmissionParams {
   recountBlockedReason?: string | null;
   onSuccess: () => void;
   countdownSeconds?: number;
+  allowZeroQuantity?: boolean;
 }
 
 export { toBackendPhotoProofs } from "./submissionPayload";
@@ -269,6 +270,7 @@ export const useDeferredItemSubmission = ({
   recountBlockedReason,
   onSuccess,
   countdownSeconds = 5,
+  allowZeroQuantity = false,
 }: UseDeferredItemSubmissionParams) => {
   const [submitting, setSubmitting] = useState(false);
   const [submitCountdown, setSubmitCountdown] = useState<number | null>(null);
@@ -291,7 +293,7 @@ export const useDeferredItemSubmission = ({
     }
 
     const qty = parseFloat(quantity);
-    if (Number.isNaN(qty) || qty <= 0) {
+    if (!allowZeroQuantity && (Number.isNaN(qty) || qty <= 0)) {
       Alert.alert("Invalid Quantity", "Please enter a valid quantity");
       return false;
     }
@@ -344,6 +346,17 @@ export const useDeferredItemSubmission = ({
     setSubmitting(true);
 
     try {
+      const qty = parseFloat(quantity);
+      // Skip submitting main item if qty <= 0 and allowZeroQuantity is true (meaning bulk items will be submitted)
+      if (Number.isNaN(qty) || qty <= 0) {
+        if (allowZeroQuantity) {
+            onSuccess(); // Triggers bulk submission in item-detail
+            return;
+        } else {
+            throw new Error("Invalid quantity");
+        }
+      }
+
       const payload = buildCountLinePayload({
         barcode,
         sessionId,
