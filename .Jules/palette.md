@@ -20,3 +20,7 @@
 ## 2026-07-26 - Defensive Check on Accessibility Fallback Stringification
 **Learning:** When creating default `accessibilityLabel` formats via string interpolation/template literals (e.g., `Badge: ${label}`), optional or nullable props can lead to awkward screen reader output such as "Badge: undefined" if the prop is omitted.
 **Action:** Always wrap template literal fallback evaluations in defensive checks (e.g., `defaultLabel ? \`Badge: \${defaultLabel}\` : undefined`) to ensure nullable fields are never stringified into literal "undefined" or empty states for screen readers.
+
+## 2026-07-27 - InlineAlert Screen Reader Hiding
+**Learning:** Decorative severity/status icons rendered alongside rich screen reader labels in the `InlineAlert` component can confuse screen readers if not properly hidden using `getDecorativeIconProps()`.
+**Action:** Always ensure that visual status icons in messaging and alerts are explicitly hidden from screen readers using `{...getDecorativeIconProps()}` when the parent component specifies its own complete `accessibilityLabel`.
