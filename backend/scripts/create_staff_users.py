@@ -33,7 +33,7 @@ async def create_users(usernames: List[str], password: str):
                 "username": username,
                 "hashed_password": hashed_password,
                 "full_name": f"Staff User {username[-1]}",
-                "role": "staff",
+                "role": "supervisor" if "supervisor" in username else "staff",
                 "employee_id": f"EMP{username[-1]}",
                 "phone": f"987654321{username[-1]}",
                 "is_active": True,
@@ -48,7 +48,7 @@ async def create_users(usernames: List[str], password: str):
 if __name__ == "__main__":
     import os
 
-    users_to_create = ["staff2", "staff3", "staff4", "staff5"]
+    users_to_create = ["staff1", "staff2", "staff3", "staff4", "staff5", "supervisor1"]
     password_to_set = os.environ.get("STAFF_PASSWORD", "DEFAULT_VALUE_NOT_FOR_PRODUCTION")
 
     asyncio.run(create_users(users_to_create, password_to_set))

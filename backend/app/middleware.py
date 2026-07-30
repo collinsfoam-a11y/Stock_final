@@ -68,6 +68,8 @@ def _resolve_allowed_origins(settings: Any, env: str, logger: Any) -> list[str]:
         "http://localhost:8081",
         "http://127.0.0.1:8081",
         "exp://localhost:8081",
+        "https://app.lavanyaemart.app",
+        "http://app.lavanyaemart.app",
     ]
     dev_origins = _parse_csv_values(getattr(settings, "CORS_DEV_ORIGINS", None))
     if dev_origins:
