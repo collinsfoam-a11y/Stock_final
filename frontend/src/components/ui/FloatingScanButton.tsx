@@ -11,10 +11,11 @@
  */
 
 import React, { useEffect } from "react";
-import { TouchableOpacity, StyleSheet, ViewStyle, Platform } from "react-native";
+import { TouchableOpacity, StyleSheet, ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Haptics from "expo-haptics";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -84,9 +85,7 @@ export const FloatingScanButton: React.FC<FloatingScanButtonProps> = ({
 
   const handlePressIn = () => {
     scale.value = withTiming(0.95, { duration: 100 });
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    void haptics.medium();
   };
 
   const handlePressOut = () => {
@@ -95,9 +94,7 @@ export const FloatingScanButton: React.FC<FloatingScanButtonProps> = ({
 
   const handlePress = () => {
     if (!disabled) {
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }
+      void haptics.heavy();
       onPress();
     }
   };
@@ -115,10 +112,11 @@ export const FloatingScanButton: React.FC<FloatingScanButtonProps> = ({
       disabled={disabled}
       activeOpacity={0.9}
       testID={testID}
-      accessible={true}
-      accessibilityLabel="Scan barcode"
-      accessibilityHint="Double tap to open camera and scan item barcode"
-      accessibilityRole="button"
+      {...getAccessibleButtonProps({
+        label: "Scan barcode",
+        hint: "Double tap to open camera and scan item barcode",
+        disabled: disabled,
+      })}
     >
       {/* Glow effect (pulse ring) */}
       <AnimatedGradient
@@ -156,6 +154,7 @@ export const FloatingScanButton: React.FC<FloatingScanButtonProps> = ({
           name="scan"
           size={buttonSize * 0.5}
           color={uiSemanticColors.text.inverse} // White for best visibility on gradient background
+          {...getDecorativeIconProps()}
         />
       </LinearGradient>
 
