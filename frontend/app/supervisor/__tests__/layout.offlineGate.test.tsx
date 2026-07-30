@@ -41,43 +41,6 @@ jest.mock("@/components/navigation", () => ({
   MobileNavDrawer: () => null,
 }));
 
-jest.mock("@/components/ui", () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const React = require("react");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  // eslint-disable-next-line no-restricted-imports
-  const { Text, TouchableOpacity, View } = require("react-native");
-  const { AppTouchable } = require("@/components/ui/AppTouchable");
-
-  return {
-    AnimatedPressable: ({
-      children,
-      onPress,
-      ...props
-    }: {
-      children: React.ReactNode;
-      onPress?: () => void;
-    }) => React.createElement(AppTouchable, { onPress, ...props }, children),
-    GlassCard: ({ children, ...props }: { children: React.ReactNode }) =>
-      React.createElement(View, props, children),
-    ModernCard: ({ children, ...props }: { children: React.ReactNode }) =>
-      React.createElement(View, props, children),
-    ScreenContainer: ({
-      children,
-      header,
-    }: {
-      children: React.ReactNode;
-      header?: { title?: string; subtitle?: string };
-    }) =>
-      React.createElement(
-        View,
-        null,
-        header?.title ? React.createElement(Text, null, header.title) : null,
-        header?.subtitle ? React.createElement(Text, null, header.subtitle) : null,
-        children
-      ),
-  };
-});
 
 jest.mock("@/store/settingsStore", () => ({
   useSettingsStore: (selector: (state: { settings: { offlineMode: boolean } }) => unknown) =>

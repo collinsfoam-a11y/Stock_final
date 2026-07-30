@@ -226,7 +226,11 @@ function collectMetrics() {
       .map(([file, count]) => ({ file, count })),
     wrappers,
     flags: {
-      offlineSyncWrapperIsThinShim: Boolean(offlineSyncWrapper?.isThinShim),
+      // A wrapper that has been deleted outright is the convergence end state,
+      // so treat "absent" the same as "still a thin shim".
+      offlineSyncWrapperIsThinShim: Boolean(
+        offlineSyncWrapper && (!offlineSyncWrapper.exists || offlineSyncWrapper.isThinShim),
+      ),
     },
   };
 }

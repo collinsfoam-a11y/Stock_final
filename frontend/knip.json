@@ -21,7 +21,11 @@
     "lint-staged",
     "postinstall-postinstall",
     "@storybook/addon-essentials",
-    "@tootallnate/once"
+    "@tootallnate/once",
+    "expo-updates",
+    "babel-preset-expo",
+    "reactotron-react-native"
   ],
+  "ignoreBinaries": ["eas", "npm-check"],
   "ignoreExportsUsedInFile": true
 }

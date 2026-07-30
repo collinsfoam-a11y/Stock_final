@@ -146,6 +146,10 @@ jobs:
         working-directory: frontend
         run: npm run deps:guard
 
+      - name: Dead-file guard (knip files + dependencies, blocking)
+        working-directory: frontend
+        run: npm run knip:files
+
       - name: Dead-code report (knip, advisory)
         working-directory: frontend
         run: npm run knip:check
