@@ -8,7 +8,7 @@ import { useSettingsStore } from "../src/store/settingsStore";
 import { fontAssets } from "../src/constants/fontAssets";
 import { initializeApp } from "../src/bootstrap/initApp";
 import { BootLoadingView } from "../src/bootstrap/BootStateViews";
-import { zIndex } from "@/theme/designTokens";
+import { zIndex } from "@/theme/unified";
 
 // Dynamically import AppShell so it doesn't inflate the root bundle size
 const LazyAppShell = React.lazy(() => import("../src/bootstrap/AppShell"));

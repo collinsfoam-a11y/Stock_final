@@ -13,16 +13,13 @@ import {
   Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useThemeContext } from "../../context/ThemeContext";
-import { AuroraBackground } from "./AuroraBackground";
-import type { AuroraVariant } from "./AuroraBackground";
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
 import { ScreenHeader, ScreenHeaderProps } from "./ScreenHeader";
-import { PatternBackground } from "./PatternBackground";
 import { SkeletonScreen } from "./SkeletonList";
 import { useUiTokens } from "../../hooks/useUiTokens";
 
-export type BackgroundType = "solid" | "aurora" | "pattern";
 export type ContentMode = "static" | "scroll";
 export type LoadingType = "spinner" | "skeleton";
 
@@ -32,10 +29,6 @@ export interface ScreenContainerProps {
   containerStyle?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
   header?: ScreenHeaderProps;
-  gradient?: boolean;
-  backgroundType?: BackgroundType;
-  auroraVariant?: AuroraVariant;
-  auroraIntensity?: "low" | "medium" | "high";
   contentMode?: ContentMode;
   loadingType?: LoadingType;
   loadingText?: string;
@@ -46,7 +39,6 @@ export interface ScreenContainerProps {
   headerTitle?: string;
   headerRight?: React.ReactNode;
   headerLeft?: React.ReactNode;
-  withParticles?: boolean;
   safeArea?: boolean;
   noPadding?: boolean;
   overlay?: React.ReactNode;
@@ -60,10 +52,6 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
   containerStyle,
   contentContainerStyle,
   header,
-  gradient = false,
-  backgroundType,
-  auroraVariant = "primary",
-  auroraIntensity = "medium",
   contentMode,
   loadingType = "spinner",
   loadingText,
@@ -74,16 +62,13 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
   headerTitle,
   headerRight,
   headerLeft,
-  withParticles = false,
   safeArea = true,
   noPadding = false,
   overlay,
   statusBarStyle,
   dismissKeyboardOnTap = false,
 }) => {
-  const { themeLegacy: theme } = useThemeContext();
   const uiTokens = useUiTokens();
-  const resolvedBackground = backgroundType || (gradient ? "aurora" : "solid");
   const resolvedScrollable = contentMode ? contentMode === "scroll" : scrollable;
   const defaultStatusBarStyle = uiTokens.mode === "dark" ? "light-content" : "dark-content";
   const requestedStatusBarStyle = statusBarStyle ?? defaultStatusBarStyle;
@@ -98,7 +83,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
     ? {
         contentContainerStyle: [
           styles.scrollContent,
-          !noPadding && { paddingBottom: theme.layout?.safeArea?.bottom || 34 },
+          !noPadding && { paddingBottom: 34 },
           contentContainerStyle,
         ],
         refreshControl: onRefresh ? (
@@ -106,7 +91,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={uiTokens.colors.accent}
-            colors={[uiTokens.colors.accent]} // Android
+            colors={[uiTokens.colors.accent]}
             progressBackgroundColor={uiTokens.colors.surfaceElevated}
           />
         ) : undefined,
@@ -123,8 +108,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
   const renderContent = () => (
     <>
       <StatusBar barStyle={resolvedStatusBarStyle} />
-      {header && <ScreenHeader {...header} transparent={resolvedBackground === "aurora"} />}
-      {/* Configure Stack Screen if header props provided */}
+      {header && <ScreenHeader {...header} transparent={false} />}
       {(headerTitle || headerRight || headerLeft) && (
         <Stack.Screen
           options={{
@@ -132,11 +116,9 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
             headerRight: () => headerRight,
             headerLeft: () => headerLeft,
             headerShown: true,
-            headerTransparent: resolvedBackground === "aurora",
             headerTintColor: uiTokens.colors.textPrimary,
             headerStyle: {
-              backgroundColor:
-                resolvedBackground === "aurora" ? "transparent" : uiTokens.colors.background,
+              backgroundColor: uiTokens.colors.background,
             },
           }}
         />
@@ -158,21 +140,16 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
           )}
         </View>
       ) : resolvedScrollable ? (
-        // @ts-ignore
         <Container style={[styles.flex, style]} {...containerProps}>
           {children}
         </Container>
       ) : dismissKeyboardOnTap ? (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          {/* @ts-ignore */}
           <Container style={[styles.flex, style]} {...containerProps}>
             {children}
           </Container>
         </TouchableWithoutFeedback>
       ) : (
-        // Avoid wrapping all static screens with a touchable, which can interfere with
-        // nested scroll responders and cause intermittent scroll lockups.
-        // @ts-ignore
         <Container style={[styles.flex, style]} {...containerProps}>
           {children}
         </Container>
@@ -183,45 +160,9 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
     </>
   );
 
-  if (resolvedBackground === "aurora") {
-    return (
-      <AuroraBackground
-        variant={auroraVariant}
-        intensity={auroraIntensity}
-        withParticles={withParticles}
-        style={[styles.container, containerStyle]}
-      >
-        {safeArea ? (
-          <SafeAreaView style={styles.safeArea}>{renderContent()}</SafeAreaView>
-        ) : (
-          renderContent()
-        )}
-      </AuroraBackground>
-    );
-  }
-
-  const baseContent = safeArea ? (
-    <SafeAreaView style={styles.safeArea}>{renderContent()}</SafeAreaView>
-  ) : (
-    renderContent()
-  );
-
-  if (resolvedBackground === "pattern") {
-    return (
-      <View
-        style={[styles.container, { backgroundColor: uiTokens.colors.background }, containerStyle]}
-      >
-        <PatternBackground />
-        {baseContent}
-      </View>
-    );
-  }
-
   return (
-    <View
-      style={[styles.container, { backgroundColor: uiTokens.colors.background }, containerStyle]}
-    >
-      {baseContent}
+    <View style={[styles.container, { backgroundColor: uiTokens.colors.background }, containerStyle]}>
+      {safeArea ? <SafeAreaView style={styles.safeArea}>{renderContent()}</SafeAreaView> : renderContent()}
     </View>
   );
 };
