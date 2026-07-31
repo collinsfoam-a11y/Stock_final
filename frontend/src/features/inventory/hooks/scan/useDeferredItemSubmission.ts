@@ -357,6 +357,17 @@ export const useDeferredItemSubmission = ({
         }
       }
 
+      // CI-03 / R2.3 — every submitted count line requires a remark.
+      // Backend enforces the invariant; the frontend blocks with a
+      // clear message before an unproductive round-trip.
+      if (!remark.trim()) {
+        toastService.show(
+          "A remark is required before this count can be submitted.",
+          { type: "warning" }
+        );
+        return;
+      }
+
       const payload = buildCountLinePayload({
         barcode,
         sessionId,

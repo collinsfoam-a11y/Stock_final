@@ -18,17 +18,14 @@ import {
   subscribeSyncStatus,
   type SyncStatusSnapshot,
 } from "../../services/syncStatusPolling";
-import {
-  legacyAnimations as modernAnimations,
-  legacyBorderRadius as modernBorderRadius,
-} from "@/theme/unified";
 
-import { colors } from "@/theme/unified";
+import { colorWithAlpha, type ThemeTokens } from "../../theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { AppTouchable } from "@/components/ui/AppTouchable";
 export const SyncStatusPill = () => {
   const uiTokens = useUiTokens();
+  const styles = makeStyles(uiTokens);
   const reduceMotion = useReducedMotion();
   const [status, setStatus] = useState<SyncStatusSnapshot | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -50,7 +47,7 @@ export const SyncStatusPill = () => {
     setIsSyncing(true);
     if (!reduceMotion) {
       rotation.value = withRepeat(
-        withTiming(360, { duration: modernAnimations.duration.slow }),
+        withTiming(360, { duration: uiTokens.motion.slow }),
         -1
       );
     }
@@ -79,28 +76,28 @@ export const SyncStatusPill = () => {
   const hasPending = status.queuedOperations > 0;
 
   const isDark = uiTokens.mode === "dark";
-  const successColor = isDark ? uiTokens.colors.success : colors.success[700];
-  const warningColor = isDark ? uiTokens.colors.warning : colors.warning[800];
-  const infoColor = isDark ? uiTokens.colors.accent : colors.primary[700];
+  const successColor = uiTokens.colors.success;
+  const warningColor = uiTokens.colors.warning;
+  const infoColor = uiTokens.colors.accent;
 
   let pillColor = successColor;
-  let pillBg = isDark ? "rgba(63, 185, 80, 0.18)" : colors.success[50];
+  let pillBg = isDark ? "rgba(63, 185, 80, 0.18)" : colorWithAlpha(uiTokens.colors.success, 0.1);
   let iconName: keyof typeof Ionicons.glyphMap = "cloud-done";
   let label = "Synced";
 
   if (isOffline) {
     pillColor = warningColor;
-    pillBg = isDark ? "rgba(210, 153, 34, 0.18)" : colors.warning[50];
+    pillBg = isDark ? "rgba(210, 153, 34, 0.18)" : colorWithAlpha(uiTokens.colors.warning, 0.1);
     iconName = "cloud-offline";
     label = hasPending ? `Offline (${status.queuedOperations})` : "Offline";
   } else if (isSyncing) {
     pillColor = infoColor;
-    pillBg = isDark ? "rgba(88, 166, 255, 0.18)" : colors.primary[50];
+    pillBg = isDark ? "rgba(88, 166, 255, 0.18)" : colorWithAlpha(uiTokens.colors.accent, 0.1);
     iconName = "sync";
     label = "Syncing...";
   } else if (hasPending) {
     pillColor = warningColor;
-    pillBg = isDark ? "rgba(210, 153, 34, 0.18)" : colors.warning[50];
+    pillBg = isDark ? "rgba(210, 153, 34, 0.18)" : colorWithAlpha(uiTokens.colors.warning, 0.1);
     iconName = "cloud-upload";
     label = `${status.queuedOperations} Pending`;
   }
@@ -129,13 +126,13 @@ export const SyncStatusPill = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: ThemeTokens) => StyleSheet.create({
   pill: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: modernBorderRadius.full,
+    borderRadius: t.radius.full,
     borderWidth: 1,
     gap: 6,
   },
