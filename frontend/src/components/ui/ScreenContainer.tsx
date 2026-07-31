@@ -13,8 +13,6 @@ import {
   Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
 import { ScreenHeader, ScreenHeaderProps } from "./ScreenHeader";
 import { SkeletonScreen } from "./SkeletonList";
@@ -29,6 +27,9 @@ export interface ScreenContainerProps {
   containerStyle?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
   header?: ScreenHeaderProps;
+  /** @deprecated gradient and backgroundType are retained for compatibility but only "solid" is supported. */
+  gradient?: boolean;
+  backgroundType?: "solid";
   contentMode?: ContentMode;
   loadingType?: LoadingType;
   loadingText?: string;
@@ -52,6 +53,8 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
   containerStyle,
   contentContainerStyle,
   header,
+  gradient = false,
+  backgroundType,
   contentMode,
   loadingType = "spinner",
   loadingText,

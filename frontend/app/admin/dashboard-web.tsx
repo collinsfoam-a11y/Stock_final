@@ -444,8 +444,6 @@ export default function DashboardWeb() {
   return (
     <ScreenContainer
       backgroundType="solid"
-      auroraVariant="primary"
-      auroraIntensity="medium"
       header={{
         title: "Admin Dashboard",
         subtitle: "Simple control center for daily operations",
