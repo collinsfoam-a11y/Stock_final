@@ -679,8 +679,11 @@ export const searchItemsSemantic = async (query: string, limit: number = 20): Pr
     const items = response.data.data?.items || [];
     return items.map((item: any) => ({
       ...item,
-      id: item.id || item._id,
+      id: item.id || item._id || item.item_code,
       name: item.name || item.item_name,
+      item_name: item.item_name || item.name,
+      item_code: item.item_code || item.barcode,
+      barcode: item.barcode || item.item_code,
     }));
   } catch (error) {
     __DEV__ && console.error("Error in semantic search:", error);

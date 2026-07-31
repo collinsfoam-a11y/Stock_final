@@ -8,7 +8,6 @@
 export { ExceptionCard } from "./ExceptionCard";
 export type { ExceptionCardProps } from "./ExceptionCard";
 export { ExceptionRouter } from "./ExceptionRouter";
-export type { ExceptionRouterProps } from "./ExceptionRouter";
 export { FinalizationGateChecklist } from "./FinalizationGateChecklist";
 export type { FinalizationGateChecklistProps } from "./FinalizationGateChecklist";
 export { BaselineIntegrityBanner } from "./BaselineIntegrityBanner";

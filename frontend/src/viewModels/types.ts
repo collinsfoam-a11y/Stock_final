@@ -143,7 +143,7 @@ export interface ExceptionViewModel {
 export interface FinalizationBlocker {
   /** Backend error/reason code (e.g. "UNRESOLVED_RECOUNT"). */
   code: string;
-  /** Canonical invariant identifier on the FI-*/R9.* scheme (e.g. "FI-01", "R9.3"). */
+  /** Canonical invariant identifier on the FI-X/R9.X scheme (e.g. "FI-01", "R9.3"). */
   canonicalCode?: string;
   entityId?: string;
   severity: "blocking";

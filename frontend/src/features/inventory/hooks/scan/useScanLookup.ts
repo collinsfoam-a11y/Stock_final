@@ -86,7 +86,7 @@ export function useScanLookup({
         let items: any[] = [];
         if (fuzzyResult) {
           items = Array.isArray((fuzzyResult as any).items) ? (fuzzyResult as any).items : [];
-          safeSetState(setHasMoreSearchResults, Boolean((fuzzyResult as any).hasMore));
+          safeSetState(setHasMoreSearchResults, Boolean((fuzzyResult as any).has_more));
         }
 
         if (page === 1 && semanticResult) {
