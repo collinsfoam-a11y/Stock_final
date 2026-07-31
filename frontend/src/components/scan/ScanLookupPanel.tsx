@@ -1,5 +1,5 @@
 import React from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View, ActivityIndicator } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { ModernCard } from "@/components/ui/ModernCard";
@@ -41,6 +41,8 @@ interface ScanLookupPanelProps {
   onPressItem: (item: ScanLookupItem) => void;
   onRetryNotice?: () => void;
   onSubmitSearch: () => void;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 function SkeletonLoader({ style }: { style?: object }) {
@@ -190,6 +192,8 @@ export function ScanLookupPanel({
   onPressItem,
   onRetryNotice,
   onSubmitSearch,
+  hasMore,
+  onLoadMore,
 }: ScanLookupPanelProps) {
   const uiTokens = useUiTokens();
   const surfaceStyle = {
@@ -323,6 +327,31 @@ export function ScanLookupPanel({
                 )}
               </React.Fragment>
             ))}
+            {hasMore && onLoadMore && (
+              <View style={styles.loadMoreContainer}>
+                <AppTouchable
+                  style={[
+                    styles.loadMoreButton,
+                    {
+                      borderColor: uiTokens.colors.border,
+                      backgroundColor: uiTokens.mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                    }
+                  ]}
+                  onPress={onLoadMore}
+                  disabled={loading}
+                  accessibilityRole="button"
+                  accessibilityLabel="Load more search results"
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color={uiTokens.colors.accent} />
+                  ) : (
+                    <Text style={[styles.loadMoreText, { color: uiTokens.colors.accent }]}>
+                      Load More Results...
+                    </Text>
+                  )}
+                </AppTouchable>
+              </View>
+            )}
           </View>
         )}
       </View>
@@ -520,6 +549,24 @@ const styles = StyleSheet.create({
     color: colors.primary[700],
     fontWeight: typography.fontWeight.semibold,
   },
+  loadMoreContainer: {
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(150,150,150,0.2)",
+    alignItems: "center",
+  },
+  loadMoreButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadMoreText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+  },
   recentSection: {
     marginBottom: spacing.lg,
   },
@@ -527,10 +574,11 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: "700",
-    color: colors.neutral[700],
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
     marginBottom: spacing.md,
+    marginTop: spacing.md,
+    color: colors.neutral[700],
     marginLeft: spacing.xs,
   },
   recentCard: {

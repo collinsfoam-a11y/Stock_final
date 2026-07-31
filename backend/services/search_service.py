@@ -269,9 +269,13 @@ class SearchService:
                     )
                 )
 
-        # Sort by score descending, then by item_name ascending
-        # We use negative score for ascending sort to combine with item_name
-        scored.sort(key=lambda x: (-x.relevance_score, x.item_name))
+        # Sort by stock availability first (in-stock items prioritize over out-of-stock),
+        # then by score descending, then by item_name ascending
+        scored.sort(key=lambda x: (
+            0 if x.stock_qty > 0 else 1,
+            -x.relevance_score,
+            x.item_name
+        ))
 
         return scored
 

@@ -359,6 +359,13 @@ class Settings(PydanticBaseSettings):
         ge=1,
         description="Queue size for concurrent request handler",
     )
+    RATE_LIMIT_AUTH_MAX_ATTEMPTS: int = Field(5, ge=1)
+    RATE_LIMIT_AUTH_WINDOW_SECONDS: int = Field(900, ge=60)  # 15 min per user
+    RATE_LIMIT_AUTH_IP_MAX_ATTEMPTS: int = Field(20, ge=1)
+    RATE_LIMIT_AUTH_IP_WINDOW_SECONDS: int = Field(300, ge=60)  # 5 min per IP
+    RATE_LIMIT_ENABLED: bool = True
+    
+    # Legacy Rate Limiting (will be phased out)
     RATE_LIMIT_MAX_ATTEMPTS: int = Field(5, ge=1)
     RATE_LIMIT_TTL_SECONDS: int = Field(300, ge=1)
 
@@ -616,7 +623,11 @@ except Exception as e:
                 os.getenv("CHANGE_DETECTION_SYNC_ENABLED", "true").lower() == "true"
             )
             self.CHANGE_DETECTION_INTERVAL = int(os.getenv("CHANGE_DETECTION_INTERVAL", 300))
-            # New settings for rate limiting and CORS
+            self.RATE_LIMIT_AUTH_MAX_ATTEMPTS = int(os.getenv("RATE_LIMIT_AUTH_MAX_ATTEMPTS", 5))
+            self.RATE_LIMIT_AUTH_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_AUTH_WINDOW_SECONDS", 900))
+            self.RATE_LIMIT_AUTH_IP_MAX_ATTEMPTS = int(os.getenv("RATE_LIMIT_AUTH_IP_MAX_ATTEMPTS", 20))
+            self.RATE_LIMIT_AUTH_IP_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_AUTH_IP_WINDOW_SECONDS", 300))
+            self.RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
             self.RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("RATE_LIMIT_MAX_ATTEMPTS", 5))
             self.RATE_LIMIT_TTL_SECONDS = int(os.getenv("RATE_LIMIT_TTL_SECONDS", 300))
             self.CORS_ALLOW_ORIGINS = _env_first("CORS_ALLOW_ORIGINS", "CORS_ORIGINS")

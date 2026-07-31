@@ -65,14 +65,23 @@ function getLocalIpAddress() {
 
 async function main() {
   const envPath = path.resolve(__dirname, "../.env");
+  let envContent = "";
+  let currentEnvUrl = "";
+  try {
+    envContent = fs.readFileSync(envPath, "utf8");
+    const match = envContent.match(/^EXPO_PUBLIC_BACKEND_URL=(.*)$/m);
+    if (match) currentEnvUrl = match[1];
+  } catch (e) {
+    // ignore
+  }
+
   const localIp = getLocalIpAddress();
   const preferredPort = process.env.EXPO_PUBLIC_BACKEND_PORT || "8001";
-  const explicitBackendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || "";
+  const explicitBackendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || currentEnvUrl || "";
 
   console.log(`Detected Local IP: ${localIp}`);
 
   try {
-    let envContent = fs.readFileSync(envPath, "utf8");
 
     const candidatePorts = [
       preferredPort,

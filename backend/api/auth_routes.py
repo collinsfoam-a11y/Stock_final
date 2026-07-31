@@ -19,6 +19,7 @@ from backend.api.schemas import (
 from backend.auth.dependencies import auth_deps, get_current_user, optional_get_current_user
 from backend.auth.permissions import get_user_permissions
 from backend.auth.cookies import set_auth_cookies, clear_auth_cookies, get_refresh_token_cookie
+from backend.auth.rate_limiter import check_auth_rate_limits, record_auth_failure, reset_auth_limits
 from backend.config import settings
 from backend.db.runtime import get_db
 from backend.error_messages import get_error_message
@@ -60,66 +61,7 @@ def _get_request_device_id(request: Request) -> Optional[str]:
 
 # Helper functions for login
 
-
-async def check_rate_limit(ip_address: str) -> Result[bool, Exception]:
-    """
-    Check if the IP has exceeded the login attempt limit.
-
-    Rate limiting is configurable via RATE_LIMIT_ENABLED environment variable.
-    Default: Enabled in production, disabled in development.
-    """
-    cache_service = get_cache_service()
-    # Check if rate limiting is enabled (default: True for production)
-    rate_limit_enabled = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
-
-    if not rate_limit_enabled:
-        logger.debug("Rate limiting disabled for IP: %s", sanitize_for_logging(ip_address))
-        return Ok(True)
-
-    namespace = "login_attempts"
-    key = ip_address
-
-    # Get current attempt count
-    attempts = (await cache_service.get(namespace, key)) or 0
-    try:
-        attempts = int(attempts)
-    except (ValueError, TypeError):
-        attempts = 0
-
-    # Configuration: max attempts and TTL
-    max_attempts = int(getattr(settings, "RATE_LIMIT_MAX_ATTEMPTS", 5))
-    ttl_seconds = int(getattr(settings, "RATE_LIMIT_TTL_SECONDS", 300))
-
-    if attempts >= max_attempts:
-        # Block for configured TTL period
-        await cache_service.set(namespace, key, attempts, ttl=ttl_seconds)
-        logger.warning(
-            f"Rate limit exceeded for IP {sanitize_for_logging(ip_address)}: {attempts} attempts"
-        )
-        return Fail(
-            RateLimitError(
-                f"Too many login attempts. Please try again in {ttl_seconds // 60} minutes.",
-                retry_after=ttl_seconds,
-            )
-        )
-
-    # Increment attempt counter with TTL
-    await cache_service.set(namespace, key, attempts + 1, ttl=ttl_seconds)
-    logger.debug(
-        f"Rate limit check passed for IP {sanitize_for_logging(ip_address)}: {attempts + 1}/{max_attempts} attempts"
-    )
-    return Ok(True)
-
-
-async def reset_rate_limit(ip_address: str) -> None:
-    """Clear rate-limit counters for an IP after successful auth."""
-    cache_service = get_cache_service()
-    try:
-        await cache_service.delete("login_attempts", ip_address)
-    except Exception as exc:
-        logger.debug(
-            f"Failed to reset rate limit for {sanitize_for_logging(ip_address)}: {sanitize_for_logging(str(exc))}"
-        )
+# Helper functions for login
 
 
 async def find_user_by_username(username: str) -> Result[dict[str, Any], Exception]:
@@ -494,27 +436,7 @@ async def register(
         ) from e
 
 
-async def _check_login_rate_limit(client_ip: str) -> Optional[Result[Any, Exception]]:
-    logger.debug("Checking rate limit for IP: %s", sanitize_for_logging(client_ip))
-    rate_limit_result = await check_rate_limit(client_ip)
-    if rate_limit_result.is_err:
-        # Extract error from Result type
-        err = None
-        if hasattr(rate_limit_result, "unwrap_err"):
-            try:
-                err = rate_limit_result.unwrap_err()
-            except Exception as e:
-                logger.error("Failed to unwrap rate limit error: %s", sanitize_for_logging(str(e)))
-        if err is None:
-            err = getattr(rate_limit_result, "err", None)
-        if err is None:
-            err = getattr(rate_limit_result, "_error", None)
-        if err is None:
-            err = RateLimitError("Rate limit exceeded")
-
-        if isinstance(err, RateLimitError):
-            return Fail(err)
-        return Fail(RateLimitError(str(err)))
+# Check logic uses FastAPI exceptions now
     logger.debug("Rate limit check passed")
     return None
 
@@ -562,10 +484,8 @@ async def login(
     )
 
     try:
-        # Check rate limiting
-        rate_limit_fail = await _check_login_rate_limit(client_ip)
-        if rate_limit_fail:
-            return rate_limit_fail
+        # Check rate limiting (will raise HTTPException on failure)
+        await check_auth_rate_limits(request, credentials.username)
 
         # Find user
         user_result = await find_user_by_username(credentials.username)
@@ -627,7 +547,7 @@ async def login(
 
         # Log success and cleanup
         await log_successful_login(user, client_ip, request)
-        await cache_service.delete("login_attempts", client_ip)
+        await reset_auth_limits(request, credentials.username)
 
         logger.info(
             "Login succeeded",
@@ -734,6 +654,7 @@ async def _resolve_pin_login_user(
             user_agent=request.headers.get("user-agent"),
             error="Invalid PIN",
         )
+        await record_auth_failure(request, credentials.username)
         return Fail(AuthenticationError("Invalid PIN"))
 
     if not found_user.get("is_active", True):
@@ -790,9 +711,7 @@ async def login_with_pin(
 
     try:
         # Check rate limiting
-        rate_limit_fail = await _check_login_rate_limit(client_ip)
-        if rate_limit_fail:
-            return rate_limit_fail
+        await check_auth_rate_limits(request, getattr(credentials, 'username', None))
 
         user_result = await _resolve_pin_login_user(db, credentials, request, client_ip)
         if user_result.is_err:
@@ -809,7 +728,7 @@ async def login_with_pin(
 
         # Log success and cleanup
         await log_successful_login(found_user, client_ip, request)
-        await cache_service.delete("login_attempts", client_ip)
+        await reset_auth_limits(request, getattr(credentials, 'username', None))
 
         logger.info("PIN login succeeded")
         return Ok(_build_login_response(tokens, found_user))
@@ -911,6 +830,7 @@ async def _handle_login_failure(
         user_agent=request.headers.get("user-agent"),
         error=log_error,
     )
+    await record_auth_failure(request, username)
     if isinstance(return_error, str):
         return Fail(AuthenticationError(return_error))
     return Fail(cast(Exception, return_error))

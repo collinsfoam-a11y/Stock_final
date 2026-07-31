@@ -16,6 +16,7 @@ import { AppTouchable } from "@/components/ui/AppTouchable";
 import { ModernCard } from "@/components/ui/ModernCard";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
+import { SyncStatusPill } from "@/components/ui/SyncStatusPill";
 
 export default function RecountRequestScreen() {
   const router = useRouter();
@@ -64,6 +65,9 @@ export default function RecountRequestScreen() {
           <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
         </AppTouchable>
         <Text style={styles.screenTitle}>Request Recount</Text>
+        <View style={{ marginLeft: "auto" }}>
+          <SyncStatusPill />
+        </View>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         <ModernCard style={styles.card}>
@@ -76,7 +80,7 @@ export default function RecountRequestScreen() {
                   key={item}
                   style={[styles.chip, active && styles.chipActive]}
                   onPress={() => setScope(item)}
- >
+                >
                   <Text style={[styles.chipText, active && styles.chipTextActive]}>{item}</Text>
                 </AppTouchable>
               );

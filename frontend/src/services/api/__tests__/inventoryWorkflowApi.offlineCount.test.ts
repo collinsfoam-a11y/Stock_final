@@ -75,8 +75,25 @@ describe("inventoryWorkflowApi control-plane integration", () => {
 
     const result = await createCountLine(payload);
 
-    expect(controlPlane.submitCountLineCommand).toHaveBeenCalledWith(payload);
+    expect(controlPlane.submitCountLineCommand).toHaveBeenCalledWith({
+      ...payload,
+      idempotency_key: expect.any(String),
+    });
     expect(result._offline).toBe(true);
+  });
+
+  it("preserves a caller-supplied idempotency key on the offline command path", async () => {
+    const payload = {
+      session_id: "offline_session_1",
+      item_code: "ITEM001",
+      counted_qty: 3,
+      rack_no: "A1",
+      idempotency_key: "bulk:offline_session_1:ITEM001:BATCH-A:3",
+    };
+
+    await createCountLine(payload);
+
+    expect(controlPlane.submitCountLineCommand).toHaveBeenCalledWith(payload);
   });
 
   it("does not merge paginated API count lines into the offline cache", async () => {

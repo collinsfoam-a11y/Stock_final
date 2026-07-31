@@ -3,6 +3,56 @@ Database Mapping Configuration for E_MART_KITCHEN_CARE SQL Server
 Maps ERP database tables and columns to Stock Verification app schema
 """
 
+import re
+from typing import Set
+
+# Whitelist of known-safe SQL identifiers (columns, tables, aliases)
+ALLOWED_IDENTIFIERS: Set[str] = {
+    "optional_columns",
+    "optional_joins",
+}
+
+ALLOWED_JOIN_PATTERNS: Set[str] = {
+    "",
+    "LEFT JOIN Brands B ON P.BrandID = B.BrandID",
+    "LEFT JOIN Brand B ON P.BrandID = B.BrandID",
+    "LEFT JOIN ProductBrands B ON P.BrandID = B.BrandID",
+    ", S.SalePrice AS SalesPrice",
+    ", S.MRP AS SalesPrice",
+    ", S.Price AS SalesPrice",
+    ", B.BrandName AS BrandName",
+    ", B.Name AS BrandName",
+    ", B.Description AS BrandName",
+    ", PUR.PurchaseRate AS PurchaseRate",
+    ", PUR.Cost AS PurchaseRate",
+    ", PUR.Rate AS PurchaseRate",
+}
+
+_IDENTIFIER_RE = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+def validate_sql_identifier(identifier: str) -> str:
+    """
+    Validate that `identifier` is a known-safe SQL identifier.
+    Raises ValueError if not allowed.
+    Returns the identifier for convenience.
+    """
+    if identifier not in ALLOWED_IDENTIFIERS:
+        raise ValueError(f"Disallowed SQL identifier: {identifier!r}")
+    if not _IDENTIFIER_RE.match(identifier):
+        raise ValueError(f"Invalid SQL identifier format: {identifier!r}")
+    return identifier
+
+def validate_sql_fragment(fragment: str) -> str:
+    """
+    Validate that `fragment` is a known-safe SQL join/where fragment.
+    Raises ValueError if not allowed.
+    """
+    # Normalize whitespace for comparison
+    normalized = " ".join(fragment.split())
+    if normalized not in ALLOWED_JOIN_PATTERNS:
+        raise ValueError(f"Disallowed SQL fragment: {fragment!r}")
+    return fragment
+
 # Table name mappings
 TABLE_MAPPINGS = {
     "items": "Products",
@@ -73,7 +123,7 @@ LAST_PURCHASE_CTE = """
 
 # SQL Query Templates
 SQL_TEMPLATES = {
-    "get_item_by_barcode": LAST_PURCHASE_CTE  # nosec
+    "get_item_by_barcode": LAST_PURCHASE_CTE
     + """
         SELECT DISTINCT
             P.ProductID as item_id,
@@ -131,7 +181,7 @@ SQL_TEMPLATES = {
           AND LEN(CAST(PB.AutoBarcode AS VARCHAR(50))) = 6
           AND ISNUMERIC(CAST(PB.AutoBarcode AS VARCHAR(50))) = 1
     """,
-    "get_item_by_code": LAST_PURCHASE_CTE  # nosec
+    "get_item_by_code": LAST_PURCHASE_CTE
     + """
         SELECT DISTINCT
             P.ProductID as item_id,
@@ -189,7 +239,7 @@ SQL_TEMPLATES = {
           AND PB.AutoBarcode IS NOT NULL
           AND LEN(CAST(PB.AutoBarcode AS VARCHAR(50))) = 6
     """,
-    "get_all_items": LAST_PURCHASE_CTE  # nosec
+    "get_all_items": LAST_PURCHASE_CTE
     + """
         SELECT DISTINCT TOP 50000
             P.ProductID as item_id,
@@ -249,7 +299,7 @@ SQL_TEMPLATES = {
           AND ISNUMERIC(CAST(PB.AutoBarcode AS VARCHAR(50))) = 1
         ORDER BY P.ProductName
     """,
-    "search_items": LAST_PURCHASE_CTE  # nosec
+    "search_items": LAST_PURCHASE_CTE
     + """
         SELECT DISTINCT TOP 50
             P.ProductID as item_id,
@@ -335,7 +385,7 @@ SQL_TEMPLATES = {
         ORDER BY PB.ExpiryDate, PB.BatchNo
     """,
     # Full sync query for MongoDB - includes ALL fields
-    "sync_all_items": LAST_PURCHASE_CTE  # nosec
+    "sync_all_items": LAST_PURCHASE_CTE
     + """
         SELECT
             P.ProductID as item_id,

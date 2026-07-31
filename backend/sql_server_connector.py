@@ -223,10 +223,11 @@ class SQLServerConnector:
     def _apply_optional_sections(self, template: str) -> str:
         """Apply dynamic SQL fragments to the query template."""
         try:
+            from backend.config.mappings import validate_sql_fragment
             # Note: template uses {optional_columns} and {optional_joins}
             return template.format(
-                optional_columns=self._optional_selects,
-                optional_joins=self._optional_joins,
+                optional_columns=validate_sql_fragment(self._optional_selects),
+                optional_joins=validate_sql_fragment(self._optional_joins),
             )
         except (KeyError, IndexError, ValueError):
             return template
@@ -250,7 +251,15 @@ class SQLServerConnector:
         }
 
         try:
-            return template.format(**format_kwargs)
+            from backend.config.mappings import validate_sql_fragment, validate_sql_identifier
+            
+            safe_kwargs = {}
+            for k, v in format_kwargs.items():
+                safe_key = validate_sql_identifier(k)
+                safe_val = validate_sql_fragment(v)
+                safe_kwargs[safe_key] = safe_val
+                
+            return template.format(**safe_kwargs)
         except Exception as e:
             logger.error(f"Error formatting query {template_name}: {e}")
             # Fallback to basic optional sections if custom format fails

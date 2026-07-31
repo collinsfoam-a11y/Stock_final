@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 
 from backend.utils.api_utils import sanitize_for_logging
 from backend.utils.auth_utils import get_password_hash, get_password_hash_metadata
-from backend.core.lifespan import db
 
 logger = logging.getLogger("stock-verify")
 
@@ -11,7 +10,7 @@ def _password_fields(password: str) -> dict[str, str]:
     hashed_password = get_password_hash(password)
     return {"hashed_password": hashed_password, **get_password_hash_metadata(hashed_password)}
 
-async def init_default_users() -> None:
+async def init_default_users(db) -> None:
     """Create default users if they don't exist"""
     try:
         # Check for staff1
@@ -68,7 +67,7 @@ async def init_default_users() -> None:
         )
         raise
 
-async def init_mock_erp_data() -> None:
+async def init_mock_erp_data(db) -> None:
     """Populate local mock ERP data when the collection is empty."""
     count = await db.erp_items.count_documents({})
     if count == 0:

@@ -27,6 +27,7 @@ import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { ModernCard } from "@/components/ui/ModernCard";
 import { StatsCard } from "@/components/ui/StatsCard";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { SyncStatusPill } from "@/components/ui/SyncStatusPill";
 
 export default function VarianceDetailsScreen() {
   const { itemCode } = useLocalSearchParams();
@@ -232,6 +233,7 @@ export default function VarianceDetailsScreen() {
             </AnimatedPressable>
             <Text style={styles.headerTitle}>Variance Details</Text>
           </View>
+          <SyncStatusPill />
         </Animated.View>
 
         <ScrollView contentContainerStyle={styles.content}>

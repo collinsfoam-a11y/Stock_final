@@ -93,9 +93,9 @@ python-typecheck-strict:
 # =============================================================================
 # 📦 NODE.JS FRONTEND
 # =============================================================================
-.PHONY: node-ci node-test node-lint node-typecheck node-ui-governance node-ui-governance-strict node-e2e-recount-smoke
+.PHONY: node-ci node-test node-lint node-typecheck node-ui-governance node-ui-governance-strict node-ui-governance-full node-knip node-bundle-guard node-e2e-recount-smoke
 
-node-ci: node-lint node-typecheck node-test
+node-ci: node-lint node-typecheck node-test node-ui-governance-full node-knip
 
 node-test:
 	@echo "Running Node.js tests..."
@@ -126,8 +126,20 @@ node-ui-governance:
 	cd frontend && corepack pnpm run governance:ui:changed
 
 node-ui-governance-strict:
-	@echo "Running strict UI governance scan..."
+	@echo "Running strict UI governance scan (changed files)..."
 	cd frontend && corepack pnpm run governance:ui:changed:strict
+
+node-ui-governance-full:
+	@echo "Running full strict UI governance scan (all files)..."
+	cd frontend && corepack pnpm run governance:ui:strict
+
+node-knip:
+	@echo "Running knip dead-code / unused-dependency detection..."
+	cd frontend && corepack pnpm run knip:check
+
+node-bundle-guard:
+	@echo "Building web bundle and running regression guard..."
+	cd frontend && corepack pnpm run build:web && corepack pnpm run bundle:web:guard
 
 node-typecheck-watch:
 	@echo "Running TypeScript type checker in watch mode..."

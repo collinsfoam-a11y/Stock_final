@@ -57,6 +57,8 @@ run_node_steps() {
     run_step node-lint make --no-print-directory node-lint
     run_step node-typecheck make --no-print-directory node-typecheck
     run_step node-test make --no-print-directory node-test
+    run_step node-governance make --no-print-directory node-ui-governance-full
+    run_step node-knip make --no-print-directory node-knip
 }
 
 case "$MODE" in

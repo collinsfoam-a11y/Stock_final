@@ -67,7 +67,7 @@ class MongoUnitOfWork(UnitOfWork):
     def __init__(self, client: Any):
         self.client = client
         self.session = None
-        self._txn_cm = None
+        self._committed = False
 
     async def __aenter__(self) -> "MongoUnitOfWork":
         if self.client is None or not hasattr(self.client, "start_session"):
@@ -82,49 +82,51 @@ class MongoUnitOfWork(UnitOfWork):
             if not hasattr(self.session, "start_transaction"):
                 return self
 
-            txn_cm = self.session.start_transaction()
-            if inspect.isawaitable(txn_cm):
-                txn_cm = await txn_cm
-            self._txn_cm = txn_cm
-
-            if hasattr(self._txn_cm, "__aenter__"):
-                await self._txn_cm.__aenter__()
-            elif hasattr(self._txn_cm, "__enter__"):
-                self._txn_cm.__enter__()
+            # Start transaction explicitly, without using the context manager.
+            # This requires explicit commit/abort.
+            self.session.start_transaction()
+            self._committed = False
 
         except Exception as exc:
             if _transaction_not_supported(exc):
                 logger.debug(
                     "Mongo transactions unsupported on current deployment; using non-transaction path"
                 )
+                if self.session and hasattr(self.session, "end_session"):
+                    end_result = self.session.end_session()
+                    if inspect.isawaitable(end_result):
+                        await end_result
                 self.session = None
-                self._txn_cm = None
                 return self
             raise
 
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        if self._txn_cm:
-            if hasattr(self._txn_cm, "__aexit__"):
-                await self._txn_cm.__aexit__(exc_type, exc_val, exc_tb)
-            elif hasattr(self._txn_cm, "__exit__"):
-                self._txn_cm.__exit__(exc_type, exc_val, exc_tb)
-            self._txn_cm = None
-            
-        if self.session and hasattr(self.session, "end_session"):
-            end_result = self.session.end_session()
-            if inspect.isawaitable(end_result):
-                await end_result
+        if self.session:
+            # If we started a transaction and it hasn't been committed, roll it back
+            if hasattr(self.session, "in_transaction") and self.session.in_transaction and not self._committed:
+                try:
+                    await self.rollback()
+                except Exception as e:
+                    logger.warning("Error rolling back transaction in __aexit__: %s", e)
+
+            if hasattr(self.session, "end_session"):
+                end_result = self.session.end_session()
+                if inspect.isawaitable(end_result):
+                    await end_result
             self.session = None
 
     async def commit(self) -> None:
-        # Pymongo/Motor context managers handle commit/abort in __exit__
-        # We don't need to do anything explicit here when using the context manager
-        pass
+        if self.session and hasattr(self.session, "commit_transaction"):
+            commit_result = self.session.commit_transaction()
+            if inspect.isawaitable(commit_result):
+                await commit_result
+            self._committed = True
 
     async def rollback(self) -> None:
         if self.session and hasattr(self.session, "abort_transaction"):
             abort_result = self.session.abort_transaction()
             if inspect.isawaitable(abort_result):
                 await abort_result
+            self._committed = False

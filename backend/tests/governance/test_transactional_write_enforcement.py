@@ -76,6 +76,9 @@ def _build_line(
     counted_qty: float,
     idempotency_key: str,
     version: int = 1,
+    floor_no: str = "FLOOR-1",
+    rack_no: str = "RACK-1",
+    barcode: str | None = None,
 ) -> dict:
     now = _utc_now()
     return {
@@ -84,8 +87,9 @@ def _build_line(
         "location_id": "LOC-1",
         "floor_id": "FLOOR-1",
         "rack_id": "RACK-1",
-        "floor_no": "FLOOR-1",
-        "rack_no": "RACK-1",
+        "floor_no": floor_no,
+        "rack_no": rack_no,
+        "barcode": barcode,
         "item_code": item_code,
         "counted_qty": counted_qty,
         "idempotency_key": idempotency_key,
@@ -209,6 +213,61 @@ async def test_semantic_hash_duplicate_is_rejected():
         )
 
     assert await db.count_lines.count_documents({}) == 1
+
+
+@pytest.mark.asyncio
+async def test_same_item_and_qty_on_a_different_rack_is_not_a_semantic_duplicate():
+    """One SKU counted on two racks is two physical counts, not a duplicate."""
+    db = InMemoryDatabase()
+    await _seed_active_session(db, "sess-rack")
+    await _seed_session_snapshot(db, "sess-rack", item_code="ITEM-RACK", stock_qty=12.0)
+    service = CountLineWriteService(db)
+
+    for index, (floor_no, rack_no) in enumerate((("FLOOR-1", "RACK-1"), ("FLOOR-2", "RACK-9"))):
+        await service.process_write(
+            {
+                "operation": "insert_one",
+                "document": _build_line(
+                    line_id=f"line-rack-{index}",
+                    session_id="sess-rack",
+                    item_code="ITEM-RACK",
+                    counted_qty=1.0,
+                    idempotency_key=f"idem-rack-{index}",
+                    floor_no=floor_no,
+                    rack_no=rack_no,
+                ),
+            },
+            context={"username": "tester", "enforce_snapshot": False},
+        )
+
+    assert await db.count_lines.count_documents({}) == 2
+
+
+@pytest.mark.asyncio
+async def test_same_item_and_qty_with_a_different_barcode_is_not_a_semantic_duplicate():
+    """Two batches of one SKU counted at the same quantity are two counts."""
+    db = InMemoryDatabase()
+    await _seed_active_session(db, "sess-batch")
+    await _seed_session_snapshot(db, "sess-batch", item_code="ITEM-BATCH", stock_qty=12.0)
+    service = CountLineWriteService(db)
+
+    for index, barcode in enumerate(("BATCH-A", "BATCH-B")):
+        await service.process_write(
+            {
+                "operation": "insert_one",
+                "document": _build_line(
+                    line_id=f"line-batch-{index}",
+                    session_id="sess-batch",
+                    item_code="ITEM-BATCH",
+                    counted_qty=1.0,
+                    idempotency_key=f"idem-batch-{index}",
+                    barcode=barcode,
+                ),
+            },
+            context={"username": "tester", "enforce_snapshot": False},
+        )
+
+    assert await db.count_lines.count_documents({}) == 2
 
 
 @pytest.mark.asyncio

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import { View, ScrollView, ActivityIndicator, Alert, RefreshControl, Text } from "react-native";
+import { View, ScrollView, ActivityIndicator, Alert, RefreshControl, Text, Keyboard } from "react-native";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useCameraPermissions } from "../../src/services/device/expoCamera";
@@ -107,6 +107,8 @@ const ScanScreen = React.memo(function ScanScreen() {
     loadRecentItems,
     handleLookup,
     handleSelectLookupItem,
+    loadMoreSearchResults,
+    hasMoreSearchResults,
   } = useScanLookup({
     sessionId,
     offlineMode,
@@ -318,7 +320,14 @@ const ScanScreen = React.memo(function ScanScreen() {
             if (scannerVibration) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }
-            handleLookup(searchQuery.trim());
+            
+            // If the search looks exactly like a numeric barcode, look it up.
+            // Otherwise, just dismiss the keyboard to show the results list without selecting.
+            if (/^\d{6,}$/.test(searchQuery.trim())) {
+              handleLookup(searchQuery.trim());
+            } else {
+              Keyboard.dismiss();
+            }
           }}
           onRetryNotice={() => {
             const code = lastLookupBarcode || searchQuery.trim();
@@ -326,6 +335,8 @@ const ScanScreen = React.memo(function ScanScreen() {
               handleLookup(code);
             }
           }}
+          hasMore={hasMoreSearchResults}
+          onLoadMore={loadMoreSearchResults}
         />
 
         <View style={styles.footerSpacer} />

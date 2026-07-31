@@ -7,14 +7,10 @@
  * - Loading states with spinners
  * - Icon support (left/right)
  * - Full accessibility support
- * - Gradient support
- * - Glassmorphism variant
  */
 
 import React from "react";
-import { Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle, Platform, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
+import { Text, ActivityIndicator, ViewStyle, TextStyle, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Animated, {
   useSharedValue,
@@ -47,9 +43,7 @@ export type ButtonVariant =
   | "secondary"
   | "outline"
   | "ghost"
-  | "danger"
-  | "glass"
-  | "gradient";
+  | "danger";
 export type ButtonSize = "small" | "medium" | "large";
 
 interface ModernButtonProps {
@@ -64,7 +58,6 @@ interface ModernButtonProps {
   fullWidth?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
-  gradientColors?: string[];
   testID?: string;
   accessibilityLabel?: string;
   accessibilityHint?: string;
@@ -82,7 +75,6 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
   fullWidth = false,
   style,
   textStyle,
-  gradientColors,
   testID,
   accessibilityLabel,
   accessibilityHint,
@@ -177,12 +169,6 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
         borderWidth: 1,
         borderColor: dangerBackground,
       },
-      glass: {
-        backgroundColor: "transparent",
-      },
-      gradient: {
-        backgroundColor: "transparent",
-      },
     };
 
     return {
@@ -204,8 +190,6 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
       outline: bodyText,
       ghost: accentText,
       danger: colors.white,
-      glass: bodyText,
-      gradient: colors.white,
     };
 
     return {
@@ -219,7 +203,6 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     if (variant === "outline") return bodyText;
     if (variant === "ghost") return accentText;
     if (variant === "secondary") return secondaryText;
-    if (variant === "glass") return bodyText;
     return primaryText;
   };
 
@@ -318,81 +301,8 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
       },
     };
 
-    if (variant === "gradient") {
-      const colors =
-        gradientColors || (theme ? theme.gradients.primary : modernColors.gradients.primary);
-      return (
-        <Component {...props}>
-          <LinearGradient
-            colors={colors as unknown as readonly [string, string, ...string[]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.gradient}
-          >
-            {renderContent()}
-          </LinearGradient>
-        </Component>
-      );
-    }
-
-    if (variant === "glass") {
-      return (
-        <Component {...props}>
-          {isWeb ? (
-            <View
-              style={[
-                styles.blur,
-                {
-                  backgroundColor:
-                    themedColors?.glass ??
-                    (theme?.isDark ? "rgba(22, 27, 34, 0.85)" : "rgba(255, 255, 255, 0.85)"),
-                  borderColor: surfaceBorder,
-                },
-              ]}
-            >
-              {renderContent()}
-            </View>
-          ) : (
-            <BlurView intensity={20} tint="dark" style={styles.blur}>
-              {renderContent()}
-            </BlurView>
-          )}
-        </Component>
-      );
-    }
-
     return <Component {...props}>{renderContent()}</Component>;
   };
 
   return renderButton();
 };
-
-const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-    borderRadius: radius.sm,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-    minHeight: "100%",
-    width: "100%",
-  },
-  blur: {
-    flex: 1,
-    borderRadius: radius.sm,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-    minHeight: "100%",
-    width: "100%",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
-  },
-});
-
-
-

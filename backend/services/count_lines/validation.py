@@ -75,10 +75,22 @@ def _resolve_unit_price(item: dict[str, Any]) -> float:
 
 
 def _build_semantic_hash(document: dict[str, Any]) -> str:
+    """Fingerprint the logical identity of a count line.
+
+    Two writes that hash the same are treated as the same logical count and the
+    second is rejected. The fingerprint therefore has to carry every dimension a
+    counter can legitimately vary while counting the same item in the same
+    session: the physical location (a SKU counted on two racks is two counts) and
+    the batch/variant barcode (two batches of one SKU are two counts). Omitting
+    either collapses distinct physical counts into a false duplicate.
+    """
     payload = {
         "session_id": str(document.get("session_id") or ""),
         "item_id": str(document.get("item_code") or document.get("item_id") or ""),
         "location_id": str(document.get("location_id") or ""),
+        "floor_no": str(document.get("floor_no") or document.get("floor_id") or ""),
+        "rack_no": str(document.get("rack_no") or document.get("rack_id") or ""),
+        "barcode": str(document.get("barcode") or ""),
         "counted_qty": _as_float(document.get("counted_qty")),
         "version": int(document.get("version", 1) or 1),
     }

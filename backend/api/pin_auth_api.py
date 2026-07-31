@@ -9,11 +9,10 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
 from backend.api.auth import (
-    check_rate_limit,
     find_user_by_username,
     generate_auth_tokens,
-    reset_rate_limit,
 )
+from backend.auth.rate_limiter import check_auth_rate_limits, record_auth_failure, reset_auth_limits
 from backend.auth.dependencies import get_current_user
 from backend.db.runtime import get_db
 from backend.services.pin_auth_service import PINAuthService
@@ -69,18 +68,14 @@ async def login_with_pin(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Login with PIN."""
-    # Rate limit login attempts by IP
     ip_address = http_request.client.host if http_request and http_request.client else "unknown"
-    rate_result = await check_rate_limit(ip_address)
-    if rate_result.is_err:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=str(rate_result._error),
-        )
+    # Rate limit login attempts by IP and identifier
+    await check_auth_rate_limits(http_request, request.username)
 
     # Find user and validate status
     user_result = await find_user_by_username(request.username)
     if user_result.is_err:
+        await record_auth_failure(http_request, request.username)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
@@ -96,6 +91,7 @@ async def login_with_pin(
     is_valid = await pin_service.verify_pin(str(user["_id"]), request.pin)
 
     if not is_valid:
+        await record_auth_failure(http_request, request.username)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid PIN",
@@ -112,7 +108,7 @@ async def login_with_pin(
 
     # Reset rate limit for successful PIN login
     try:
-        await reset_rate_limit(ip_address)
+        await reset_auth_limits(http_request, request.username)
     except Exception:
         # Non-fatal: login already succeeded; stale rate-limit state expires on its own
         logger.debug("Failed to reset rate limit after PIN login", exc_info=True)

@@ -60,6 +60,29 @@ frontend-lint:
     - if: $CI_COMMIT_BRANCH == "main"
 
 # ==========================================
+# Frontend Governance & Dead-Code Guard
+# ==========================================
+frontend-quality:
+  stage: lint
+  image: node:22-bookworm-slim
+  cache:
+    key: frontend-npm
+    paths:
+      - .cache/npm
+      - frontend/node_modules
+  before_script:
+    - cd frontend
+    - npm ci --cache ../.cache/npm --legacy-peer-deps
+  script:
+    - echo "Running full strict UI governance scan..."
+    - npm run governance:ui:strict
+    - echo "Running knip dead-code / unused-dependency detection..."
+    - npm run knip:check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ==========================================
 # Backend Tests
 # ==========================================
 backend-tests:
@@ -107,6 +130,29 @@ frontend-tests:
     - npm ci --cache ../.cache/npm --legacy-peer-deps
   script:
     - npm test -- --coverage --watchAll=false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ==========================================
+# Frontend Bundle Regression Guard
+# ==========================================
+frontend-bundle-guard:
+  stage: build
+  image: node:22-bookworm-slim
+  cache:
+    key: frontend-npm
+    paths:
+      - .cache/npm
+      - frontend/node_modules
+  before_script:
+    - cd frontend
+    - npm ci --cache ../.cache/npm --legacy-peer-deps
+  script:
+    - echo "Building web bundle..."
+    - npm run build:web
+    - echo "Running bundle regression guard..."
+    - npm run bundle:web:guard
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"

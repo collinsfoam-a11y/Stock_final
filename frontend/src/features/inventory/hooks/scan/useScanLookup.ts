@@ -8,9 +8,10 @@ import { useSafeAsync } from "../../../../hooks/useSafeAsync";
 import { localDb } from "../../../../db/localDb";
 import {
   getItemByBarcode,
-  searchItems,
+  searchItemsOptimized,
   checkItemScanStatus,
 } from "../../../../services/api/api";
+import { searchItemsSemantic } from "../../../../services/api/inventoryWorkflowApi";
 import { RecentItemsService } from "../../../../services/enhancedFeatures";
 import { playScanSound } from "../../../../services/scanSoundService";
 import { toastService } from "../../../../services/toastService";
@@ -46,6 +47,8 @@ export function useScanLookup({
   const [lastLookupBarcode, setLastLookupBarcode] = useState("");
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [searchPage, setSearchPage] = useState(1);
+  const [hasMoreSearchResults, setHasMoreSearchResults] = useState(false);
 
   // Guard for item selection
   const selectInFlightRef = useRef(false);
@@ -62,21 +65,41 @@ export function useScanLookup({
   }, [safeAsync, safeSetState]);
 
   const performSearch = useCallback(
-    async (query: string) => {
+    async (query: string, page = 1, append = false) => {
       try {
         if (offlineMode) {
-          const localResults = await safeAsync(() => localDb.searchItems(query)) as any;
+          const localResults = (await safeAsync(() => localDb.searchItems(query))) as any;
           if (localResults) {
             safeSetState(setSearchResults, dedupeItemsKeepingHighestStock(localResults));
+            safeSetState(setHasMoreSearchResults, false);
           }
           return;
         }
 
-        const results = await safeAsync(() => searchItems(query)) as any;
-        if (results) {
-          const items = Array.isArray(results.items) ? results.items : [];
-          safeSetState(setSearchResults, dedupeItemsKeepingHighestStock(items));
+        const fetchTasks: Array<Promise<any>> = [safeAsync(() => searchItemsOptimized(query, page, 20))];
+        if (page === 1) {
+          fetchTasks.push(safeAsync(() => searchItemsSemantic(query, 10)));
         }
+
+        const [fuzzyResult, semanticResult] = await Promise.all(fetchTasks);
+
+        let items: any[] = [];
+        if (fuzzyResult) {
+          items = Array.isArray((fuzzyResult as any).items) ? (fuzzyResult as any).items : [];
+          safeSetState(setHasMoreSearchResults, Boolean((fuzzyResult as any).hasMore));
+        }
+
+        if (page === 1 && semanticResult) {
+          items = [...(semanticResult as any[]), ...items];
+        }
+
+        safeSetState(
+          setSearchResults,
+          (prev: any[]) => {
+            const combined = append ? [...prev, ...items] : items;
+            return dedupeItemsKeepingHighestStock(combined);
+          }
+        );
       } catch (error) {
         console.error("Search failed", error);
       }
@@ -84,11 +107,20 @@ export function useScanLookup({
     [offlineMode, safeAsync, safeSetState]
   );
 
+  const loadMoreSearchResults = useCallback(() => {
+    if (!hasMoreSearchResults || loading || !debouncedSearchQuery.trim()) return;
+    const nextPage = searchPage + 1;
+    safeSetState(setSearchPage, nextPage);
+    performSearch(debouncedSearchQuery, nextPage, true);
+  }, [hasMoreSearchResults, loading, debouncedSearchQuery, searchPage, performSearch, safeSetState]);
+
   useEffect(() => {
     if (debouncedSearchQuery.trim().length > 2) {
-      performSearch(debouncedSearchQuery);
+      safeSetState(setSearchPage, 1);
+      performSearch(debouncedSearchQuery, 1, false);
     } else {
       safeSetState(setSearchResults, []);
+      safeSetState(setHasMoreSearchResults, false);
     }
   }, [debouncedSearchQuery, performSearch, safeSetState]);
 
@@ -273,5 +305,7 @@ export function useScanLookup({
     loadRecentItems,
     handleLookup,
     handleSelectLookupItem,
+    hasMoreSearchResults,
+    loadMoreSearchResults,
   };
 }

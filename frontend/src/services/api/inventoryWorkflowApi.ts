@@ -978,7 +978,10 @@ export const createCountLine = async (
         isOnline: isOnline(),
         isOfflineSession,
       });
-      return await submitCountLineCommand(countData);
+      // Must carry the idempotency key: the control-plane command path POSTs this
+      // payload verbatim once connectivity returns, and without a key the server's
+      // idempotent-replay guard cannot match a resubmission to the original line.
+      return await submitCountLineCommand(countDataWithIdempotency);
     }
 
     log.debug("Online mode - creating count line via API");

@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import { createLogger } from "./logging";
+import { getAppVersion } from "../core/config/appVersion";
 
 export interface CaptureContext {
   context?: string;
@@ -18,8 +19,6 @@ interface SentryRuntimeConfig {
 let runtimeConfig: SentryRuntimeConfig | null = null;
 let initAttempted = false;
 const log = createLogger("sentry");
-
-const getAppVersion = (): string => Constants.expoConfig?.version || "0.0.0";
 
 const normalizeRelease = (): string => {
   const appVersion = getAppVersion();

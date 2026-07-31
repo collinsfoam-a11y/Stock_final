@@ -14,7 +14,7 @@ init_enrichment_api: Optional[Any] = None
 enrichment_router: Optional[Any] = None
 
 # Constants
-ENTERPRISE_AVAILABLE = False
+ENTERPRISE_AVAILABLE: bool = False
 
 # Core Services
 db: Optional[Any] = None
@@ -28,6 +28,9 @@ batch_operations: Optional[Any] = None
 migration_manager: Optional[Any] = None
 websocket_manager: Optional[Any] = None
 sql_server_pool: Optional[Any] = None
+pwd_context: Optional[Any] = None
+secret_key: Optional[Any] = None
+algorithm: Optional[Any] = None
 
 # Enterprise Services (previously app.state)
 enterprise_audit_service: Optional[Any] = None

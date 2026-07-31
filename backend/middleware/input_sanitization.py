@@ -151,9 +151,30 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
             return response
 
         # Check request body (if JSON)
-        response = await self._sanitize_json_body(request, request_id)
-        if response:
-            return response
+        if self.sanitize_json and request.method in ["POST", "PUT", "PATCH"]:
+            content_type = request.headers.get("content-type", "")
+            if "application/json" in content_type:
+                content_length = request.headers.get("content-length")
+                # Only cache and sanitize if body is <= 1MB
+                if not content_length or int(content_length) <= 1024 * 1024:
+                    try:
+                        body_bytes = await request.body()
+                        
+                        async def cached_receive():
+                            return {"type": "http.request", "body": body_bytes, "more_body": False}
+                        
+                        request = Request(request.scope, cached_receive)
+                        
+                        response = await self._sanitize_json_body(request, request_id)
+                        if response:
+                            return response
+                    except Exception as e:
+                        logger.warning(
+                            "Failed to process request body for sanitization [Request-ID: %s]: %s",
+                            request_id, e
+                        )
+                else:
+                    logger.debug("Request body too large for sanitization [Request-ID: %s]", request_id)
 
         # Check headers if enabled
         response = self._sanitize_headers(request, request_id)

@@ -31,4 +31,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-from backend.app_factory import db

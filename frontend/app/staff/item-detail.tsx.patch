@@ -1,0 +1,133 @@
+--- frontend/app/staff/item-detail.tsx
++++ frontend/app/staff/item-detail.tsx
+@@ -49,6 +49,10 @@
+ import { AppTouchable } from "@/components/ui/AppTouchable";
++import { BatchVariantData } from "@/components/scan/BatchVariantsSection";
++import { createCountLine } from "@/services/api/api";
++import { toastService } from "@/services/toastService";
++import * as Haptics from "expo-haptics";
+ 
+ const formatMetricNumber = (value: number | undefined | null): string => {
+@@ -109,6 +113,9 @@
+   const [quantity, setQuantity] = useState("0");
+   const [mrp, setMrp] = useState("");
+   const [condition] = useState("Good");
++  const [batchCounts, setBatchCounts] = useState<Record<string, string>>({});
++  const [newBatches, setNewBatches] = useState<BatchVariantData[]>([]);
++
+   const styles = useMemo(
+     () => createItemDetailStyles(uiTokens, insets.bottom),
+@@ -118,6 +125,8 @@
+   const handleBackPress = useCallback(() => {
++    setBatchCounts({});
++    setNewBatches([]);
+     safeBackNavigation(router, {
+       sessionFallbackHref: normalizedSessionId
+         ? `/staff/scan?sessionId=${encodeURIComponent(normalizedSessionId)}`
+@@ -257,6 +266,74 @@
+     resetSerialState,
+   ]);
+ 
++  const handleBatchCountChange = useCallback((batchBarcode: string, qty: string) => {
++    setBatchCounts((prev) => ({ ...prev, [batchBarcode]: qty }));
++  }, []);
++
++  const handleAddNewBatch = useCallback((batch: BatchVariantData) => {
++    setNewBatches((prev) => [...prev, batch]);
++  }, []);
++
++  const handleRemoveNewBatch = useCallback((index: number) => {
++    setNewBatches((prev) => prev.filter((_, i) => i !== index));
++  }, []);
++
++  const handleNewBatchCountChange = useCallback((index: number, qty: string) => {
++    setNewBatches((prev) => {
++      const updated = [...prev];
++      updated[index] = { ...updated[index], quantity: qty };
++      return updated;
++    });
++  }, []);
++
++  const hasBulkEntries = useMemo(() => {
++    const hasExistingBatchQty = Object.values(batchCounts).some((qty) => parseFloat(qty) > 0);
++    const hasNewBatchQty = newBatches.some((b) => parseFloat(b.quantity) > 0);
++    return hasExistingBatchQty || hasNewBatchQty;
++  }, [batchCounts, newBatches]);
++
+   const { submitting, submitCountdown, handleSubmitPress, cancelSubmit } =
+     useDeferredItemSubmission({
+       barcode: displayBarcode,
+@@ -290,7 +367,49 @@
+       recountTargetId,
+       blindRecountRequired,
+       recountBlockedReason,
+-      onSuccess: handleBackPress,
++      onSuccess: async () => {
++        if (!hasBulkEntries) {
++          handleBackPress();
++          return;
++        }
++        try {
++          // Submit bulk entries
++          const bulkPromises = [];
++          for (const [batchBarcode, qty] of Object.entries(batchCounts)) {
++            if (parseFloat(qty) > 0 && item) {
++              bulkPromises.push(createCountLine({
++                session_id: normalizedSessionId,
++                item_code: item.item_code || "",
++                item_name: item.item_name || item.name || "",
++                counted_qty: parseFloat(qty),
++                item_condition: condition,
++                floor_no: currentFloor || "Unknown",
++                rack_no: currentRack || "Unknown",
++                remark: "bulk-batch-entry",
++                // It's crucial we send the batch's barcode to identify it
++                barcode: batchBarcode,
++              }));
++            }
++          }
++          for (const newBatch of newBatches) {
++            if (parseFloat(newBatch.quantity) > 0 && item) {
++              bulkPromises.push(createCountLine({
++                session_id: normalizedSessionId,
++                item_code: item.item_code || "",
++                item_name: item.item_name || item.name || "",
++                counted_qty: parseFloat(newBatch.quantity),
++                item_condition: condition,
++                floor_no: currentFloor || "Unknown",
++                rack_no: currentRack || "Unknown",
++                remark: "bulk-new-batch-entry",
++                mrp_counted: parseFloat(newBatch.mrp.toString()) || 0,
++                barcode: newBatch.barcode,
++              }));
++            }
++          }
++          await Promise.all(bulkPromises);
++          handleBackPress();
++        } catch (e) {
++          console.error("Failed to submit bulk batches:", e);
++          toastService.show("Some batches failed to submit.", { type: "error" });
++        }
++      },
+     });
+   useItemDraftAutosave({
+@@ -583,11 +702,10 @@
+                     error={batchError}
+                     showZeroStock={showZeroStock}
+                     onToggleShowZeroStock={setShowZeroStock}
+-                    onSelectVariant={(variantBarcode) => {
+-                      router.replace({
+-                        pathname: "/staff/item-detail",
+-                        params: normalizedSessionId
+-                          ? { barcode: variantBarcode, sessionId: normalizedSessionId }
+-                          : { barcode: variantBarcode },
+-                      });
+-                    }}
++                    batchCounts={batchCounts}
++                    onBatchCountChange={handleBatchCountChange}
++                    newBatches={newBatches}
++                    onAddNewBatch={handleAddNewBatch}
++                    onRemoveNewBatch={handleRemoveNewBatch}
++                    onNewBatchCountChange={handleNewBatchCountChange}
+                   />
+                 </>

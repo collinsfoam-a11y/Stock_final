@@ -37,6 +37,9 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   const debounceDelay = useSettingsStore((state) => state.settings.debounceDelay);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -48,6 +51,8 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
     async (searchQuery: string) => {
       if (!searchQuery || searchQuery.trim().length < minChars) {
         setResults([]);
+        setPage(1);
+        setHasMore(false);
         setShowDropdown(false);
         setIsSearching(false);
         return;
@@ -57,34 +62,57 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
       setShowDropdown(true);
 
       try {
-        const response = offlineMode
-          ? {
-              items: (await localDb.searchItems(searchQuery)).map(
-                (item): SearchResult => ({
-                  id: String(item.id || item.item_code || item.barcode || ""),
-                  item_code: String(item.item_code || item.barcode || ""),
-                  name: String(item.item_name || item.name || ""),
-                  item_name: typeof item.item_name === "string" ? item.item_name : item.name,
-                  barcode: typeof item.barcode === "string" ? item.barcode : undefined,
-                  category: typeof item.category === "string" ? item.category : undefined,
-                  stock_qty: typeof item.stock_qty === "number" ? item.stock_qty : 0,
-                  mrp: typeof item.mrp === "number" ? item.mrp : undefined,
-                  matchType: "partial",
-                })
-              ),
-            }
-          : await searchItems({ query: searchQuery });
-        setResults(response.items);
+        if (offlineMode) {
+          const offlineItems = await localDb.searchItems(searchQuery);
+          setResults(
+            offlineItems.map((item): SearchResult => ({
+              id: String(item.id || item.item_code || item.barcode || ""),
+              item_code: String(item.item_code || item.barcode || ""),
+              name: String(item.item_name || item.name || ""),
+              item_name: typeof item.item_name === "string" ? item.item_name : item.name,
+              barcode: typeof item.barcode === "string" ? item.barcode : undefined,
+              category: typeof item.category === "string" ? item.category : undefined,
+              stock_qty: typeof item.stock_qty === "number" ? item.stock_qty : 0,
+              mrp: typeof item.mrp === "number" ? item.mrp : undefined,
+              matchType: "partial",
+            }))
+          );
+          setPage(1);
+          setHasMore(false);
+        } else {
+          const response = await searchItems({ query: searchQuery }, 1, 20);
+          setResults(response.items || []);
+          setPage(response.page || 1);
+          setHasMore((response.page || 1) < (response.totalPages || 1));
+        }
         setSelectedIndex(-1);
       } catch (error) {
         __DEV__ && console.error("Search error:", error);
         setResults([]);
+        setHasMore(false);
       } finally {
         setIsSearching(false);
       }
     },
     [minChars, offlineMode]
   );
+
+  const loadMore = React.useCallback(async () => {
+    if (isLoadingMore || !hasMore || offlineMode) return;
+    
+    setIsLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const response = await searchItems({ query }, nextPage, 20);
+      setResults(prev => [...prev, ...(response.items || [])]);
+      setPage(response.page || nextPage);
+      setHasMore((response.page || nextPage) < (response.totalPages || 1));
+    } catch (error) {
+      __DEV__ && console.error("Load more error:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMore, offlineMode, query, page]);
 
   // Debounced search using stable hook
   const debouncedSearch = useStableDebouncedCallback(performSearch, debounceDelay);
@@ -336,6 +364,23 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                 maxToRenderPerBatch={10}
                 windowSize={5}
                 showsVerticalScrollIndicator={true}
+                ListFooterComponent={
+                  hasMore ? (
+                    <AppTouchable
+                      style={styles.loadMoreButton}
+                      onPress={loadMore}
+                      disabled={isLoadingMore}
+                    >
+                      {isLoadingMore ? (
+                        <ActivityIndicator size="small" color={theme.colors.primary} />
+                      ) : (
+                        <Text style={[styles.loadMoreText, { color: theme.colors.primary }]}>
+                          Load More Results...
+                        </Text>
+                      )}
+                    </AppTouchable>
+                  ) : null
+                }
               />
             </>
           ) : query.trim().length >= minChars ? (
@@ -539,5 +584,17 @@ const styles = StyleSheet.create({
   minCharsText: {
     fontSize: 14,
     fontStyle: "italic",
+  },
+  loadMoreButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.05)",
+  },
+  loadMoreText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
 });
