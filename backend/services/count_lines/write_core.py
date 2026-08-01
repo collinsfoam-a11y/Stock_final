@@ -383,6 +383,36 @@ class CountLineWriteCoreMixin(CountLineServiceBase):
                         )
                     )
 
+        if operation == "find_one_and_update":
+            filter_query = payload.get("filter")
+            update_doc = payload.get("update")
+            if not isinstance(filter_query, dict) or not isinstance(update_doc, dict):
+                raise ValueError("find_one_and_update payload requires 'filter' and 'update' dictionaries")
+            upsert = bool(payload.get("upsert", False))
+            return_document = payload.get("return_document", False)
+            try:
+                from pymongo import ReturnDocument
+                ret_doc = ReturnDocument.AFTER if return_document else ReturnDocument.BEFORE
+            except ImportError:
+                ret_doc = True if return_document else False
+                
+            return await self._execute_authorized_write(
+                lambda: collection.find_one_and_update(
+                    filter_query, 
+                    update_doc, 
+                    upsert=upsert, 
+                    return_document=ret_doc,
+                    **kwargs
+                )
+            )
+        if operation == "bulk_write":
+            requests_list = payload.get("requests")
+            if not isinstance(requests_list, list):
+                raise ValueError("bulk_write payload requires 'requests' list")
+            return await self._execute_authorized_write(
+                lambda: collection.bulk_write(requests_list, **kwargs)
+            )
+
         if operation == "update_many":
             filter_query = payload.get("filter")
             update_doc = payload.get("update")
@@ -434,6 +464,7 @@ class CountLineWriteCoreMixin(CountLineServiceBase):
             "insert_one",
             "update_one",
             "update_many",
+            "find_one_and_update",
             "delete_one",
             "delete_many",
         }:

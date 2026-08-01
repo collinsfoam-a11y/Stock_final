@@ -361,6 +361,40 @@ class InMemoryCollection:
 
         return UpdateResult(matched_count=0, modified_count=0)
 
+    async def find_one_and_update(
+        self,
+        filter: dict[str, Optional[Any]],
+        update: dict[str, Any],
+        upsert: bool = False,
+        return_document: Any = False,
+        *args,
+        **kwargs,
+    ) -> Optional[dict[str, Any]]:
+        # Find document
+        for doc in self._documents:
+            if _match_filter(doc, filter):
+                # We need to return before or after depending on return_document
+                # ReturnDocument.BEFORE is False, ReturnDocument.AFTER is True in PyMongo usually
+                # Our ret_doc variable is passed as a boolean or enum
+                doc_before = copy.deepcopy(doc)
+                _apply_update(doc, update)
+                return copy.deepcopy(doc) if return_document else doc_before
+
+        if upsert:
+            new_doc: dict[str, Any] = {}
+            if filter:
+                for key, value in filter.items():
+                    if not key.startswith("$"):
+                        new_doc[key] = value
+            set_on_insert = update.get("$setOnInsert", {})
+            new_doc.update(set_on_insert)
+            _apply_update(new_doc, update)
+            self._ensure_id(new_doc)
+            self._documents.append(new_doc)
+            return copy.deepcopy(new_doc) if return_document else None
+            
+        return None
+
     async def update_many(
         self,
         filter_query: dict[str, Optional[Any]],
@@ -376,6 +410,27 @@ class InMemoryCollection:
                 if _apply_update(doc, update):
                     modified += 1
         return UpdateResult(matched_count=matched, modified_count=modified)
+
+    async def bulk_write(self, requests: list[Any], *args, **kwargs) -> Any:
+        from pymongo import UpdateOne
+        class BulkWriteResult:
+            def __init__(self, modified_count: int, matched_count: int):
+                self.modified_count = modified_count
+                self.matched_count = matched_count
+
+        modified_count = 0
+        matched_count = 0
+        for req in requests:
+            if isinstance(req, UpdateOne):
+                filter_query = req._filter
+                update_doc = req._doc
+                for doc in self._documents:
+                    if _match_filter(doc, filter_query):
+                        matched_count += 1
+                        if _apply_update(doc, update_doc):
+                            modified_count += 1
+                        break
+        return BulkWriteResult(modified_count=modified_count, matched_count=matched_count)
 
     async def delete_one(
         self,

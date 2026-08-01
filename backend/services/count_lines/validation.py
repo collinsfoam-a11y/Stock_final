@@ -235,7 +235,7 @@ class CountLineValidationMixin(CountLineServiceBase):
                 await self.validation_service.validate_count_line(document)
             return
 
-        if operation == "update_one":
+        if operation in {"update_one", "find_one_and_update"}:
             filter_query = payload.get("filter")
             updated = None
             upserted_id = getattr(resolved_result, "upserted_id", None)
@@ -339,7 +339,7 @@ class CountLineValidationMixin(CountLineServiceBase):
             )
             return
 
-        if operation in {"update_one", "delete_one"}:
+        if operation in {"update_one", "find_one_and_update", "delete_one"}:
             filter_query = payload.get("filter")
             if not isinstance(filter_query, dict):
                 raise GovernanceViolation("CRITICAL: Missing filter for single-document mutation")
@@ -350,7 +350,7 @@ class CountLineValidationMixin(CountLineServiceBase):
                 raise GovernanceViolation("CRITICAL: Count line not found for guarded mutation")
 
             merged_document = dict(existing)
-            if operation == "update_one":
+            if operation in {"update_one", "find_one_and_update"}:
                 update_doc = payload.get("update")
                 if isinstance(update_doc, dict):
                     _apply_update_document_to_merged(merged_document, update_doc)

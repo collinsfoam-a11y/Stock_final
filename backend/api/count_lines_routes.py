@@ -7,7 +7,7 @@ from typing import Any, NoReturn, Optional
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pymongo.errors import DuplicateKeyError
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.api.schemas import BulkCountLineUpdate, CountLineCreate
 from backend.auth.dependencies import get_current_user
@@ -41,6 +41,7 @@ from backend.core.uow import MongoUnitOfWork
 from backend.services.read_router import InventoryReadRouter, ProjectionReadError
 from backend.services.variant_service import VariantService
 from backend.utils.api_utils import sanitize_for_logging
+from backend.models.base import StrictBaseModel
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -67,28 +68,28 @@ def _raise_count_lines_internal_error(detail: str, exc: Exception) -> NoReturn:
     raise HTTPException(status_code=500, detail=detail) from exc
 
 
-class CountLineApprovalRequest(BaseModel):
+class CountLineApprovalRequest(StrictBaseModel):
     """Optional metadata for approving a count line."""
 
     notes: Optional[str] = None
 
 
-class CountLineRejectRequest(BaseModel):
+class CountLineRejectRequest(StrictBaseModel):
     """Optional metadata for requesting a recount."""
 
     notes: Optional[str] = None
     assign_to: Optional[str] = None
 
 
-class AddQuantityRequest(BaseModel):
+class AddQuantityRequest(StrictBaseModel):
     """Payload for incrementing quantity on an existing count line."""
 
     additional_qty: float
     batches: Optional[list[dict[str, Any]]] = None
 
 
-class CountLineUpdateRequest(BaseModel):
-    """Minimal update payload for a count line (used by bulk update tooling)."""
+class CountLineUpdateRequest(StrictBaseModel):
+    """Minimal update payload for a count line (used by bulk tooling)."""
 
     counted_qty: Optional[float] = None
     batches: Optional[list[dict[str, Any]]] = None
@@ -1472,6 +1473,8 @@ async def get_count_lines(
     lines_cursor = db_client.count_lines.find({"session_id": session_id}, {"_id": 0}).sort(
         "counted_at", -1
     )
+    if hasattr(lines_cursor, "limit"):
+        lines_cursor = lines_cursor.limit(10000)
 
     total = 0
     skip = (page - 1) * page_size
@@ -1825,9 +1828,18 @@ async def check_item_counted(
     """Check if an item has already been counted in the session"""
     db = _get_db_client()
     try:
+        session = await find_session(db, session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+            
+        if current_user.get("role") == "staff":
+            allowed = {session.get("created_by")} | set(session.get("participants", []))
+            if current_user.get("username") not in allowed:
+                raise HTTPException(status_code=403, detail="Not authorized for this session")
+
         # Find all count lines for this item in this session
         cursor = db.count_lines.find({"session_id": session_id, "item_code": item_code})
-        count_lines = await cursor.to_list(length=None)
+        count_lines = await cursor.to_list(length=1000)
 
         # Convert ObjectId to string
         for line in count_lines:
@@ -1984,22 +1996,32 @@ async def add_quantity_to_count_line(
     ) != current_user.get("username"):
         raise HTTPException(status_code=403, detail="Not authorized to modify this count line")
 
-    old_counted_qty = float(count_line.get("counted_qty") or 0)
-    new_counted_qty = old_counted_qty + float(payload.additional_qty)
     erp_item = await _get_erp_item_for_existing_count_line(db, count_line)
-    update_data = {
-        "counted_qty": new_counted_qty,
+    
+    set_data = {
         "updated_at": _current_timestamp(),
         "updated_by": current_user.get("username"),
     }
     if payload.batches is not None:
-        update_data["batches"] = payload.batches
+        set_data["batches"] = payload.batches
+
+    filter_doc = {"_id": count_line["_id"]}
+    if "version" in count_line:
+        filter_doc["version"] = count_line["version"]
 
     update_result = await write_service.process_write(
         {
-            "operation": "update_one",
-            "filter": {"_id": count_line["_id"]},
-            "update": {"$set": update_data},
+            "operation": "find_one_and_update",
+            "filter": filter_doc,
+            "update": {
+                "$inc": {
+                    "counted_qty": float(payload.additional_qty),
+                    "variance": float(payload.additional_qty),
+                    "version": 1,
+                },
+                "$set": set_data,
+            },
+            "return_document": True
         },
         context={
             "session": session,
@@ -2010,8 +2032,8 @@ async def add_quantity_to_count_line(
             "location": str(count_line.get("floor_no") or ""),
         },
     )
-    if update_result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Count line not found")
+    if not update_result:
+        raise HTTPException(status_code=409, detail="Count line was modified concurrently or not found")
 
     try:
         await _recompute_session_totals(db, str(count_line.get("session_id") or ""))
@@ -2024,14 +2046,19 @@ async def add_quantity_to_count_line(
         await _broadcast_dashboard_refresh(
             "count_line_quantity_updated",
             session_id=str(count_line.get("session_id") or ""),
-            count_line=count_line,
+            count_line=update_result,
         )
 
     return {
         "success": True,
         "message": "Quantity added successfully",
-        "data": update_data,
-        "financial_impact": update_data.get("financial_impact"),
+        "data": {
+            "counted_qty": update_result.get("counted_qty"),
+            "updated_at": update_result.get("updated_at"),
+            "updated_by": update_result.get("updated_by"),
+            "batches": update_result.get("batches")
+        },
+        "financial_impact": update_result.get("financial_impact"),
     }
 
 
@@ -2075,8 +2102,10 @@ async def update_count_line(
     if payload.counted_qty is not None:
         new_counted_qty = float(payload.counted_qty)
         erp_item = await _get_erp_item_for_existing_count_line(db, count_line)
+        erp_qty = float(erp_item.get("stock_qty") or count_line.get("erp_qty") or 0)
         update_data = {
             "counted_qty": new_counted_qty,
+            "variance": new_counted_qty - erp_qty,
             "updated_at": _current_timestamp(),
             "updated_by": current_user.get("username"),
         }
@@ -2089,11 +2118,19 @@ async def update_count_line(
     if payload.batches is not None:
         update_data["batches"] = payload.batches
 
+    filter_doc = {"_id": count_line["_id"]}
+    if "version" in count_line:
+        filter_doc["version"] = count_line["version"]
+
     update_result = await write_service.process_write(
         {
-            "operation": "update_one",
-            "filter": {"_id": count_line["_id"]},
-            "update": {"$set": update_data},
+            "operation": "find_one_and_update",
+            "filter": filter_doc,
+            "update": {
+                "$set": update_data,
+                "$inc": {"version": 1},
+            },
+            "return_document": True,
         },
         context={
             "session": session,
@@ -2104,8 +2141,8 @@ async def update_count_line(
             "location": str(count_line.get("floor_no") or ""),
         },
     )
-    if update_result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Count line not found")
+    if not update_result:
+        raise HTTPException(status_code=409, detail="Document version conflict or document not found")
 
     try:
         await _recompute_session_totals(db, str(count_line.get("session_id") or ""))
@@ -2268,12 +2305,12 @@ async def bulk_approve_count_lines(
             for candidate in candidate_lines
             if candidate.get("session_id")
         }
-        write_service = _get_count_line_write_service(db)
-        result = await write_service.process_write(
-            {
-                "operation": "update_many",
-                "filter": query,
-                "update": {
+        from pymongo import UpdateOne
+
+        updates = [
+            UpdateOne(
+                {"_id": candidate["_id"], "version": candidate.get("version")},
+                {
                     "$set": {
                         "status": "approved",
                         "approval_status": "APPROVED",
@@ -2283,8 +2320,17 @@ async def bulk_approve_count_lines(
                         "verified_by": current_user["username"],
                         "verified_at": datetime.now(timezone.utc).replace(tzinfo=None),
                         "approval_note": update_data.notes,
-                    }
+                    },
+                    "$inc": {"version": 1},
                 },
+            )
+            for candidate in candidate_lines
+        ]
+        write_service = _get_count_line_write_service(db)
+        result = await write_service.process_write(
+            {
+                "operation": "bulk_write",
+                "requests": updates,
             },
             context={
                 "candidate_lines": candidate_lines,
@@ -2311,11 +2357,12 @@ async def bulk_approve_count_lines(
         _raise_count_lines_internal_error("Failed to bulk approve count lines", e)
 
 
-class CountLineBatchCreate(BaseModel):
+class CountLineBatchCreate(StrictBaseModel):
     """Batch create payload for multiple count lines."""
+    model_config = ConfigDict(extra="forbid")
 
     session_id: str
-    lines: list[CountLineCreate]
+    lines: list[CountLineCreate] = Field(..., max_length=1000)
 
 
 @router.post("/count-lines/batch")
@@ -2325,6 +2372,9 @@ async def create_count_lines_batch(
     current_user: dict = Depends(get_current_user),
 ):
     """Create multiple count lines in a single request (batch operation)."""
+    if len(batch_data.lines) > 1000:
+        raise HTTPException(status_code=413, detail="Batch exceeds maximum of 1000 lines")
+
     db = _get_db_client()
     results = []
     errors = []
@@ -2353,6 +2403,11 @@ async def create_count_lines_batch(
                     ),
                 }
             )
+            existing = await _find_idempotent_count_line(db, enriched_line)
+            if existing:
+                results.append({"index": idx, "id": str(existing.get("id") or ""), "success": True, "idempotent": True})
+                continue
+
             (
                 count_line,
                 _counted_at,
@@ -2368,7 +2423,12 @@ async def create_count_lines_batch(
             )
             results.append({"index": idx, "id": str(count_line.get("id") or ""), "success": True})
         except Exception as e:
-            errors.append({"index": idx, "error": str(e)})
+            logger.error("Batch line %s processing failed: %s", idx, _safe_log_value(e, max_length=200))
+            errors.append({
+                "index": idx,
+                "error": "Processing failed",
+                "error_code": "LINE_PROCESSING_FAILED",
+            })
 
     await _recompute_session_totals(db, batch_data.session_id)
 
@@ -2415,12 +2475,12 @@ async def bulk_reject_count_lines(
             for candidate in candidate_lines
             if candidate.get("session_id")
         }
-        write_service = _get_count_line_write_service(db)
-        result = await write_service.process_write(
-            {
-                "operation": "update_many",
-                "filter": query,
-                "update": {
+        from pymongo import UpdateOne
+
+        updates = [
+            UpdateOne(
+                {"_id": candidate["_id"], "version": candidate.get("version")},
+                {
                     "$set": {
                         "status": "rejected",
                         "approval_status": "REJECTED",
@@ -2428,8 +2488,17 @@ async def bulk_reject_count_lines(
                         "rejected_at": datetime.now(timezone.utc).replace(tzinfo=None),
                         "verified": False,
                         "rejection_reason": update_data.notes,
-                    }
+                    },
+                    "$inc": {"version": 1},
                 },
+            )
+            for candidate in candidate_lines
+        ]
+        write_service = _get_count_line_write_service(db)
+        result = await write_service.process_write(
+            {
+                "operation": "bulk_write",
+                "requests": updates,
             },
             context={
                 "candidate_lines": candidate_lines,
@@ -2598,8 +2667,9 @@ async def get_item_batches(
         _raise_count_lines_internal_error("Failed to fetch item batches", e)
 
 
-class CountLineMergeRequest(BaseModel):
+class CountLineMergeRequest(StrictBaseModel):
     """Request to merge duplicate count lines"""
+    model_config = ConfigDict(extra="forbid")
 
     source_line_ids: list[str]
     target_line_id: str
@@ -2663,21 +2733,18 @@ async def merge_count_lines(
             continue
 
         try:
-            if payload.keep_target_qty:
-                merged_qty = target_qty + float(source_line.get("counted_qty", 0) or 0)
-            else:
-                merged_qty = float(source_line.get("counted_qty", 0) or 0) + target_qty
-
+            source_qty = float(source_line.get("counted_qty", 0) or 0)
             erp_item = await _get_erp_item_for_existing_count_line(db, target_line)
             async with MongoUnitOfWork(db.client) as uow:
-                await write_service.process_write(
+                update_result = await write_service.process_write(
                     {
-                        "operation": "update_one",
+                        "operation": "find_one_and_update",
                         "filter": {"id": payload.target_line_id},
                         "update": {
-                            "$set": {"counted_qty": merged_qty},
+                            "$inc": {"counted_qty": source_qty, "version": 1},
                             "$push": {"merged_from": source_id},
                         },
+                        "return_document": True
                     },
                     context={
                         "session": target_session,
@@ -2696,11 +2763,16 @@ async def merge_count_lines(
 
                 await write_service.process_write(
                     {
-                        "operation": "update_one",
-                        "filter": {"id": source_id},
+                        "operation": "find_one_and_update",
+                        "filter": {"id": source_id, "version": source_line.get("version")},
                         "update": {
-                            "$set": {"merged_into_id": payload.target_line_id},
+                            "$set": {
+                                "merged_into_id": payload.target_line_id,
+                                "merged_at": _current_timestamp(),
+                            },
+                            "$inc": {"version": 1},
                         },
+                        "return_document": True,
                     },
                     context={
                         "session_id": source_session_id,
@@ -2711,12 +2783,18 @@ async def merge_count_lines(
                     },
                 )
             results["merged"].append(source_id)
-            target_qty = merged_qty
-            target_line["counted_qty"] = merged_qty
+            if update_result:
+                target_qty = update_result.get("counted_qty", target_qty)
+                target_line["counted_qty"] = target_qty
             merged_count += 1
 
         except Exception as e:
-            results["failed"].append({"id": source_id, "error": str(e)})
+            logger.error("Merge failed for source line %s: %s", source_id, _safe_log_value(e, max_length=200))
+            results["failed"].append({
+                "id": source_id,
+                "error": "Merge failed",
+                "error_code": "MERGE_FAILED",
+            })
 
     if merged_count > 0 and target_session_id:
         try:

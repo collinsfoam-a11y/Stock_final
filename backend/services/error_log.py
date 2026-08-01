@@ -4,12 +4,23 @@ Tracks and stores application errors, exceptions, and system issues for monitori
 """
 
 import logging
+import re
 import traceback
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
+
+def _redact_stack_trace(trace: str) -> str:
+    """Remove potential secrets from stack traces before storage."""
+    if not trace:
+        return trace
+    # Redact env vars, tokens, passwords
+    trace = re.sub(r'(password|secret|token|key|auth)[\s]*=[\s]*[^\s]+', r'\1=***REDACTED***', trace, flags=re.I)
+    # Redact file paths (information leakage)
+    trace = re.sub(r'/Users/[^/]+/[^/]+/', r'/<REDACTED>/', trace)
+    return trace
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +62,14 @@ def _process_error_for_response(error: dict[str, Any]) -> None:
     """Process error document for API response (in-place modification)."""
     error["id"] = str(error["_id"])
     del error["_id"]
-    if error.get("stack_trace") and len(error["stack_trace"]) > 500:
-        error["stack_trace_preview"] = error["stack_trace"][:500] + "..."
+    
+    # Replace full stack_trace with preview only
+    if error.get("stack_trace"):
+        preview = error["stack_trace"][:500]
+        if len(error["stack_trace"]) > 500:
+            preview += "..."
+        error["stack_trace_preview"] = preview
+        del error["stack_trace"]  # Remove full trace from API response
 
 
 class ErrorLog(BaseModel):
@@ -142,6 +159,19 @@ class ErrorLogService:
                 try:
                     stack_trace = "".join(
                         traceback.format_exception(type(error), error, error.__traceback__)
+                    )
+                    # Redact sensitive patterns before storage
+                    stack_trace = re.sub(
+                        r'(password|secret|token|key|auth|pin|api_key)\s*[:=]\s*["\']?[^"\'\s]+',
+                        r'\1=***REDACTED***',
+                        stack_trace,
+                        flags=re.I,
+                    )
+                    # Redact user home directory paths
+                    stack_trace = re.sub(
+                        r'/Users/[^/]+/',
+                        r'/<REDACTED>/',
+                        stack_trace,
                     )
                 except Exception:
                     stack_trace = traceback.format_exc()
@@ -309,8 +339,7 @@ class ErrorLogService:
 
             error = await self.collection.find_one({"_id": ObjectId(error_id)})
             if error:
-                error["id"] = str(error["_id"])
-                del error["_id"]
+                _process_error_for_response(error)
             return error
         except Exception as e:
             logger.error(f"Failed to retrieve error: {str(e)}")

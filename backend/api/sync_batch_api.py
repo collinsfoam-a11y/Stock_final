@@ -33,6 +33,7 @@ from backend.services.session_lifecycle_service import SessionLifecycleService
 from backend.services.sync_conflicts_service import SyncConflictsService
 from backend.core.uow import MongoUnitOfWork
 from backend.services.validation_service import ValidationService
+from backend.models.base import StrictBaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -48,15 +49,13 @@ def _normalize_serial_numbers(values: list[str]) -> list[str]:
     return normalized
 
 
-class LegacySyncOperation(BaseModel):
+class LegacySyncOperation(StrictBaseModel):
     """Legacy offline queue operation structure"""
 
     id: str
     type: str
     data: dict[str, Any]
     timestamp: Optional[str] = None
-
-    model_config = ConfigDict(extra="allow")
 
 
 router = APIRouter(prefix="/api/sync", tags=["Sync"])
@@ -91,7 +90,7 @@ class SyncRecord(BaseModel):
     updated_at: str = Field(..., description="Client update timestamp")
 
 
-class BatchSyncRequest(BaseModel):
+class BatchSyncRequest(StrictBaseModel):
     """Batch sync request supporting modern records and legacy operations"""
 
     records: list[SyncRecord] = Field(
@@ -102,8 +101,6 @@ class BatchSyncRequest(BaseModel):
         description="Legacy operations array used by earlier clients",
     )
     batch_id: Optional[str] = Field(None, description="Client batch ID for tracking")
-
-    model_config = ConfigDict(extra="ignore")
 
 
 class SyncConflict(BaseModel):

@@ -174,6 +174,13 @@ class TestProjectionReadRouting:
                 "status": "pending",
             }
         )
+        await db.sessions.insert_one(
+            {
+                "id": "sess-1",
+                "created_by": "staff1",
+                "status": "OPEN",
+            }
+        )
         await db.items_snapshot.insert_one(
             {
                 "session_id": "sess-1",
@@ -225,6 +232,13 @@ class TestProjectionReadRouting:
                 "rack_no": "R1",
                 "counted_by": "staff-1",
                 "status": "pending",
+            }
+        )
+        await db.sessions.insert_one(
+            {
+                "id": "sess-1",
+                "created_by": "staff1",
+                "status": "OPEN",
             }
         )
 

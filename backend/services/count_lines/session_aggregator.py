@@ -422,14 +422,14 @@ class CountLineSessionAggregatorMixin(CountLineServiceBase):
             return sorted(session_ids)
 
         operation = str(payload.get("operation") or "").strip().lower()
-        if operation not in {"update_one", "update_many", "delete_one", "delete_many"}:
+        if operation not in {"update_one", "update_many", "find_one_and_update", "bulk_write", "delete_one", "delete_many"}:
             return []
 
         if not isinstance(filter_query, dict):
             return []
 
         projection = {"_id": 0, "session_id": 1}
-        if operation in {"update_one", "delete_one"}:
+        if operation in {"update_one", "find_one_and_update", "delete_one"}:
             try:
                 existing_result = self.db.count_lines.find_one(filter_query, projection, **kwargs)
             except TypeError:

@@ -322,6 +322,40 @@ async def save_mapping(
         if not mapping:
             raise HTTPException(status_code=400, detail="Missing mapping configuration")
 
+        # Validate query options against SQL injection
+        query_options = mapping.get("query_options") or {}
+        
+        # Denylist of dangerous SQL keywords that should never be in a mapping
+        dangerous_keywords = [
+            "EXEC", "EXECUTE", "INSERT", "UPDATE", "DELETE", "DROP", "TRUNCATE", 
+            "ALTER", "CREATE", "GRANT", "REVOKE", "MERGE", "--", ";", "UNION", "WAITFOR"
+        ]
+        
+        # Check where_clause_additions
+        where_additions = query_options.get("where_clause_additions", "")
+        if where_additions and isinstance(where_additions, str):
+            where_upper = where_additions.upper()
+            for keyword in dangerous_keywords:
+                # Basic check for keywords, with word boundaries where applicable
+                if re.search(rf"\b{keyword}\b", where_upper) or keyword in ["--", ";"]:
+                    raise HTTPException(status_code=400, detail=f"Invalid SQL keyword found in WHERE clause: {keyword}")
+            
+            # Allowlist check: only safe SQL characters permitted
+            ALLOWED_SQL_FRAGMENT = re.compile(r"^[A-Za-z0-9_\s\=\<\>\!\(\)\,\.\'\"]+$")
+            if not ALLOWED_SQL_FRAGMENT.match(where_additions):
+                raise HTTPException(status_code=400, detail="Invalid characters in WHERE clause")
+        
+        # Check join_tables
+        join_tables = query_options.get("join_tables", [])
+        if join_tables and isinstance(join_tables, list):
+            for join_clause in join_tables:
+                if not isinstance(join_clause, str):
+                    continue
+                join_upper = join_clause.upper()
+                for keyword in dangerous_keywords:
+                    if re.search(rf"\b{keyword}\b", join_upper) or keyword in ["--", ";"]:
+                        raise HTTPException(status_code=400, detail=f"Invalid SQL keyword found in JOIN clause: {keyword}")
+
         set_data: dict[str, Any] = {
             "mapping": mapping,
             "updated_at": datetime.now(),

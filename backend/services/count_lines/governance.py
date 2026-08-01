@@ -242,7 +242,7 @@ class CountLineGovernanceMixin(CountLineServiceBase):
             document = payload.get("document")
             return isinstance(document, dict) and "counted_qty" in document
 
-        if operation == "update_one":
+        if operation in {"update_one", "find_one_and_update"}:
             update_doc = payload.get("update")
             if not isinstance(update_doc, dict):
                 return False

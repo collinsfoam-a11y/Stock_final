@@ -175,7 +175,7 @@ class Settings(PydanticBaseSettings):
             normalized = v.strip().lower()
             if normalized in ("1", "true", "yes", "y", "on"):
                 return True
-            if normalized in ("0", "false", "no", "n", "off", ""):
+            if normalized in ("0", "false", "no", "n", "off", "", "release", "prod", "production"):
                 return False
             if normalized in ("debug", "info", "warn", "warning", "error", "critical"):
                 logger.warning(

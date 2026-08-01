@@ -5,6 +5,8 @@ from typing import Any, Generic, Literal, Optional, TypeVar, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from backend.models.base import StrictBaseModel
+
 T = TypeVar("T")
 
 
@@ -223,7 +225,7 @@ class RelocationStatus(str, Enum):
     IGNORED = "IGNORED"
 
 
-class CountLineCreate(BaseModel):
+class CountLineCreate(StrictBaseModel):
     session_id: str
     location_id: Optional[str] = None
     floor_id: Optional[str] = None
@@ -286,25 +288,26 @@ class CountLineCreate(BaseModel):
     @model_validator(mode="after")
     def normalize_location_context(self) -> "CountLineCreate":
         """Keep backward compatibility while preferring canonical location IDs."""
-        if self.location_id:
-            self.location_id = str(self.location_id).strip() or None
-        if self.floor_id:
-            self.floor_id = str(self.floor_id).strip() or None
-        if self.rack_id:
-            self.rack_id = str(self.rack_id).strip() or None
-        if self.floor_no:
-            self.floor_no = str(self.floor_no).strip() or None
-        if self.rack_no:
-            self.rack_no = str(self.rack_no).strip() or None
+        loc_id = str(self.location_id).strip() if self.location_id else None
+        flr_id = str(self.floor_id).strip() if self.floor_id else None
+        rck_id = str(self.rack_id).strip() if self.rack_id else None
+        flr_no = str(self.floor_no).strip() if self.floor_no else None
+        rck_no = str(self.rack_no).strip() if self.rack_no else None
 
-        if not self.floor_id and self.floor_no:
-            self.floor_id = self.floor_no
-        if not self.rack_id and self.rack_no:
-            self.rack_id = self.rack_no
+        if not flr_id and flr_no:
+            flr_id = flr_no
+        if not rck_id and rck_no:
+            rck_id = rck_no
+
+        object.__setattr__(self, "location_id", loc_id)
+        object.__setattr__(self, "floor_id", flr_id)
+        object.__setattr__(self, "rack_id", rck_id)
+        object.__setattr__(self, "floor_no", flr_no)
+        object.__setattr__(self, "rack_no", rck_no)
         return self
 
 
-class BulkCountLineUpdate(BaseModel):
+class BulkCountLineUpdate(StrictBaseModel):
     count_line_ids: list[str]
     notes: Optional[str] = None
 

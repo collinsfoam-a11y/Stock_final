@@ -110,6 +110,8 @@ async def get_error_logs(
     items = []
     async for doc in cursor:
         doc["id"] = str(doc.pop("_id"))
+        # Strip full stack traces before returning to clients
+        doc.pop("stack_trace", None)
         items.append(ErrorLogModel(**doc))
 
     return {
@@ -176,6 +178,8 @@ async def get_error_detail(
         raise HTTPException(status_code=404, detail="Error log not found")
 
     doc["id"] = str(doc.pop("_id"))
+    # Strip full stack trace before returning to client
+    doc.pop("stack_trace", None)
     return ErrorLogModel(**doc)
 
 
