@@ -558,7 +558,6 @@ async def get_item_details(
         return ApiResponse.success_response(
             data=item_response,
             message=f"Retrieved item details for {item_code}",
-            meta={"sql_verified": sql_verified_ok} if sql_verified_ok is not None else None,
         )
 
     except Exception as e:
