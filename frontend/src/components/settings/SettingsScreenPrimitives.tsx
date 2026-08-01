@@ -3,7 +3,6 @@ import {
   type KeyboardTypeOptions,
   Platform,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -14,7 +13,8 @@ import * as Haptics from "expo-haptics";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { colorWithAlpha } from "../../theme/themeTokens";
 import { AnimatedPressable } from "../ui/AnimatedPressable";
-import { ModernCard } from "../ui/ModernCard";
+import ModernCard from "../ui/ModernCard";
+import { Switch } from "../ui/Switch";
 
 type SettingsRowType = "navigation" | "action" | "switch" | "select";
 
@@ -209,12 +209,8 @@ export function SettingsActionRow({
         value={Boolean(value)}
         onValueChange={handleToggle}
         disabled={disabled}
-        trackColor={{
-          false: uiTokens.colors.border,
-          true: uiTokens.colors.accent,
-        }}
-        thumbColor={uiTokens.colors.surfaceElevated}
-        ios_backgroundColor={uiTokens.colors.border}
+        activeColor={uiTokens.colors.accent}
+        inactiveColor={uiTokens.colors.border}
       />
     ) : (
       <View style={styles.rowRight}>
