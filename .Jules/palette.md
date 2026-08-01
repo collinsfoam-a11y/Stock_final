@@ -24,3 +24,7 @@
 ## 2026-07-27 - Consistency of Core UI Toggles
 **Learning:** Mixing native `react-native` primitive inputs (like `Switch`) with custom animated design-system `Switch` components leads to visually jarring in-app inconsistencies and uncoordinated touch targets.
 **Action:** Ensure settings rows and other layout components use the shared design-system `Switch` component to maintain polished transitions, unified colors, haptic feedback, and minimum 44x44 standard touch targets.
+
+## 2026-07-28 - Screen Reader Optimization for Inline Status and Alerts
+**Learning:** Status views and inline alerts with background containers and icon components are often treated as distinct elements by screen readers, causing repetitive, confusing announcements. By setting `accessible={true}` on the parent container, providing a descriptive unified label, and hiding the decorative icon using `getDecorativeIconProps()`, we ensure a single clean announcement for assistive technologies.
+**Action:** Always make the parent container of non-interactive status blocks and inline alerts explicitly accessible (`accessible={true}`), declare the appropriate semantic `accessibilityRole`, and hide all inner decorative icon components.

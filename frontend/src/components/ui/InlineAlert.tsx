@@ -4,6 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 export type InlineAlertType = "error" | "warning" | "success" | "info";
 
 interface Props {
@@ -60,10 +61,17 @@ export function InlineAlert({ type = "info", message, testID }: Props) {
         },
       ]}
       testID={testID}
+      accessible={true}
       accessibilityRole={type === "error" ? "alert" : "text"}
       accessibilityLabel={`${type} alert: ${message}`}
     >
-      <Ionicons name={ICONS[type]} size={18} color={statusColor} style={styles.icon} />
+      <Ionicons
+        name={ICONS[type]}
+        size={18}
+        color={statusColor}
+        style={styles.icon}
+        {...getDecorativeIconProps()}
+      />
       <Text style={[styles.text, { color: uiTokens.colors.textPrimary }]}>{message}</Text>
     </View>
   );
