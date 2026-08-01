@@ -11,3 +11,7 @@
 ## 2024-07-11 - Fix N+1 queries in loop validation logic
 **Learning:** Checking idempotency constraints or performing validations via database lookups *inside* a loop that processes batched records is a significant performance bottleneck due to sequential N+1 queries.
 **Action:** When a batch process iterates over multiple records, always extract necessary constraints (e.g., `client_record_id`) into a list first. Then perform a single bulk query (e.g., `db.collection.find({"field": {"$in": constraints}}).to_list(length=None)`) and build an in-memory dictionary or set for $O(1)$ lookups during the main processing loop.
+
+## 2026-08-01 - Default Exports in React Native UI files
+**Learning:** `tsc --noEmit` will flag missing default exports if other files in the project import components via `import ModernCard from ...` instead of named imports `import { ModernCard } from ...`.
+**Action:** When creating or modifying shared UI components (like `ModernCard`), ensure both named and default exports are provided if the codebase uses mixed import patterns to satisfy TypeScript compiler (`pnpm --dir frontend run typecheck`).
