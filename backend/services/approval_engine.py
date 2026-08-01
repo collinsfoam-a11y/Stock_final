@@ -104,7 +104,7 @@ class ApprovalEngine:
         if not provisional_ok.passed:
             exceptions.append(self._exception(ApprovalExceptionType.PROVISIONAL_BATCH, provisional_ok.detail))
 
-        additional_ok = self._check_additional_location_investigation(observation, db)
+        additional_ok = await self._check_additional_location_investigation(observation, db)
         rules.append({"rule_name": "additional_location", "passed": additional_ok.passed, "detail": additional_ok.detail})
         if not additional_ok.passed:
             exceptions.append(self._exception(ApprovalExceptionType.LOCATION_INVESTIGATION, additional_ok.detail))

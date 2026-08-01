@@ -5,16 +5,22 @@
     "scripts/**/*.{cjs,js}",
     "*.config.{js,ts,cjs}",
     "src/**/*.stories.{ts,tsx}",
-    "e2e/**/*.{ts,tsx}"
+    "e2e/**/*.{ts,tsx}",
+    "src/types/**/*.{ts,tsx}",
+    "src/theme/**/*.{ts,tsx}",
+    "src/utils/**/*.{ts,tsx}",
+    "src/services/**/*.{ts,tsx}",
+    "src/core/**/*.{ts,tsx}",
+    "src/features/**/*.{ts,tsx}",
+    "src/viewModels/**/*.{ts,tsx}",
+    "src/components/**/*.{ts,tsx}",
+    "src/constants/**/*.{ts,tsx}",
+    "src/context/**/*.{ts,tsx}",
+    "src/hooks/**/*.{ts,tsx}",
+    "src/styles/**/*.{ts,tsx}"
   ],
   "project": ["src/**/*.{ts,tsx}", "app/**/*.{ts,tsx}"],
-  "ignore": [
-    "**/*.d.ts",
-    "src/**/__tests__/**",
-    "src/**/__mocks__/**",
-    "app/**/__tests__/**",
-    "**/*.test.{ts,tsx}"
-  ],
+  "ignore": [],
   "ignoreDependencies": [
     "@testing-library/jest-dom",
     "jest-environment-jsdom",

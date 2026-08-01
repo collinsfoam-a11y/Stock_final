@@ -111,7 +111,7 @@ All input data is validated using Pydantic models. Invalid data will return a 42
                                             "value": {
                                                 "username": "john_doe",
                                                 "email": "john.doe@company.com",
-                                                "password": "<PASSWORD>",
+                                                "password": "<PASSWORD>",  # nosec B105
                                                 "role": "staff",
                                                 "first_name": "John",
                                                 "last_name": "Doe",
@@ -123,7 +123,7 @@ All input data is validated using Pydantic models. Invalid data will return a 42
                                             "value": {
                                                 "username": "admin_user",
                                                 "email": "admin@company.com",
-                                                "password": "<PASSWORD>",
+                                                "password": "<PASSWORD>",  # nosec B105
                                                 "role": "admin",
                                                 "first_name": "Admin",
                                                 "last_name": "User",
@@ -184,14 +184,14 @@ All input data is validated using Pydantic models. Invalid data will return a 42
                                             "summary": "Login with username",
                                             "value": {
                                                 "username": "john_doe",
-                                                "password": "<PASSWORD>",
+                                                "password": "<PASSWORD>",  # nosec B105
                                             },
                                         },
                                         "email_login": {
                                             "summary": "Login with email",
                                             "value": {
                                                 "username": "john.doe@company.com",
-                                                "password": "<PASSWORD>",
+                                                "password": "<PASSWORD>",  # nosec B105
                                             },
                                         },
                                     }
@@ -204,8 +204,8 @@ All input data is validated using Pydantic models. Invalid data will return a 42
                                 "content": {
                                     "application/json": {
                                         "example": {
-                                            "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-                                            "token_type": "bearer",
+                                            "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",  # nosec B105
+                                            "token_type": "bearer",  # nosec B105
                                             "expires_in": 86400,
                                             "user": {
                                                 "id": "user_12345",

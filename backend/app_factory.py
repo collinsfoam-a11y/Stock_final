@@ -5,19 +5,23 @@ continue to work without modification.
 """
 
 from backend.app.factory import create_app
-from backend.app.root_router import verify_stock, unverify_stock, get_count_lines, root_router, api_router
+from backend.app.root_router import unverify_stock, verify_stock  # noqa: F401
 
 # Some tests might still expect `app` and `api_router` here
 app = create_app()
 
-# Expose api_router for compatibility with things that imported it directly
-# Though technically they should now be going through register_routers,
-# we export the one from root_router just in case.
+async def get_session_by_id(session_id: str, current_user: dict):
+    from backend.services.canonical_inventory import build_session_lookup
+    from backend.app import root_router
+    database = getattr(root_router, "db", None)
+    if database is None:
+        from backend.db.runtime import get_db
+        database = get_db()
 
-from backend.core.globals import db, cache_service, websocket_manager
-
-from backend.utils.auth_utils import get_password_hash, get_password_hash_metadata
-
-from backend.core.globals import activity_log_service
-from backend.services.runtime import get_refresh_token_service
-from backend.app.root_router import get_session_by_id
+    session = await database.sessions.find_one(build_session_lookup(session_id))
+    if not session:
+        return None
+    from backend.api.schemas import Session
+    if "_id" in session and "id" not in session:
+        session["id"] = str(session["_id"])
+    return Session(**session)

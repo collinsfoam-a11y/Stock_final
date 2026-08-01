@@ -14,6 +14,12 @@ interface UseScanBufferProps {
   onConfidentScan: (barcode: string) => Promise<void>;
   setIsScanning: (val: boolean) => void;
   setSearchQuery: (val: string) => void;
+  /**
+   * Fired the instant a barcode is confidently recognised — BEFORE any network
+   * lookup. Use this to trigger the <100ms visual acknowledgment (§6.1).
+   * Must be non-blocking; it is invoked synchron alongside haptics/audio.
+   */
+  onScanRecognized?: () => void;
 }
 
 export function useScanBuffer({
@@ -23,6 +29,7 @@ export function useScanBuffer({
   onConfidentScan,
   setIsScanning,
   setSearchQuery,
+  onScanRecognized,
 }: UseScanBufferProps) {
   const [scanned, setScanned] = useState(false);
   const scanBufferRef = useRef<{ code: string; count: number; timestamp: number }[]>([]);
@@ -69,6 +76,9 @@ export function useScanBuffer({
 
       setScanned(true);
       scanBufferRef.current = [];
+      // Visual acknowledgment fires FIRST (§6.1: must appear within 100ms and
+      // must not be blocked by haptics/audio or the pending network lookup).
+      onScanRecognized?.();
       if (scannerVibration) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
@@ -94,6 +104,7 @@ export function useScanBuffer({
       onConfidentScan,
       setIsScanning,
       setSearchQuery,
+      onScanRecognized,
     ]
   );
 

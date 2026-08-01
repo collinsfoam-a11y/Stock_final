@@ -1,11 +1,12 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { ModernCard } from "@/components/ui/ModernCard";
-import { borderRadius, colors, spacing, typography } from "@/theme/unified";
-
+import { borderRadius, spacing, typography } from "@/theme/unified";
 import { useUiTokens } from "@/hooks/useUiTokens";
+
 interface ScanStats {
   pendingItems: number;
   scannedItems: number;
@@ -36,7 +37,7 @@ export function ScanStatsCard({ initialLoading, sessionStats }: ScanStatsCardPro
 
   if (initialLoading) {
     return (
-      <ModernCard elevation="none" padding={0} style={[styles.statsCard, cardSurface]}>
+      <ModernCard elevation="sm" padding={0} style={[styles.statsCard, cardSurface]}>
         <View style={styles.statsRow}>
           {[0, 1, 2].map((index) => (
             <React.Fragment key={index}>
@@ -68,29 +69,42 @@ export function ScanStatsCard({ initialLoading, sessionStats }: ScanStatsCardPro
   }
 
   return (
-    <ModernCard elevation="none" padding={0} style={[styles.statsCard, cardSurface]}>
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
+    <ModernCard elevation="sm" padding={0} style={[styles.statsCard, cardSurface]}>
+      <Animated.View style={styles.statsRow} entering={FadeInDown.duration(350).springify()}>
+        <Animated.View style={styles.statItem} entering={FadeInDown.delay(50).duration(300)}>
+          <View style={styles.statHeader}>
+            <Ionicons name="barcode-outline" size={14} color={uiTokens.colors.accent} />
+            <Text style={[styles.statLabel, { color: uiTokens.colors.textSecondary }]}>Scanned</Text>
+          </View>
           <Text style={[styles.statValue, { color: uiTokens.colors.textPrimary }]}>
             {sessionStats.scannedItems}
           </Text>
-          <Text style={[styles.statLabel, { color: uiTokens.colors.textSecondary }]}>Scanned</Text>
-        </View>
+        </Animated.View>
+
         <View style={[styles.statDivider, dividerSurface]} />
-        <View style={styles.statItem}>
+
+        <Animated.View style={styles.statItem} entering={FadeInDown.delay(100).duration(300)}>
+          <View style={styles.statHeader}>
+            <Ionicons name="checkmark-circle-outline" size={14} color={uiTokens.colors.success} />
+            <Text style={[styles.statLabel, { color: uiTokens.colors.textSecondary }]}>Verified</Text>
+          </View>
           <Text style={[styles.statValue, { color: uiTokens.colors.success }]}>
             {sessionStats.verifiedItems}
           </Text>
-          <Text style={[styles.statLabel, { color: uiTokens.colors.textSecondary }]}>Verified</Text>
-        </View>
+        </Animated.View>
+
         <View style={[styles.statDivider, dividerSurface]} />
-        <View style={styles.statItem}>
+
+        <Animated.View style={styles.statItem} entering={FadeInDown.delay(150).duration(300)}>
+          <View style={styles.statHeader}>
+            <Ionicons name="time-outline" size={14} color={uiTokens.colors.warning} />
+            <Text style={[styles.statLabel, { color: uiTokens.colors.textSecondary }]}>Pending</Text>
+          </View>
           <Text style={[styles.statValue, { color: uiTokens.colors.warning }]}>
             {sessionStats.pendingItems}
           </Text>
-          <Text style={[styles.statLabel, { color: uiTokens.colors.textSecondary }]}>Pending</Text>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </ModernCard>
   );
 }
@@ -99,10 +113,8 @@ const styles = StyleSheet.create({
   statsCard: {
     marginBottom: spacing.md,
     padding: spacing.md,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.neutral[200],
   },
   statsRow: {
     flexDirection: "row",
@@ -114,29 +126,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: spacing.xs,
   },
+  statHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 4,
+  },
   statDivider: {
     width: 1,
-    height: 36,
-    backgroundColor: colors.neutral[200],
+    height: 40,
   },
   statValue: {
-    fontSize: typography.fontSize["3xl"],
+    fontSize: typography.fontSize["2xl"],
     fontWeight: "700",
-    color: colors.neutral[900],
-    marginBottom: 2,
     fontVariant: ["tabular-nums"],
   },
   statLabel: {
-    fontSize: typography.fontSize.sm,
-    color: colors.neutral[600],
+    fontSize: typography.fontSize.xs,
     fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   skeleton: {
-    backgroundColor: colors.neutral[200],
     overflow: "hidden",
   },
   skeletonShimmer: {
     flex: 1,
-    backgroundColor: colors.neutral[100],
   },
 });

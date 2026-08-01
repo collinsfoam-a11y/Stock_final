@@ -202,7 +202,7 @@ class RefreshTokenService:
                 try:
                     await self.db.refresh_tokens.update_one(
                         {"_id": stored_token["_id"]},
-                        {"$set": {"token_hash": token_hash}, "$unset": {"token": ""}},
+                        {"$set": {"token_hash": token_hash}, "$unset": {"token": ""}},  # nosec B105
                     )
                 except Exception:
                     logger.debug("Failed to migrate refresh token to hashed storage")
@@ -288,7 +288,7 @@ class RefreshTokenService:
         return {
             "access_token": access_token,
             "refresh_token": new_refresh_token,
-            "token_type": "bearer",
+            "token_type": "bearer",  # nosec B105
             "expires_in": expires_in_seconds,
             "user": {
                 "username": str(username) if username else "",

@@ -30,10 +30,8 @@ from backend.services.canonical_inventory import (
     record_duplicate_governance_event,
 )
 from backend.services.concurrency import ConcurrencyError, coerce_version
-from backend.services.count_line_write_service import (
-    CountLineGovernanceDecision,
-    CountLineWriteService,
-)
+from backend.services.count_lines.governance import CountLineGovernanceDecision
+from backend.services.count_line_write_service import CountLineWriteService
 from backend.services.lock_service import LockService, ResourceLockedError
 from backend.services.logic_guard import build_request_context, enforce_session_logic
 from backend.services.notification_service import NotificationService
@@ -968,7 +966,7 @@ async def _create_and_evaluate_observation(
 ) -> None:
     try:
         is_recount = bool(line_data.recount_of_id)
-        observation = {
+        observation: dict[str, Any] = {
             "id": str(uuid.uuid4()),
             "session_id": line_data.session_id,
             "item_code": line_data.item_code,
@@ -1010,7 +1008,7 @@ async def _create_and_evaluate_observation(
         if duplicate:
             await record_duplicate_governance_event(
                 db,
-                observation_id=observation["id"],
+                observation_id=str(observation["id"]),
                 session_id=line_data.session_id,
                 actor=current_user.get("username", "system"),
                 duplicate_of_id=str(duplicate.get("id") or ""),

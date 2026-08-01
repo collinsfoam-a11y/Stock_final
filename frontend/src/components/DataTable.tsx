@@ -1,14 +1,11 @@
-/**
- * Data Table Component
- * Advanced table with sorting, filtering, and pagination
- */
-
 import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
+import { useUiTokens } from "@/hooks/useUiTokens";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { borderRadius, spacing, typography } from "@/theme/unified";
+
 export interface TableColumn {
   key: string;
   label: string;
@@ -29,6 +26,7 @@ interface DataTableProps {
   paginated?: boolean;
   pageSize?: number;
   onRowPress?: (row: TableData) => void;
+  emptyText?: string;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -39,7 +37,9 @@ export const DataTable: React.FC<DataTableProps> = ({
   paginated = false,
   pageSize = 20,
   onRowPress,
+  emptyText = "No records found",
 }) => {
+  const t = useUiTokens();
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -74,7 +74,7 @@ export const DataTable: React.FC<DataTableProps> = ({
     return sortedData.slice(start, end);
   }, [sortedData, currentPage, pageSize, paginated]);
 
-  const totalPages = Math.ceil(sortedData.length / pageSize);
+  const totalPages = Math.ceil((sortedData.length || 1) / pageSize);
 
   // Handle sort
   const handleSort = (column: string) => {
@@ -92,20 +92,20 @@ export const DataTable: React.FC<DataTableProps> = ({
 
   // Render header
   const renderHeader = () => (
-    <View style={styles.header}>
+    <View style={[styles.header, { backgroundColor: t.colors.surfaceElevated, borderBottomColor: t.colors.border }]}>
       {columns.map((column) => (
         <AppTouchable
           key={column.key}
-          style={[styles.headerCell, column.width && { width: column.width }] as any}
+          style={[styles.headerCell, column.width ? { width: column.width, flex: 0 } : { flex: 1 }] as any}
           onPress={() => column.sortable && handleSort(column.key)}
           disabled={!column.sortable}
         >
-          <Text style={styles.headerText}>{column.label}</Text>
+          <Text style={[styles.headerText, { color: t.colors.textSecondary }]}>{column.label}</Text>
           {sortable && column.sortable && sortColumn === column.key && (
             <Ionicons
-              name={sortDirection === "asc" ? "chevron-up" : "chevron-down"}
-              size={16}
-              color={uiColors.info[500]}
+              name={sortDirection === "asc" ? "arrow-up" : "arrow-down"}
+              size={14}
+              color={t.colors.accent}
               style={styles.sortIcon}
             />
           )}
@@ -118,19 +118,26 @@ export const DataTable: React.FC<DataTableProps> = ({
   const renderRow = (item: TableData, index: number) => (
     <AppTouchable
       key={index}
-      style={[styles.row, index % 2 === 0 && styles.rowEven]}
+      style={[
+        styles.row,
+        { borderBottomColor: t.colors.border },
+        index % 2 === 1 && { backgroundColor: `${t.colors.border}22` },
+      ]}
       onPress={() => onRowPress?.(item)}
       disabled={!onRowPress}
-      accessibilityLabel="Select row">
+      accessibilityLabel="Select row"
+    >
       {columns.map((column) => (
         <View
           key={column.key}
-          style={[styles.cell, column.width && { width: column.width }] as any}
+          style={[styles.cell, column.width ? { width: column.width, flex: 0 } : { flex: 1 }] as any}
         >
           {column.render ? (
             column.render(item[column.key], item)
           ) : (
-            <Text style={styles.cellText}>{String(item[column.key] || "")}</Text>
+            <Text style={[styles.cellText, { color: t.colors.textPrimary }]}>
+              {String(item[column.key] ?? "")}
+            </Text>
           )}
         </View>
       ))}
@@ -144,19 +151,20 @@ export const DataTable: React.FC<DataTableProps> = ({
     }
 
     return (
-      <View style={styles.pagination}>
+      <View style={[styles.pagination, { backgroundColor: t.colors.surfaceElevated, borderTopColor: t.colors.border }]}>
         <AppTouchable
           style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
           onPress={() => setCurrentPage(currentPage - 1)}
           disabled={currentPage === 1}
-          accessibilityLabel="Previous page">
+          accessibilityLabel="Previous page"
+        >
           <Ionicons
             name="chevron-back"
-            size={20}
-            color={currentPage === 1 ? uiColors.neutral[300] : uiColors.info[500]}
+            size={18}
+            color={currentPage === 1 ? t.colors.textMuted : t.colors.accent}
           />
         </AppTouchable>
-        <Text style={styles.paginationText}>
+        <Text style={[styles.paginationText, { color: t.colors.textSecondary }]}>
           Page {currentPage} of {totalPages}
         </Text>
         <AppTouchable
@@ -166,24 +174,20 @@ export const DataTable: React.FC<DataTableProps> = ({
           ]}
           onPress={() => setCurrentPage(currentPage + 1)}
           disabled={currentPage === totalPages}
-          accessibilityLabel="Next page">
+          accessibilityLabel="Next page"
+        >
           <Ionicons
             name="chevron-forward"
-            size={20}
-            color={currentPage === totalPages ? uiColors.neutral[300] : uiColors.info[500]}
+            size={18}
+            color={currentPage === totalPages ? t.colors.textMuted : t.colors.accent}
           />
         </AppTouchable>
       </View>
     );
   };
 
-  // FlashList no longer requires estimatedItemSize in newer versions
-
-  // For horizontal scrolling tables, we need a different approach
-  // FlashList doesn't work well nested in ScrollView, so we'll use a hybrid approach
-  // Use FlashList for vertical scrolling, but keep horizontal scroll wrapper
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
       {renderHeader()}
       <View style={styles.tableWrapper}>
         <ScrollView
@@ -192,16 +196,18 @@ export const DataTable: React.FC<DataTableProps> = ({
           style={styles.horizontalScroll}
         >
           <View style={styles.tableContent}>
-            {/*
-              ⚡ Bolt Performance Optimization:
-              Replaced FlashList with standard mapping since scrollEnabled={false}.
-              Virtualization adds overhead without benefits when the list can't scroll.
-            */}
-            {paginatedData.map((item, index) => {
-              const keyParts = columns.map((col) => String(item[col.key] || "")).join("-");
-              const key = `row-${index}-${keyParts.substring(0, 30)}`;
-              return <React.Fragment key={key}>{renderRow(item, index)}</React.Fragment>;
-            })}
+            {paginatedData.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="folder-open-outline" size={32} color={t.colors.textMuted} />
+                <Text style={[styles.emptyText, { color: t.colors.textMuted }]}>{emptyText}</Text>
+              </View>
+            ) : (
+              paginatedData.map((item, index) => {
+                const keyParts = columns.map((col) => String(item[col.key] || "")).join("-");
+                const key = `row-${index}-${keyParts.substring(0, 30)}`;
+                return <React.Fragment key={key}>{renderRow(item, index)}</React.Fragment>;
+              })
+            )}
           </View>
         </ScrollView>
       </View>
@@ -212,12 +218,12 @@ export const DataTable: React.FC<DataTableProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: uiSemanticColors.text.inverse,
-    borderRadius: 8,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
     overflow: "hidden",
   },
   tableWrapper: {
-    maxHeight: 400, // Limit table height
+    maxHeight: 400,
   },
   horizontalScroll: {
     flexGrow: 0,
@@ -227,62 +233,67 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    backgroundColor: uiColors.neutral[100],
     borderBottomWidth: 1,
-    borderBottomColor: uiColors.neutral[300],
   },
   headerCell: {
-    flex: 1,
-    padding: 12,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
     flexDirection: "row",
     alignItems: "center",
     minWidth: 100,
   },
   headerText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: uiSemanticColors.text.primary,
+    fontSize: typography.fontSize.xs,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
     flex: 1,
   },
   sortIcon: {
-    marginLeft: 4,
+    marginLeft: spacing.xs,
   },
   row: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: uiColors.neutral[100],
-  },
-  rowEven: {
-    backgroundColor: uiColors.neutral[50],
   },
   cell: {
-    flex: 1,
-    padding: 12,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
     minWidth: 100,
     justifyContent: "center",
   },
   cellText: {
-    fontSize: 14,
-    color: uiSemanticColors.text.primary,
+    fontSize: typography.fontSize.sm,
+    fontVariant: ["tabular-nums"],
+  },
+  emptyContainer: {
+    padding: spacing.xl,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+  },
+  emptyText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: "500",
   },
   pagination: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: 12,
-    backgroundColor: uiColors.neutral[100],
+    padding: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: uiColors.neutral[300],
-    gap: 16,
+    gap: spacing.md,
   },
   paginationButton: {
-    padding: 8,
+    padding: spacing.xs,
+    borderRadius: borderRadius.sm,
   },
   paginationButtonDisabled: {
-    opacity: 0.3,
+    opacity: 0.4,
   },
   paginationText: {
-    fontSize: 14,
-    color: uiSemanticColors.text.secondary,
+    fontSize: typography.fontSize.xs,
+    fontWeight: "600",
+    fontVariant: ["tabular-nums"],
   },
 });

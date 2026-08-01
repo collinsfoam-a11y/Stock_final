@@ -8,7 +8,6 @@
 import React from "react";
 import {
   View,
-  StyleSheet,
   ViewStyle,
   Text,
   TextStyle,
@@ -18,29 +17,28 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useThemeContext } from "../../context/ThemeContext";
-import { PatternBackground } from "./PatternBackground";
 
 import { shadows as unifiedShadows } from "@/theme/unified";
 interface ThemedScreenProps {
   children: React.ReactNode;
   style?: ViewStyle;
+  /** @deprecated Pattern backgrounds removed per governance §4.5/5.4. Accepted but ignored. */
   showPattern?: boolean;
+  /** @deprecated Pattern backgrounds removed per governance §4.5/5.4. Accepted but ignored. */
   patternOpacity?: number;
   useSafeArea?: boolean;
-  variant?: "default" | "glass" | "solid";
+  variant?: "default" | "solid";
   dismissKeyboardOnTap?: boolean;
 }
 
 export const ThemedScreen: React.FC<ThemedScreenProps> = ({
   children,
   style,
-  showPattern = true,
-  patternOpacity = 0.04,
   useSafeArea = true,
   variant = "default",
   dismissKeyboardOnTap = false,
 }) => {
-  const { themeLegacy: theme, pattern, layout } = useThemeContext();
+  const { themeLegacy: theme, layout } = useThemeContext();
   const insets = useSafeAreaInsets();
 
   // Get spacing based on layout arrangement
@@ -77,27 +75,6 @@ export const ThemedScreen: React.FC<ThemedScreenProps> = ({
 
   const content = (
     <View style={[containerStyle, { flex: 1 }, style]}>
-      {/* Pattern Background */}
-      {showPattern && pattern !== "none" && (
-        <PatternBackground
-          pattern={pattern}
-          color={theme.colors.accent}
-          secondaryColor={theme.colors.textSecondary}
-          opacity={patternOpacity}
-        />
-      )}
-
-      {/* Gradient Overlay for glass variant */}
-      {variant === "glass" && (
-        <View
-          style={[
-            StyleSheet.absoluteFillObject,
-            { pointerEvents: "none" },
-            { backgroundColor: `${theme.colors.background}E6` },
-          ]}
-        />
-      )}
-
       {/* Content */}
       <View style={contentStyle}>{children}</View>
     </View>
@@ -120,7 +97,7 @@ export const ThemedScreen: React.FC<ThemedScreenProps> = ({
 interface ThemedCardProps {
   children: React.ReactNode;
   style?: ViewStyle;
-  variant?: "default" | "glass" | "elevated" | "outlined";
+  variant?: "default" | "elevated" | "outlined";
   padding?: "none" | "small" | "medium" | "large";
 }
 
@@ -148,13 +125,6 @@ export const ThemedCard: React.FC<ThemedCardProps> = ({
     };
 
     switch (variant) {
-      case "glass":
-        return {
-          ...base,
-          backgroundColor: `${theme.colors.surface}${isDark ? "80" : "A0"}`,
-          borderWidth: 1,
-          borderColor: `${theme.colors.border}40`,
-        };
       case "elevated":
         return {
           ...base,

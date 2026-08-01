@@ -32,15 +32,14 @@ class MongoRepository(BaseRepository[T]):
         # In prod, self.uow.client might be an AsyncIOMotorClient
         client = self.uow.client
         
-        # M11 fix: Support tests that assert on mock_db.collection_name.operation
-        if "Mock" in type(client).__name__:
+        if "InMemoryDatabase" in type(client).__name__ or "Mock" in type(client).__name__:
             return getattr(client, self.collection_name)
 
-        if hasattr(client, "__getitem__"):
+        if hasattr(client, "__getitem__") and not hasattr(client, "count_lines"):
             try:
                 db = client[settings.DB_NAME]
                 return db[self.collection_name]
-            except TypeError:
+            except (TypeError, KeyError, AttributeError):
                 pass
         
         # Fallback for InMemoryDatabase or if client is already a DB

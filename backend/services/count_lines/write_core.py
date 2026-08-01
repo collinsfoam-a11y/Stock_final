@@ -6,17 +6,13 @@ import hashlib
 import inspect
 import json
 import logging
-import uuid
 from typing import Any, Optional
 
-from bson import ObjectId
 from fastapi import HTTPException
 
-from backend.services.concurrency import ConcurrencyError, coerce_version
 from backend.services.governance_audit_service import GovernanceAuditService
 from backend.services.governance_guard import (
     GovernanceViolation,
-    assert_valid_write,
     write_authority,
 )
 from backend.services.projection_write_service import ProjectionWriteService
@@ -156,16 +152,7 @@ def _apply_update_document_to_merged(
                 ]
 
 
-@dataclass(frozen=True)
-class CountLineGovernanceDecision:
-    approval_status: str
-    approved_at: Optional[datetime]
-    approved_by: Optional[str]
-    requires_supervisor_approval: bool
-    status: str
-    variance: float
-    variance_data: dict[str, Any]
-    violated_thresholds: list[dict[str, Any]]
+from backend.services.count_lines.governance import CountLineGovernanceDecision
 
 
 @dataclass(frozen=True)
@@ -197,7 +184,10 @@ DEFAULT_VALIDATION_MODE = "enforce"
 VALIDATION_MODES = {"enforce", "repair_skip"}
 
 
-class CountLineWriteCoreMixin:
+from backend.services.count_lines.base import CountLineServiceBase
+
+
+class CountLineWriteCoreMixin(CountLineServiceBase):
     """Authoritative write-side governance for count-line mutations."""
 
     def __init__(
@@ -333,7 +323,7 @@ class CountLineWriteCoreMixin:
         # M11 fix: If self.db is a Mock, pass it directly so repository.collection resolves to mock_db.count_lines
         client_to_pass = self.db if "Mock" in type(self.db).__name__ else self.db.client
         request_uow = _RequestUoW(client_to_pass, db_session)
-        repository = CountLineRepository(request_uow)
+        repository = CountLineRepository(request_uow)  # type: ignore[arg-type]
         collection = repository.collection
         
         kwargs = {"session": db_session} if db_session is not None else {}
@@ -452,14 +442,14 @@ class CountLineWriteCoreMixin:
         ctx = dict(context)
         ctx["db_session"] = db_session
 
-        await self._assert_snapshot_integrity_for_write(payload, ctx)
-        await self._assert_mandatory_write_invariants(payload, ctx)
-        self._apply_state_transition_for_write(payload, ctx)
-        if self._should_apply_governance(payload, ctx):
-            await self._enforce_variance_for_write(payload, ctx)
+        await self._assert_snapshot_integrity_for_write(payload, ctx)  # type: ignore[attr-defined]
+        await self._assert_mandatory_write_invariants(payload, ctx)  # type: ignore[attr-defined]
+        self._apply_state_transition_for_write(payload, ctx)  # type: ignore[attr-defined]
+        if self._should_apply_governance(payload, ctx):  # type: ignore[attr-defined]
+            await self._enforce_variance_for_write(payload, ctx)  # type: ignore[attr-defined]
 
-        session_ids = await self._collect_session_ids_for_write(payload, ctx)
-        expected_versions = await self._capture_session_versions(
+        session_ids = await self._collect_session_ids_for_write(payload, ctx)  # type: ignore[attr-defined]
+        expected_versions = await self._capture_session_versions(  # type: ignore[attr-defined]
             session_ids,
             context=ctx,
             db_session=db_session,
@@ -470,7 +460,7 @@ class CountLineWriteCoreMixin:
             context=ctx,
             db_session=db_session,
         )
-        await self._run_post_write_validation(
+        await self._run_post_write_validation(  # type: ignore[attr-defined]
             operation=operation,
             payload=payload,
             context=ctx,
@@ -478,7 +468,7 @@ class CountLineWriteCoreMixin:
         )
 
         if not bool(ctx.get("skip_session_totals_update", False)):
-            await self._update_session_totals_for_sessions(
+            await self._update_session_totals_for_sessions(  # type: ignore[attr-defined]
                 session_ids=session_ids,
                 context=ctx,
                 db_session=db_session,
@@ -515,14 +505,16 @@ class CountLineWriteCoreMixin:
             raise GovernanceViolation(
                 "CRITICAL: skip_transaction bypass has been removed from CountLineWriteService"
             )
-        external_session = self._extract_db_session(ctx)
+        external_session = self._extract_db_session(ctx)  # type: ignore[attr-defined]
         if external_session is not None:
             return await self._process_write_core(payload, ctx, db_session=external_session)
 
         async with MongoUnitOfWork(self.db.client) as uow:
             tx_context = dict(ctx)
             tx_context["db_session"] = uow.session
-            return await self._process_write_core(payload, tx_context, db_session=uow.session)
+            result = await self._process_write_core(payload, tx_context, db_session=uow.session)
+            await uow.commit()
+            return result
 
     async def process_write(
         self,
@@ -731,10 +723,10 @@ class CountLineWriteCoreMixin:
             document = payload.get("document")
             if not isinstance(document, dict) or "counted_qty" not in document:
                 return
-            governance, erp_item, session = await self._evaluate_governance_for_document(
+            governance, erp_item, session = await self._evaluate_governance_for_document(  # type: ignore[attr-defined]
                 document, context
             )
-            self._apply_authoritative_fields(document, governance, erp_item, session, context)
+            self._apply_authoritative_fields(document, governance, erp_item, session, context)  # type: ignore[attr-defined]
             return
 
         if operation == "update_one":
@@ -746,20 +738,20 @@ class CountLineWriteCoreMixin:
                 return
 
             filter_query = payload.get("filter") or {}
-            db_session = self._extract_db_session(context)
+            db_session = self._extract_db_session(context)  # type: ignore[attr-defined]
             kwargs = {"session": db_session} if db_session is not None else {}
-            existing = await self._resolve_awaitable(
+            existing = await self._resolve_awaitable(  # type: ignore[attr-defined]
                 self.db.count_lines.find_one(filter_query, **kwargs)
             )
             merged = dict(existing or {})
             merged.update(set_doc)
             if not merged:
                 return
-            governance, erp_item, session = await self._evaluate_governance_for_document(
+            governance, erp_item, session = await self._evaluate_governance_for_document(  # type: ignore[attr-defined]
                 merged, context
             )
-            self._copy_authoritative_baseline_fields(source=merged, target=set_doc)
-            self._apply_authoritative_fields(set_doc, governance, erp_item, session, context)
+            self._copy_authoritative_baseline_fields(source=merged, target=set_doc)  # type: ignore[attr-defined]
+            self._apply_authoritative_fields(set_doc, governance, erp_item, session, context)  # type: ignore[attr-defined]
             return
 
         # update_many/delete mutations intentionally skip variance stamping;

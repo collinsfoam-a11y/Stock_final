@@ -79,8 +79,8 @@ class AuditEventType(str, Enum):
     AUTH_LOGIN = "auth.login"
     AUTH_LOGOUT = "auth.logout"
     AUTH_LOGIN_FAILED = "auth.login_failed"
-    AUTH_PASSWORD_CHANGE = "auth.password_change"
-    AUTH_TOKEN_REFRESH = "auth.token_refresh"
+    AUTH_PASSWORD_CHANGE = "auth.password_change"  # nosec B105
+    AUTH_TOKEN_REFRESH = "auth.token_refresh"  # nosec B105
     AUTH_SESSION_EXPIRED = "auth.session_expired"
 
     # Authorization

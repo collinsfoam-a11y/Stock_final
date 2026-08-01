@@ -1,4 +1,3 @@
-import { AppTouchable } from "@/components/ui/AppTouchable";
 import React from "react";
 import { act, render } from "@testing-library/react-native";
 
@@ -58,22 +57,18 @@ jest.mock("@shopify/flash-list", () => {
           : ListHeaderComponent || null,
         Array.isArray(data) && data.length > 0
           ? data.map((item, index) =>
-              React.createElement(
-                React.Fragment,
-                { key: item?.id || index },
-                renderItem({ item, index })
-              )
+            React.createElement(
+              React.Fragment,
+              { key: item?.id || index },
+              renderItem({ item, index })
             )
+          )
           : typeof ListEmptyComponent === "function"
             ? React.createElement(ListEmptyComponent)
             : ListEmptyComponent || null
       ),
   };
 });
-
-jest.mock("../../../src/components/ui/AuroraBackground", () => ({
-  AuroraBackground: ({ children }: { children: React.ReactNode }) => children,
-}));
 
 jest.mock("../../../src/components/ui/AnimatedPressable", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -141,17 +136,17 @@ describe("SessionDetail offline mode", () => {
         items: verified
           ? []
           : [
-              {
-                id: "line-1",
-                item_name: "Widget A",
-                item_code: "WGT-A",
-                erp_qty: 10,
-                counted_qty: 9,
-                variance: -1,
-                status: "pending",
-                verified: false,
-              },
-            ],
+            {
+              id: "line-1",
+              item_name: "Widget A",
+              item_code: "WGT-A",
+              erp_qty: 10,
+              counted_qty: 9,
+              variance: -1,
+              status: "pending",
+              verified: false,
+            },
+          ],
       })
     );
   });
@@ -199,17 +194,17 @@ describe("SessionDetail offline mode", () => {
         items: verified
           ? []
           : [
-              {
-                id: "line-1",
-                item_name: "Widget A",
-                item_code: "WGT-A",
-                erp_qty: 10,
-                counted_qty: 10,
-                variance: 0,
-                status: "pending",
-                verified: false,
-              },
-            ],
+            {
+              id: "line-1",
+              item_name: "Widget A",
+              item_code: "WGT-A",
+              erp_qty: 10,
+              counted_qty: 10,
+              variance: 0,
+              status: "pending",
+              verified: false,
+            },
+          ],
       })
     );
 

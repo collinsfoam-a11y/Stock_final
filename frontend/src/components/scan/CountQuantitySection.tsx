@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import React, { useMemo } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
+import Animated, { FadeInRight, FadeOutLeft } from "react-native-reanimated";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
@@ -362,6 +363,52 @@ export function CountQuantitySection({
           />
         </AppTouchable>
       </View>
+
+      {!isSplitMode && (
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "center",
+            gap: uiTokens.spacing.xs,
+            marginBottom: uiTokens.spacing.sm,
+          }}
+        >
+          {[1, 5, 10, 50].map((preset) => (
+            <AppTouchable
+              key={`preset-${preset}`}
+              {...getAccessibleButtonProps({
+                label: `Add ${preset} to quantity`,
+                hitSlop: OPERATIONAL_HIT_SLOP.standard,
+              })}
+              style={{
+                backgroundColor: colorWithAlpha(uiTokens.colors.accent, uiTokens.mode === "dark" ? 0.2 : 0.08),
+                borderColor: colorWithAlpha(uiTokens.colors.accent, 0.3),
+                borderWidth: 1,
+                borderRadius: uiTokens.radius.md,
+                paddingHorizontal: uiTokens.spacing.sm + 2,
+                paddingVertical: uiTokens.spacing.xs,
+                minWidth: 48,
+                alignItems: "center",
+              }}
+              onPress={() => {
+                const current = parseFloat(quantity || "0");
+                const nextVal = isNaN(current) ? preset : current + preset;
+                onQuantityChange(nextVal.toString());
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "700",
+                  color: uiTokens.colors.accentStrong,
+                }}
+              >
+                +{preset}
+              </Text>
+            </AppTouchable>
+          ))}
+        </View>
+      )}
       {isSplitMode && (
         <View style={styles.splitCountContainer}>
           <Text style={styles.helperText}>
@@ -369,7 +416,12 @@ export function CountQuantitySection({
           </Text>
 
           {splitCounts.map((value, index) => (
-            <View key={`split-count-${index}`} style={styles.splitRow}>
+            <Animated.View
+              key={`split-count-${index}`}
+              style={styles.splitRow}
+              entering={FadeInRight.duration(250)}
+              exiting={FadeOutLeft.duration(200)}
+            >
               <View style={styles.splitIndexBadge}>
                 <Text style={styles.splitIndexText}>#{index + 1}</Text>
               </View>
@@ -400,7 +452,7 @@ export function CountQuantitySection({
                   color={uiTokens.colors.error}
                 />
               </AppTouchable>
-            </View>
+            </Animated.View>
           ))}
 
           <View style={styles.actionRow}>

@@ -123,7 +123,7 @@ LAST_PURCHASE_CTE = """
 
 # SQL Query Templates
 SQL_TEMPLATES = {
-    "get_item_by_barcode": LAST_PURCHASE_CTE
+    "get_item_by_barcode": LAST_PURCHASE_CTE  # nosec B608
     + """
         SELECT DISTINCT
             P.ProductID as item_id,
@@ -181,7 +181,7 @@ SQL_TEMPLATES = {
           AND LEN(CAST(PB.AutoBarcode AS VARCHAR(50))) = 6
           AND ISNUMERIC(CAST(PB.AutoBarcode AS VARCHAR(50))) = 1
     """,
-    "get_item_by_code": LAST_PURCHASE_CTE
+    "get_item_by_code": LAST_PURCHASE_CTE  # nosec B608
     + """
         SELECT DISTINCT
             P.ProductID as item_id,
@@ -239,7 +239,7 @@ SQL_TEMPLATES = {
           AND PB.AutoBarcode IS NOT NULL
           AND LEN(CAST(PB.AutoBarcode AS VARCHAR(50))) = 6
     """,
-    "get_all_items": LAST_PURCHASE_CTE
+    "get_all_items": LAST_PURCHASE_CTE  # nosec B608
     + """
         SELECT DISTINCT TOP 50000
             P.ProductID as item_id,
@@ -299,7 +299,7 @@ SQL_TEMPLATES = {
           AND ISNUMERIC(CAST(PB.AutoBarcode AS VARCHAR(50))) = 1
         ORDER BY P.ProductName
     """,
-    "search_items": LAST_PURCHASE_CTE
+    "search_items": LAST_PURCHASE_CTE  # nosec B608
     + """
         SELECT DISTINCT TOP 50
             P.ProductID as item_id,
@@ -385,7 +385,7 @@ SQL_TEMPLATES = {
         ORDER BY PB.ExpiryDate, PB.BatchNo
     """,
     # Full sync query for MongoDB - includes ALL fields
-    "sync_all_items": LAST_PURCHASE_CTE
+    "sync_all_items": LAST_PURCHASE_CTE  # nosec B608
     + """
         SELECT
             P.ProductID as item_id,

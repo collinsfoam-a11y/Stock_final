@@ -12,7 +12,7 @@ import asyncio
 import json
 import os
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -265,7 +265,7 @@ async def _release_locks(db: Any, locks: list[tuple[str, str]]) -> None:
     for key, owner in reversed(locks):
         try:
             await lock_service.release_lock(key, owner)
-        except Exception:
+        except Exception:  # nosec B112
             continue
 
 
@@ -301,7 +301,7 @@ def _run_mongodump_backup(args: argparse.Namespace, reconciliation_id: str) -> d
             "--out",
             str(backup_dir),
         ]
-        completed = subprocess.run(
+        completed = subprocess.run(  # nosec B603
             command,
             check=False,
             stdout=subprocess.PIPE,

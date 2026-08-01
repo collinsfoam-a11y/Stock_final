@@ -1,18 +1,16 @@
 /**
  * Modern Card Component - Enhanced UI/UX
  * Features:
- * - Glassmorphism support
  * - Smooth hover/press animations
  * - Multiple elevation levels
- * - Gradient backgrounds
  * - Interactive states
  * - Better shadows and borders
+ *
+ * Governance §4.5/5.4: glass/gradient/glassmorphism variants removed.
  */
 
 import React from "react";
 import { View, Text, StyleSheet, ViewStyle, StyleProp, Platform } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -21,7 +19,6 @@ import Animated, {
 } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  legacyColors as modernColors,
   legacySpacing as modernSpacing,
   legacyAnimations as modernAnimations,
 } from "@/theme/unified";
@@ -48,7 +45,7 @@ const operationalShadows: Record<CardElevation, ViewStyle> = {
 /**
  * Supported visual treatments for the reusable card container.
  */
-export type CardVariant = "default" | "elevated" | "glass" | "gradient" | "outlined";
+export type CardVariant = "default" | "elevated" | "outlined";
 
 /**
  * Available shadow intensities for non-glass card variants.
@@ -64,7 +61,6 @@ interface ModernCardProps {
   elevation?: CardElevation;
   padding?: number;
   style?: StyleProp<ViewStyle>;
-  gradientColors?: string[];
   icon?: keyof typeof Ionicons.glyphMap;
   footer?: React.ReactNode;
   testID?: string;
@@ -89,7 +85,6 @@ export const ModernCard: React.FC<ModernCardProps> = ({
   elevation = "sm",
   padding,
   style,
-  gradientColors,
   icon,
   footer,
   testID,
@@ -99,7 +94,6 @@ export const ModernCard: React.FC<ModernCardProps> = ({
   accessibilityHint,
   accessible = true,
   contentStyle,
-  intensity = 20,
 }) => {
   const themeContext = useThemeContextSafe();
   const theme = themeContext?.theme;
@@ -174,14 +168,6 @@ export const ModernCard: React.FC<ModernCardProps> = ({
         borderWidth: 1,
         borderColor: cardBorder,
         ...operationalShadows[elevation],
-      },
-      glass: {
-        backgroundColor: cardBackground,
-        borderWidth: 1,
-        borderColor: cardBorder,
-      },
-      gradient: {
-        backgroundColor: "transparent",
       },
       outlined: {
         backgroundColor: cardBackground,
@@ -268,43 +254,6 @@ export const ModernCard: React.FC<ModernCardProps> = ({
       accessibilityHint,
     };
 
-    if (variant === "gradient") {
-      const colors =
-        gradientColors || (theme ? theme.gradients.surface : modernColors.gradients.surface);
-      return (
-        <Component {...props}>
-          <LinearGradient
-            colors={colors as unknown as readonly [string, string, ...string[]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.gradient}
-          >
-            {renderContent()}
-          </LinearGradient>
-        </Component>
-      );
-    }
-
-    if (variant === "glass") {
-      return (
-        <Component {...props}>
-          {isWeb ? (
-            <View style={[styles.blur, { backgroundColor: "rgba(255, 255, 255, 0.1)" }]}>
-              {renderContent()}
-            </View>
-          ) : Platform.OS === "ios" ? (
-            <BlurView intensity={intensity} tint="light" style={styles.blur}>
-              {renderContent()}
-            </BlurView>
-          ) : (
-            <BlurView intensity={intensity} tint="dark" style={styles.blur}>
-              {renderContent()}
-            </BlurView>
-          )}
-        </Component>
-      );
-    }
-
     return <Component {...props}>{renderContent()}</Component>;
   };
 
@@ -318,12 +267,5 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
   },
-  gradient: {
-    flex: 1,
-  },
-  blur: {
-    flex: 1,
-  },
 });
-
 

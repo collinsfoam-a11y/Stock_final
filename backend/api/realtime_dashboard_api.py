@@ -309,23 +309,17 @@ async def get_dashboard_stats(
             {"$group": {"_id": "$status", "count": {"$sum": 1}}},
         ]
 
-        (
-            total_count,
-            verified_count,
-            pending_count,
-            today_count,
-            variance_result,
-            warehouse_result,
-            status_result,
-        ) = await asyncio.gather(
-            db.count_lines.count_documents({}),
-            db.count_lines.count_documents({"verified": True}),
-            db.count_lines.count_documents({"verified": False}),
-            db.count_lines.count_documents({"counted_at": {"$gte": today_start}}),
-            db.count_lines.aggregate(variance_pipeline).to_list(1),
-            db.count_lines.aggregate(warehouse_pipeline).to_list(10),
-            db.count_lines.aggregate(status_pipeline).to_list(100),
-        )
+        res: Any = await asyncio.gather(
+                db.count_lines.count_documents({}),
+                db.count_lines.count_documents({"verified": True}),
+                db.count_lines.count_documents({"verified": False}),
+                db.count_lines.count_documents({"counted_at": {"$gte": today_start}}),
+                db.count_lines.aggregate(variance_pipeline).to_list(1),
+                db.count_lines.aggregate(warehouse_pipeline).to_list(10),
+                db.count_lines.aggregate(status_pipeline).to_list(100),
+            )
+        total_count, verified_count, pending_count, today_count = int(res[0] or 0), int(res[1] or 0), int(res[2] or 0), int(res[3] or 0)
+        variance_result, warehouse_result, status_result = list(res[4] or []), list(res[5] or []), list(res[6] or [])
 
     variance_stats = variance_result[0] if variance_result else {}
 

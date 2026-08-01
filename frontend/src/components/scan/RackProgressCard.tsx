@@ -1,11 +1,11 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import {
-  legacyColors as modernColors,
-  legacyTypography as modernTypography,
-  legacySpacing as modernSpacing,
-  legacyBorderRadius as modernBorderRadius,
-} from "../../theme/unified";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { AppTouchable } from "@/components/ui/AppTouchable";
+import { borderRadius, spacing, typography } from "@/theme/unified";
 
 interface RackProgressCardProps {
   rack: string;
@@ -24,92 +24,120 @@ export const RackProgressCard: React.FC<RackProgressCardProps> = ({
   isSelected,
   onPress,
 }) => {
+  const t = useUiTokens();
+
   // Determine progress color
-  let progressColor = modernColors.primary[500];
-  if (percentage >= 100) progressColor = modernColors.success.main;
-  else if (percentage < 30) progressColor = modernColors.warning.main;
+  let progressColor = t.colors.accent;
+  let statusIcon: keyof typeof Ionicons.glyphMap = "layers-outline";
+  if (percentage >= 100) {
+    progressColor = t.colors.success;
+    statusIcon = "checkmark-done-circle-outline";
+  } else if (percentage < 30) {
+    progressColor = t.colors.warning;
+    statusIcon = "time-outline";
+  }
+
+  const boundedPercentage = Math.min(100, Math.max(0, percentage));
 
   return (
-    <View
-      style={[styles.container, isSelected && styles.selectedContainer]}
-      onTouchEnd={onPress}
-    >
-      <View style={styles.header}>
-        <Text style={[styles.rackName, isSelected && styles.selectedText]}>
-          Rack {rack}
-        </Text>
-        <Text
-          style={[
-            styles.percentage,
-            { color: progressColor },
-            isSelected && styles.selectedText,
-          ]}
-        >
-          {percentage}%
-        </Text>
-      </View>
+    <Animated.View entering={FadeInDown.duration(250).springify()}>
+      <AppTouchable
+        style={[
+          styles.container,
+          {
+            backgroundColor: t.colors.surface,
+            borderColor: isSelected ? t.colors.accent : t.colors.border,
+          },
+          isSelected && { borderWidth: 2, backgroundColor: t.colors.surfaceElevated },
+        ]}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`Rack ${rack}, ${percentage}% completed`}
+      >
+        <View style={styles.header}>
+          <View style={styles.rackTitleRow}>
+            <Ionicons name={statusIcon} size={18} color={progressColor} />
+            <Text style={[styles.rackName, { color: t.colors.textPrimary }]}>
+              Rack {rack}
+            </Text>
+          </View>
 
-      <View style={styles.progressBarBg}>
-        <View
-          style={[
-            styles.progressBarFill,
-            { width: `${percentage}%`, backgroundColor: progressColor },
-          ]}
-        />
-      </View>
+          <View style={[styles.badge, { backgroundColor: `${progressColor}18` }]}>
+            <Text style={[styles.percentage, { color: progressColor }]}>
+              {boundedPercentage}%
+            </Text>
+          </View>
+        </View>
 
-      <Text style={[styles.stats, isSelected && styles.selectedText]}>
-        {counted} / {total} items verified
-      </Text>
-    </View>
+        <View style={[styles.progressBarBg, { backgroundColor: t.colors.border }]}>
+          <Animated.View
+            style={[
+              styles.progressBarFill,
+              { width: `${boundedPercentage}%`, backgroundColor: progressColor },
+            ]}
+          />
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={[styles.stats, { color: t.colors.textSecondary }]}>
+            {counted} / {total} items verified
+          </Text>
+        </View>
+      </AppTouchable>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: modernColors.background.paper, // Fixed: secondary -> paper
-    borderRadius: modernBorderRadius.md,
-    padding: modernSpacing.md,
-    marginBottom: modernSpacing.sm,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: modernColors.border.medium, // Fixed: border -> border.medium
-  },
-  selectedContainer: {
-    borderColor: modernColors.primary[500], // Fixed: primary -> primary[500]
-    backgroundColor: modernColors.background.elevated, // Fixed: tertiary -> elevated
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: modernSpacing.sm,
+    marginBottom: spacing.sm,
+  },
+  rackTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
   },
   rackName: {
-    ...modernTypography.h6, // Fixed: lead -> h6
+    fontSize: typography.fontSize.md,
     fontWeight: "600",
-    color: modernColors.text.primary,
+  },
+  badge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.full,
   },
   percentage: {
-    ...modernTypography.body.medium, // Fixed: body -> body.medium
-    fontWeight: "bold",
+    fontSize: typography.fontSize.xs,
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
   },
   progressBarBg: {
-    height: 6,
-    backgroundColor: modernColors.background.elevated,
-    borderRadius: 3,
+    height: 8,
+    borderRadius: 4,
     overflow: "hidden",
-    marginBottom: modernSpacing.xs,
+    marginBottom: spacing.xs,
   },
   progressBarFill: {
     height: "100%",
-    borderRadius: 3,
+    borderRadius: 4,
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
   },
   stats: {
-    ...modernTypography.label.medium, // Fixed: caption -> label.medium
-    color: modernColors.text.secondary,
-    textAlign: "right",
-  },
-  selectedText: {
-    // optional text style for selected state
+    fontSize: typography.fontSize.xs,
+    fontWeight: "500",
+    fontVariant: ["tabular-nums"],
   },
 });

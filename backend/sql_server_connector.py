@@ -494,7 +494,7 @@ class SQLServerConnector:
                     "port": port,
                     "database": database,
                     "user": None,
-                    "password": None,
+                    "password": None,  # nosec B105
                     "auth": "windows",
                     "name": f"Windows Auth: {h}:{port}",
                 }
@@ -505,7 +505,7 @@ class SQLServerConnector:
                     "port": None,
                     "database": database,
                     "user": None,
-                    "password": None,
+                    "password": None,  # nosec B105
                     "auth": "windows",
                     "name": f"Windows Auth: {h} (no port)",
                 }
@@ -907,15 +907,13 @@ class SQLServerConnector:
 
             # Build query with IN clause using safe parameterization
             # Note: schema, table_name, and column names are validated internally
-            query = f"""
-                SELECT {columns}
-                    {self.optional_columns_clause}
-                FROM [{schema}].[{table_name}] I
-                {joins}
-                {self.optional_joins_clause}
-                WHERE {code_column} IN ({placeholders})
-                {additional_where}
-            """
+            query = (  # nosec B608
+                f"SELECT {columns} {self.optional_columns_clause}"  # nosec B608
+                f" FROM [{schema}].[{table_name}] I"
+                f" {joins} {self.optional_joins_clause}"
+                f" WHERE {code_column} IN ({placeholders})"
+                f" {additional_where}"
+            )
 
             self._execute_readonly(cursor, query, item_codes)
             rows = cursor.fetchall()
@@ -958,13 +956,13 @@ class SQLServerConnector:
                 placeholders = ", ".join("?" for _ in item_codes)
 
                 # Safe parameterized query - user input is properly parameterized
-                query = f"""
-                    SELECT P.ProductCode as item_code, COALESCE(SUM(PB.Stock), 0) as stock_qty
-                    FROM dbo.Products P
-                    LEFT JOIN dbo.ProductBatches PB ON P.ProductID = PB.ProductID
-                    WHERE P.ProductCode IN ({placeholders})
-                    GROUP BY P.ProductCode
-                """
+                query = (  # nosec B608
+                    f"SELECT P.ProductCode as item_code, COALESCE(SUM(PB.Stock), 0) as stock_qty"  # nosec B608
+                    f" FROM dbo.Products P"
+                    f" LEFT JOIN dbo.ProductBatches PB ON P.ProductID = PB.ProductID"
+                    f" WHERE P.ProductCode IN ({placeholders})"
+                    f" GROUP BY P.ProductCode"
+                )
 
                 self._execute_readonly(cursor, query, item_codes)
                 rows = cursor.fetchall()

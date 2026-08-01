@@ -287,7 +287,7 @@ class SyncConflictsService:
             entity_type = str(conflict.get("entity_type") or "")
             entity_id = str(conflict.get("entity_id") or "")
             async with MongoUnitOfWork(self.db.client) as uow:
-                kwargs = {"session": uow.session} if uow.session is not None else {}
+                kwargs: dict[str, Any] = {"session": uow.session} if uow.session is not None else {}
                 await self.db.sync_conflicts.update_one(
                     {"_id": ObjectId(conflict_id)},
                     resolution_update,
@@ -313,6 +313,7 @@ class SyncConflictsService:
                             resolved_data,
                             db_session=uow.session,
                         )
+                        await uow.commit()
                         return {
                             "conflict_id": conflict_id,
                             "resolution": "FORKED",
@@ -326,6 +327,7 @@ class SyncConflictsService:
                         resolved_data,
                         db_session=uow.session,
                     )
+                await uow.commit()
         else:
             await self.db.sync_conflicts.update_one(
                 {"_id": ObjectId(conflict_id)},

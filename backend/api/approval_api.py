@@ -105,10 +105,12 @@ async def evaluate_observation(
         )
     result = await engine.evaluate(observation, db)
     await db["count_observations"].update_one({"id": observation_id}, {"$set": observation})
+    sql_qty_src = result.sql_quantity_source
+    sql_qty_str = getattr(sql_qty_src, "value", sql_qty_src) if sql_qty_src is not None else None
     return EvaluationResponse(
         observation_id=result.observation_id,
         approved=result.approved,
-        sql_quantity_source=result.sql_quantity_source.value if result.sql_quantity_source else None,
+        sql_quantity_source=sql_qty_str,
         sql_comparison_source=result.sql_comparison_source,
         block_reason=result.block_reason,
     )
@@ -130,7 +132,7 @@ async def supervisor_queue(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"success": False, "error": {"code": "INVALID_QUEUE", "message": f"Valid queues: {valid_queues}"}},
         )
-    query = {"approval_status": CountObservationStatus.SUPERVISOR_REVIEW.value}
+    query: dict[str, Any] = {"approval_status": CountObservationStatus.SUPERVISOR_REVIEW.value}
     if session_id:
         query["session_id"] = session_id
     if queue_type_upper == ReviewQueueType.QUANTITY_VARIANCE.value:
@@ -200,7 +202,7 @@ async def supervisor_decide(
             observation_id=observation_id,
             session_id=observation.get("session_id", ""),
             item_code=observation.get("item_code", ""),
-            requested_by=decided_by,
+            requested_by=str(decided_by or "system"),
             reason=payload.reason or "supervisor_decision",
             priority="HIGH",
             is_blind=payload.is_blind if payload.is_blind is not None else True,
@@ -242,7 +244,7 @@ async def create_recount_request(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"success": False, "error": {"code": "NOT_FOUND", "message": "Observation not found"}},
         )
-    requested_by = current_user.get("username") or current_user.get("id")
+    requested_by = str(current_user.get("username") or current_user.get("id") or "system")
     request = await recount_service.create_request(
         db=db,
         observation_id=payload.observation_id,

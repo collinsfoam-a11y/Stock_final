@@ -242,7 +242,9 @@ class ProjectionService:
         if db_session is None:
             async with MongoUnitOfWork(self.db.client) as uow:
                 if uow.session is not None:
-                    return await self.apply_event(event, db_session=uow.session)
+                    res = await self.apply_event(event, db_session=uow.session)
+                    await uow.commit()
+                    return res
 
         event_id = _normalize_string(event.get("_id") or event.get("id"))
         if not event_id:

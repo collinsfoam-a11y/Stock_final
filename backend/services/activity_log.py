@@ -70,6 +70,28 @@ class ActivityLogService:
         self.db = mongo_db
         self.collection = mongo_db.activity_logs
 
+    async def initialize(self) -> None:
+        """Initialize indexes for activity logs."""
+        try:
+            await self.collection.create_index([("timestamp", -1)])
+            await self.collection.create_index([("user", 1), ("timestamp", -1)])
+            await self.collection.create_index([("action", 1)])
+        except Exception as e:
+            logger.warning(f"Could not create activity log indexes: {e}")
+
+    async def log(self, event: str, **kwargs: Any) -> str:
+        """Alias for log_activity for backward compatibility."""
+        user = kwargs.pop("user", "system")
+        role = kwargs.pop("role", "system")
+        return await self.log_activity(
+            user=user,
+            role=role,
+            action=event,
+            details=kwargs,
+            status=kwargs.pop("status", "success"),
+            error_message=kwargs.pop("error_message", None),
+        )
+
     async def log_activity(
         self,
         user: str,

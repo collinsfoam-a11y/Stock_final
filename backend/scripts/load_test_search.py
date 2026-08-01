@@ -81,7 +81,7 @@ class SearchUser(HttpUser):
 
     def _login(self):
         """(Re)authenticate and refresh the cached JWT access token."""
-        username, password = random.choice(USERS)
+        username, password = random.choice(USERS)  # nosec B311
         response = self.client.post(
             "/api/auth/login",
             json={"username": username, "password": password},
@@ -123,7 +123,7 @@ class SearchUser(HttpUser):
     def search_items(self):
         """Optimized search. NOTE: q/limit/offset are QUERY PARAMS, not a body."""
         self._search(
-            random.choice(QUERIES),
+            random.choice(QUERIES),  # nosec B311
             limit=20,
             offset=0,
             name="POST /api/items/search/optimized",
@@ -132,7 +132,7 @@ class SearchUser(HttpUser):
     @task(1)
     def search_exact_barcode(self):
         """Exact-ish barcode lookup against the same endpoint."""
-        barcode = f"51{random.randint(1000, 9999)}"
+        barcode = f"51{random.randint(1000, 9999)}"  # nosec B311
         self._search(
             barcode,
             limit=1,

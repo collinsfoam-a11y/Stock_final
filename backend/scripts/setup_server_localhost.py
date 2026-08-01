@@ -48,7 +48,7 @@ def _update_env_for_localhost(env_vars: dict[str, str]) -> None:
     env_vars["SQL_SERVER_DATABASE"] = env_vars.get("SQL_SERVER_DATABASE", "E_MART_KITCHEN_CARE")
     # Clear credentials for Windows Auth
     env_vars["SQL_SERVER_USER"] = ""
-    env_vars["SQL_SERVER_PASSWORD"] = ""
+    env_vars["SQL_SERVER_PASSWORD"] = ""  # nosec B105
 
 
 def _write_env_file(env_vars: dict[str, str]) -> None:

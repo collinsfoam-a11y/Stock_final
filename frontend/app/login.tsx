@@ -3,27 +3,22 @@
  * Clean, accessible login with modern design
  */
 
-import React, { useState, useCallback } from "react";
+import React from "react";
 import {
   View,
   Text,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   TextInput,
   useWindowDimensions,
 } from "react-native";
-import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
-import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { useAuthStore } from "../src/store/authStore";
-import { useSettingsStore } from "../src/store/settingsStore";
 import { ModernButton } from "../src/components/ui/ModernButton";
 import { ModernCard } from "../src/components/ui/ModernCard";
 import { ModernInput } from "../src/components/ui/ModernInput";
@@ -40,6 +35,8 @@ import {
 } from "@/theme/unified";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { useUiTokens } from "@/hooks/useUiTokens";
+import { useLoginFlow } from "../src/features/auth/hooks/useLoginFlow";
 
 // Safe Animated View for Web
 const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
@@ -57,13 +54,12 @@ const SafeAnimatedView = ({ children, style, entering, ...props }: any) => {
   );
 };
 
-import { useLoginFlow } from "../src/features/auth/hooks/useLoginFlow";
-
 export default function LoginScreen() {
-  const router = useRouter();
   const { width } = useWindowDimensions();
+  const isWide = width >= 768;
+  const t = useUiTokens();
   const { version } = useAppVersion();
-  const logoMaxWidth = Math.min(width - unifiedSpacing.xl * 2, 280);
+  const logoMaxWidth = Math.min(width - unifiedSpacing.xl * 2, isWide ? 320 : 260);
 
   const pinInputRef = React.useRef<TextInput>(null);
 
@@ -88,31 +84,36 @@ export default function LoginScreen() {
   } = useLoginFlow();
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <StatusBar style="dark" backgroundColor={unifiedColors.white} />
+    <SafeAreaView style={[styles.container, { backgroundColor: t.colors.background }]} edges={["top", "left", "right"]}>
+      <StatusBar style={t.mode === "dark" ? "light" : "dark"} />
       <ModernHeader showLogo title="Lavanya Mart" subtitle="Stock Verification System" />
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, isWide && styles.scrollContentWide]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="on-drag"
         >
-          <View style={styles.contentContainer}>
-            {/* Welcome Section */}
+          <View style={[styles.shell, isWide && styles.shellWide]}>
+            {/* Welcome Section / Hero Brand Panel */}
             <SafeAnimatedView
-              entering={FadeInDown.duration(800).springify()}
-              style={styles.welcomeSection}
+              entering={FadeInDown.duration(600).springify()}
+              style={[styles.welcomeSection, isWide && styles.welcomeSectionWide]}
             >
               {lastLoggedUser && loginMode === "pin" ? (
-                <View style={styles.userBadge}>
-                  <View style={styles.userBadgeAvatar}>
-                    <Ionicons name="person" size={24} color={unifiedColors.primary[500]} />
+                <View
+                  style={[
+                    styles.userBadge,
+                    { backgroundColor: t.colors.surfaceElevated, borderColor: t.colors.border },
+                  ]}
+                >
+                  <View style={[styles.userBadgeAvatar, { backgroundColor: `${t.colors.accent}15` }]}>
+                    <Ionicons name="person" size={20} color={t.colors.accent} />
                   </View>
-                  <Text style={styles.userBadgeName}>
+                  <Text style={[styles.userBadgeName, { color: t.colors.textPrimary }]}>
                     {lastLoggedUser.full_name || lastLoggedUser.username}
                   </Text>
                 </View>
@@ -121,42 +122,45 @@ export default function LoginScreen() {
                   <BrandLogo variant="wordmark" maxWidth={logoMaxWidth} maxHeight={96} />
                 </View>
               )}
-              <Text style={styles.welcomeTitle}>
+              <Text style={[styles.welcomeTitle, { color: t.colors.textPrimary }]}>
                 {lastLoggedUser && loginMode === "pin" ? "Welcome Back" : "Lavanya Mart"}
               </Text>
-              <Text style={styles.welcomeSubtitle}>
+              <Text style={[styles.welcomeSubtitle, { color: t.colors.textSecondary }]}>
                 {lastLoggedUser && loginMode === "pin"
-                  ? "Scan your fingerprint or enter PIN"
-                  : "Secure stock verification for your store team"}
+                  ? "Scan your fingerprint or enter your 4-digit PIN"
+                  : "Secure stock verification & inventory management for your store team."}
               </Text>
             </SafeAnimatedView>
 
-            {/* Login Form Card */}
+            {/* Form Container */}
             <SafeAnimatedView
-              entering={FadeInDown.duration(800).springify()}
-              style={styles.formContainer}
+              entering={FadeInDown.delay(100).duration(600).springify()}
+              style={[styles.formContainer, isWide && styles.formContainerWide]}
             >
-              <ModernCard style={styles.loginCard} padding={unifiedSpacing.lg}>
+              <ModernCard
+                style={[styles.loginCard, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}
+                padding={unifiedSpacing.xl}
+              >
                 {/* Mode Toggle */}
-                <View style={styles.modeToggle}>
+                <View style={[styles.modeToggle, { backgroundColor: t.colors.surfaceElevated }]}>
                   <AppTouchable
                     onPress={toggleLoginMode}
                     style={[
                       styles.modeButton,
-                      loginMode === "pin" ? styles.modeButtonActive : styles.modeButtonInactive,
+                      loginMode === "pin"
+                        ? { backgroundColor: t.colors.accent }
+                        : styles.modeButtonInactive,
                     ]}
                   >
                     <Ionicons
                       name="keypad"
-                      size={20}
-                      color={loginMode === "pin" ? unifiedColors.white : unifiedColors.neutral[600]}
+                      size={18}
+                      color={loginMode === "pin" ? t.colors.surface : t.colors.textSecondary}
                     />
                     <Text
                       style={[
                         styles.modeButtonText,
-                        loginMode === "pin"
-                          ? styles.modeButtonTextActive
-                          : styles.modeButtonTextInactive,
+                        { color: loginMode === "pin" ? t.colors.surface : t.colors.textSecondary },
                       ]}
                     >
                       PIN
@@ -168,24 +172,19 @@ export default function LoginScreen() {
                     style={[
                       styles.modeButton,
                       loginMode === "credentials"
-                        ? styles.modeButtonActive
+                        ? { backgroundColor: t.colors.accent }
                         : styles.modeButtonInactive,
-                    ]}>
+                    ]}
+                  >
                     <Ionicons
                       name="person"
-                      size={20}
-                      color={
-                        loginMode === "credentials"
-                          ? unifiedColors.white
-                          : unifiedColors.neutral[600]
-                      }
+                      size={18}
+                      color={loginMode === "credentials" ? t.colors.surface : t.colors.textSecondary}
                     />
                     <Text
                       style={[
                         styles.modeButtonText,
-                        loginMode === "credentials"
-                          ? styles.modeButtonTextActive
-                          : styles.modeButtonTextInactive,
+                        { color: loginMode === "credentials" ? t.colors.surface : t.colors.textSecondary },
                       ]}
                     >
                       Credentials
@@ -196,8 +195,8 @@ export default function LoginScreen() {
                 {/* PIN Entry Mode */}
                 {loginMode === "pin" && (
                   <>
-                    <Text style={styles.formTitle}>Enter Your PIN</Text>
-                    <Text style={styles.formSubtitle}>4-digit security code</Text>
+                    <Text style={[styles.formTitle, { color: t.colors.textPrimary }]}>Enter Your PIN</Text>
+                    <Text style={[styles.formSubtitle, { color: t.colors.textMuted }]}>4-digit security code</Text>
 
                     {/* Hidden Input for Keyboard */}
                     <TextInput
@@ -216,51 +215,56 @@ export default function LoginScreen() {
                       activeOpacity={1}
                       onPress={() => pinInputRef.current?.focus()}
                       style={styles.pinDisplay}
-                      accessibilityLabel="Enter PIN">
+                      accessibilityLabel="Enter PIN"
+                    >
                       {[0, 1, 2, 3].map((index) => (
                         <SafeAnimatedView
                           key={index}
-                          entering={FadeInDown.delay(index * 50).duration(300)}
+                          entering={FadeInDown.delay(index * 40).duration(300)}
                           style={[
                             styles.pinDot,
-                            pin.length > index ? styles.pinDotFilled : styles.pinDotEmpty,
-                            pin.length === index && styles.pinDotActive,
+                            { borderColor: t.colors.border },
+                            pin.length > index && { borderColor: t.colors.accent, backgroundColor: t.colors.accent },
+                            pin.length === index && { borderColor: t.colors.accentStrong, transform: [{ scale: 1.15 }] },
                           ]}
                         >
-                          {pin.length > index && <View style={styles.pinDotInner} />}
+                          {pin.length > index && (
+                            <View style={[styles.pinDotInner, { backgroundColor: t.colors.surface }]} />
+                          )}
                         </SafeAnimatedView>
                       ))}
                     </AppTouchable>
 
-                    {errors.pin && <Text style={styles.errorText}>{errors.pin}</Text>}
+                    {errors.pin && <Text style={[styles.errorText, { color: t.colors.error }]}>{errors.pin}</Text>}
 
                     {/* Biometric & Switch Options */}
                     <View style={styles.pinActions}>
                       {biometricAuthEnabled && lastLoggedUser?.has_pin ? (
                         <AppTouchable
                           onPress={handleBiometricAuth}
-                          style={styles.biometricButton}
+                          style={[
+                            styles.biometricButton,
+                            { backgroundColor: `${t.colors.accent}12`, borderColor: `${t.colors.accent}33` },
+                          ]}
                         >
                           <Ionicons
                             name="finger-print"
-                            size={44}
-                            color={unifiedColors.primary[500]}
+                            size={36}
+                            color={t.colors.accent}
                           />
-                          <Text style={styles.biometricText}>Unlock with Biometrics</Text>
+                          <Text style={[styles.biometricText, { color: t.colors.accent }]}>Unlock with Biometrics</Text>
                         </AppTouchable>
                       ) : null}
 
                       <View style={styles.pinBottomActions}>
-                        <AppTouchable onPress={handleForgotPin} >
-                          <Text style={styles.forgotLink}>Forgot PIN?</Text>
+                        <AppTouchable onPress={handleForgotPin}>
+                          <Text style={[styles.forgotLink, { color: t.colors.textSecondary }]}>Forgot PIN?</Text>
                         </AppTouchable>
 
-                        <View style={styles.actionDivider} />
+                        <View style={[styles.actionDivider, { backgroundColor: t.colors.border }]} />
 
-                        <AppTouchable
-                          onPress={() => setLoginMode("credentials")}
-                        >
-                          <Text style={styles.switchAccountLink}>Switch Account</Text>
+                        <AppTouchable onPress={() => setLoginMode("credentials")}>
+                          <Text style={[styles.switchAccountLink, { color: t.colors.accent }]}>Switch Account</Text>
                         </AppTouchable>
                       </View>
                     </View>
@@ -270,7 +274,7 @@ export default function LoginScreen() {
                 {/* Credentials Entry Mode */}
                 {loginMode === "credentials" && (
                   <>
-                    <Text style={styles.formTitle}>Sign In</Text>
+                    <Text style={[styles.formTitle, { color: t.colors.textPrimary }]}>Sign In</Text>
 
                     <ModernInput
                       label="Username"
@@ -279,7 +283,7 @@ export default function LoginScreen() {
                       onChangeText={setUsername}
                       error={errors.username}
                       autoCapitalize="none"
-                      icon="person"
+                      icon="person-outline"
                       disabled={isLoading}
                       showClearButton
                     />
@@ -291,7 +295,7 @@ export default function LoginScreen() {
                       onChangeText={setPassword}
                       error={errors.password}
                       secureTextEntry
-                      icon="lock-closed"
+                      icon="lock-closed-outline"
                       disabled={isLoading}
                     />
 
@@ -299,7 +303,7 @@ export default function LoginScreen() {
                       onPress={handleForgotPassword}
                       style={styles.forgotPasswordContainer}
                     >
-                      <Text style={styles.forgotLink}>Forgot Password?</Text>
+                      <Text style={[styles.forgotLink, { color: t.colors.textSecondary }]}>Forgot Password?</Text>
                     </AppTouchable>
                   </>
                 )}
@@ -313,21 +317,21 @@ export default function LoginScreen() {
                     disabled={isLoading || !username || !password}
                     fullWidth
                     style={styles.loginButton}
-                    icon="log-in"
+                    icon="log-in-outline"
                   />
                 )}
               </ModernCard>
             </SafeAnimatedView>
-
-            {/* Footer */}
-            <Animated.View
-              entering={FadeInDown.delay(200).duration(800).springify()}
-              style={styles.footer}
-            >
-              <Text style={styles.versionText}>Version {version}</Text>
-              <Text style={styles.footerText}>Secure • Reliable • Fast</Text>
-            </Animated.View>
           </View>
+
+          {/* Footer */}
+          <Animated.View
+            entering={FadeInDown.delay(200).duration(600).springify()}
+            style={styles.footer}
+          >
+            <Text style={[styles.versionText, { color: t.colors.textMuted }]}>Version {version}</Text>
+            <Text style={[styles.footerText, { color: t.colors.textMuted }]}>Secure • Reliable • Fast</Text>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -345,18 +349,34 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: unifiedSpacing.lg,
-    paddingBottom: unifiedSpacing.xl,
-  },
-  contentContainer: {
-    flex: 1,
+    paddingVertical: unifiedSpacing.xl,
     justifyContent: "center",
-    maxWidth: 400,
-    alignSelf: "center",
+  },
+  scrollContentWide: {
+    paddingHorizontal: unifiedSpacing["2xl"],
+    alignItems: "center",
+  },
+  shell: {
     width: "100%",
+    maxWidth: 420,
+    alignSelf: "center",
+  },
+  shellWide: {
+    maxWidth: 960,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: unifiedSpacing["2xl"],
   },
   welcomeSection: {
     alignItems: "center",
-    marginBottom: unifiedSpacing["2xl"],
+    marginBottom: unifiedSpacing.xl,
+  },
+  welcomeSectionWide: {
+    flex: 1,
+    alignItems: "flex-start",
+    marginBottom: 0,
+    paddingRight: unifiedSpacing.lg,
   },
   welcomeTitle: {
     ...textStyles.h3,
@@ -372,6 +392,10 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     marginBottom: unifiedSpacing.xl,
+  },
+  formContainerWide: {
+    width: 420,
+    marginBottom: 0,
   },
   loginCard: {
     backgroundColor: unifiedColors.white,
@@ -468,7 +492,12 @@ const styles = StyleSheet.create({
   },
   biometricButton: {
     alignItems: "center",
-    padding: unifiedSpacing.md,
+    justifyContent: "center",
+    width: "100%",
+    paddingVertical: unifiedSpacing.md,
+    paddingHorizontal: unifiedSpacing.lg,
+    borderRadius: unifiedRadius.lg,
+    borderWidth: 1,
   },
   biometricText: {
     ...textStyles.caption,

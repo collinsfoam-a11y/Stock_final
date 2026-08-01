@@ -1,29 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
-import inspect
 import json
 import logging
-import uuid
 from typing import Any, Optional
 
-from bson import ObjectId
-from fastapi import HTTPException
 
-from backend.services.concurrency import ConcurrencyError, coerce_version
-from backend.services.governance_audit_service import GovernanceAuditService
-from backend.services.governance_guard import (
-    GovernanceViolation,
-    assert_valid_write,
-    write_authority,
-)
-from backend.services.projection_write_service import ProjectionWriteService
-from backend.services.session_lifecycle_service import SessionLifecycleService
-from backend.services.snapshot_service import SnapshotService
-from backend.services.validation_service import ValidationService
-from backend.services.variance_service import VarianceService
 
 logger = logging.getLogger(__name__)
 
@@ -155,53 +138,16 @@ def _apply_update_document_to_merged(
                 ]
 
 
-@dataclass(frozen=True)
-class CountLineGovernanceDecision:
-    approval_status: str
-    approved_at: Optional[datetime]
-    approved_by: Optional[str]
-    requires_supervisor_approval: bool
-    status: str
-    variance: float
-    variance_data: dict[str, Any]
-    violated_thresholds: list[dict[str, Any]]
-
-
-@dataclass(frozen=True)
-class CountLineGovernanceModeProfile:
-    require_active_session: bool
-    require_full_context: bool
-
-
-DEFAULT_GOVERNANCE_MODE = "active_session"
-GOVERNANCE_MODE_PROFILES: dict[str, CountLineGovernanceModeProfile] = {
-    "active_session": CountLineGovernanceModeProfile(
-        require_active_session=True,
-        require_full_context=True,
-    ),
-    "mutable_session": CountLineGovernanceModeProfile(
-        require_active_session=False,
-        require_full_context=True,
-    ),
-    "finalization": CountLineGovernanceModeProfile(
-        require_active_session=False,
-        require_full_context=False,
-    ),
-    "repair": CountLineGovernanceModeProfile(
-        require_active_session=False,
-        require_full_context=False,
-    ),
-}
-DEFAULT_VALIDATION_MODE = "enforce"
-VALIDATION_MODES = {"enforce", "repair_skip"}
-
-
-
 from backend.services.count_lines.validation import CountLineValidationMixin
-from backend.services.count_lines.governance import CountLineGovernanceMixin
+from backend.services.count_lines.governance import (
+    CountLineGovernanceDecision,
+    CountLineGovernanceMixin,
+)
 from backend.services.count_lines.session_aggregator import CountLineSessionAggregatorMixin
 from backend.services.count_lines.observation import CountLineObservationMixin
 from backend.services.count_lines.write_core import CountLineWriteCoreMixin
+
+__all__ = ["CountLineWriteService", "CountLineGovernanceDecision"]
 
 class CountLineWriteService(
     CountLineValidationMixin,

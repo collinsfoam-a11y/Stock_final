@@ -15,6 +15,7 @@
 
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useUiTokens } from "../../hooks/useUiTokens";
@@ -223,7 +224,10 @@ export const VariancePanel: React.FC<VariancePanelProps> = ({ vm, title }) => {
             </View>
 
             {/* Severity / classification banner */}
-            <View style={[styles.banner, { backgroundColor: sev.bg, borderColor: colorWithAlpha(sev.color, 0.3) }]}>
+            <Animated.View
+                entering={FadeInDown.duration(350).springify()}
+                style={[styles.banner, { backgroundColor: sev.bg, borderColor: colorWithAlpha(sev.color, 0.3) }]}
+            >
                 <Ionicons name={sev.icon} size={18} color={sev.color} />
                 <View style={styles.bannerCopy}>
                     <Text style={[styles.bannerLabel, { color: sev.color }]}>
@@ -231,36 +235,39 @@ export const VariancePanel: React.FC<VariancePanelProps> = ({ vm, title }) => {
                     </Text>
                     <Text style={styles.bannerExplanation}>{vm.explanation}</Text>
                 </View>
-            </View>
+            </Animated.View>
 
             {/* PENDING_SQL_VALIDATION — live SQL is pending; ERP figure is cached */}
             {vm.currentErp.absence === "pending_sql_validation" ? (
-                <View style={[styles.pendingBanner, { backgroundColor: colorWithAlpha(t.colors.warning, 0.12), borderColor: colorWithAlpha(t.colors.warning, 0.3) }]}>
+                <Animated.View
+                    entering={FadeInDown.delay(50).duration(300)}
+                    style={[styles.pendingBanner, { backgroundColor: colorWithAlpha(t.colors.warning, 0.12), borderColor: colorWithAlpha(t.colors.warning, 0.3) }]}
+                >
                     <Ionicons name="alert-circle-outline" size={16} color={t.colors.warning} />
                     <Text style={[styles.pendingText, { color: t.colors.warning }]}>
                         Awaiting SQL validation — physical count saved; ERP figure pending live verification
                     </Text>
-                </View>
+                </Animated.View>
             ) : null}
 
             {/* Reference quantities (with provenance) */}
             <Text style={styles.groupLabel}>Reference quantities</Text>
-            <View style={styles.grid}>
+            <Animated.View style={styles.grid} entering={FadeInUp.delay(100).duration(300)}>
                 <QuantityCell label="Baseline" qty={vm.baseline} />
                 <QuantityCell label="Movement-adjusted" qty={vm.movementAdjustedExpected} />
                 <QuantityCell label="Current ERP" qty={vm.currentErp} />
                 <QuantityCell label="Physical count" qty={vm.physical} emphasize />
-            </View>
+            </Animated.View>
 
             {/* Canonical deltas */}
             <Text style={styles.groupLabel}>Variance</Text>
-            <View style={styles.grid}>
+            <Animated.View style={styles.grid} entering={FadeInUp.delay(150).duration(300)}>
                 <DeltaCell label="Quantity Δ" value={vm.quantityDelta} />
                 <DeltaCell label="Audit Δ" value={vm.auditDelta} />
                 <DeltaCell label="Operational Δ" value={vm.operationalDelta} />
                 <DeltaCell label="Shortage" value={vm.shortageQty} />
                 <DeltaCell label="Excess" value={vm.excessQty} />
-            </View>
+            </Animated.View>
         </View>
     );
 };
@@ -363,9 +370,11 @@ const makeStyles = (t: ThemeTokens): ReturnType<typeof StyleSheet.create> =>
             fontSize: 20,
             fontWeight: "700",
             color: t.colors.textPrimary,
+            fontVariant: ["tabular-nums"],
         },
         cellValueEmphasized: {
             fontSize: 24,
+            fontWeight: "800",
         },
         cellValueAbsent: {
             color: t.colors.textMuted,
@@ -374,6 +383,7 @@ const makeStyles = (t: ThemeTokens): ReturnType<typeof StyleSheet.create> =>
         deltaValue: {
             fontSize: 22,
             fontWeight: "800",
+            fontVariant: ["tabular-nums"],
         },
         cellCaptionRow: {
             flexDirection: "row",
@@ -402,7 +412,7 @@ const makeStyles = (t: ThemeTokens): ReturnType<typeof StyleSheet.create> =>
             alignItems: "center",
             gap: t.spacing.xs,
             padding: t.spacing.sm + t.spacing.xs,
-            borderRadius: t.radius.md,
+            borderRadius: t.radius.lg,
             borderWidth: 1,
         },
         pendingText: {

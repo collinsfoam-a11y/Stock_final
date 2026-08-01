@@ -5,7 +5,7 @@
  * Presentational sections live in focused supervisor dashboard components.
  */
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Platform,
@@ -29,6 +29,9 @@ import {
 import { SupervisorStatsSection } from "../../src/components/supervisor/dashboard/SupervisorStatsSection";
 import { SupervisorActivitySection } from "../../src/components/supervisor/dashboard/SupervisorActivitySection";
 import { SupervisorRecentSessionsSection } from "../../src/components/supervisor/dashboard/SupervisorRecentSessionsSection";
+import { ExceptionTriageList } from "@/components/dashboard";
+import { buildSupervisorTriage } from "@/viewModels/supervisorTriageAdapter";
+import type { ExceptionTriageItem } from "@/viewModels/types";
 import {
   ActivityItem,
   DashboardStats,
@@ -341,6 +344,25 @@ export default function SupervisorDashboard() {
     onOpenWorkflows: () => router.push("/supervisor/user-workflows" as any),
   });
 
+  // Exception-first triage (§6.5): surface problems before metrics.
+  const triageItems = useMemo(
+    () =>
+      buildSupervisorTriage({
+        highRiskSessions: stats.highRiskSessions,
+        openSessions: stats.openSessions,
+      }),
+    [stats.highRiskSessions, stats.openSessions],
+  );
+
+  const handleTriagePress = useCallback(
+    (item: ExceptionTriageItem) => {
+      if (item.linkTo) {
+        router.push(item.linkTo.route as any);
+      }
+    },
+    [router],
+  );
+
   return (
     <ScreenContainer
       header={{
@@ -392,6 +414,12 @@ export default function SupervisorDashboard() {
             highRiskSessions={stats.highRiskSessions}
             openSessions={stats.openSessions}
             overviewActions={overviewActions}
+          />
+
+          {/* Exception-first triage surface (§6.5) — renders nothing when clean. */}
+          <ExceptionTriageList
+            items={triageItems}
+            onPressItem={handleTriagePress}
           />
 
           <SupervisorStatsSection

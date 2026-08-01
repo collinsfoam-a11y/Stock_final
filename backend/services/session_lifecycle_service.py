@@ -289,12 +289,14 @@ class SessionLifecycleService:
     ) -> dict[str, Any]:
         if db_session is None and not _transaction_started:
             async with MongoUnitOfWork(self.db.client) as uow:
-                return await self.create_session(
+                res = await self.create_session(
                     session_doc=session_doc,
                     username=username,
                     db_session=uow.session,
                     _transaction_started=True,
                 )
+                await uow.commit()
+                return res
 
         now_dt = _utc_now()
         created_doc = dict(session_doc)
@@ -356,7 +358,7 @@ class SessionLifecycleService:
     ) -> dict[str, Any]:
         if db_session is None and not _transaction_started:
             async with MongoUnitOfWork(self.db.client) as uow:
-                return await self.transition_session(
+                res = await self.transition_session(
                     session_id=session_id,
                     target_status=target_status,
                     actor=actor,
@@ -365,6 +367,8 @@ class SessionLifecycleService:
                     expected_version=expected_version,
                     _transaction_started=True,
                 )
+                await uow.commit()
+                return res
 
         session = await self.ensure_session_exists(session_id, db_session=db_session)
         current = normalize_session_status(session.get("status"))
@@ -633,12 +637,14 @@ class SessionLifecycleService:
     ) -> dict[str, Any]:
         if db_session is None and not _transaction_started:
             async with MongoUnitOfWork(self.db.client) as uow:
-                return await self.create_recount_request(
+                res = await self.create_recount_request(
                     recount_doc=recount_doc,
                     actor=actor,
                     db_session=uow.session,
                     _transaction_started=True,
                 )
+                await uow.commit()
+                return res
 
         if not isinstance(recount_doc, dict) or not recount_doc:
             raise GovernanceViolation("CRITICAL: recount_doc is required")
@@ -697,7 +703,7 @@ class SessionLifecycleService:
     ) -> dict[str, Any]:
         if db_session is None and not _transaction_started:
             async with MongoUnitOfWork(self.db.client) as uow:
-                return await self.transition_recount_request(
+                res = await self.transition_recount_request(
                     recount_id=recount_id,
                     target_status=target_status,
                     actor=actor,
@@ -705,6 +711,8 @@ class SessionLifecycleService:
                     db_session=uow.session,
                     _transaction_started=True,
                 )
+                await uow.commit()
+                return res
 
         recount = await self.get_recount_request(recount_id, db_session=db_session)
         if not recount:
@@ -903,9 +911,11 @@ class SessionLifecycleService:
             )
 
         async with MongoUnitOfWork(self.db.client) as uow:
-            return await self._finalize_session_canonical_core(
+            res = await self._finalize_session_canonical_core(
                 session_id=session_id,
                 actor=actor,
                 note=note,
                 db_session=uow.session,
             )
+            await uow.commit()
+            return res

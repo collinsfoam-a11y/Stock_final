@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 from pathlib import Path
 from typing import Optional, Any
 
@@ -225,9 +224,6 @@ def create_app() -> FastAPI:
             if hasattr(route, "path"):
                 logger.info("Route: %s", route.path)
 
-    
-
     register_static_serving(app, Path(__file__).parent.parent.parent / "frontend" / "dist", logger)
 
     return app
-

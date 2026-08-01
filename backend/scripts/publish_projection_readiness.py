@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import subprocess
+import subprocess  # nosec B404
 import sys
 import os
 from pathlib import Path
@@ -32,7 +32,7 @@ def main() -> int:
             args[idx + 1] = _absolutize_path(args[idx + 1])
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT_DIR)
-    completed = subprocess.run([sys.executable, str(PYC_PATH), *args], cwd=str(ROOT_DIR), env=env)
+    completed = subprocess.run([sys.executable, str(PYC_PATH), *args], cwd=str(ROOT_DIR), env=env)  # nosec B603
     return int(completed.returncode)
 
 

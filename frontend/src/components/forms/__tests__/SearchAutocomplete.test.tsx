@@ -120,7 +120,7 @@ describe("SearchAutocomplete", () => {
     fireEvent.changeText(getByPlaceholderText("Search inventory"), "ITEM");
 
     await waitFor(() => {
-      expect(mockRemoteSearchItems).toHaveBeenCalledWith({ query: "ITEM" });
+      expect(mockRemoteSearchItems).toHaveBeenCalledWith({ query: "ITEM" }, 1, 20);
     });
 
     expect(mockLocalSearchItems).not.toHaveBeenCalled();

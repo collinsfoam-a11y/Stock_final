@@ -28,7 +28,7 @@ class RecoveryStrategy(Enum):
 
 def _calculate_backoff(retry_delay: float, retry_count: int) -> float:
     """Calculate exponential backoff with jitter."""
-    return (retry_delay * (2 ** (retry_count - 1))) + random.uniform(0, 0.5)
+    return (retry_delay * (2 ** (retry_count - 1))) + random.uniform(0, 0.5)  # nosec B311
 
 
 def _build_error_info(

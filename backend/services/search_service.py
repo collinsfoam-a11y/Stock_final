@@ -14,6 +14,7 @@ Scoring Algorithm:
 """
 
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any, Optional, Union
 
@@ -119,7 +120,7 @@ class SearchService:
         # Clamp page_size
         page_size = min(max(1, page_size), 50)
 
-        # Try cache first (if available)
+        # Try cache first (Redis or local memory cache)
         cache_key = f"search:{query}:{page}:{page_size}"
         if self.cache:
             try:
@@ -129,6 +130,11 @@ class SearchService:
                     return cached
             except Exception as e:
                 logger.warning(f"Cache read failed: {e}")
+        elif hasattr(self, "_memory_cache") and cache_key in self._memory_cache:
+            timestamp, cached_res = self._memory_cache[cache_key]
+            import time
+            if time.time() - timestamp < 60:
+                return cached_res
 
         # Determine if this looks like a barcode (numeric, 6+ digits)
         is_barcode_query = query.isdigit() and len(query) >= 6
@@ -157,12 +163,20 @@ class SearchService:
             query=query,
         )
 
-        # Cache result (if available)
+        # Cache result (Redis or in-memory)
         if self.cache and total > 0:
             try:
-                await self.cache.setex(cache_key, 60, response)  # 60 second TTL
+                await self.cache.setex(cache_key, 60, response)
             except Exception as e:
                 logger.warning(f"Cache write failed: {e}")
+        elif total > 0:
+            if not hasattr(self, "_memory_cache"):
+                self._memory_cache = {}
+            import time
+            # Maintain simple 200-item LRU
+            if len(self._memory_cache) > 200:
+                self._memory_cache.clear()
+            self._memory_cache[cache_key] = (time.time(), response)
 
         return response
 
@@ -174,32 +188,45 @@ class SearchService:
     ) -> dict:
         """Build MongoDB query for candidate fetching"""
 
-        fields = search_fields or ["barcode", "item_code", "item_name"]
+        fields = search_fields or ["barcode", "manual_barcode", "unit2_barcode", "unit_m_barcode", "item_code", "item_name"]
 
         if is_barcode:
-            # Prioritize exact and prefix barcode matches, but include name search
+            # Prioritize exact and prefix barcode matches across all barcode fields
             return {
                 "$or": [
-                    {"barcode": query},  # Exact match
-                    {"barcode": {"$regex": f"^{query}"}},  # Prefix match
-                    {"item_code": query},  # Exact code match
-                    {
-                        "item_name": {"$regex": query, "$options": "i"}
-                    },  # Name match for numeric names
+                    {"barcode": query},
+                    {"manual_barcode": query},
+                    {"unit2_barcode": query},
+                    {"unit_m_barcode": query},
+                    {"barcode": {"$regex": f"^{query}"}},
+                    {"item_code": query},
+                    {"item_name": {"$regex": query, "$options": "i"}},
                 ]
             }
 
-        # Text search for names
+        # Text search for names and codes
         or_conditions = []
 
         if "barcode" in fields:
-            or_conditions.append({"barcode": {"$regex": query, "$options": "i"}})
+            or_conditions.append({"barcode": {"$regex": re.escape(query), "$options": "i"}})
+            or_conditions.append({"manual_barcode": {"$regex": re.escape(query), "$options": "i"}})
+            or_conditions.append({"unit2_barcode": {"$regex": re.escape(query), "$options": "i"}})
+            or_conditions.append({"unit_m_barcode": {"$regex": re.escape(query), "$options": "i"}})
 
         if "item_code" in fields:
-            or_conditions.append({"item_code": {"$regex": query, "$options": "i"}})
+            or_conditions.append({"item_code": {"$regex": re.escape(query), "$options": "i"}})
 
         if "item_name" in fields:
-            or_conditions.append({"item_name": {"$regex": query, "$options": "i"}})
+            # Exact substring match
+            or_conditions.append({"item_name": {"$regex": re.escape(query), "$options": "i"}})
+
+            # Out-of-order multi-token word search (e.g., "HAIER 43" matching "HAIER LED TV 43S800QT")
+            tokens = [re.escape(w) for w in query.strip().split() if len(w) > 1]
+            if len(tokens) > 1:
+                token_and_condition = {
+                    "$and": [{"item_name": {"$regex": t, "$options": "i"}} for t in tokens]
+                }
+                or_conditions.append(token_and_condition)
 
         return {"$or": or_conditions} if or_conditions else {}
 
@@ -226,23 +253,19 @@ class SearchService:
         """Score and rank candidates by relevance, removing true duplicates"""
 
         scored = []
-        seen_items: set[tuple[str, str, str]] = (
-            set()
-        )  # (barcode, item_code, mrp) tuple for deduplication
+        seen_items: set[tuple[str, str, str]] = set()
         query_lower = query.lower()
+        tokens = [w for w in query_lower.split() if len(w) > 1]
 
         for item in candidates:
-            score, match_type = self._calculate_score(item, query, query_lower, is_barcode)
+            score, match_type = self._calculate_score(item, query, query_lower, tokens, is_barcode)
 
             if score > 0:
-                # Create deduplication key: barcode + item_code + mrp
-                # Items with same name but different barcode/MRP will still appear separately
                 barcode = str(item.get("barcode", ""))
                 item_code = str(item.get("item_code", ""))
                 mrp = str(item.get("mrp", ""))
                 dedup_key = (barcode, item_code, mrp)
 
-                # Skip if we've already seen this exact item variant
                 if dedup_key in seen_items:
                     continue
                 seen_items.add(dedup_key)
@@ -269,8 +292,6 @@ class SearchService:
                     )
                 )
 
-        # Sort by stock availability first (in-stock items prioritize over out-of-stock),
-        # then by score descending, then by item_name ascending
         scored.sort(key=lambda x: (
             0 if x.stock_qty > 0 else 1,
             -x.relevance_score,
@@ -284,6 +305,7 @@ class SearchService:
         item: dict,
         query: str,
         query_lower: str,
+        tokens: list[str],
         is_barcode: bool,
     ) -> tuple[float, str]:
         """
@@ -292,24 +314,27 @@ class SearchService:
         Returns:
             Tuple of (score, match_type)
         """
-        barcode = str(item.get("barcode", ""))
+        barcodes = [
+            str(item.get("barcode", "")),
+            str(item.get("manual_barcode", "")),
+            str(item.get("unit2_barcode", "")),
+            str(item.get("unit_m_barcode", "")),
+        ]
         item_code = str(item.get("item_code", ""))
         item_name = item.get("item_name", "")
         name_lower = item_name.lower()
 
-        # Priority 1: Exact barcode match
-        if barcode == query:
+        # Priority 1: Exact barcode match across any barcode field
+        if any(b == query for b in barcodes if b):
             return (self.EXACT_BARCODE_SCORE, "exact_barcode")
 
         # Priority 2: Partial barcode match (prefix)
-        if barcode.startswith(query):
-            similarity = len(query) / len(barcode) * 100
-            return (self.PARTIAL_BARCODE_SCORE + similarity, "partial_barcode")
+        if any(b.startswith(query) for b in barcodes if b):
+            return (self.PARTIAL_BARCODE_SCORE + 50, "partial_barcode")
 
-        # Priority 3: Barcode contains query (for scanning partial reads)
-        if is_barcode and query in barcode:
-            similarity = len(query) / len(barcode) * 100
-            return (self.PARTIAL_BARCODE_SCORE + similarity * 0.5, "partial_barcode")
+        # Priority 3: Barcode contains query
+        if is_barcode and any(query in b for b in barcodes if b):
+            return (self.PARTIAL_BARCODE_SCORE + 25, "partial_barcode")
 
         # Priority 4: Exact item_code match
         if item_code.lower() == query_lower:
@@ -317,18 +342,22 @@ class SearchService:
 
         # Priority 5: Name prefix match
         if name_lower.startswith(query_lower):
-            position_bonus = 50  # Bonus for matching from start
+            position_bonus = 50
             return (self.NAME_PREFIX_SCORE + position_bonus, "name_prefix")
 
-        # Priority 6: Name contains query
+        # Priority 6: Name contains full query substring
         if query_lower in name_lower:
             position = name_lower.index(query_lower)
-            position_bonus = max(0, 50 - position)  # Earlier = better
+            position_bonus = max(0, 50 - position)
             return (self.NAME_CONTAINS_SCORE + position_bonus, "name_contains")
 
-        # Priority 7: Fuzzy match on name
-        fuzzy_score = fuzz.partial_ratio(query_lower, name_lower)
-        if fuzzy_score > 60:  # Threshold for fuzzy matches
+        # Priority 6.5: Tokenized multi-word match (out-of-order words)
+        if len(tokens) > 1 and all(t in name_lower for t in tokens):
+            return (250.0, "token_match")
+
+        # Priority 7: Fuzzy match on name using WRatio
+        fuzzy_score = fuzz.WRatio(query_lower, name_lower)
+        if fuzzy_score >= 75:
             return (fuzzy_score, "fuzzy")
 
         # No match

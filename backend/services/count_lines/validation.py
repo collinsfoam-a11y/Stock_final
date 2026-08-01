@@ -3,27 +3,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
-import inspect
 import json
 import logging
-import uuid
 from typing import Any, Optional
 
 from bson import ObjectId
 from fastapi import HTTPException
 
-from backend.services.concurrency import ConcurrencyError, coerce_version
-from backend.services.governance_audit_service import GovernanceAuditService
 from backend.services.governance_guard import (
     GovernanceViolation,
     assert_valid_write,
-    write_authority,
 )
-from backend.services.projection_write_service import ProjectionWriteService
-from backend.services.session_lifecycle_service import SessionLifecycleService
-from backend.services.snapshot_service import SnapshotService
-from backend.services.validation_service import ValidationService
-from backend.services.variance_service import VarianceService
 
 logger = logging.getLogger(__name__)
 
@@ -167,16 +157,6 @@ def _apply_update_document_to_merged(
                 ]
 
 
-@dataclass(frozen=True)
-class CountLineGovernanceDecision:
-    approval_status: str
-    approved_at: Optional[datetime]
-    approved_by: Optional[str]
-    requires_supervisor_approval: bool
-    status: str
-    variance: float
-    variance_data: dict[str, Any]
-    violated_thresholds: list[dict[str, Any]]
 
 
 @dataclass(frozen=True)
@@ -208,7 +188,10 @@ DEFAULT_VALIDATION_MODE = "enforce"
 VALIDATION_MODES = {"enforce", "repair_skip"}
 
 
-class CountLineValidationMixin:
+from backend.services.count_lines.base import CountLineServiceBase
+
+
+class CountLineValidationMixin(CountLineServiceBase):
     """Authoritative write-side governance for count-line mutations."""
 
 

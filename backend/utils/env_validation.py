@@ -31,8 +31,8 @@ def validate_environment() -> None:
     required_vars = {
         "MONGO_URL": "MongoDB connection string",
         "DB_NAME": "Database name",
-        "JWT_SECRET": "JWT signing secret",
-        "JWT_REFRESH_SECRET": "JWT refresh token secret",
+        "JWT_SECRET": "JWT signing secret",  # nosec B105
+        "JWT_REFRESH_SECRET": "JWT refresh token secret",  # nosec B105
         "PIN_SALT": "PIN hashing salt",
     }
 

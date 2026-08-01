@@ -308,3 +308,87 @@ export type StaleStateReason =
   | "stale_projection" // local projection may lag the server
   | "offline" // device is offline; data may be behind
   | "baseline_missing"; // no baseline captured yet
+
+// ---------------------------------------------------------------------------
+// Dashboard — KPI tiles & exception triage (P3 / OXS §6.5, proposal §7.1)
+// ---------------------------------------------------------------------------
+
+/** Semantic status accent shared across dashboard surfaces. */
+export type DashboardStatus = "primary" | "success" | "warning" | "error" | "info";
+
+/** A tap-through link to the underlying record set (§6.5: metrics must link). */
+export interface DashboardLink {
+  route: string;
+  params?: Record<string, string>;
+}
+
+export type KpiTrendDirection = "up" | "down" | "flat";
+
+export interface KpiTrend {
+  /** Signed delta vs the prior period. */
+  delta: number;
+  direction: KpiTrendDirection;
+  /** Optional human label, e.g. "vs last week". */
+  label?: string;
+}
+
+/**
+ * The canonical KPI kinds for the big-numeric dashboard treatment (proposal §7.1).
+ */
+export type KpiKind =
+  | "verified_value"
+  | "damage_value"
+  | "shortage_value"
+  | "projection_health"
+  | "items_counted"
+  | "sessions_open";
+
+/**
+ * DashboardKpiViewModel — one big-numeric KPI tile.
+ *
+ * Authority boundary: `displayValue` is PRE-FORMATTED by the adapter (currency,
+ * percent, compact notation). The UI never recomputes or rounds. When the
+ * underlying value is genuinely absent, `isAbsent` is true and the tile renders
+ * an em-dash — never a coerced zero (CI-01).
+ */
+export interface DashboardKpiViewModel {
+  kind: KpiKind;
+  /** Pre-formatted big number, e.g. "₹1.2L", "94%", "328". */
+  displayValue: string;
+  /** Small label under the number, e.g. "Verified Value". */
+  label: string;
+  trend?: KpiTrend;
+  status: DashboardStatus;
+  /** Tap-through to the record set behind this metric. */
+  linkTo?: DashboardLink;
+  /** True when the value is genuinely absent (render "—"). */
+  isAbsent?: boolean;
+}
+
+/**
+ * ExceptionTriageKind — the exception states a dashboard surfaces FIRST
+ * (§6.5: failed sync, high variance, stuck sessions, overdue recounts,
+ * rejected submissions).
+ */
+export type ExceptionTriageKind =
+  | "failed_sync"
+  | "high_variance"
+  | "stuck_session"
+  | "overdue_recount"
+  | "rejected_submission";
+
+export type TriageSeverity = "critical" | "high" | "medium";
+
+/**
+ * ExceptionTriageItem — one row in the exception-first triage list.
+ * Each item links to the affected record set so a supervisor can act in one tap.
+ */
+export interface ExceptionTriageItem {
+  kind: ExceptionTriageKind;
+  title: string;
+  description: string;
+  /** Count of affected records. */
+  count: number;
+  severity: TriageSeverity;
+  linkTo?: DashboardLink;
+}

@@ -5,13 +5,12 @@ from fastapi import Response
 
 from backend.api.auth import (
     UserRegister,
-    check_rate_limit,
     find_user_by_username,
     generate_auth_tokens,
     register,
 )
 from backend.api.auth_routes import _session_belongs_to_current_client
-from backend.exceptions import NotFoundError, RateLimitError
+from backend.exceptions import NotFoundError
 
 
 @pytest.fixture
@@ -57,28 +56,6 @@ def mock_auth_deps():
         mock.algorithm = "HS256"
         mock.db = AsyncMock()
         yield mock
-
-
-@pytest.mark.asyncio
-async def test_check_rate_limit_success(mock_cache_service, mock_settings):
-    mock_cache_service.get.return_value = 0
-
-    result = await check_rate_limit("127.0.0.1")
-
-    assert result.is_ok
-    assert result.unwrap() is True
-    mock_cache_service.set.assert_called_with("login_attempts", "127.0.0.1", 1, ttl=300)
-
-
-@pytest.mark.asyncio
-async def test_check_rate_limit_exceeded(mock_cache_service, mock_settings):
-    mock_cache_service.get.return_value = 5
-
-    result = await check_rate_limit("127.0.0.1")
-
-    assert result.is_err
-    assert isinstance(result._error, RateLimitError)
-    mock_cache_service.set.assert_called_with("login_attempts", "127.0.0.1", 5, ttl=300)
 
 
 @pytest.mark.asyncio

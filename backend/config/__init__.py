@@ -1,1 +1,1 @@
-from backend.config.core import *
+from backend.config.core import *  # noqa: F403

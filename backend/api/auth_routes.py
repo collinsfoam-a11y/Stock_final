@@ -1,5 +1,4 @@
 import logging
-import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, cast
 
@@ -29,11 +28,10 @@ from backend.exceptions import (
     AuthorizationError,
     DatabaseConnectionError,
     NotFoundError,
-    RateLimitError,
 )
 from backend.models.audit import AuditEventType, AuditLogStatus
 from backend.services.otp_service import OTPService
-from backend.services.runtime import get_cache_service, get_refresh_token_service
+from backend.services.runtime import get_refresh_token_service
 from backend.services.whatsapp_service import WhatsAppDeliveryError, WhatsAppService
 from backend.utils.api_utils import result_to_response, sanitize_for_logging
 from backend.utils.auth_utils import (
@@ -406,7 +404,7 @@ async def register(
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "token_type": "bearer",
+            "token_type": "bearer",  # nosec B105
             "expires_in": 900,  # 15 minutes
             "user": {
                 "id": str(user_doc["_id"]),
@@ -472,7 +470,6 @@ async def login(
     Implements rate limiting, IP tracking, and detailed logging.
     """
     db = get_db()
-    cache_service = get_cache_service()
 
     client_ip = request.client.host if request.client else ""
     logger.debug(
@@ -694,7 +691,6 @@ async def login_with_pin(
     PIN is stored as a hashed value in the user document.
     """
     db = get_db()
-    cache_service = get_cache_service()
     client_ip = request.client.host if request.client else ""
 
     logger.debug(
@@ -844,7 +840,7 @@ async def _migrate_legacy_password(db: Any, user: dict[str, Any], password: str)
                 {"_id": user["_id"]},
                 {
                     "$set": {"hashed_password": get_password_hash(password)},
-                    "$unset": {"password": ""},
+                    "$unset": {"password": ""},  # nosec B105
                 },
             )
         except Exception as e:
@@ -857,7 +853,7 @@ def _build_login_response(tokens: dict[str, Any], user: dict[str, Any]) -> dict[
     """Helper to build the login response dictionary."""
     return {
         "access_token": tokens["access_token"],
-        "token_type": "bearer",
+        "token_type": "bearer",  # nosec B105
         "expires_in": tokens["expires_in"],
         "refresh_token": tokens["refresh_token"],
         "user": {

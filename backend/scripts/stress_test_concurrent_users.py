@@ -280,13 +280,13 @@ class ConcurrentUserStressTester:
         while not self._stop_event.is_set():
             try:
                 # Random delay between operations (simulate think time)
-                await asyncio.sleep(random.uniform(0.5, 2.0))
+                await asyncio.sleep(random.uniform(0.5, 2.0))  # nosec B311
 
                 if self._stop_event.is_set():
                     break
 
                 # Choose a random operation
-                operation = random.choice(
+                operation = random.choice(  # nosec B311
                     [
                         self._verify_session_isolation,
                         self._search_items,
@@ -305,7 +305,7 @@ class ConcurrentUserStressTester:
     async def _search_items(self, http_session: aiohttp.ClientSession, user: UserSession) -> bool:
         """Perform an item search."""
         search_terms = ["rice", "oil", "sugar", "510", "520", "530"]
-        search_term = random.choice(search_terms)
+        search_term = random.choice(search_terms)  # nosec B311
 
         success, data = await self._make_authenticated_request(
             http_session,

@@ -1,5 +1,5 @@
 // Verified import
-import { ScanDeduplicationService } from "@/services/scanDeduplicationService";
+import { ScanDeduplicationService } from "@/features/inventory/services/scanDeduplicationService";
 
 describe("ScanDeduplicationService", () => {
   let service: ScanDeduplicationService;

@@ -1,7 +1,7 @@
 import inspect
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

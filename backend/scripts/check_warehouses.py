@@ -58,7 +58,7 @@ def main():
     finally:
         try:
             connector.disconnect()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
 

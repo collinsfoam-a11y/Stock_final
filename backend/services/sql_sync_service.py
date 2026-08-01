@@ -5,14 +5,11 @@ SQL Sync Service - Sync ONLY quantity changes from SQL Server to MongoDB
 CRITICAL: Preserves all enriched data (serial numbers, MRP, HSN codes, etc.)
 """
 
-import asyncio
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime
 from typing import Any
 
-from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from backend.sql_server_connector import SQLServerConnector
 
 logger = logging.getLogger(__name__)
 

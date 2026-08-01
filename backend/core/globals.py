@@ -28,6 +28,7 @@ batch_operations: Optional[Any] = None
 migration_manager: Optional[Any] = None
 websocket_manager: Optional[Any] = None
 sql_server_pool: Optional[Any] = None
+sql_connector: Optional[Any] = None
 pwd_context: Optional[Any] = None
 secret_key: Optional[Any] = None
 algorithm: Optional[Any] = None

@@ -76,21 +76,20 @@ export function useScanLookup({
           return;
         }
 
-        const fetchTasks: Array<Promise<any>> = [safeAsync(() => searchItemsOptimized(query, page, 20))];
-        if (page === 1) {
-          fetchTasks.push(safeAsync(() => searchItemsSemantic(query, 10)));
-        }
-
-        const [fuzzyResult, semanticResult] = await Promise.all(fetchTasks);
-
+        const fuzzyResult = (await safeAsync(() => searchItemsOptimized(query, page, 20))) as any;
         let items: any[] = [];
+
         if (fuzzyResult) {
-          items = Array.isArray((fuzzyResult as any).items) ? (fuzzyResult as any).items : [];
-          safeSetState(setHasMoreSearchResults, Boolean((fuzzyResult as any).has_more));
+          items = Array.isArray(fuzzyResult.items) ? fuzzyResult.items : [];
+          safeSetState(setHasMoreSearchResults, Boolean(fuzzyResult.has_more));
         }
 
-        if (page === 1 && semanticResult) {
-          items = [...(semanticResult as any[]), ...items];
+        // Only run expensive semantic search if we didn't find many good exact/prefix matches
+        if (page === 1 && items.length < 3) {
+          const semanticResult = (await safeAsync(() => searchItemsSemantic(query, 10))) as any[];
+          if (semanticResult && Array.isArray(semanticResult)) {
+            items = [...semanticResult, ...items];
+          }
         }
 
         safeSetState(

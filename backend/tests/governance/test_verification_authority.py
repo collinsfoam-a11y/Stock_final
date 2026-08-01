@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import HTTPException
 
-from backend.app_factory import unverify_stock, verify_stock
+from backend.api.count_lines_routes import unverify_stock, verify_stock
 
 
 @pytest.mark.asyncio
@@ -42,53 +42,22 @@ async def test_unverify_stock_rejects_non_supervisor():
 
 @pytest.mark.asyncio
 @pytest.mark.governance
-async def test_verify_stock_allows_supervisor_and_updates(monkeypatch):
-    class DummyDb:
-        def __init__(self):
-            self.count_lines = AsyncMock()
-            self.count_lines.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
-            self.sessions = AsyncMock()
-            self.sessions.find_one = AsyncMock(return_value={"id": "sess-1", "status": "ACTIVE"})
-            self.client = self
+async def test_verify_stock_allows_supervisor_and_updates():
+    from backend.tests.utils.in_memory_db import InMemoryDatabase
 
-        def __getattr__(self, name):
-            mock = AsyncMock()
-            setattr(self, name, mock)
-            return mock
-
-    mock_db = DummyDb()
-    mock_db.count_lines.find_one = AsyncMock(
-        side_effect=[
-            {
-                "id": "line-1",
-                "_id": "mongo-line-1",
-                "session_id": "sess-1",
-                "location_id": "LOC-1",
-                "floor_id": "F1",
-                "rack_id": "R1",
-            },
-            {
-                "id": "line-1",
-                "_id": "mongo-line-1",
-                "session_id": "sess-1",
-                "location_id": "LOC-1",
-                "floor_id": "F1",
-                "rack_id": "R1",
-            },
-            {
-                "id": "line-1",
-                "_id": "mongo-line-1",
-                "session_id": "sess-1",
-                "location_id": "LOC-1",
-                "floor_id": "F1",
-                "rack_id": "R1",
-            },
-        ]
+    mock_db = InMemoryDatabase()
+    mock_db.count_lines._documents.append(
+        {
+            "id": "line-1",
+            "_id": "mongo-line-1",
+            "session_id": "sess-1",
+            "location_id": "LOC-1",
+            "floor_id": "F1",
+            "rack_id": "R1",
+            "variance": 1,
+        }
     )
-
-    import backend.app.root_router as app_factory
-
-    monkeypatch.setattr(app_factory, "activity_log_service", None)
+    mock_db.sessions._documents.append({"id": "sess-1", "status": "ACTIVE"})
 
     result = await verify_stock(
         "line-1",
@@ -97,4 +66,5 @@ async def test_verify_stock_allows_supervisor_and_updates(monkeypatch):
     )
 
     assert result["verified"] is True
-    mock_db.count_lines.update_one.assert_awaited_once()
+    updated = await mock_db.count_lines.find_one({"id": "line-1"})
+    assert updated["verified"] is True

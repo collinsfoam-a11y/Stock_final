@@ -15,7 +15,7 @@ import Constants from "expo-constants";
  *   2. `Constants.nativeAppVersion` — the native build version (installed app).
  *   3. {@link FALLBACK_APP_VERSION} — last-resort constant for bare/dev runs.
  */
-const FALLBACK_APP_VERSION = "1.0.0";
+const FALLBACK_APP_VERSION = "2.1.0";
 
 /** Last-resort version when neither the manifest nor native build is available. */
 export const FALLBACK_VERSION = FALLBACK_APP_VERSION;

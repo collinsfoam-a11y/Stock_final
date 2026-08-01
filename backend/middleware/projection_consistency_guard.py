@@ -13,7 +13,7 @@ import json
 import logging
 import os
 import re
-import subprocess
+import subprocess  # nosec B404
 import sys
 import time
 from dataclasses import dataclass
@@ -584,7 +584,7 @@ class ProjectionConsistencyGuardMiddleware(BaseHTTPMiddleware):
                     cwd=str(self.root),
                     env=env,
                     check=True,
-                    shell=False,
+                    shell=False,  # nosec B603
                     capture_output=True,
                     text=True,
                     timeout=90,

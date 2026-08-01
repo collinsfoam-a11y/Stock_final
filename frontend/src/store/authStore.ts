@@ -620,32 +620,46 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
 
-      if (!hasHardware || !isEnrolled) {
+      if (!hasHardware) {
         return {
           success: false,
-          message: "Biometric authentication is not available on this device.",
+          message: "Biometric hardware is not available on this device.",
+        };
+      }
+
+      if (!isEnrolled) {
+        return {
+          success: false,
+          message: "No biometric data (Fingerprint/Face ID) enrolled on this device.",
         };
       }
 
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: "Unlock with Biometrics",
+        promptMessage: "Unlock Lavanya Mart",
         fallbackLabel: "Use PIN",
+        cancelLabel: "Cancel",
+        disableDeviceFallback: false,
       });
 
       if (result.success) {
         const storedPin = await secureStorage.getItem(BIOMETRIC_PIN_KEY);
         if (storedPin) {
-          return await get().loginWithPin(storedPin, get().lastLoggedUser?.username);
+          const username = get().lastLoggedUser?.username || get().user?.username;
+          return await get().loginWithPin(storedPin, username);
         }
         return {
           success: false,
-          message: "No PIN stored for biometric login.",
+          message: "No stored PIN found for biometric login. Please log in with your PIN once to link biometrics.",
         };
       }
 
-      return { success: false, message: "Authentication cancelled." };
-    } catch (_error) {
-      return { success: false, message: "Biometric authentication error." };
+      if (result.error === "user_cancel" || result.error === "system_cancel") {
+        return { success: false, message: "Authentication cancelled." };
+      }
+
+      return { success: false, message: result.error || "Biometric authentication failed." };
+    } catch (_error: any) {
+      return { success: false, message: _error?.message || "Biometric authentication error." };
     }
   },
 

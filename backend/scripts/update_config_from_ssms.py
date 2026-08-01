@@ -46,7 +46,7 @@ def update_env_file():
         "SQL_SERVER_PORT": "1433",
         "SQL_SERVER_DATABASE": "E_MART_KITCHEN_CARE",
         "SQL_SERVER_USER": "",
-        "SQL_SERVER_PASSWORD": "",
+        "SQL_SERVER_PASSWORD": "",  # nosec B105
     }
 
     # Update or add each variable

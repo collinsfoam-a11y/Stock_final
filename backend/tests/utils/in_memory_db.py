@@ -546,34 +546,31 @@ class InMemoryDatabase:
 class InMemoryClientSession:
     def __init__(self, db: InMemoryDatabase) -> None:
         self._db = db
+        self._snapshot: Optional[dict[str, list[dict[str, Any]]]] = None
+        self.in_transaction = False
 
-    async def __aenter__(self) -> InMemoryClientSession:
+    async def __aenter__(self) -> "InMemoryClientSession":
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> bool:
         return False
 
     def start_transaction(self):
-        return _InMemoryTransaction(self._db)
+        self._snapshot = self._db._snapshot_collections()
+        self.in_transaction = True
+
+    async def commit_transaction(self):
+        self.in_transaction = False
+        self._snapshot = None
+
+    async def abort_transaction(self):
+        if self._snapshot is not None:
+            self._db._restore_collections(self._snapshot)
+        self.in_transaction = False
+        self._snapshot = None
 
     async def end_session(self) -> None:
-        return None
-
-
-class _InMemoryTransaction:
-    def __init__(self, db: InMemoryDatabase) -> None:
-        self._db = db
-        self._snapshot: Optional[dict[str, list[dict[str, Any]]]] = None
-
-    async def __aenter__(self):
-        self._snapshot = self._db._snapshot_collections()
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb) -> bool:
-        if exc_type is not None and self._snapshot is not None:
-            self._db._restore_collections(self._snapshot)
-        self._snapshot = None
-        return False
+        pass
 
 
 def setup_server_with_in_memory_db(monkeypatch) -> InMemoryDatabase:
@@ -591,7 +588,7 @@ def setup_server_with_in_memory_db(monkeypatch) -> InMemoryDatabase:
     from backend.db.runtime import set_client, set_db
 
     fake_db = InMemoryDatabase()
-    monkeypatch.setattr(server_module, "db", fake_db)
+    monkeypatch.setattr(server_module, "db", fake_db, raising=False)
 
     # Integration tests seed collections directly; keep runtime guards enabled in
     # production, but bypass auto-install in in-memory test wiring.
@@ -652,7 +649,8 @@ def _setup_core_services(monkeypatch, fake_db, server_module) -> None:
 
     import backend.core.lifespan as lifespan_module
 
-    monkeypatch.setattr(lifespan_module, "migration_manager", _NoOpMigrationManager())
+    if hasattr(lifespan_module, "migration_manager"):
+        monkeypatch.setattr(lifespan_module, "migration_manager", _NoOpMigrationManager())
     monkeypatch.setenv("RATE_LIMIT_ENABLED", "false")
 
 
@@ -666,7 +664,7 @@ def _setup_mock_services(monkeypatch, server_module) -> None:
     mock_sql = MagicMock()
     mock_sql.connect.return_value = None
     mock_sql.test_connection.return_value = False
-    monkeypatch.setattr(lifespan_module, "sql_connector", mock_sql)
+    monkeypatch.setattr(lifespan_module, "SQLServerConnector", MagicMock(return_value=mock_sql))
 
     # Mock DatabaseHealthService
     mock_health = MagicMock()
@@ -675,42 +673,29 @@ def _setup_mock_services(monkeypatch, server_module) -> None:
     mock_health.check_mongo_health = AsyncMock(return_value={"status": "healthy"})
     mock_health.check_sql_server_health = AsyncMock(return_value={"status": "healthy"})
 
-    # Patch the class in server module if it's imported there, otherwise just the instance in lifespan
-    if hasattr(server_module, "DatabaseHealthService"):
-        monkeypatch.setattr(
-            server_module, "DatabaseHealthService", MagicMock(return_value=mock_health)
-        )
-
-    monkeypatch.setattr(lifespan_module, "database_health_service", mock_health)
+    monkeypatch.setattr(
+        lifespan_module, "DatabaseHealthService", MagicMock(return_value=mock_health)
+    )
 
     # Mock AutoSyncManager
     mock_auto_sync = MagicMock()
     mock_auto_sync.start = AsyncMock()
     mock_auto_sync.stop = AsyncMock()
 
-    if hasattr(server_module, "AutoSyncManager"):
-        monkeypatch.setattr(
-            server_module, "AutoSyncManager", MagicMock(return_value=mock_auto_sync)
-        )
-
-    # Note: auto_sync_manager might not be in lifespan global scope directly if it's set via set_auto_sync_manager
-    # But checking lifespan just in case
-    if hasattr(lifespan_module, "auto_sync_manager"):
-        monkeypatch.setattr(lifespan_module, "auto_sync_manager", mock_auto_sync)
+    monkeypatch.setattr(
+        lifespan_module, "AutoSyncManager", MagicMock(return_value=mock_auto_sync)
+    )
 
     # Mock ScheduledExportService
     mock_export_service = MagicMock()
     mock_export_service.start = MagicMock()
     mock_export_service.stop = MagicMock()
 
-    if hasattr(server_module, "ScheduledExportService"):
-        monkeypatch.setattr(
-            server_module,
-            "ScheduledExportService",
-            MagicMock(return_value=mock_export_service),
-        )
-
-    monkeypatch.setattr(lifespan_module, "scheduled_export_service", mock_export_service)
+    monkeypatch.setattr(
+        lifespan_module,
+        "ScheduledExportService",
+        MagicMock(return_value=mock_export_service),
+    )
 
 
 def _setup_cache_and_redis(monkeypatch, server_module) -> Any:
@@ -780,7 +765,7 @@ def _setup_auth_and_seed_users(monkeypatch, fake_db, server_module) -> None:
     """Setup authentication overrides and seed default test users."""
     pass
 
-    # Removed server_module auth patches, settings handles this now
+    from backend.utils.auth_utils import get_password_hash
 
     # Updated seed function to populate both users collection and pin_authentication collection
     def _seed_user(username: str, password: str, full_name: str, role: str):
@@ -789,7 +774,7 @@ def _setup_auth_and_seed_users(monkeypatch, fake_db, server_module) -> None:
             {
                 "_id": user_id,
                 "username": username,
-                "hashed_password": server_module.get_password_hash(password),
+                "hashed_password": get_password_hash(password),
                 "full_name": full_name,
                 "role": role,
                 "is_active": True,
@@ -877,9 +862,6 @@ class _FakeRedisService:
         return -1
 
     async def incr(self, _key: str) -> int:
-        return 1
-
-    async def eval(self, script, num_keys, *keys_and_args):
         return 1
 
     async def decr(self, _key: str) -> int:

@@ -217,6 +217,7 @@ class UnknownItemService:
                 metadata={"unknown_item_id": doc["id"]},
                 db_session=uow.session,
             )
+            await uow.commit()
 
         return doc
 
@@ -280,6 +281,7 @@ class UnknownItemService:
                 metadata={"unknown_item_id": str((refreshed or {}).get("id") or item_id)},
                 db_session=uow.session,
             )
+            await uow.commit()
             return refreshed or dict(existing)
 
     async def escalate_for_review(
@@ -343,6 +345,7 @@ class UnknownItemService:
                 metadata={"unknown_item_id": str((refreshed or {}).get("id") or item_id)},
                 db_session=uow.session,
             )
+            await uow.commit()
             return refreshed or dict(existing)
 
     async def resolve_to_known_item(
@@ -364,13 +367,15 @@ class UnknownItemService:
                 raise HTTPException(
                     status_code=404, detail=f"Target SKU {item_code} not found in ERP"
                 )
-            return await self._map_unknown_to_known_item(
+            res = await self._map_unknown_to_known_item(
                 unknown=unknown,
                 target=target,
                 actor_id=actor_id,
                 resolve_notes=resolve_notes,
                 db_session=uow.session,
             )
+            await uow.commit()
+            return res
 
     async def create_manual_sku_and_resolve(
         self,
@@ -411,7 +416,7 @@ class UnknownItemService:
             result = await self.db.erp_items.insert_one(new_item, **kwargs)
             new_item["_id"] = getattr(result, "inserted_id", None)
 
-            return await self._map_unknown_to_known_item(
+            res = await self._map_unknown_to_known_item(
                 unknown=unknown,
                 target=new_item,
                 actor_id=actor_id,
@@ -419,6 +424,8 @@ class UnknownItemService:
                 db_session=uow.session,
                 manual_sku_created=True,
             )
+            await uow.commit()
+            return res
 
     async def dismiss_unknown_item(
         self,

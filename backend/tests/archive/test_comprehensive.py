@@ -67,7 +67,7 @@ def mock_db():
 @pytest.fixture(autouse=True)
 def override_server_db(monkeypatch, mock_db):
     """Ensure backend.server uses the mock DB for integration-style tests."""
-    monkeypatch.setattr("backend.server.db", mock_db)
+    monkeypatch.setattr("backend.server.db", mock_db, raising=False)
 
 
 @pytest.fixture

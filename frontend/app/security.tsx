@@ -72,9 +72,27 @@ export default function SecuritySettingsScreen() {
   }, [pin, confirmPin, pinSetup]);
 
   const toggleBiometrics = useCallback(
-    (val: boolean) => {
+    async (val: boolean) => {
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      if (val) {
+        try {
+          const LocalAuthentication = await import("expo-local-authentication");
+          const hasHardware = await LocalAuthentication.hasHardwareAsync();
+          const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+          if (!hasHardware) {
+            toastService.showError("Biometric hardware is not available on this device.");
+            return;
+          }
+          if (!isEnrolled) {
+            toastService.showError("No fingerprints or Face ID enrolled on this device.");
+            return;
+          }
+        } catch (_err) {
+          // ignore error on non-compatible platforms
+        }
       }
       setSetting("biometricAuth", val);
       toastService.showInfo(val ? "Biometric login enabled." : "Biometric login disabled.");

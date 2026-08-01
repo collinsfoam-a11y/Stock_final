@@ -1,16 +1,16 @@
 import React from "react";
-import { Platform, StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { ModernCard } from "@/components/ui/ModernCard";
 import { ModernInput } from "@/components/ui/ModernInput";
-import { getStockQty } from "@/utils/itemBatchUtils";
 import { borderRadius, colors, spacing, typography } from "@/theme/unified";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { ScanSearchResultsList } from "./ScanSearchResultsList";
 
 export type ScanLookupNotice = {
   actionLabel?: string;
@@ -133,44 +133,7 @@ const RecentItemCard = React.memo(function RecentItemCard({
   );
 });
 
-const SearchResultItem = React.memo(function SearchResultItem({
-  item,
-  onPress,
-}: {
-  item: ScanLookupItem;
-  onPress: () => void;
-}) {
-  const uiTokens = useUiTokens();
-  const stockQty = getStockQty(item);
-  const iconWash = uiTokens.mode === "dark" ? "rgba(88, 166, 255, 0.14)" : colors.primary[50];
-
-  return (
-    <AppTouchable
-      style={styles.resultItem}
-      onPress={onPress}
-      activeOpacity={0.7}
-      accessibilityLabel="Item">
-      <View style={[styles.resultIcon, { backgroundColor: iconWash }]}>
-        <Ionicons name="cube-outline" size={20} color={uiTokens.colors.accent} />
-      </View>
-      <View style={styles.resultInfo}>
-        <Text style={[styles.resultName, { color: uiTokens.colors.textPrimary }]}>
-          {item.item_name}
-        </Text>
-        <Text style={[styles.resultCode, { color: uiTokens.colors.textSecondary }]}>
-          {item.item_code}
-        </Text>
-        <Text style={[styles.resultStock, { color: uiTokens.colors.accentStrong }]}>
-          Stock: {stockQty}
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color={uiTokens.colors.textMuted} />
-    </AppTouchable>
-  );
-});
-
 RecentItemCard.displayName = "RecentItemCard";
-SearchResultItem.displayName = "SearchResultItem";
 
 const NOTICE_ICONS: Record<ScanLookupNotice["type"], keyof typeof Ionicons.glyphMap> = {
   error: "alert-circle-outline",
@@ -314,44 +277,13 @@ export function ScanLookupPanel({
 
         {searchResults.length > 0 && (
           <View style={[styles.searchResultsContainer, surfaceStyle]}>
-            {searchResults.map((item, index) => (
-              <React.Fragment key={buildItemKey(item, index)}>
-                <SearchResultItem item={item} onPress={() => onPressItem(item)} />
-                {index < searchResults.length - 1 && (
-                  <View
-                    style={[
-                      styles.searchResultSeparator,
-                      { backgroundColor: uiTokens.colors.border },
-                    ]}
-                  />
-                )}
-              </React.Fragment>
-            ))}
-            {hasMore && onLoadMore && (
-              <View style={styles.loadMoreContainer}>
-                <AppTouchable
-                  style={[
-                    styles.loadMoreButton,
-                    {
-                      borderColor: uiTokens.colors.border,
-                      backgroundColor: uiTokens.mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
-                    }
-                  ]}
-                  onPress={onLoadMore}
-                  disabled={loading}
-                  accessibilityRole="button"
-                  accessibilityLabel="Load more search results"
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color={uiTokens.colors.accent} />
-                  ) : (
-                    <Text style={[styles.loadMoreText, { color: uiTokens.colors.accent }]}>
-                      Load More Results...
-                    </Text>
-                  )}
-                </AppTouchable>
-              </View>
-            )}
+            <ScanSearchResultsList
+              data={searchResults}
+              onPressItem={onPressItem}
+              hasMore={hasMore}
+              onLoadMore={onLoadMore}
+              loading={loading}
+            />
           </View>
         )}
       </View>
@@ -511,61 +443,6 @@ const styles = StyleSheet.create({
     borderColor: colors.neutral[200],
     zIndex: 200,
     elevation: 2,
-  },
-  searchResultSeparator: {
-    height: 1,
-    backgroundColor: colors.neutral[100],
-  },
-  resultItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: spacing.md,
-    minHeight: 64,
-  },
-  resultIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary[50],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  resultInfo: {
-    flex: 1,
-    marginLeft: spacing.md,
-  },
-  resultName: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.neutral[900],
-  },
-  resultCode: {
-    fontSize: typography.fontSize.xs,
-    color: colors.neutral[500],
-  },
-  resultStock: {
-    marginTop: 2,
-    fontSize: typography.fontSize.xs,
-    color: colors.primary[700],
-    fontWeight: typography.fontWeight.semibold,
-  },
-  loadMoreContainer: {
-    padding: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(150,150,150,0.2)",
-    alignItems: "center",
-  },
-  loadMoreButton: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xl,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadMoreText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
   },
   recentSection: {
     marginBottom: spacing.lg,

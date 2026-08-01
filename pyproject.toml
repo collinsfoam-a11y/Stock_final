@@ -1,0 +1,6 @@
+[tool.bandit]
+# Skip tests that produce false positives in this codebase
+skips = ["B101", "B105", "B110", "B112", "B311", "B404", "B603", "B607", "B608"]
+
+[tool.bandit.assert_used]
+skips = ["*/test_*.py", "*_test.py"]

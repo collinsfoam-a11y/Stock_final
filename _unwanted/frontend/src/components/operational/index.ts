@@ -14,3 +14,5 @@ export { BaselineIntegrityBanner } from "./BaselineIntegrityBanner";
 export type { BaselineIntegrityBannerProps } from "./BaselineIntegrityBanner";
 export { StaleStateBadge } from "./StaleStateBadge";
 export type { StaleStateBadgeProps } from "./StaleStateBadge";
+export { OperationalShell } from "./OperationalShell";
+export type { OperationalShellProps, OperationalPrimaryAction } from "./OperationalShell";

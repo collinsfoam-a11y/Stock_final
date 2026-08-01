@@ -1,10 +1,7 @@
 import asyncio
 import logging
 import os
-import time
-from typing import Set, Any, Optional
 
-from fastapi import FastAPI
 from backend.config import settings
 
 logger = logging.getLogger("stock-verify")
@@ -43,7 +40,6 @@ async def init_redis_services():
 
 async def init_mdns_service():
     from backend.services.mdns_service import start_mdns
-    from backend.utils.port_detector import PortDetector
     try:
         logger.info("🌐 Starting mDNS service...")
         mdns_port = int(os.getenv("PORT", getattr(settings, "PORT", 8001)))
@@ -107,9 +103,9 @@ async def init_connection_pool(ctx: StartupContext):
         from backend.services.enhanced_connection_pool import EnhancedSQLServerConnectionPool
         ctx.connection_pool = await asyncio.to_thread(
             EnhancedSQLServerConnectionPool,
-            host=settings.SQL_SERVER_HOST,
+            host=str(settings.SQL_SERVER_HOST or "localhost"),
             port=settings.SQL_SERVER_PORT,
-            database=settings.SQL_SERVER_DATABASE,
+            database=str(settings.SQL_SERVER_DATABASE or "StockDB"),
             user=getattr(settings, "SQL_SERVER_USER", None),
             password=getattr(settings, "SQL_SERVER_PASSWORD", None),
             pool_size=getattr(settings, "POOL_SIZE", 10),

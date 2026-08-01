@@ -368,6 +368,9 @@ INDEXES: dict[str, list[tuple[list[tuple[str, Union[int, str]]], dict]]] = {
         ([("item_code", 1)], {"unique": True, "name": "idx_item_code"}),
         # Barcode lookups
         ([("barcode", 1)], {"name": "idx_barcode"}),
+        ([("manual_barcode", 1)], {"name": "idx_manual_barcode", "sparse": True}),
+        ([("unit2_barcode", 1)], {"name": "idx_unit2_barcode", "sparse": True}),
+        ([("unit_m_barcode", 1)], {"name": "idx_unit_m_barcode", "sparse": True}),
         ([("autobarcode", 1)], {"name": "idx_autobarcode", "sparse": True}),
         # Category searches
         ([("category", 1), ("subcategory", 1)], {"name": "idx_category"}),

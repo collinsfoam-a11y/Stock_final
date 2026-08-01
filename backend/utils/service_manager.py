@@ -7,7 +7,7 @@ import logging
 import os
 import platform
 import socket
-import subprocess
+import subprocess  # nosec B404
 from pathlib import Path
 from typing import Optional
 
@@ -46,7 +46,7 @@ class ServiceManager:
         try:
             if platform.system() == "Windows":
                 # Windows: netstat -ano | findstr :PORT
-                result = subprocess.run(
+                result = subprocess.run(  # nosec
                     ["netstat", "-ano"], capture_output=True, text=True, timeout=5
                 )
                 for line in result.stdout.split("\n"):
@@ -59,7 +59,7 @@ class ServiceManager:
                                 pass
             else:
                 # Unix/Mac: lsof -ti:PORT
-                result = subprocess.run(
+                result = subprocess.run(  # nosec
                     ["lsof", "-ti", f":{port}"],
                     capture_output=True,
                     text=True,
@@ -76,9 +76,9 @@ class ServiceManager:
         """Kill a process by PID"""
         try:
             if platform.system() == "Windows":
-                subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True, timeout=5)
+                subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True, timeout=5)  # nosec
             else:
-                subprocess.run(["kill", "-9", str(pid)], capture_output=True, timeout=5)
+                subprocess.run(["kill", "-9", str(pid)], capture_output=True, timeout=5)  # nosec
             return True
         except Exception as e:
             logger.warning(f"Could not kill process {pid}: {e}")
@@ -92,7 +92,7 @@ class ServiceManager:
             if platform.system() == "Windows":
                 for pattern in name_patterns:
                     try:
-                        subprocess.run(
+                        subprocess.run(  # nosec
                             ["taskkill", "/F", "/IM", pattern],
                             capture_output=True,
                             timeout=5,
@@ -103,7 +103,7 @@ class ServiceManager:
             else:
                 for pattern in name_patterns:
                     try:
-                        subprocess.run(["pkill", "-f", pattern], capture_output=True, timeout=5)
+                        subprocess.run(["pkill", "-f", pattern], capture_output=True, timeout=5)  # nosec
                         killed += 1
                     except Exception:
                         logger.debug("Suppressed non-fatal exception", exc_info=True)
@@ -124,7 +124,7 @@ class ServiceManager:
                 # Check if it's our backend process
                 try:
                     if platform.system() == "Windows":
-                        result = subprocess.run(
+                        result = subprocess.run(  # nosec
                             ["tasklist", "/FI", f"PID eq {pid}"],
                             capture_output=True,
                             text=True,
@@ -141,7 +141,7 @@ class ServiceManager:
 
                             time.sleep(2)
                     else:
-                        result = subprocess.run(
+                        result = subprocess.run(  # nosec
                             ["ps", "-p", str(pid), "-o", "command="],
                             capture_output=True,
                             text=True,

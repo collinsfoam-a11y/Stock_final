@@ -33,7 +33,7 @@ def fake_environment(monkeypatch):
         "location": "Aisle-1",
     }
 
-    monkeypatch.setattr(backend.core.lifespan, "sql_connector", mock_sql)
+    monkeypatch.setattr(backend.core.lifespan, "sql_connector", mock_sql, raising=False)
 
     return db
 

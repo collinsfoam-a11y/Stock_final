@@ -1,20 +1,16 @@
 import logging
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from backend.api.schemas import ApiResponse, Session, TokenResponse
-from backend.auth.cookies import clear_auth_cookies, get_refresh_token_cookie, set_auth_cookies
+from backend.api.schemas import Session
 from backend.auth.dependencies import get_current_user
 from backend.auth.dependencies import require_admin as auth_require_admin
 from backend.core.lifespan import activity_log_service, db
-from backend.exceptions import AuthenticationError, ValidationError
 from backend.services.canonical_inventory import build_session_lookup
 from backend.services.count_line_write_service import CountLineWriteService
-from backend.utils.api_utils import result_to_response, sanitize_for_logging
-from backend.utils.result import Fail, Ok, Result
-from backend.services.runtime import get_refresh_token_service
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger("stock-verify")
 

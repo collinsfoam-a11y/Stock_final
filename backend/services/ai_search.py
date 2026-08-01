@@ -64,14 +64,16 @@ class AISearchService:
             return None
 
     def search_rerank(
-        self, query: str, candidates: list[dict[str, Any]], top_k: int = 20
+        self, query: str, candidates: list[dict[str, Any]], top_k: int = 20, threshold: float = 0.3
     ) -> list[dict[str, Any]]:
         """
         Rorank a list of candidate items based on semantic similarity to the query.
+        Returns only items that meet the minimum similarity threshold.
         """
         self.initialize_model()
         if self._model is None or not candidates:
-            return candidates[:top_k]
+            # If no model is available, return empty list instead of random garbage
+            return []
 
         try:
             from sentence_transformers import util
@@ -80,24 +82,23 @@ class AISearchService:
             query_embedding = self._model.encode(query, convert_to_tensor=True)
 
             # 2. Prepare Candidate Texts
-            # Combine name + category for better context
             candidate_texts = [
                 f"{item.get('item_name', '')} {item.get('category', '')} {item.get('subcategory', '')}"
                 for item in candidates
             ]
 
             # 3. Encode Candidates (in batch)
-            # Ideally we'd cache these, but for "reranking" small sets (e.g. 50-100), live encoding is OK.
-            # For larger sets, we need pre-computed embeddings.
             candidate_embeddings = self._model.encode(candidate_texts, convert_to_tensor=True)
 
             # 4. Calculate Cosine Similarity
             scores = util.cos_sim(query_embedding, candidate_embeddings)[0]
 
-            # 5. Zip and Sort
+            # 5. Zip and Sort, applying threshold
             scored_candidates = []
             for idx, score in enumerate(scores):
-                scored_candidates.append((score.item(), candidates[idx]))
+                score_val = score.item()
+                if score_val >= threshold:
+                    scored_candidates.append((score_val, candidates[idx]))
 
             # Sort descending
             scored_candidates.sort(key=lambda x: x[0], reverse=True)
@@ -107,7 +108,7 @@ class AISearchService:
 
         except Exception as e:
             logger.error(f"Semantic reranking failed: {e}")
-            return candidates[:top_k]
+            return []
 
 
 # Global instance

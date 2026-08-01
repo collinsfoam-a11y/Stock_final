@@ -65,7 +65,7 @@ async def test_login_with_pin_success():
     with (
         patch("backend.api.pin_auth_api.PINAuthService") as MockService,
         patch(
-            "backend.api.pin_auth_api.check_rate_limit", new=AsyncMock(return_value=OkResult(True))
+            "backend.api.pin_auth_api.check_auth_rate_limits", new=AsyncMock(return_value=None)
         ),
         patch(
             "backend.api.pin_auth_api.find_user_by_username",
@@ -77,7 +77,8 @@ async def test_login_with_pin_success():
                 return_value=OkResult({"access_token": "access", "refresh_token": "refresh"})
             ),
         ),
-        patch("backend.api.pin_auth_api.reset_rate_limit", new=AsyncMock(return_value=None)),
+        patch("backend.api.pin_auth_api.reset_auth_limits", new=AsyncMock(return_value=None)),
+        patch("backend.api.pin_auth_api.record_auth_failure", new=AsyncMock(return_value=None)),
     ):
         mock_instance = MockService.return_value
         mock_instance.verify_pin = AsyncMock(return_value=True)
@@ -101,12 +102,13 @@ async def test_login_with_pin_invalid_user():
 
     with (
         patch(
-            "backend.api.pin_auth_api.check_rate_limit", new=AsyncMock(return_value=OkResult(True))
+            "backend.api.pin_auth_api.check_auth_rate_limits", new=AsyncMock(return_value=None)
         ),
         patch(
             "backend.api.pin_auth_api.find_user_by_username",
             new=AsyncMock(return_value=ErrResult("not found")),
         ),
+        patch("backend.api.pin_auth_api.record_auth_failure", new=AsyncMock(return_value=None)),
     ):
         with pytest.raises(HTTPException) as exc:
             await login_with_pin(request, mock_http_request, mock_db)
@@ -126,12 +128,13 @@ async def test_login_with_pin_invalid_pin():
     with (
         patch("backend.api.pin_auth_api.PINAuthService") as MockService,
         patch(
-            "backend.api.pin_auth_api.check_rate_limit", new=AsyncMock(return_value=OkResult(True))
+            "backend.api.pin_auth_api.check_auth_rate_limits", new=AsyncMock(return_value=None)
         ),
         patch(
             "backend.api.pin_auth_api.find_user_by_username",
             new=AsyncMock(return_value=OkResult(mock_user)),
         ),
+        patch("backend.api.pin_auth_api.record_auth_failure", new=AsyncMock(return_value=None)),
     ):
         mock_instance = MockService.return_value
         mock_instance.verify_pin = AsyncMock(return_value=False)

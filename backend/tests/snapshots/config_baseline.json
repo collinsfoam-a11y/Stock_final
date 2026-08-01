@@ -339,11 +339,40 @@
       "title": "Queue Size",
       "type": "integer"
     },
+    "RATE_LIMIT_AUTH_IP_MAX_ATTEMPTS": {
+      "default": 20,
+      "minimum": 1,
+      "title": "Rate Limit Auth Ip Max Attempts",
+      "type": "integer"
+    },
+    "RATE_LIMIT_AUTH_IP_WINDOW_SECONDS": {
+      "default": 300,
+      "minimum": 60,
+      "title": "Rate Limit Auth Ip Window Seconds",
+      "type": "integer"
+    },
+    "RATE_LIMIT_AUTH_MAX_ATTEMPTS": {
+      "default": 5,
+      "minimum": 1,
+      "title": "Rate Limit Auth Max Attempts",
+      "type": "integer"
+    },
+    "RATE_LIMIT_AUTH_WINDOW_SECONDS": {
+      "default": 900,
+      "minimum": 60,
+      "title": "Rate Limit Auth Window Seconds",
+      "type": "integer"
+    },
     "RATE_LIMIT_BURST": {
       "default": 20,
       "minimum": 1,
       "title": "Rate Limit Burst",
       "type": "integer"
+    },
+    "RATE_LIMIT_ENABLED": {
+      "default": true,
+      "title": "Rate Limit Enabled",
+      "type": "boolean"
     },
     "RATE_LIMIT_MAX_ATTEMPTS": {
       "default": 5,

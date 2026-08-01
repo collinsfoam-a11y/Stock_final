@@ -53,6 +53,7 @@ class ItemResponse(BaseModel):
     mongo_cached_qty_previous: Optional[float] = None
     sql_qty_mismatch_flag: Optional[bool] = None
     sql_verification_status: Optional[str] = None
+    sql_verified: Optional[bool] = None
 
 
 async def _resolve_item_document(db: Any, item_identifier: str) -> Optional[dict[str, Any]]:
@@ -175,6 +176,13 @@ async def _lookup_identified_items(
                 {"category": {"$regex": re.escape(term), "$options": "i"}},
             ]
         )
+        if len(term) >= 3:
+            prefix = re.escape(term[:3])
+            regex_clauses.extend(
+                [
+                    {"item_name": {"$regex": prefix, "$options": "i"}},
+                ]
+            )
 
     candidates = await db.erp_items.find({"$or": regex_clauses}).limit(250).to_list(length=250)
     if not candidates:
@@ -498,12 +506,15 @@ async def get_item_details(
         canonical_item_code = str(item_doc.get("item_code") or item_code)
 
         # Trigger SQL verification if requested
+        sql_verified_ok: Optional[bool] = None
         if verify_sql:
+            sql_verified_ok = False
             try:
                 verification_result = await sql_verification_service.verify_item_quantity(
                     canonical_item_code
                 )
-                if verification_result["success"]:
+                if verification_result.get("success"):
+                    sql_verified_ok = True
                     # Refresh item data after verification
                     refreshed_item = await db.erp_items.find_one({"item_code": canonical_item_code})
                     if refreshed_item:
@@ -541,11 +552,13 @@ async def get_item_details(
             mongo_cached_qty_previous=item_doc.get("mongo_cached_qty_previous"),
             sql_qty_mismatch_flag=item_doc.get("sql_qty_mismatch_flag"),
             sql_verification_status=item_doc.get("sql_verification_status"),
+            sql_verified=sql_verified_ok,
         )
 
         return ApiResponse.success_response(
             data=item_response,
             message=f"Retrieved item details for {item_code}",
+            meta={"sql_verified": sql_verified_ok} if sql_verified_ok is not None else None,
         )
 
     except Exception as e:

@@ -115,7 +115,7 @@ async def login_with_pin(
 
     return {
         **tokens,
-        "token_type": "bearer",
+        "token_type": "bearer",  # nosec B105
         "user": {
             "username": user.get("username"),
             "role": user.get("role"),

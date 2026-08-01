@@ -2183,7 +2183,7 @@ async def resume_location_session(
 
     claim_version = (session.get("claim_version", 0) or 0) + 1
 
-    update = {
+    update: dict[str, Any] = {
         "$set": {
             "status": "CLAIMED",
             "last_heartbeat": now,

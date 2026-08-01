@@ -7,8 +7,6 @@ module level contains only imports, type aliases, and the lifespan definition.
 
 import asyncio
 import logging
-import os
-import secrets
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -16,7 +14,6 @@ from pathlib import Path
 from typing import Any, Generic, Optional, TypeVar, cast
 
 from fastapi import FastAPI
-from fastapi.security import HTTPBearer
 from motor.motor_asyncio import AsyncIOMotorClient
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -37,7 +34,6 @@ from backend.core import globals as g
 from backend.db.initialization import init_default_users, init_mock_erp_data
 from backend.db.migrations import MigrationManager
 from backend.db.runtime import set_client, set_db
-from backend.exceptions import StockVerifyException as DatabaseError
 
 # Services
 from backend.services.activity_log import ActivityLogService
@@ -48,12 +44,9 @@ from backend.services.change_detection_sync import ChangeDetectionSyncService
 from backend.services.database_health import DatabaseHealthService
 from backend.services.database_optimizer import DatabaseOptimizer
 from backend.services.error_log import ErrorLogService
-from backend.services.lock_manager import get_lock_manager
-from backend.services.mdns_service import start_mdns, stop_mdns
+from backend.services.mdns_service import stop_mdns
 from backend.services.monitoring_service import MonitoringService
-from backend.services.pubsub_service import get_pubsub_service
 from backend.services.rate_limiter import ConcurrentRequestHandler, RateLimiter
-from backend.services.redis_service import close_redis, init_redis
 from backend.services.refresh_token import RefreshTokenService
 from backend.services.runtime import set_cache_service, set_refresh_token_service
 from backend.services.scheduled_export_service import ScheduledExportService
@@ -63,15 +56,14 @@ from backend.services.lock_service import LockService
 from backend.services.variant_service import VariantService
 from backend.services.governance_guard import install_db_write_guards
 from backend.sql_server_connector import SQLServerConnector
-from backend.utils.port_detector import PortDetector, save_backend_info
 
 # Enterprise imports (optional — silent if unavailable)
 try:
     from backend.api.enrichment_api import init_enrichment_api
     from backend.services.enrichment_service import EnrichmentService
 except ImportError:  # pragma: no cover
-    EnrichmentService = None  # type: ignore[assignment]
-    init_enrichment_api = None  # type: ignore[assignment]
+    EnrichmentService = None  # type: ignore[misc,assignment]
+    init_enrichment_api = None  # type: ignore[misc,assignment]
 
 # Utils
 from backend.utils.logging_config import setup_logging
@@ -144,6 +136,22 @@ cache_service = _LazyProxy("cache_service")
 activity_log_service = _LazyProxy("activity_log_service")
 connection_pool = _LazyProxy("connection_pool")
 database_health_service = _LazyProxy("database_health_service")
+monitoring_service = _LazyProxy("monitoring_service")
+rate_limiter = _LazyProxy("rate_limiter")
+sql_connector = _LazyProxy("sql_connector")
+
+def get_sql_connector() -> Any:
+    return getattr(g, "sql_connector", None)
+
+def get_connection_pool() -> Any:
+    return getattr(g, "connection_pool", None)
+
+def get_database_health_service() -> Any:
+    return getattr(g, "database_health_service", None)
+
+def get_monitoring_service() -> Any:
+    return getattr(g, "monitoring_service", None)
+
 
 
 # ---------------------------------------------------------------------------
@@ -242,7 +250,6 @@ async def lifespan(app: FastAPI):
             argon2__parallelism=4,
         )
         # Quick sanity check — access bcrypt to verify it works
-        import bcrypt  # noqa: F811
         _logger.info("Password hashing: Using Argon2 with bcrypt fallback")
     except Exception:
         _logger.warning("Argon2 not available, falling back to bcrypt-only")
@@ -256,7 +263,6 @@ async def lifespan(app: FastAPI):
     if not secret_key:
         raise ValueError("JWT_SECRET must be set in configuration")
     algorithm = settings.JWT_ALGORITHM
-    security = HTTPBearer(auto_error=False)
 
     # ---- Services ----
     cache_service = CacheService(
@@ -646,9 +652,9 @@ async def lifespan(app: FastAPI):
     # Close MongoDB — client.close() is an async coroutine in Motor 3.x
     try:
         if hasattr(client, "close") and callable(client.close):
-            maybe_coro = client.close()
-            if asyncio.iscoroutine(maybe_coro):
-                await maybe_coro
+            res = client.close()  # type: ignore[func-returns-value]
+            if asyncio.iscoroutine(res):
+                await res
         _logger.info("✓ MongoDB connection closed")
     except Exception as exc:
         _logger.error("Error closing MongoDB connection: %s", exc)

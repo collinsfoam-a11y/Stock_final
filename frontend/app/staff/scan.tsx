@@ -33,6 +33,8 @@ import { ScanCameraOverlay } from "../../src/components/scan/ScanCameraOverlay";
 import { ScanLookupPanel } from "../../src/components/scan/ScanLookupPanel";
 import { ScanStatsCard } from "../../src/components/scan/ScanStatsCard";
 import { ScanMissingSession } from "../../src/components/scan/ScanMissingSession";
+import { ScanAcknowledgeOverlay } from "../../src/components/scan/ScanAcknowledgeOverlay";
+import { useScanAcknowledge } from "../../src/components/scan/useScanAcknowledge";
 import { styles } from "@/styles/screens/Scan.styles";
 
 import { useAuthStore } from "../../src/store/authStore";
@@ -72,7 +74,7 @@ const ScanScreen = React.memo(function ScanScreen() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [showCloseSessionModal, setShowCloseSessionModal] = useState<boolean>(false);
   const [isFinishing, setIsFinishing] = useState<boolean>(false);
-  
+
   const hasValidSessionId = typeof sessionId === "string" && sessionId.trim().length > 0;
   const scanVisualV2Enabled = flags.uiVisualSystemV2 && flags.uiScanV2;
   const scanLocationLabel = [currentFloor, currentRack].filter(Boolean).join(" • ");
@@ -118,13 +120,18 @@ const ScanScreen = React.memo(function ScanScreen() {
     currentRack,
   });
 
-  const { scanned, setScanned, handleBarcodeScan } = useScanBuffer({
+  // <100ms scan-acknowledge visual layer (§6.1). Fires the instant a barcode is
+  // confidently recognised — before the network lookup resolves.
+  const { state: ackState, message: ackMessage, acknowledge } = useScanAcknowledge();
+
+  const { scanned, handleBarcodeScan } = useScanBuffer({
     scannerVibration,
     scannerSound,
     scannerAutoSubmit,
     onConfidentScan: async (code) => handleLookup(code),
     setIsScanning: (val) => safeSetState(setIsScanning, val),
     setSearchQuery: (val) => safeSetState(setSearchQuery, val),
+    onScanRecognized: useCallback(() => acknowledge("success"), [acknowledge]),
   });
 
   const loadInitialData = useCallback(async () => {
@@ -320,10 +327,10 @@ const ScanScreen = React.memo(function ScanScreen() {
             if (scannerVibration) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }
-            
-            // If the search looks exactly like a numeric barcode, look it up.
-            // Otherwise, just dismiss the keyboard to show the results list without selecting.
-            if (/^\d{6,}$/.test(searchQuery.trim())) {
+
+            if (searchResults.length > 0) {
+              void handleSelectLookupItem(searchResults[0]);
+            } else if (/^\d{6,}$/.test(searchQuery.trim())) {
               handleLookup(searchQuery.trim());
             } else {
               Keyboard.dismiss();
@@ -394,6 +401,8 @@ const ScanScreen = React.memo(function ScanScreen() {
           <Text style={styles.performanceText}>FPS: {performanceMetrics.fps ?? "--"}</Text>
         </View>
       )}
+      {/* <100ms scan-acknowledge flash (§6.1) — non-blocking, pointer-events none. */}
+      <ScanAcknowledgeOverlay state={ackState} message={ackMessage} />
     </SafeAreaView>
   );
 });

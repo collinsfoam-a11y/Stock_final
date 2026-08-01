@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 def register_static_serving(app: FastAPI, frontend_dist: Path, logger: Any) -> None:
     """Register static serving routes for single-executable/frontend mode."""
-    if not frontend_dist.exists():
+    if not frontend_dist.exists() or not frontend_dist.is_dir():
         logger.warning(
             f"Frontend dist not found at {frontend_dist}. Run 'npm run build:web' in frontend/."
         )
@@ -20,11 +20,14 @@ def register_static_serving(app: FastAPI, frontend_dist: Path, logger: Any) -> N
 
     logger.info(f"Serving frontend from {frontend_dist}")
 
-    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+    assets_dir = frontend_dist / "assets"
+    if assets_dir.exists() and assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
     for folder in ["static", "fonts", "images"]:
-        if (frontend_dist / folder).exists():
-            app.mount(f"/{folder}", StaticFiles(directory=str(frontend_dist / folder)), name=folder)
+        folder_dir = frontend_dist / folder
+        if folder_dir.exists() and folder_dir.is_dir():
+            app.mount(f"/{folder}", StaticFiles(directory=str(folder_dir)), name=folder)
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
@@ -42,4 +45,8 @@ def register_static_serving(app: FastAPI, frontend_dist: Path, logger: Any) -> N
         if file_path.exists() and file_path.is_file():
             return FileResponse(file_path)
 
-        return FileResponse(frontend_dist / "index.html")
+        index_file = frontend_dist / "index.html"
+        if index_file.exists() and index_file.is_file():
+            return FileResponse(index_file)
+
+        raise HTTPException(status_code=404, detail="Frontend index.html not found")

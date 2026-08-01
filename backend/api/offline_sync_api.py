@@ -29,7 +29,6 @@ from backend.api.schemas import (
 )
 from backend.auth.dependencies import get_current_user_async as get_current_user
 from backend.db.runtime import get_db
-from backend.models.audit import AuditLogStatus
 from backend.services.activity_log import ActivityLogService
 from backend.core.uow import MongoUnitOfWork
 
@@ -61,10 +60,8 @@ def _reject_doc(command_id: str, reason: str, last_error: str) -> dict[str, Any]
     return {"command_id": command_id, "state": "REJECTED", "reason": reason, "last_error": last_error}
 
 
-async def _get_activity_service() -> ActivityLogService:
-    svc = ActivityLogService(get_db())
-    await svc.initialize()
-    return svc
+def _get_activity_service() -> ActivityLogService:
+    return ActivityLogService(get_db())
 
 
 @router.post("/sync", response_model=CommandSyncResponse)
@@ -170,25 +167,29 @@ async def sync_commands(
             }
 
             async with MongoUnitOfWork(db.client) as uow:
-                await command_journal.insert_one(entry_doc)
+                kwargs: dict[str, Any] = {"session": uow.session} if uow.session is not None else {}
+                await command_journal.insert_one(entry_doc, **kwargs)
+                await uow.commit()
 
             ack = _ack_doc(cmd.command_id, cmd_state)
             acks[cmd.command_id] = ack
             accepted.append(ack)
 
-            activity_service = await _get_activity_service()
-            await activity_service.log(
-                actor_id=actor_id,
+            activity_service = _get_activity_service()
+            await activity_service.log_activity(
+                user=actor_id,
+                role=str(current_user.get("role", "staff")),
                 action="offline_command_sync",
-                resource_id=cmd.command_id,
-                status=AuditLogStatus.SUCCESS,
-                metadata={
+                entity_type="command",
+                entity_id=cmd.command_id,
+                details={
                     "command_type": cmd.command_type.value
                     if isinstance(cmd.command_type, CommandType)
                     else cmd.command_type,
                     "device_id": device_id,
                     "command_id": cmd.command_id,
                 },
+                status="success",
             )
 
         except HTTPException:

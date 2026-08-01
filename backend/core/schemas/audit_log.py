@@ -19,7 +19,7 @@ class AuditAction(str, Enum):
     LOGIN_PIN = "LOGIN_PIN"
     LOGOUT = "LOGOUT"
     CHANGE_PIN = "CHANGE_PIN"
-    CHANGE_PASSWORD = "CHANGE_PASSWORD"  # pragma: allowlist secret
+    CHANGE_PASSWORD = "CHANGE_PASSWORD"  # pragma: allowlist secret  # nosec B105
 
     # Session actions
     SESSION_START = "SESSION_START"

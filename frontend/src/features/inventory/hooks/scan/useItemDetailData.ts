@@ -242,12 +242,28 @@ export const useItemDetailData = ({
       const response = await apiClient.get(`/api/v2/items/${targetIdentifier}?verify_sql=true`);
 
       if (response.data.success && response.data.data) {
-        setItem((previous) => ({
-          ...previous,
-          ...response.data.data,
-          _source: "sql",
-        }));
-        toastService.show("Stock refreshed from SQL", { type: "success" });
+        const isSqlVerified =
+          response.data.data.sql_verified === true ||
+          response.data.meta?.sql_verified === true;
+
+        if (isSqlVerified) {
+          setItem((previous) => ({
+            ...previous,
+            ...response.data.data,
+            _source: "sql",
+          }));
+          toastService.show("Stock refreshed from SQL", { type: "success" });
+        } else {
+          setItem((previous) => ({
+            ...previous,
+            ...response.data.data,
+            _source: "cache",
+          }));
+          toastService.show(
+            "SQL Server unavailable — displaying cached item details",
+            { type: "warning" }
+          );
+        }
       }
     } catch (error: any) {
       if (error.response?.status === 503) {
