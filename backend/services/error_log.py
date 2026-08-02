@@ -3,36 +3,44 @@ Error Log Service
 Tracks and stores application errors, exceptions, and system issues for monitoring
 """
 
+import asyncio
 import logging
 import re
 import traceback
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
+
 
 def _redact_stack_trace(trace: str) -> str:
     """Remove potential secrets from stack traces before storage."""
     if not trace:
         return trace
     # Redact env vars, tokens, passwords
-    trace = re.sub(r'(password|secret|token|key|auth)[\s]*=[\s]*[^\s]+', r'\1=***REDACTED***', trace, flags=re.I)
+    trace = re.sub(
+        r"(password|secret|token|key|auth)[\s]*=[\s]*[^\s]+",
+        r"\1=***REDACTED***",
+        trace,
+        flags=re.IGNORECASE,
+    )
     # Redact file paths (information leakage)
-    trace = re.sub(r'/Users/[^/]+/[^/]+/', r'/<REDACTED>/', trace)
+    trace = re.sub(r"/Users/[^/]+/[^/]+/", r"/<REDACTED>/", trace)
     return trace
+
 
 logger = logging.getLogger(__name__)
 
 
 def _build_error_filter(
-    severity: Optional[str],
-    error_type: Optional[str],
-    endpoint: Optional[str],
-    user: Optional[str],
-    resolved: Optional[bool],
-    start_date: Optional[datetime],
-    end_date: Optional[datetime],
+    severity: str | None,
+    error_type: str | None,
+    endpoint: str | None,
+    user: str | None,
+    resolved: bool | None,
+    start_date: datetime | None,
+    end_date: datetime | None,
 ) -> dict[str, Any]:
     """Build MongoDB filter query for error logs."""
     filter_query: dict[str, Any] = {}
@@ -62,7 +70,7 @@ def _process_error_for_response(error: dict[str, Any]) -> None:
     """Process error document for API response (in-place modification)."""
     error["id"] = str(error["_id"])
     del error["_id"]
-    
+
     # Replace full stack_trace with preview only
     if error.get("stack_trace"):
         preview = error["stack_trace"][:500]
@@ -75,26 +83,26 @@ def _process_error_for_response(error: dict[str, Any]) -> None:
 class ErrorLog(BaseModel):
     """Error log entry model"""
 
-    id: Optional[str] = None
+    id: str | None = None
     timestamp: datetime
     error_type: str  # e.g., "HTTPException", "ValueError", "ConnectionError"
     error_message: str
-    error_code: Optional[str] = None
+    error_code: str | None = None
     severity: str = "error"  # "critical", "error", "warning", "info"
-    endpoint: Optional[str] = None
-    method: Optional[str] = None
-    user: Optional[str] = None
-    role: Optional[str] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    stack_trace: Optional[str] = None
-    request_data: Optional[dict[str, Optional[Any]]] = None
-    response_status: Optional[int] = None
-    context: Optional[dict[str, Optional[Any]]] = None
+    endpoint: str | None = None
+    method: str | None = None
+    user: str | None = None
+    role: str | None = None
+    ip_address: str | None = None
+    user_agent: str | None = None
+    stack_trace: str | None = None
+    request_data: dict[str, Any | None] | None = None
+    response_status: int | None = None
+    context: dict[str, Any | None] | None = None
     resolved: bool = False
-    resolved_at: Optional[datetime] = None
-    resolved_by: Optional[str] = None
-    resolution_note: Optional[str] = None
+    resolved_at: datetime | None = None
+    resolved_by: str | None = None
+    resolution_note: str | None = None
 
 
 class ErrorLogService:
@@ -107,18 +115,18 @@ class ErrorLogService:
     async def log_error(
         self,
         error: Exception,
-        error_type: Optional[str] = None,
-        error_code: Optional[str] = None,
+        error_type: str | None = None,
+        error_code: str | None = None,
         severity: str = "error",
-        endpoint: Optional[str] = None,
-        method: Optional[str] = None,
-        user: Optional[str] = None,
-        role: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        request_data: Optional[dict[str, Optional[Any]]] = None,
-        response_status: Optional[int] = None,
-        context: Optional[dict[str, Optional[Any]]] = None,
+        endpoint: str | None = None,
+        method: str | None = None,
+        user: str | None = None,
+        role: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        request_data: dict[str, Any | None] | None = None,
+        response_status: int | None = None,
+        context: dict[str, Any | None] | None = None,
         include_stack_trace: bool = True,
     ) -> str:
         """
@@ -163,14 +171,14 @@ class ErrorLogService:
                     # Redact sensitive patterns before storage
                     stack_trace = re.sub(
                         r'(password|secret|token|key|auth|pin|api_key)\s*[:=]\s*["\']?[^"\'\s]+',
-                        r'\1=***REDACTED***',
+                        r"\1=***REDACTED***",
                         stack_trace,
-                        flags=re.I,
+                        flags=re.IGNORECASE,
                     )
                     # Redact user home directory paths
                     stack_trace = re.sub(
-                        r'/Users/[^/]+/',
-                        r'/<REDACTED>/',
+                        r"/Users/[^/]+/",
+                        r"/<REDACTED>/",
                         stack_trace,
                     )
                 except Exception:
@@ -219,7 +227,7 @@ class ErrorLogService:
 
             return str(result.inserted_id)
         except Exception as e:
-            logger.error(f"Failed to log error: {str(e)}", exc_info=True)
+            logger.error(f"Failed to log error: {e!s}", exc_info=True)
             # Don't raise - error logging failures shouldn't break the app
             return ""
 
@@ -229,11 +237,11 @@ class ErrorLogService:
         detail: Any,
         endpoint: str,
         method: str = "GET",
-        user: Optional[str] = None,
-        role: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        request_data: Optional[dict[str, Optional[Any]]] = None,
+        user: str | None = None,
+        role: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        request_data: dict[str, Any | None] | None = None,
     ) -> str:
         """Log an HTTP error"""
         # Determine severity based on status code
@@ -274,13 +282,13 @@ class ErrorLogService:
 
     async def get_errors(
         self,
-        severity: Optional[str] = None,
-        error_type: Optional[str] = None,
-        endpoint: Optional[str] = None,
-        user: Optional[str] = None,
-        resolved: Optional[bool] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        severity: str | None = None,
+        error_type: str | None = None,
+        endpoint: str | None = None,
+        user: str | None = None,
+        resolved: bool | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         page: int = 1,
         page_size: int = 50,
     ) -> dict[str, Any]:
@@ -329,10 +337,10 @@ class ErrorLogService:
                 },
             }
         except Exception as e:
-            logger.error(f"Failed to retrieve errors: {str(e)}")
+            logger.error(f"Failed to retrieve errors: {e!s}")
             raise
 
-    async def get_error_by_id(self, error_id: str) -> Optional[dict[str, Any]]:
+    async def get_error_by_id(self, error_id: str) -> dict[str, Any] | None:
         """Get a specific error by ID"""
         try:
             from bson import ObjectId
@@ -342,11 +350,11 @@ class ErrorLogService:
                 _process_error_for_response(error)
             return error
         except Exception as e:
-            logger.error(f"Failed to retrieve error: {str(e)}")
+            logger.error(f"Failed to retrieve error: {e!s}")
             return None
 
     async def mark_resolved(
-        self, error_id: str, resolved_by: str, resolution_note: Optional[str] = None
+        self, error_id: str, resolved_by: str, resolution_note: str | None = None
     ) -> bool:
         """Mark an error as resolved"""
         try:
@@ -365,11 +373,11 @@ class ErrorLogService:
             )
             return result.modified_count > 0
         except Exception as e:
-            logger.error(f"Failed to mark error as resolved: {str(e)}")
+            logger.error(f"Failed to mark error as resolved: {e!s}")
             return False
 
     async def get_statistics(
-        self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None
+        self, start_date: datetime | None = None, end_date: datetime | None = None
     ) -> dict[str, Any]:
         """Get error statistics"""
         try:
@@ -381,26 +389,6 @@ class ErrorLogService:
                 if end_date:
                     filter_query["timestamp"]["$lte"] = end_date
 
-            # Total errors
-            total = await self.collection.count_documents(filter_query)
-
-            # By severity
-            critical_count = await self.collection.count_documents(
-                {**filter_query, "severity": "critical"}
-            )
-            error_count = await self.collection.count_documents(
-                {**filter_query, "severity": "error"}
-            )
-            warning_count = await self.collection.count_documents(
-                {**filter_query, "severity": "warning"}
-            )
-            info_count = await self.collection.count_documents({**filter_query, "severity": "info"})
-
-            # Unresolved errors
-            unresolved_count = await self.collection.count_documents(
-                {**filter_query, "resolved": False}
-            )
-
             # By error type (top 10)
             top_error_types_pipeline: list[dict[str, Any]] = [
                 {"$match": filter_query} if filter_query else {"$match": {}},
@@ -408,7 +396,6 @@ class ErrorLogService:
                 {"$sort": {"count": -1}},
                 {"$limit": 10},
             ]
-            top_error_types = await self.collection.aggregate(top_error_types_pipeline).to_list(10)
 
             # By endpoint (top 10)
             top_endpoints_pipeline: list[dict[str, Any]] = [
@@ -426,7 +413,6 @@ class ErrorLogService:
                 {"$sort": {"count": -1}},
                 {"$limit": 10},
             ]
-            top_endpoints = await self.collection.aggregate(top_endpoints_pipeline).to_list(10)
 
             # Recent errors (last 24 hours)
             last_24h = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=24)
@@ -435,7 +421,29 @@ class ErrorLogService:
                 recent_filter["timestamp"]["$gte"] = max(
                     filter_query["timestamp"].get("$gte", last_24h), last_24h
                 )
-            recent_count = await self.collection.count_documents(recent_filter)
+
+            # Execute independent database queries concurrently
+            (
+                total,
+                critical_count,
+                error_count,
+                warning_count,
+                info_count,
+                unresolved_count,
+                top_error_types,
+                top_endpoints,
+                recent_count,
+            ) = await asyncio.gather(
+                self.collection.count_documents(filter_query),
+                self.collection.count_documents({**filter_query, "severity": "critical"}),
+                self.collection.count_documents({**filter_query, "severity": "error"}),
+                self.collection.count_documents({**filter_query, "severity": "warning"}),
+                self.collection.count_documents({**filter_query, "severity": "info"}),
+                self.collection.count_documents({**filter_query, "resolved": False}),
+                self.collection.aggregate(top_error_types_pipeline).to_list(10),
+                self.collection.aggregate(top_endpoints_pipeline).to_list(10),
+                self.collection.count_documents(recent_filter),
+            )
 
             return {
                 "total": total,
@@ -455,7 +463,7 @@ class ErrorLogService:
                 ],
             }
         except Exception as e:
-            logger.error(f"Failed to get statistics: {str(e)}")
+            logger.error(f"Failed to get statistics: {e!s}")
             return {
                 "total": 0,
                 "by_severity": {"critical": 0, "error": 0, "warning": 0, "info": 0},

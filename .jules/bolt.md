@@ -11,3 +11,7 @@
 ## 2024-07-11 - Fix N+1 queries in loop validation logic
 **Learning:** Checking idempotency constraints or performing validations via database lookups *inside* a loop that processes batched records is a significant performance bottleneck due to sequential N+1 queries.
 **Action:** When a batch process iterates over multiple records, always extract necessary constraints (e.g., `client_record_id`) into a list first. Then perform a single bulk query (e.g., `db.collection.find({"field": {"$in": constraints}}).to_list(length=None)`) and build an in-memory dictionary or set for $O(1)$ lookups during the main processing loop.
+
+## 2026-08-02 - PyMongo Sequential I/O Bottlenecks in Reports
+**Learning:** System reports often aggregated multiple collections (e.g. login_history, activity_logs, audit_logs) by sequentially awaiting PyMongo's `to_list()` or `find()` cursors. Because PyMongo is inherently non-blocking, these distinct and independent read operations create a massive latency bottleneck when executed sequentially in Python `for` loops.
+**Action:** When aggregating independent datasets from multiple collections, always map the operations to `asyncio.gather(...)` to execute the database fetches concurrently. This typically reduces I/O wait times linearly by a factor of the number of collections fetched.
