@@ -92,7 +92,7 @@ graph TD
 
 Mobile clients maintain an offline mutation queue (expo-sqlite). When the app regains connectivity, it flushes queued `POST`/`PUT`/`PATCH` requests. **HTTP 301/302 redirects can alter request methods or drop bodies**, which would corrupt queued mutations.
 
-The repository already implements `MIN_CLIENT_VERSION`. This should become the enforcement mechanism for route retirement.
+The repository implements `MIN_CLIENT_VERSION` in `backend/config/core.py` (field validated at settings load). This is the enforcement mechanism for route retirement.
 
 **Compatibility rules:**
 1. **Never** remove or redirect a queued mutation endpoint with 301/302.
@@ -100,3 +100,16 @@ The repository already implements `MIN_CLIENT_VERSION`. This should become the e
 3. 307/308 redirects may be used **only after verifying client HTTP library behavior** (Expo/Fetch).
 4. Maintain old paths for **at least one supported mobile release cycle**.
 5. Enforce `MIN_CLIENT_VERSION` before retiring any route used by offline queues.
+
+### Implementation Enforcement
+
+The following safety guards are implemented and wired to CI:
+
+- **`backend/core/startup_checks.py`** — Runs at app factory startup (`backend/app/factory.py`). Asserts:
+  - No duplicate route path+method registrations
+  - No 301/302 on POST/PUT/PATCH/DELETE endpoints
+  - Logs warnings for routes outside `/api` prefix
+- **`backend/tests/test_route_snapshot.py`** — Committed baseline at `backend/tests/snapshots/route_baseline.json`. Test fails on any unintended route change. Wired to `pr-checks.yml`.
+- **`scripts/check_duplicate_routes.py`** — Pre-startup guard in CI. Fails on duplicate path+method signatures.
+- **OpenAPI CI artifact** — `scripts/generate_openapi.py` writes `openapi.json` at the repo root and CI uploads it as a build artifact (`pr-checks.yml`). It is published for inspection only; there is no automated diff against a prior schema.
+- **`MIN_CLIENT_VERSION`** — Enforced via `backend/api/health.py` version check endpoint. Bump this before retiring any route used by offline queues.
