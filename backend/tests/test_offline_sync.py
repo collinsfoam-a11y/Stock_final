@@ -190,3 +190,82 @@ async def test_modern_batch_sync_rejects_duplicate_serial_for_same_item(
     assert "rec-4" not in data2["ok"]
     assert len(data2["conflicts"]) == 1
     assert data2["conflicts"][0]["conflict_type"] == "duplicate_serial"
+
+
+def _command(command_id: str, *, sequence: int, payload_hash: str = "") -> dict:
+    """Build a minimal COUNT_OBSERVATION command journal entry."""
+    return {
+        "command_id": command_id,
+        "device_id": "device-retry-1",
+        "client_sequence": sequence,
+        "actor_id": "staff1",
+        "command_type": "COUNT_OBSERVATION",
+        "payload": {"item_code": "ITEM-200", "qty": 3},
+        "payload_hash": payload_hash,
+        "state": "PENDING",
+        "retry_count": 0,
+    }
+
+
+@pytest.mark.asyncio
+async def test_retry_without_client_hash_is_idempotent_not_conflict(
+    async_client: AsyncClient, authenticated_headers
+):
+    """
+    A client that omits payload_hash must be able to retry the same command.
+
+    payload_hash is a required str, so such clients send "". The server stores
+    _sha256(payload) for them, and the dedup check previously compared that
+    stored digest against the raw "" from the retry — never equal — so every
+    legitimate retry came back as SECURITY_CONFLICT and the offline queue could
+    never drain.
+    """
+    command_id = "cmd_" + str(uuid.uuid4())
+    body = {"device_id": "device-retry-1", "commands": [_command(command_id, sequence=1)]}
+
+    first = await async_client.post(
+        "/api/commands/sync", json=body, headers=authenticated_headers
+    )
+    assert first.status_code == 200, first.text
+    assert first.json()["rejected"] == []
+
+    # Byte-identical replay, as an offline queue flush would send.
+    second = await async_client.post(
+        "/api/commands/sync", json=body, headers=authenticated_headers
+    )
+    assert second.status_code == 200, second.text
+
+    payload = second.json()
+    assert payload["rejected"] == [], f"retry was rejected: {payload['rejected']}"
+    assert payload["acks"][command_id]["state"] != "CONFLICT"
+
+
+@pytest.mark.asyncio
+async def test_retry_with_changed_payload_still_conflicts(
+    async_client: AsyncClient, authenticated_headers
+):
+    """The security property must survive the fix: a mutated payload under the
+    same command_id is still a conflict."""
+    command_id = "cmd_" + str(uuid.uuid4())
+    original = _command(command_id, sequence=1)
+
+    first = await async_client.post(
+        "/api/commands/sync",
+        json={"device_id": "device-retry-1", "commands": [original]},
+        headers=authenticated_headers,
+    )
+    assert first.status_code == 200, first.text
+
+    tampered = dict(original)
+    tampered["payload"] = {"item_code": "ITEM-200", "qty": 9999}
+
+    second = await async_client.post(
+        "/api/commands/sync",
+        json={"device_id": "device-retry-1", "commands": [tampered]},
+        headers=authenticated_headers,
+    )
+    assert second.status_code == 200, second.text
+
+    payload = second.json()
+    assert payload["acks"][command_id]["state"] == "CONFLICT"
+    assert any(r["reason"] == "SECURITY_CONFLICT" for r in payload["rejected"])

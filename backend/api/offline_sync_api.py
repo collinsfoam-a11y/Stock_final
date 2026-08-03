@@ -101,9 +101,15 @@ async def sync_commands(
         try:
             existing = await command_journal.find_one({"command_id": cmd.command_id})
 
+            # Derive the incoming hash exactly as the storage path below does.
+            # payload_hash is optional: when a client omits it we store
+            # _sha256(cmd.payload), so comparing the stored digest against a raw
+            # None rejected every retry from such a client as SECURITY_CONFLICT.
+            incoming_hash = cmd.payload_hash or _sha256(cmd.payload)
+
             if existing:
                 existing_hash: str = existing.get("payload_hash", "")
-                if existing_hash == cmd.payload_hash:
+                if existing_hash == incoming_hash:
                     ack = _ack_doc(cmd.command_id, existing.get("state", "ACKNOWLEDGED"))
                     acks[cmd.command_id] = ack
                     accepted.append(ack)
@@ -146,7 +152,7 @@ async def sync_commands(
                 )
                 continue
 
-            final_hash = cmd.payload_hash or _sha256(cmd.payload)
+            final_hash = incoming_hash
             entry_doc = {
                 "command_id": cmd.command_id,
                 "device_id": device_id,
