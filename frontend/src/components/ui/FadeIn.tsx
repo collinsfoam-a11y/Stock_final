@@ -5,7 +5,11 @@
  */
 
 import React, { useEffect, useRef } from "react";
-import { Animated, ViewStyle, StyleProp } from "react-native";
+import { Animated, ViewStyle, StyleProp, Platform } from "react-native";
+
+// react-native-web has no native animated module; passing true logs a
+// warning on every animation and falls back to JS anyway.
+const USE_NATIVE_DRIVER = Platform.OS !== "web";
 
 interface FadeInProps {
   children: React.ReactNode;
@@ -38,7 +42,7 @@ export const FadeIn: React.FC<FadeInProps> = ({
         toValue: 1,
         duration,
         delay,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ];
 
@@ -48,7 +52,7 @@ export const FadeIn: React.FC<FadeInProps> = ({
           toValue: 0,
           duration,
           delay,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         })
       );
     }
@@ -59,7 +63,7 @@ export const FadeIn: React.FC<FadeInProps> = ({
           toValue: 0,
           duration,
           delay,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         })
       );
     }

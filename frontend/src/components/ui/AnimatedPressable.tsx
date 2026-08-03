@@ -22,6 +22,10 @@ import { getAccessibleButtonProps } from "@/utils/accessibility";
 import { getOperationalMotionDuration } from "@/utils/motion";
 import { useUiTokens } from "@/hooks/useUiTokens";
 
+// react-native-web has no native animated module; passing true logs a
+// warning on every animation and falls back to JS anyway.
+const USE_NATIVE_DRIVER = Platform.OS !== "web";
+
 interface AnimatedPressableProps extends Omit<PressableProps, "style"> {
   style?: StyleProp<ViewStyle>;
   scaleValue?: number;
@@ -73,14 +77,14 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
       Animated.parallel([
         Animated.spring(animatedScale, {
           toValue: scaleValue,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
           speed: 50,
           bounciness: 4,
         }),
         Animated.timing(animatedOpacity, {
           toValue: 0.9,
           duration: pressInDuration,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]).start();
 
@@ -120,14 +124,14 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
       Animated.parallel([
         Animated.spring(animatedScale, {
           toValue: 1,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
           speed: 20,
           bounciness: 8,
         }),
         Animated.timing(animatedOpacity, {
           toValue: 1,
           duration: pressOutDuration,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]).start();
 

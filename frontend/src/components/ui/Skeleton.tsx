@@ -5,9 +5,13 @@
  */
 
 import React, { useEffect, useRef } from "react";
-import { View, StyleSheet, Animated, ViewStyle } from "react-native";
+import { View, StyleSheet, Animated, ViewStyle, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { legacyColors as modernColors } from "../../theme/unified";
+
+// react-native-web has no native animated module; passing true logs a
+// warning on every animation and falls back to JS anyway.
+const USE_NATIVE_DRIVER = Platform.OS !== "web";
 
 interface SkeletonProps {
   width?: number | string;
@@ -36,7 +40,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
         Animated.timing(translateX, {
           toValue: 1,
           duration: 1200,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       );
       shimmerAnimation.start();
@@ -48,12 +52,12 @@ export const Skeleton: React.FC<SkeletonProps> = ({
           Animated.timing(opacity, {
             toValue: 0.7,
             duration: 800,
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
           Animated.timing(opacity, {
             toValue: 0.3,
             duration: 800,
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
         ]),
       );
