@@ -16,30 +16,36 @@ def _redact_sensitive_data(data: str) -> str:
     """Remove sensitive information from strings before storage."""
     if not data:
         return data
-    
+
     # Redact various types of sensitive information
     patterns = [
         # Passwords, secrets, tokens, keys
-        (r'(password|secret|token|key|auth|pin|api_key|access_token|refresh_token)\s*[:=]\s*["\']?[^"\'\s,;]+', r'\1=***REDACTED***'),
+        (
+            r'(password|secret|token|key|auth|pin|api_key|access_token|refresh_token)\s*[:=]\s*["\']?[^"\'\s,;]+',
+            r"\1=***REDACTED***",
+        ),
         # Phone numbers
-        (r'(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', r'***PHONE_NUMBER_REDACTED***'),
+        (
+            r"(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}",
+            r"***PHONE_NUMBER_REDACTED***",
+        ),
         # Email addresses
-        (r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', r'***EMAIL_REDACTED***'),
+        (r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", r"***EMAIL_REDACTED***"),
         # Credit card numbers
-        (r'\b\d{4}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b', r'***CREDIT_CARD_REDACTED***'),
+        (r"\b\d{4}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b", r"***CREDIT_CARD_REDACTED***"),
         # SSNs and similar
-        (r'\b\d{3}-\d{2}-\d{4}\b', r'***SSN_REDACTED***'),
+        (r"\b\d{3}-\d{2}-\d{4}\b", r"***SSN_REDACTED***"),
         # File paths (especially user paths)
-        (r'/Users/[^/]+/', r'/<REDACTED>/'),
-        (r'C:\\Users\\[^\\]+\\', r'C:\\<REDACTED>\\'),
+        (r"/Users/[^/]+/", r"/<REDACTED>/"),
+        (r"C:\\Users\\[^\\]+\\", r"C:\\<REDACTED>\\"),
         # IP addresses
-        (r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b', r'***IP_ADDRESS_REDACTED***'),
+        (r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b", r"***IP_ADDRESS_REDACTED***"),
     ]
-    
+
     result = data
     for pattern, replacement in patterns:
         result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
-    
+
     return result
 
 
@@ -47,9 +53,9 @@ def _redact_request_data(request_data: dict[str, Any]) -> dict[str, Any]:
     """Redact sensitive fields from request data."""
     if not request_data:
         return {}
-    
+
     # Make a copy to avoid modifying original
-    redacted_data = {}
+    redacted_data: dict[str, Any] = {}
     for key, value in request_data.items():
         if isinstance(value, str):
             redacted_data[key] = _redact_sensitive_data(value)
@@ -57,15 +63,21 @@ def _redact_request_data(request_data: dict[str, Any]) -> dict[str, Any]:
             redacted_data[key] = _redact_request_data(value)
         elif isinstance(value, list):
             redacted_data[key] = [
-                _redact_request_data(item) if isinstance(item, dict) else 
-                ("***REDACTED***" if isinstance(item, str) and 
-                 any(token in item.lower() for token in ['password', 'secret', 'token', 'key']) 
-                 else item)
+                _redact_request_data(item)
+                if isinstance(item, dict)
+                else (
+                    "***REDACTED***"
+                    if isinstance(item, str)
+                    and any(
+                        token in item.lower() for token in ["password", "secret", "token", "key"]
+                    )
+                    else item
+                )
                 for item in value
             ]
         else:
             redacted_data[key] = value
-    
+
     return redacted_data
 
 
@@ -138,7 +150,7 @@ class ErrorLogService:
 
             # Redact sensitive information from error message
             error_message = _redact_sensitive_data(str(error))
-            
+
             # Redact request data
             redacted_request_data = _redact_request_data(request_data) if request_data else {}
 
@@ -147,7 +159,9 @@ class ErrorLogService:
                 "timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
                 "error_type": error_type,
                 "error_message": error_message,
-                "error_code": getattr(error, 'error_code', 'GENERIC_ERROR') if hasattr(error, 'error_code') else 'GENERIC_ERROR',
+                "error_code": getattr(error, "error_code", "GENERIC_ERROR")
+                if hasattr(error, "error_code")
+                else "GENERIC_ERROR",
                 "severity": severity,
                 "endpoint": endpoint,
                 "method": method,
@@ -206,7 +220,9 @@ class ErrorLogService:
         """
         try:
             redacted_request_data = _redact_request_data(request_data) if request_data else {}
-            redacted_response_body = _redact_sensitive_data(response_body) if response_body else None
+            redacted_response_body = (
+                _redact_sensitive_data(response_body) if response_body else None
+            )
 
             log_entry = {
                 "timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
@@ -240,7 +256,9 @@ class ErrorLogService:
 
             return str(result.inserted_id)
         except Exception as e:
-            logger.error(f"Failed to log HTTP error: {_redact_sensitive_data(str(e))}", exc_info=True)
+            logger.error(
+                f"Failed to log HTTP error: {_redact_sensitive_data(str(e))}", exc_info=True
+            )
             return ""
 
     async def get_recent_errors(
@@ -253,25 +271,27 @@ class ErrorLogService:
         """
         Retrieve recent errors with optional filtering.
         """
-        query = {}
-        
+        query: dict[str, Any] = {}
+
         if severity:
             query["severity"] = severity
-            
+
         if unresolved_only:
             query["resolved"] = False
-            
+
         if days_back:
-            cutoff_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days_back)
+            cutoff_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
+                days=days_back
+            )
             query["timestamp"] = {"$gte": cutoff_date}
 
         cursor = self.collection.find(query).sort("timestamp", -1).limit(limit)
         errors = await cursor.to_list(length=limit)
-        
+
         # Convert ObjectId to string for each error
         for error in errors:
             error["id"] = str(error.pop("_id", ""))
-            
+
         return errors
 
     async def mark_resolved(self, error_id: str) -> bool:
@@ -280,8 +300,17 @@ class ErrorLogService:
         """
         try:
             result = await self.collection.update_one(
-                {"_id": error_id if isinstance(error_id, type(self.collection.database.client)) else error_id},
-                {"$set": {"resolved": True, "resolved_at": datetime.now(timezone.utc).replace(tzinfo=None)}}
+                {
+                    "_id": error_id
+                    if isinstance(error_id, type(self.collection.database.client))
+                    else error_id
+                },
+                {
+                    "$set": {
+                        "resolved": True,
+                        "resolved_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                    }
+                },
             )
             return result.modified_count > 0
         except Exception:

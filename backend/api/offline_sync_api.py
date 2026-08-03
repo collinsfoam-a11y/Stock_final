@@ -40,26 +40,40 @@ _STAFF_FORBIDDEN_PAYLOAD_KEYS: set[str] = {"approved_by", "approved_at", "locked
 
 # Sensitive headers that should never be persisted
 _SENSITIVE_HEADERS_TO_REMOVE: set[str] = {
-    "authorization", "cookie", "x-access-token", "x-refresh-token", 
-    "x-api-key", "x-auth-token", "www-authenticate", "proxy-authenticate"
+    "authorization",
+    "cookie",
+    "x-access-token",
+    "x-refresh-token",
+    "x-api-key",
+    "x-auth-token",
+    "www-authenticate",
+    "proxy-authenticate",
 }
 
 # Endpoints that should not be queued
 _NON_QUEUABLE_ENDPOINTS: set[str] = {
-    "/api/auth/login", "/api/auth/logout", "/api/auth/refresh",
-    "/api/auth/reset-password", "/api/auth/change-password", 
-    "/api/auth/change-pin", "/api/auth/setup-pin",
-    "/api/admin/", "/api/security/", "/api/users/"
+    "/api/auth/login",
+    "/api/auth/logout",
+    "/api/auth/refresh",
+    "/api/auth/reset-password",
+    "/api/auth/change-password",
+    "/api/auth/change-pin",
+    "/api/auth/setup-pin",
+    "/api/admin/",
+    "/api/security/",
+    "/api/users/",
 }
 
 
 def _sanitize_payload(payload: dict[str, Any]) -> dict[str, Any]:
     """Remove sensitive information from payload before persistence."""
-    sanitized = {}
+    sanitized: dict[str, Any] = {}
     for key, value in payload.items():
         if isinstance(value, str):
             # Redact sensitive-looking values
-            if any(token in key.lower() for token in ['token', 'password', 'secret', 'key']) or any(token in value.lower() for token in ['password', 'secret', 'token', 'key']):
+            if any(token in key.lower() for token in ["token", "password", "secret", "key"]) or any(
+                token in value.lower() for token in ["password", "secret", "token", "key"]
+            ):
                 sanitized[key] = "***REDACTED***"
             else:
                 sanitized[key] = value
@@ -67,10 +81,16 @@ def _sanitize_payload(payload: dict[str, Any]) -> dict[str, Any]:
             sanitized[key] = _sanitize_payload(value)
         elif isinstance(value, list):
             sanitized[key] = [
-                _sanitize_payload(item) if isinstance(item, dict) else 
-                ("***REDACTED***" if isinstance(item, str) and 
-                 any(token in item.lower() for token in ['password', 'secret', 'token', 'key']) 
-                 else item)
+                _sanitize_payload(item)
+                if isinstance(item, dict)
+                else (
+                    "***REDACTED***"
+                    if isinstance(item, str)
+                    and any(
+                        token in item.lower() for token in ["password", "secret", "token", "key"]
+                    )
+                    else item
+                )
                 for item in value
             ]
         else:
@@ -137,7 +157,9 @@ async def sync_commands(
     # Ensure user is authorized to use offline features
     user_role = current_user.get("role", "staff")
     if user_role not in ["staff", "supervisor", "admin"]:
-        raise HTTPException(status_code=403, detail="Offline command sync not authorized for this user")
+        raise HTTPException(
+            status_code=403, detail="Offline command sync not authorized for this user"
+        )
 
     device_seq_state = await command_journal.find_one(
         {"device_id": device_id},
@@ -150,7 +172,9 @@ async def sync_commands(
         try:
             # Check if command is for a non-queuable endpoint
             command_endpoint = cmd.payload.get("endpoint", "")
-            if any(non_queuable in command_endpoint.lower() for non_queuable in _NON_QUEUABLE_ENDPOINTS):
+            if any(
+                non_queuable in command_endpoint.lower() for non_queuable in _NON_QUEUABLE_ENDPOINTS
+            ):
                 rejected.append(
                     _reject_doc(
                         cmd.command_id,
@@ -209,7 +233,7 @@ async def sync_commands(
 
             # Sanitize the payload before storing
             sanitized_payload = _sanitize_payload(cmd.payload)
-            
+
             final_hash = cmd.payload_hash or _sha256(sanitized_payload)
             entry_doc = {
                 "command_id": cmd.command_id,

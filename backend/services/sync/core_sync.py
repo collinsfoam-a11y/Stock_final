@@ -1,4 +1,3 @@
-
 """
 SQL Sync Service - Sync ONLY quantity changes from SQL Server to MongoDB
 CRITICAL: Preserves all enriched data (serial numbers, MRP, HSN codes, etc.)
@@ -363,13 +362,15 @@ class SQLSyncCoreSyncMixin(SyncServiceBase):
         # Rows _consolidate_sql_items silently discards.
         blank_code = [r for r in source_rows if not str(r.get("item_code") or "").strip()]
         if blank_code:
-            conflicts.append({
-                "conflict_type": "BLANK_ITEM_CODE",
-                "severity": "ERROR",
-                "row_count": len(blank_code),
-                "sample_barcodes": [str(r.get("barcode")) for r in blank_code[:5]],
-                "resolution": "row dropped; item cannot be keyed in the mirror",
-            })
+            conflicts.append(
+                {
+                    "conflict_type": "BLANK_ITEM_CODE",
+                    "severity": "ERROR",
+                    "row_count": len(blank_code),
+                    "sample_barcodes": [str(r.get("barcode")) for r in blank_code[:5]],
+                    "resolution": "row dropped; item cannot be keyed in the mirror",
+                }
+            )
 
         # One barcode resolving to more than one item makes scanner lookup
         # order-dependent.
@@ -381,14 +382,16 @@ class SQLSyncCoreSyncMixin(SyncServiceBase):
                 by_barcode[barcode].add(code)
         for barcode, codes in sorted(by_barcode.items()):
             if len(codes) > 1:
-                conflicts.append({
-                    "conflict_type": "DUPLICATE_BARCODE",
-                    "severity": "ERROR",
-                    "barcode": barcode,
-                    "item_codes": sorted(codes),
-                    "resolution": "both items mirrored; scanner resolution is "
-                                  "order-dependent until the ERP is corrected",
-                })
+                conflicts.append(
+                    {
+                        "conflict_type": "DUPLICATE_BARCODE",
+                        "severity": "ERROR",
+                        "barcode": barcode,
+                        "item_codes": sorted(codes),
+                        "resolution": "both items mirrored; scanner resolution is "
+                        "order-dependent until the ERP is corrected",
+                    }
+                )
 
         # An item_code appearing twice after consolidation would mean the
         # grouping key failed - a mirror-identity break.
@@ -397,13 +400,15 @@ class SQLSyncCoreSyncMixin(SyncServiceBase):
             seen[str(item.get("item_code") or "").strip()] += 1
         for code, n in sorted(seen.items()):
             if n > 1:
-                conflicts.append({
-                    "conflict_type": "DUPLICATE_ITEM_CODE",
-                    "severity": "CRITICAL",
-                    "item_code": code,
-                    "occurrences": n,
-                    "resolution": "consolidation invariant violated",
-                })
+                conflicts.append(
+                    {
+                        "conflict_type": "DUPLICATE_ITEM_CODE",
+                        "severity": "CRITICAL",
+                        "item_code": code,
+                        "occurrences": n,
+                        "resolution": "consolidation invariant violated",
+                    }
+                )
 
         return conflicts
 
@@ -480,12 +485,14 @@ class SQLSyncCoreSyncMixin(SyncServiceBase):
         now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         try:
-            await collection.insert_one({
-                "_id": key,
-                "owner": owner,
-                "created_at": now,
-                "expires_at": now + timedelta(seconds=ttl_seconds),
-            })
+            await collection.insert_one(
+                {
+                    "_id": key,
+                    "owner": owner,
+                    "created_at": now,
+                    "expires_at": now + timedelta(seconds=ttl_seconds),
+                }
+            )
         except Exception as exc:
             # DuplicateKeyError means someone holds it. Reap it only if the
             # lease has genuinely lapsed; the delete is guarded on the exact
@@ -495,13 +502,14 @@ class SQLSyncCoreSyncMixin(SyncServiceBase):
                 existing = await collection.find_one({"_id": key})
             if existing and existing.get("expires_at") and existing["expires_at"] < now:
                 with contextlib.suppress(Exception):
-                    await collection.delete_one(
-                        {"_id": key, "expires_at": existing["expires_at"]}
-                    )
+                    await collection.delete_one({"_id": key, "expires_at": existing["expires_at"]})
                 logger.warning("Reaped expired %s lock held by %s", key, existing.get("owner"))
             logger.info(
                 "Skipping %s sync: lock %s held by %s (%s)",
-                mode, key, (existing or {}).get("owner", "unknown"), type(exc).__name__,
+                mode,
+                key,
+                (existing or {}).get("owner", "unknown"),
+                type(exc).__name__,
             )
             yield False
             return
@@ -512,10 +520,12 @@ class SQLSyncCoreSyncMixin(SyncServiceBase):
                 with contextlib.suppress(Exception):
                     await collection.update_one(
                         {"_id": key, "owner": owner},
-                        {"$set": {
-                            "expires_at": datetime.now(timezone.utc).replace(tzinfo=None)
-                            + timedelta(seconds=ttl_seconds)
-                        }},
+                        {
+                            "$set": {
+                                "expires_at": datetime.now(timezone.utc).replace(tzinfo=None)
+                                + timedelta(seconds=ttl_seconds)
+                            }
+                        },
                     )
 
         renewer = asyncio.create_task(_renew())
@@ -532,9 +542,15 @@ class SQLSyncCoreSyncMixin(SyncServiceBase):
     def _skipped_stats(reason: str) -> dict[str, Any]:
         """Uniform result for a run that never started."""
         return {
-            "items_checked": 0, "qty_updated": 0, "items_created": 0,
-            "variances_found": 0, "qty_changes_detected": 0, "errors": 0,
-            "duration": 0, "skipped": True, "skip_reason": reason,
+            "items_checked": 0,
+            "qty_updated": 0,
+            "items_created": 0,
+            "variances_found": 0,
+            "qty_changes_detected": 0,
+            "errors": 0,
+            "duration": 0,
+            "skipped": True,
+            "skip_reason": reason,
         }
 
     async def sync_variance_only(self) -> dict[str, Any]:
@@ -853,7 +869,7 @@ class SQLSyncCoreSyncMixin(SyncServiceBase):
         sql_item: dict[str, Any],
         stats: dict[str, Any],
         mongo_items_cache: dict[str, dict[str, Any]] | None = None,
-    ) -> bool:
+    ) -> None:
         """Process a single item from SQL Server for sync."""
         sql_qty = _coerce_qty(sql_item.get("stock_qty"))
         now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -884,7 +900,7 @@ class SQLSyncCoreSyncMixin(SyncServiceBase):
         sql_qty: float,
         mongo_item: dict[str, Any],
         stats: dict[str, Any],
-    ) -> None:
+    ) -> bool:
         """Update an existing MongoDB item with SQL data."""
         mongo_qty = float(mongo_item.get("stock_qty", 0.0))
         now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -965,9 +981,7 @@ class SQLSyncCoreSyncMixin(SyncServiceBase):
         stats["partial"] = errors > 0
         if errors:
             self._sync_stats["failed_syncs"] += 1
-            logger.warning(
-                "Sync completed with %d error(s); recording as a failed run", errors
-            )
+            logger.warning("Sync completed with %d error(s); recording as a failed run", errors)
         else:
             self._sync_stats["successful_syncs"] += 1
 
