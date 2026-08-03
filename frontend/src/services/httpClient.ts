@@ -8,8 +8,75 @@ import { getDeviceId } from "./deviceId";
 import { useNetworkStore } from "../store/networkStore";
 import ConnectionManager, { ConnectionInfo } from "./connectionManager";
 import { isPublicHealthRequestUrl, stripHealthRequestHeaders } from "./healthRequest";
+import { showErrorToast, showWarningToast } from "./toastService";
 
 const log = createLogger("httpClient");
+
+const asNonEmptyString = (value: unknown): string | null =>
+  typeof value === "string" && value.trim().length > 0 ? value : null;
+
+/**
+ * Pull the user-facing message out of a backend error body.
+ *
+ * The API emits several shapes, so all are handled:
+ *   {"detail": "Admin access required"}                       - FastAPI default
+ *   {"detail": {"success": false, "error": {"message": "..."}}}
+ *   {"detail": {"error": "CODE", "message": "..."}}            - to_dict()
+ *   {"message": "..."}
+ *   "plain string body"
+ */
+export const extractUserErrorMessage = (error: any): string | null => {
+  const data = error?.response?.data;
+  if (!data) return null;
+
+  const detail = data.detail;
+  return (
+    asNonEmptyString(detail) ??
+    asNonEmptyString(detail?.error?.message) ??
+    asNonEmptyString(detail?.message) ??
+    asNonEmptyString(data.error?.message) ??
+    asNonEmptyString(data.message) ??
+    asNonEmptyString(data)
+  );
+};
+
+export const isErrorToastSuppressedRequest = (fullUrl: string): boolean => {
+  return fullUrl.includes("/api/count-lines/session/") || isAuthRelatedRequest(fullUrl);
+};
+
+export const isAuthRelatedRequest = (fullUrl: string): boolean => {
+  return fullUrl.includes("/api/auth/refresh") ||
+         fullUrl.includes("/api/auth/me") ||
+         fullUrl.includes("/api/auth/logout");
+};
+
+export const getErrorMessageForStatus = (status: number, error: any): string => {
+  const apiMessage = extractUserErrorMessage(error);
+  if (apiMessage) return apiMessage;
+
+  switch (status) {
+    case 400:
+      return "Invalid request. Please check your input.";
+    case 403:
+      return "You don't have permission for this action.";
+    case 404:
+      return "The requested resource was not found.";
+    case 408:
+      return "Request timed out. Please try again.";
+    case 413:
+      return "Request too large. Please reduce file size.";
+    case 429:
+      return "Too many requests. Please wait and try again.";
+    case 500:
+      return "Server error. Please try again later.";
+    case 502:
+    case 503:
+    case 504:
+      return "Service temporarily unavailable. Please try again.";
+    default:
+      return "Something went wrong. Please try again.";
+  }
+};
 
 // Dynamic base URL that gets updated by ConnectionManager
 export let API_BASE_URL: string = BACKEND_URL;
@@ -420,6 +487,9 @@ const logResponseError = (error: any, fullUrl: string, status: number | undefine
 
   if (status === 404) {
     log.warn("API resource not found (404)", responseSummary);
+    if (!isErrorToastSuppressedRequest(fullUrl)) {
+      showWarningToast(getErrorMessageForStatus(404, error));
+    }
     return;
   }
 
@@ -430,11 +500,17 @@ const logResponseError = (error: any, fullUrl: string, status: number | undefine
 
   if (status) {
     log.error("API error response", responseSummary);
+    if (!isErrorToastSuppressedRequest(fullUrl)) {
+      showErrorToast(getErrorMessageForStatus(status, error));
+    }
     return;
   }
 
   if (error.request) {
     log.warn("API no response received (timeout/network)", { url: fullUrl });
+    if (!isErrorToastSuppressedRequest(fullUrl)) {
+      showErrorToast("Network error. Please check your connection and try again.");
+    }
     return;
   }
 

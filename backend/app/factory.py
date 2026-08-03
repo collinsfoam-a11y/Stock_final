@@ -209,6 +209,12 @@ def create_app() -> FastAPI:
     )
     register_routers(app, registry, logger)
 
+    # Routing safety checks — enforce mobile compatibility (§4.6) and
+    # prefix convention (§5.5) at startup.
+    from backend.core.startup_checks import run_startup_checks
+
+    run_startup_checks(app)
+
     # Diagnostic: log all registered health-related routes to troubleshoot
     # /api/health returning 404 (catch-all SPA fallback in static.py returns 404
     # for any api/* path that is not matched by a real router).

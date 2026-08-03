@@ -252,7 +252,12 @@ function shouldIgnoreConsoleMessage(message: string): boolean {
     message.includes("[ConnectionManager] Using fallback connection") ||
     message.includes("[httpClient] Ignoring unhealthy connection update") ||
     message.includes("[initApp] Background sync failed {error: Background sync timeout}") ||
-    message.includes("props.pointerEvents is deprecated. Use style.pointerEvents")
+    message.includes("props.pointerEvents is deprecated. Use style.pointerEvents") ||
+    // Emitted from vendored navigation code (expo-router, react-navigation,
+    // react-native-screens) which passes useNativeDriver: true unconditionally.
+    // react-native-web has no native animated module and falls back to JS, so
+    // this is advisory only. Our own call sites are platform-guarded.
+    message.includes("Animated: `useNativeDriver` is not supported")
   );
 }
 

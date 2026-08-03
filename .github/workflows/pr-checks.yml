@@ -8,6 +8,11 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  # Settings validation rejects a missing/short JWT secret at import time, so any
+  # step that imports the app needs these. Throwaway CI values, never deployed.
+  JWT_SECRET: "ci-pr-checks-jwt-secret-at-least-32-chars"
+  JWT_REFRESH_SECRET: "ci-pr-checks-jwt-refresh-secret-32-chars"
+  ENVIRONMENT: "development"
 
 on:
   pull_request:
@@ -49,10 +54,10 @@ jobs:
         run: |
           python scripts/check_duplicate_routes.py
 
-      - name: Generate route snapshot and run tests
+      - name: Route snapshot & startup checks
         run: |
           # Use UPDATE_SNAPSHOTS=1 if you need to baseline a new route locally
-          python -m pytest backend/tests/test_route_snapshot.py
+          python -m pytest backend/tests/test_route_snapshot.py backend/tests/test_startup_checks.py -v
 
       - name: Generate OpenAPI Schema
         run: |
