@@ -8,6 +8,11 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  # Settings validation rejects a missing/short JWT secret at import time, so any
+  # step that imports the app needs these. Throwaway CI values, never deployed.
+  JWT_SECRET: "ci-pr-checks-jwt-secret-at-least-32-chars"
+  JWT_REFRESH_SECRET: "ci-pr-checks-jwt-refresh-secret-32-chars"
+  ENVIRONMENT: "development"
 
 on:
   pull_request:
