@@ -1181,7 +1181,7 @@ export const getSessionSqlVariance = async (
       return null;
     }
 
-    const response = await api.get(`/api/variance/session/${sessionId}/sql`);
+    const response = await api.get(`/api/session/${sessionId}/sql`);
     return response.data;
   } catch (error) {
     __DEV__ && console.error("Error fetching session SQL variance:", error);

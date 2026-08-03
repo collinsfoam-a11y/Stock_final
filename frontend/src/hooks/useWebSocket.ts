@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Platform } from "react-native";
 import apiClient, { API_BASE_URL } from "../services/httpClient";
 import { useAuthStore } from "../store/authStore";
 import { secureStorage } from "../services/storage/secureStorage";
@@ -17,9 +16,7 @@ export const useWebSocket = (sessionId?: string, enabled: boolean = true) => {
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shouldReconnectRef = useRef(true);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
@@ -35,7 +32,7 @@ export const useWebSocket = (sessionId?: string, enabled: boolean = true) => {
     }
 
     const token = await secureStorage.getItem("auth_token");
-    if (!token && Platform.OS !== "web") {
+    if (!token) {
       setIsConnected(false);
       if (isAuthenticated) {
         handleUnauthorized();
@@ -102,9 +99,12 @@ export const useWebSocket = (sessionId?: string, enabled: boolean = true) => {
         log.warn("[WS] 1008 received, probing REST auth...", { sessionId: sessionId ?? null });
         if (isAuthenticated) {
           // Don't immediately logout — try REST probe first
-          apiClient.get('/api/auth/me')
+          apiClient
+            .get("/api/auth/me")
             .then(() => {
-              log.warn("[WS] REST auth valid despite 1008, reconnecting...", { sessionId: sessionId ?? null });
+              log.warn("[WS] REST auth valid despite 1008, reconnecting...", {
+                sessionId: sessionId ?? null,
+              });
               if (shouldReconnectRef.current) {
                 if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
                 reconnectTimeoutRef.current = setTimeout(connect, 5000);
@@ -120,6 +120,13 @@ export const useWebSocket = (sessionId?: string, enabled: boolean = true) => {
         return;
       }
 
+      // Unacceptable or unexpected close codes: log with clear messages
+      if (event.code === 1006) {
+        log.warn("[WS] Connection closed abnormally (no close frame received)", {
+          sessionId: sessionId ?? null,
+        });
+      }
+
       // Reconnect logic
       if (shouldReconnectRef.current && isAuthenticated) {
         log.warn("Retrying websocket connection", {
@@ -130,9 +137,11 @@ export const useWebSocket = (sessionId?: string, enabled: boolean = true) => {
       }
     };
 
-    socket.onerror = (error) => {
+    socket.onerror = (errorEvent) => {
       log.error("Websocket transport error", {
-        error: String(error),
+        error: errorEvent?.type ?? "WebSocket transport error",
+        url: urlWithParams,
+        readyState: socket.readyState,
         sessionId: sessionId ?? null,
       });
     };

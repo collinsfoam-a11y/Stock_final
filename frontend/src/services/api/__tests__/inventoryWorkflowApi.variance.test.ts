@@ -55,7 +55,7 @@ describe("getSessionSqlVariance", () => {
 
     const result = await getSessionSqlVariance("sess-1");
 
-    expect(api.get).toHaveBeenCalledWith("/api/variance/session/sess-1/sql");
+    expect(api.get).toHaveBeenCalledWith("/api/session/sess-1/sql");
     expect(result?.data?.variance_by_item).toHaveLength(1);
     const first = result?.data?.variance_by_item?.[0];
     expect(first?.item_code).toBe("ITEM-001");

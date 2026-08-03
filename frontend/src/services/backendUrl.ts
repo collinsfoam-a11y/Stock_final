@@ -115,6 +115,15 @@ const getInitialBackendUrl = (): string => {
   }
 
   const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      const configuredPortUrl = getConfiguredBackendPortUrl();
+      if (configuredPortUrl) return configuredPortUrl;
+    }
+  }
+
   if (envUrl) return stripTrailingSlash(envUrl);
 
   const configUrl = Constants.expoConfig?.extra?.backendUrl as string | undefined;

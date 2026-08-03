@@ -160,3 +160,71 @@ def run_startup_checks(app: FastAPI) -> None:
     assert_no_duplicate_routes(app)
     assert_mobile_compatibility(app)
     assert_prefix_consistency(app)
+
+
+async def check_mongodb_replica_set(client: Any) -> None:
+    """
+    Assert that MongoDB is a replica set in production/staging.
+
+    Per ARCHITECTURE_REVIEW.md §4.2: standalone Mongo silently degrades
+    mongo_transaction() to no-op, making dev writes non-atomic. Production
+    must run a replica set for transactional guarantees to hold.
+
+    Per Phase 1 mandatory gate: fail fast in prod/staging if not a replica set.
+    Development may warn or use a documented non-transactional mode.
+
+    Args:
+        client: AsyncIOMotorClient instance (from lifespan initialization).
+
+    Raises:
+        RuntimeError: If MongoDB is standalone in production/staging.
+    """
+    if client is None:
+        logger.warning("MongoDB client not initialized — skipping replica-set check")
+        return
+
+    environment = getattr(settings, "ENVIRONMENT", "development").lower()
+
+    try:
+        admin_db = client.admin
+        repl_status = await admin_db.command("replSetGetStatus")
+
+        if repl_status and repl_status.get("set"):
+            logger.info(
+                "✅ MongoDB replica set verified: %s",
+                repl_status.get("set"),
+            )
+        else:
+            _raise_or_warn(
+                environment,
+                "MongoDB is not configured as a replica set. "
+                "Transactions will degrade to no-op (non-atomic writes).",
+                repl_status,
+            )
+    except Exception as exc:
+        error_msg = str(exc)
+        if "no replset config" in error_msg or "not running with" in error_msg:
+            _raise_or_warn(
+                environment,
+                "MongoDB is running as a standalone instance (not a replica set). "
+                "Transactions will degrade to no-op (non-atomic writes).",
+                exc,
+            )
+        else:
+            logger.warning(
+                "Could not verify replica-set status: %s", error_msg
+            )
+
+
+def _raise_or_warn(environment: str, message: str, detail: Any) -> None:
+    """Raise in production, warn in development."""
+    if environment in ("production", "staging"):
+        raise RuntimeError(
+            f"FATAL: {message} "
+            f"Production requires a MongoDB replica set. "
+            f"Detail: {detail}"
+        )
+    logger.warning(
+        "⚠️ %s (development mode — non-fatal)",
+        message,
+    )

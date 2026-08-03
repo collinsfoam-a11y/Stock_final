@@ -104,7 +104,10 @@ export const BatchVariantsSection: React.FC<BatchVariantsSectionProps> = ({
             onValueChange={onToggleShowZeroStock}
             trackColor={{
               true: uiTokens.colors.accent,
-              false: colorWithAlpha(uiTokens.colors.textMuted, uiTokens.mode === "dark" ? 0.45 : 0.28),
+              false: colorWithAlpha(
+                uiTokens.colors.textMuted,
+                uiTokens.mode === "dark" ? 0.45 : 0.28
+              ),
             }}
             thumbColor={showZeroStock ? uiTokens.colors.surfaceElevated : uiTokens.colors.surface}
             style={styles.toggleSwitch}
@@ -113,7 +116,12 @@ export const BatchVariantsSection: React.FC<BatchVariantsSectionProps> = ({
       </View>
 
       {variants.length === 0 && newBatches.length === 0 ? (
-        <Text style={[styles.emptyText, { color: error ? uiTokens.colors.warning : uiTokens.colors.textSecondary }]}>
+        <Text
+          style={[
+            styles.emptyText,
+            { color: error ? uiTokens.colors.warning : uiTokens.colors.textSecondary },
+          ]}
+        >
           {error || (showZeroStock ? "No other batches." : "No batches with stock.")}
         </Text>
       ) : (
@@ -131,26 +139,43 @@ export const BatchVariantsSection: React.FC<BatchVariantsSectionProps> = ({
             const qty = batchCounts[barcodeText] || "";
 
             return (
-              <ModernCard key={variantKey} style={[styles.card, isTargetBarcode && styles.highlightCard]}>
+              <ModernCard
+                key={variantKey}
+                style={[styles.card, isTargetBarcode && styles.highlightCard]}
+              >
                 <View style={styles.row}>
                   <View style={styles.info}>
                     <View style={styles.titleRow}>
                       <Text style={styles.batchTitle}>Batch {batchTitle}</Text>
-                      {isTargetBarcode && <Ionicons name="star" size={12} color={uiTokens.colors.accent} />}
+                      {isTargetBarcode && (
+                        <Ionicons name="star" size={12} color={uiTokens.colors.accent} />
+                      )}
                       <Text style={styles.batchMrp}>MRP Rs.{mrpDisplay}</Text>
                     </View>
                     <Text style={styles.meta} numberOfLines={1}>
                       Barcode: {barcodeText}
                     </Text>
                     <View style={styles.stockBadgeContainer}>
-                      <View style={[styles.stockBadge, {
-                        backgroundColor: isOutOfStock 
-                          ? colorWithAlpha(uiTokens.colors.warning, 0.12)
-                          : colorWithAlpha(uiTokens.colors.success, 0.12)
-                      }]}>
-                        <Text style={[styles.stockBadgeText, {
-                          color: isOutOfStock ? uiTokens.colors.warning : uiTokens.colors.success
-                        }]}>
+                      <View
+                        style={[
+                          styles.stockBadge,
+                          {
+                            backgroundColor: isOutOfStock
+                              ? colorWithAlpha(uiTokens.colors.warning, 0.12)
+                              : colorWithAlpha(uiTokens.colors.success, 0.12),
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.stockBadgeText,
+                            {
+                              color: isOutOfStock
+                                ? uiTokens.colors.warning
+                                : uiTokens.colors.success,
+                            },
+                          ]}
+                        >
                           ERP: {stockQty}
                         </Text>
                       </View>
@@ -177,14 +202,22 @@ export const BatchVariantsSection: React.FC<BatchVariantsSectionProps> = ({
               <View style={styles.row}>
                 <View style={styles.info}>
                   <View style={styles.titleRow}>
-                    <Text style={[styles.batchTitle, { color: uiTokens.colors.accent }]}>New Batch</Text>
+                    <Text style={[styles.batchTitle, { color: uiTokens.colors.accent }]}>
+                      New Batch
+                    </Text>
                     <Text style={styles.batchMrp}>MRP Rs.{batch.mrp}</Text>
                   </View>
                   <Text style={styles.meta} numberOfLines={1}>
                     Barcode: {batch.barcode}
                   </Text>
                 </View>
-                <View style={[styles.inputContainer, { flexDirection: "row", alignItems: "center", gap: 8 }]}>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    { flexDirection: "row", alignItems: "center", gap: uiTokens.spacing.sm },
+                  ]}
+                >
+                  {" "}
                   <ModernInput
                     value={batch.quantity}
                     onChangeText={(val) => onNewBatchCountChange(index, val)}
@@ -234,7 +267,12 @@ export const BatchVariantsSection: React.FC<BatchVariantsSectionProps> = ({
               />
             </View>
             <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
-              <ModernButton title="Cancel" variant="outline" onPress={() => setIsAddingNew(false)} style={{ flex: 1 }} />
+              <ModernButton
+                title="Cancel"
+                variant="outline"
+                onPress={() => setIsAddingNew(false)}
+                style={{ flex: 1 }}
+              />
               <ModernButton title="Add" onPress={handleAddNewSubmit} style={{ flex: 1 }} />
             </View>
           </ModernCard>
@@ -251,114 +289,115 @@ export const BatchVariantsSection: React.FC<BatchVariantsSectionProps> = ({
   );
 };
 
-const createStyles = (uiTokens: any) => StyleSheet.create({
-  section: {
-    marginBottom: uiTokens.spacing.md,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: uiTokens.spacing.sm,
-    marginBottom: uiTokens.spacing.sm,
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: uiTokens.colors.textSecondary,
-    letterSpacing: 0.2,
-    textTransform: "uppercase",
-    flex: 1,
-  },
-  toggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginLeft: "auto",
-  },
-  toggleLabel: {
-    fontSize: 12,
-    color: uiTokens.colors.textSecondary,
-    marginRight: uiTokens.spacing.xs,
-  },
-  toggleSwitch: {
-    marginLeft: uiTokens.spacing.xs,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: uiTokens.colors.textSecondary,
-  },
-  list: {
-    gap: uiTokens.spacing.sm,
-  },
-  card: {
-    borderRadius: uiTokens.radius.lg,
-    borderWidth: 1,
-    borderColor: uiTokens.colors.border,
-    backgroundColor: uiTokens.colors.surfaceElevated,
-    padding: uiTokens.spacing.md,
-  },
-  highlightCard: {
-    borderColor: colorWithAlpha(uiTokens.colors.accent, 0.5),
-    backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.05),
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: uiTokens.spacing.md,
-  },
-  info: {
-    flex: 1,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: uiTokens.spacing.sm,
-  },
-  batchTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: uiTokens.colors.textPrimary,
-  },
-  batchMrp: {
-    fontSize: 12,
-    color: uiTokens.colors.textSecondary,
-    fontWeight: "600",
-  },
-  meta: {
-    marginTop: uiTokens.spacing.xs,
-    fontSize: 12,
-    color: uiTokens.colors.textSecondary,
-  },
-  stockBadgeContainer: {
-    marginTop: uiTokens.spacing.xs,
-    flexDirection: "row",
-  },
-  stockBadge: {
-    paddingHorizontal: uiTokens.spacing.sm,
-    paddingVertical: 2,
-    borderRadius: uiTokens.radius.sm,
-  },
-  stockBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  inputContainer: {
-    minWidth: 80,
-  },
-  addNewContainer: {
-    marginTop: uiTokens.spacing.md,
-  },
-  addNewForm: {
-    padding: uiTokens.spacing.md,
-    backgroundColor: uiTokens.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: uiTokens.colors.border,
-    borderRadius: uiTokens.radius.lg,
-  },
-  addNewTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: uiTokens.colors.textPrimary,
-    marginBottom: uiTokens.spacing.sm,
-  },
-});
+const createStyles = (uiTokens: any) =>
+  StyleSheet.create({
+    section: {
+      marginBottom: uiTokens.spacing.md,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: uiTokens.spacing.sm,
+      marginBottom: uiTokens.spacing.sm,
+    },
+    title: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: uiTokens.colors.textSecondary,
+      letterSpacing: 0.2,
+      textTransform: "uppercase",
+      flex: 1,
+    },
+    toggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginLeft: "auto",
+    },
+    toggleLabel: {
+      fontSize: 12,
+      color: uiTokens.colors.textSecondary,
+      marginRight: uiTokens.spacing.xs,
+    },
+    toggleSwitch: {
+      marginLeft: uiTokens.spacing.xs,
+    },
+    emptyText: {
+      fontSize: 13,
+      color: uiTokens.colors.textSecondary,
+    },
+    list: {
+      gap: uiTokens.spacing.sm,
+    },
+    card: {
+      borderRadius: uiTokens.radius.lg,
+      borderWidth: 1,
+      borderColor: uiTokens.colors.border,
+      backgroundColor: uiTokens.colors.surfaceElevated,
+      padding: uiTokens.spacing.md,
+    },
+    highlightCard: {
+      borderColor: colorWithAlpha(uiTokens.colors.accent, 0.5),
+      backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.05),
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: uiTokens.spacing.md,
+    },
+    info: {
+      flex: 1,
+    },
+    titleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: uiTokens.spacing.sm,
+    },
+    batchTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: uiTokens.colors.textPrimary,
+    },
+    batchMrp: {
+      fontSize: 12,
+      color: uiTokens.colors.textSecondary,
+      fontWeight: "600",
+    },
+    meta: {
+      marginTop: uiTokens.spacing.xs,
+      fontSize: 12,
+      color: uiTokens.colors.textSecondary,
+    },
+    stockBadgeContainer: {
+      marginTop: uiTokens.spacing.xs,
+      flexDirection: "row",
+    },
+    stockBadge: {
+      paddingHorizontal: uiTokens.spacing.sm,
+      paddingVertical: 2,
+      borderRadius: uiTokens.radius.sm,
+    },
+    stockBadgeText: {
+      fontSize: 11,
+      fontWeight: "700",
+    },
+    inputContainer: {
+      minWidth: 80,
+    },
+    addNewContainer: {
+      marginTop: uiTokens.spacing.md,
+    },
+    addNewForm: {
+      padding: uiTokens.spacing.md,
+      backgroundColor: uiTokens.colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: uiTokens.colors.border,
+      borderRadius: uiTokens.radius.lg,
+    },
+    addNewTitle: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: uiTokens.colors.textPrimary,
+      marginBottom: uiTokens.spacing.sm,
+    },
+  });

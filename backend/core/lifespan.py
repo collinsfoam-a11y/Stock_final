@@ -229,6 +229,13 @@ async def lifespan(app: FastAPI):
     db = client[settings.DB_NAME]
     install_db_write_guards(db)
 
+    # ---- Replica-set guard (Phase 1 mandatory gate) ----
+    # Fail fast in prod/staging if MongoDB is standalone (no transactions).
+    # Per ARCHITECTURE_REVIEW.md §4.2 and §9 Phase 1.
+    from backend.core.startup_checks import check_mongodb_replica_set
+
+    await check_mongodb_replica_set(client)
+
     # Database optimizer (skip under pytest for speed)
     if not _running_under_pytest:
         _db_optimizer = DatabaseOptimizer(

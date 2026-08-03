@@ -138,7 +138,10 @@ export default function SecurityScreen() {
         <View style={styles.metricsGrid}>
           <ModernCard variant="outlined" elevation="none" padding={0} style={styles.metricCard}>
             <View
-              style={[styles.metricIcon, { backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.12) }]}
+              style={[
+                styles.metricIcon,
+                { backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.12) },
+              ]}
             >
               <Ionicons name="close-circle" size={24} color={uiTokens.colors.error} />
             </View>
@@ -214,20 +217,19 @@ export default function SecurityScreen() {
   const renderFailedLoginItem = ({ item: login }: { item: any }) => (
     <ModernCard variant="outlined" elevation="none" padding={0} style={styles.listItem}>
       <View
-        style={[styles.listItemIcon, { backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.1) }]}
+        style={[
+          styles.listItemIcon,
+          { backgroundColor: colorWithAlpha(uiTokens.colors.error, 0.1) },
+        ]}
       >
         <Ionicons name="warning-outline" size={20} color={uiTokens.colors.error} />
       </View>
       <View style={styles.listItemContent}>
         <Text style={styles.listItemTitle}>{login.username || "Anonymous"}</Text>
         <Text style={styles.listItemSubtitle}>IP: {login.ip_address}</Text>
-        <Text style={styles.listItemReason}>
-          Error: {login.error || "Authentication failed"}
-        </Text>
+        <Text style={styles.listItemReason}>Error: {login.error || "Authentication failed"}</Text>
       </View>
-      <Text style={styles.listItemTime}>
-        {new Date(login.timestamp).toLocaleTimeString()}
-      </Text>
+      <Text style={styles.listItemTime}>{new Date(login.timestamp).toLocaleTimeString()}</Text>
     </ModernCard>
   );
 
@@ -379,7 +381,9 @@ export default function SecurityScreen() {
         keyExtractor={(session, index) =>
           `${session.id || session.session_id || session.username || "session"}-${index}`
         }
-        ListEmptyComponent={<EmptyState message="No active administrative sessions" icon="people" />}
+        ListEmptyComponent={
+          <EmptyState message="No active administrative sessions" icon="people" />
+        }
         ListFooterComponent={renderFooter}
         refreshControl={refreshControl}
         renderItem={renderSessionItem}
@@ -463,314 +467,314 @@ type SecurityTokens = ReturnType<typeof useUiTokens>;
 
 const createStyles = (uiTokens: SecurityTokens) =>
   StyleSheet.create({
-  tabsWrapper: {
-    paddingVertical: uiTokens.spacing.sm,
-    backgroundColor: uiTokens.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: uiTokens.colors.border,
-  },
-  tabsContainer: {
-    flexGrow: 0,
-  },
-  tabsContent: {
-    paddingHorizontal: uiTokens.spacing.md,
-    gap: uiTokens.spacing.sm,
-  },
-  tab: {
-    ...getMinimumTouchTargetStyle(),
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: uiTokens.spacing.md,
-    paddingVertical: uiTokens.spacing.sm,
-    borderRadius: uiTokens.radius.full,
-    backgroundColor: uiTokens.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: uiTokens.colors.border,
-    gap: uiTokens.spacing.sm,
-  },
-  activeTab: {
-    backgroundColor: uiTokens.colors.accent,
-    borderColor: uiTokens.colors.accent,
-  },
-  tabText: {
-    color: uiTokens.colors.textMuted,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  activeTabText: {
-    color: uiTokens.colors.surface,
-  },
-  disabledButton: {
-    opacity: 0.45,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContainer: {
-    padding: uiTokens.spacing.md,
-    paddingBottom: uiTokens.spacing["3xl"],
-  },
-  scrollContainerWeb: {
-    maxWidth: 1200,
-    alignSelf: "center",
-    width: "100%",
-  },
-  tabContent: {
-    gap: uiTokens.spacing.md,
-  },
-  offlineNotice: {
-    padding: uiTokens.spacing.lg,
-  },
-  offlineNoticeTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: uiTokens.colors.textPrimary,
-    marginBottom: uiTokens.spacing.xs,
-  },
-  offlineNoticeBody: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: uiTokens.colors.textSecondary,
-  },
-  metricsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: uiTokens.spacing.md,
-  },
-  metricCard: {
-    flex: 1,
-    minWidth: isTablet ? "23%" : "47%",
-    padding: uiTokens.spacing.lg,
-    alignItems: "center",
-  },
-  metricIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: uiTokens.spacing.md,
-  },
-  metricValue: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: uiTokens.colors.textPrimary,
-  },
-  metricLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: uiTokens.colors.textMuted,
-    textTransform: "uppercase",
-    marginTop: uiTokens.spacing.xs,
-    textAlign: "center",
-  },
-  eventsCard: {
-    padding: uiTokens.spacing.lg,
-    marginTop: uiTokens.spacing.sm,
-  },
-  subsectionTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: uiTokens.colors.textPrimary,
-    marginBottom: uiTokens.spacing.md,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  eventRow: {
-    flexDirection: "row",
-    paddingVertical: uiTokens.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colorWithAlpha(uiTokens.colors.textMuted, 0.12),
-    gap: uiTokens.spacing.md,
-  },
-  eventDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: uiTokens.colors.accent,
-    marginTop: uiTokens.spacing.xs,
-  },
-  eventHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  eventInfo: {
-    flex: 1,
-  },
-  eventAction: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: uiTokens.colors.textPrimary,
-    textTransform: "capitalize",
-  },
-  eventTime: {
-    fontSize: 11,
-    color: uiTokens.colors.textMuted,
-  },
-  eventUser: {
-    fontSize: 12,
-    color: uiTokens.colors.textSecondary,
-    marginTop: uiTokens.spacing.xxs,
-  },
-  listContainer: {
-    gap: uiTokens.spacing.sm,
-  },
-  listGap: {
-    height: uiTokens.spacing.sm,
-  },
-  listItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: uiTokens.spacing.lg,
-    gap: uiTokens.spacing.md,
-  },
-  listItemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  listItemContent: {
-    flex: 1,
-  },
-  listItemTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: uiTokens.colors.textPrimary,
-  },
-  listItemSubtitle: {
-    fontSize: 12,
-    color: uiTokens.colors.textMuted,
-    marginTop: uiTokens.spacing.xxs,
-  },
-  listItemReason: {
-    fontSize: 11,
-    color: uiTokens.colors.error,
-    marginTop: uiTokens.spacing.xs,
-    fontWeight: "500",
-  },
-  listItemTime: {
-    fontSize: 11,
-    color: uiTokens.colors.textMuted,
-  },
-  suspiciousCard: {
-    padding: uiTokens.spacing.lg,
-    marginBottom: uiTokens.spacing.md,
-    borderLeftWidth: 4,
-    borderLeftColor: uiTokens.colors.warning,
-  },
-  suspiciousHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: uiTokens.spacing.md,
-    marginBottom: uiTokens.spacing.sm,
-  },
-  suspiciousTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: uiTokens.colors.textPrimary,
-    flex: 1,
-  },
-  riskBadge: {
-    backgroundColor: uiTokens.colors.error,
-    paddingHorizontal: uiTokens.spacing.sm,
-    paddingVertical: uiTokens.spacing.xxs,
-    borderRadius: uiTokens.radius.sm,
-  },
-  riskText: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: uiTokens.colors.surface,
-  },
-  suspiciousDetail: {
-    fontSize: 14,
-    color: uiTokens.colors.textSecondary,
-    lineHeight: 20,
-  },
-  suspiciousFooter: {
-    fontSize: 11,
-    color: uiTokens.colors.textMuted,
-    marginTop: uiTokens.spacing.md,
-    fontStyle: "italic",
-  },
-  sessionAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.18),
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: uiTokens.colors.accent,
-  },
-  avatarText: {
-    color: uiTokens.colors.accentStrong,
-    fontWeight: "800",
-    fontSize: 18,
-  },
-  roleTag: {
-    fontSize: 12,
-    color: uiTokens.colors.accent,
-    fontWeight: "400",
-  },
-  activeTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colorWithAlpha(uiTokens.colors.success, 0.1),
-    paddingHorizontal: uiTokens.spacing.sm,
-    paddingVertical: uiTokens.spacing.xs,
-    borderRadius: uiTokens.radius.lg,
-    gap: uiTokens.spacing.xs,
-  },
-  pulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: uiTokens.colors.success,
-  },
-  activeLabel: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: uiTokens.colors.success,
-    textTransform: "uppercase",
-  },
-  refreshButton: {
-    ...getMinimumTouchTargetStyle(),
-    alignItems: "center",
-    justifyContent: "center",
-    padding: uiTokens.spacing.sm,
-  },
-  refreshingIcon: {
-    opacity: 0.5,
-  },
-  emptyContainer: {
-    paddingVertical: uiTokens.spacing["3xl"],
-  },
-  emptyContent: {
-    padding: uiTokens.spacing["3xl"],
-    alignItems: "center",
-    gap: uiTokens.spacing.md,
-  },
-  emptyText: {
-    color: uiTokens.colors.textMuted,
-    fontSize: 15,
-    textAlign: "center",
-  },
-  footer: {
-    marginTop: uiTokens.spacing.xl,
-    alignItems: "center",
-    gap: uiTokens.spacing.xs,
-  },
-  footerText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: uiTokens.colors.textMuted,
-  },
-  footerSubtext: {
-    fontSize: 10,
-    color: uiTokens.colors.textMuted,
-  },
-});
+    tabsWrapper: {
+      paddingVertical: uiTokens.spacing.sm,
+      backgroundColor: uiTokens.colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: uiTokens.colors.border,
+    },
+    tabsContainer: {
+      flexGrow: 0,
+    },
+    tabsContent: {
+      paddingHorizontal: uiTokens.spacing.md,
+      gap: uiTokens.spacing.sm,
+    },
+    tab: {
+      ...getMinimumTouchTargetStyle(),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: uiTokens.spacing.md,
+      paddingVertical: uiTokens.spacing.sm,
+      borderRadius: uiTokens.radius.full,
+      backgroundColor: uiTokens.colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: uiTokens.colors.border,
+      gap: uiTokens.spacing.sm,
+    },
+    activeTab: {
+      backgroundColor: uiTokens.colors.accent,
+      borderColor: uiTokens.colors.accent,
+    },
+    tabText: {
+      color: uiTokens.colors.textMuted,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    activeTabText: {
+      color: uiTokens.colors.surface,
+    },
+    disabledButton: {
+      opacity: 0.45,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContainer: {
+      padding: uiTokens.spacing.md,
+      paddingBottom: uiTokens.spacing["3xl"],
+    },
+    scrollContainerWeb: {
+      maxWidth: 1200,
+      alignSelf: "center",
+      width: "100%",
+    },
+    tabContent: {
+      gap: uiTokens.spacing.md,
+    },
+    offlineNotice: {
+      padding: uiTokens.spacing.lg,
+    },
+    offlineNoticeTitle: {
+      fontSize: 15,
+      fontWeight: "800",
+      color: uiTokens.colors.textPrimary,
+      marginBottom: uiTokens.spacing.xs,
+    },
+    offlineNoticeBody: {
+      fontSize: 13,
+      lineHeight: 20,
+      color: uiTokens.colors.textSecondary,
+    },
+    metricsGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: uiTokens.spacing.md,
+    },
+    metricCard: {
+      flex: 1,
+      minWidth: isTablet ? "23%" : "47%",
+      padding: uiTokens.spacing.lg,
+      alignItems: "center",
+    },
+    metricIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: uiTokens.radius.full,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: uiTokens.spacing.md,
+    },
+    metricValue: {
+      fontSize: 28,
+      fontWeight: "800",
+      color: uiTokens.colors.textPrimary,
+    },
+    metricLabel: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: uiTokens.colors.textMuted,
+      textTransform: "uppercase",
+      marginTop: uiTokens.spacing.xs,
+      textAlign: "center",
+    },
+    eventsCard: {
+      padding: uiTokens.spacing.lg,
+      marginTop: uiTokens.spacing.sm,
+    },
+    subsectionTitle: {
+      fontSize: 16,
+      fontWeight: "800",
+      color: uiTokens.colors.textPrimary,
+      marginBottom: uiTokens.spacing.md,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+    },
+    eventRow: {
+      flexDirection: "row",
+      paddingVertical: uiTokens.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colorWithAlpha(uiTokens.colors.textMuted, 0.12),
+      gap: uiTokens.spacing.md,
+    },
+    eventDot: {
+      width: 8,
+      height: 8,
+      borderRadius: uiTokens.radius.sm,
+      backgroundColor: uiTokens.colors.accent,
+      marginTop: uiTokens.spacing.xs,
+    },
+    eventHeaderRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    eventInfo: {
+      flex: 1,
+    },
+    eventAction: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: uiTokens.colors.textPrimary,
+      textTransform: "capitalize",
+    },
+    eventTime: {
+      fontSize: 11,
+      color: uiTokens.colors.textMuted,
+    },
+    eventUser: {
+      fontSize: 12,
+      color: uiTokens.colors.textSecondary,
+      marginTop: uiTokens.spacing.xxs,
+    },
+    listContainer: {
+      gap: uiTokens.spacing.sm,
+    },
+    listGap: {
+      height: uiTokens.spacing.sm,
+    },
+    listItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: uiTokens.spacing.lg,
+      gap: uiTokens.spacing.md,
+    },
+    listItemIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: uiTokens.radius.sm,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    listItemContent: {
+      flex: 1,
+    },
+    listItemTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: uiTokens.colors.textPrimary,
+    },
+    listItemSubtitle: {
+      fontSize: 12,
+      color: uiTokens.colors.textMuted,
+      marginTop: uiTokens.spacing.xxs,
+    },
+    listItemReason: {
+      fontSize: 11,
+      color: uiTokens.colors.error,
+      marginTop: uiTokens.spacing.xs,
+      fontWeight: "500",
+    },
+    listItemTime: {
+      fontSize: 11,
+      color: uiTokens.colors.textMuted,
+    },
+    suspiciousCard: {
+      padding: uiTokens.spacing.lg,
+      marginBottom: uiTokens.spacing.md,
+      borderLeftWidth: 4,
+      borderLeftColor: uiTokens.colors.warning,
+    },
+    suspiciousHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: uiTokens.spacing.md,
+      marginBottom: uiTokens.spacing.sm,
+    },
+    suspiciousTitle: {
+      fontSize: 18,
+      fontWeight: "800",
+      color: uiTokens.colors.textPrimary,
+      flex: 1,
+    },
+    riskBadge: {
+      backgroundColor: uiTokens.colors.error,
+      paddingHorizontal: uiTokens.spacing.sm,
+      paddingVertical: uiTokens.spacing.xxs,
+      borderRadius: uiTokens.radius.sm,
+    },
+    riskText: {
+      fontSize: 9,
+      fontWeight: "900",
+      color: uiTokens.colors.surface,
+    },
+    suspiciousDetail: {
+      fontSize: 14,
+      color: uiTokens.colors.textSecondary,
+      lineHeight: 20,
+    },
+    suspiciousFooter: {
+      fontSize: 11,
+      color: uiTokens.colors.textMuted,
+      marginTop: uiTokens.spacing.md,
+      fontStyle: "italic",
+    },
+    sessionAvatar: {
+      width: 44,
+      height: 44,
+      borderRadius: uiTokens.radius.full,
+      backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.18),
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: uiTokens.colors.accent,
+    },
+    avatarText: {
+      color: uiTokens.colors.accentStrong,
+      fontWeight: "800",
+      fontSize: 18,
+    },
+    roleTag: {
+      fontSize: 12,
+      color: uiTokens.colors.accent,
+      fontWeight: "400",
+    },
+    activeTag: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colorWithAlpha(uiTokens.colors.success, 0.1),
+      paddingHorizontal: uiTokens.spacing.sm,
+      paddingVertical: uiTokens.spacing.xs,
+      borderRadius: uiTokens.radius.lg,
+      gap: uiTokens.spacing.xs,
+    },
+    pulseDot: {
+      width: 6,
+      height: 6,
+      borderRadius: uiTokens.radius.sm,
+      backgroundColor: uiTokens.colors.success,
+    },
+    activeLabel: {
+      fontSize: 9,
+      fontWeight: "900",
+      color: uiTokens.colors.success,
+      textTransform: "uppercase",
+    },
+    refreshButton: {
+      ...getMinimumTouchTargetStyle(),
+      alignItems: "center",
+      justifyContent: "center",
+      padding: uiTokens.spacing.sm,
+    },
+    refreshingIcon: {
+      opacity: 0.5,
+    },
+    emptyContainer: {
+      paddingVertical: uiTokens.spacing["3xl"],
+    },
+    emptyContent: {
+      padding: uiTokens.spacing["3xl"],
+      alignItems: "center",
+      gap: uiTokens.spacing.md,
+    },
+    emptyText: {
+      color: uiTokens.colors.textMuted,
+      fontSize: 15,
+      textAlign: "center",
+    },
+    footer: {
+      marginTop: uiTokens.spacing.xl,
+      alignItems: "center",
+      gap: uiTokens.spacing.xs,
+    },
+    footerText: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: uiTokens.colors.textMuted,
+    },
+    footerSubtext: {
+      fontSize: 10,
+      color: uiTokens.colors.textMuted,
+    },
+  });

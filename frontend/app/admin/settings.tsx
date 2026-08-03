@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 
 import { usePermission } from "../../src/hooks/usePermission";
 import { useUiTokens } from "../../src/hooks/useUiTokens";
+import { spacing, touchTargets } from "../../src/theme/unified";
 import { AppearanceSettings } from "../../src/components/ui/AppearanceSettings";
 import {
   SettingsActionRow,
@@ -442,8 +443,8 @@ export default function MasterSettingsScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
   },
   loadingContainer: {
     alignItems: "center",
@@ -452,17 +453,17 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   saveButton: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 6,
-    minHeight: 40,
+    gap: spacing.xxs,
+    minHeight: touchTargets.minimum,
     minWidth: 82,
     justifyContent: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xxs,
   },
   saveButtonText: {
     fontSize: 14,
@@ -471,15 +472,15 @@ const styles = StyleSheet.create({
   introCard: {
     alignItems: "center",
     flexDirection: "row",
-    marginBottom: 16,
-    padding: 16,
+    marginBottom: spacing.lg,
+    padding: spacing.lg,
   },
   introIcon: {
     alignItems: "center",
-    height: 44,
+    height: touchTargets.minimum,
     justifyContent: "center",
-    marginRight: 12,
-    width: 44,
+    marginRight: spacing.md,
+    width: touchTargets.minimum,
   },
   introCopy: {
     flex: 1,
@@ -487,7 +488,7 @@ const styles = StyleSheet.create({
   introTitle: {
     fontSize: 16,
     fontWeight: "800",
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   introDescription: {
     fontSize: 13,
@@ -499,8 +500,8 @@ const styles = StyleSheet.create({
   noticeBlock: {
     alignItems: "flex-start",
     flexDirection: "row",
-    gap: 12,
-    padding: 16,
+    gap: spacing.md,
+    padding: spacing.lg,
   },
   noticeCopy: {
     flex: 1,
@@ -508,7 +509,7 @@ const styles = StyleSheet.create({
   noticeTitle: {
     fontSize: 15,
     fontWeight: "800",
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   noticeText: {
     fontSize: 13,
@@ -516,8 +517,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 24,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing["2xl"],
   },
   footerText: {
     fontSize: 13,

@@ -351,7 +351,7 @@ export default function SupervisorDashboard() {
         highRiskSessions: stats.highRiskSessions,
         openSessions: stats.openSessions,
       }),
-    [stats.highRiskSessions, stats.openSessions],
+    [stats.highRiskSessions, stats.openSessions]
   );
 
   const handleTriagePress = useCallback(
@@ -360,7 +360,7 @@ export default function SupervisorDashboard() {
         router.push(item.linkTo.route as any);
       }
     },
-    [router],
+    [router]
   );
 
   return (
@@ -417,10 +417,7 @@ export default function SupervisorDashboard() {
           />
 
           {/* Exception-first triage surface (§6.5) — renders nothing when clean. */}
-          <ExceptionTriageList
-            items={triageItems}
-            onPressItem={handleTriagePress}
-          />
+          <ExceptionTriageList items={triageItems} onPressItem={handleTriagePress} />
 
           <SupervisorStatsSection
             completionPercentage={completionPercentage}
@@ -628,7 +625,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingIcon: {
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
   },
   loadingText: {},
   recommendationsCard: {
@@ -658,8 +655,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   recommendationIcon: {
-    width: 28,
-    height: 28,
+    width: theme.componentSizes.icon.md,
+    height: theme.componentSizes.icon.md,
     borderRadius: theme.borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
@@ -677,9 +674,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   bottomSpacer: {
-    height: 100,
+    height: theme.spacing["4xl"],
   },
   bottomSpacerCompact: {
-    height: 24,
+    height: theme.spacing.lg,
   },
 });

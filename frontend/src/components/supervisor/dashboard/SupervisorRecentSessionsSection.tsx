@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   sessionBarcode: {
-    marginTop: 2,
+    marginTop: theme.spacing.xs,
     fontSize: 12,
     fontWeight: "500",
   },

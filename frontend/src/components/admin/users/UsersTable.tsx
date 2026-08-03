@@ -486,9 +486,7 @@ function MobileAction({
       {...getAccessibleButtonProps({ label: accessibilityLabel })}
     >
       <Ionicons name={icon} size={18} color={color} />
-      <Text style={[styles.mobileActionText, destructive && { color }]}>
-        {label}
-      </Text>
+      <Text style={[styles.mobileActionText, destructive && { color }]}>{label}</Text>
     </AnimatedPressable>
   );
 }
@@ -545,213 +543,213 @@ type UsersTableStyles = ReturnType<typeof createStyles>;
 
 const createStyles = (uiTokens: UsersTableTokens) =>
   StyleSheet.create({
-  tableContainer: {
-    marginHorizontal: uiTokens.spacing.lg,
-    backgroundColor: uiTokens.colors.surface,
-    borderRadius: uiTokens.radius.lg,
-    overflow: "hidden",
-  },
-  listContent: {
-    paddingBottom: uiTokens.spacing.lg,
-  },
-  mobileListTitle: {
-    ...userTextStyles.label,
-    color: uiTokens.colors.textSecondary,
-    padding: uiTokens.spacing.md,
-    textTransform: "uppercase",
-  },
-  tableHeader: {
-    flexDirection: "row",
-    backgroundColor: colorWithAlpha(uiTokens.colors.textMuted, 0.1),
-    borderBottomWidth: 1,
-    borderBottomColor: uiTokens.colors.border,
-    paddingVertical: uiTokens.spacing.sm,
-  },
-  headerCell: {
-    ...getMinimumTouchTargetStyle(),
-    flexDirection: "row",
-    alignItems: "center",
-    gap: uiTokens.spacing.xs,
-    paddingHorizontal: uiTokens.spacing.sm,
-  },
-  headerText: {
-    ...userTextStyles.label,
-    color: uiTokens.colors.textSecondary,
-    fontWeight: "600",
-  },
-  tableRow: {
-    flexDirection: "row",
-    marginHorizontal: uiTokens.spacing.lg,
-    backgroundColor: uiTokens.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colorWithAlpha(uiTokens.colors.textMuted, 0.12),
-    paddingVertical: uiTokens.spacing.sm,
-    alignItems: "center",
-  },
-  tableRowSelected: {
-    backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.08),
-  },
-  cell: {
-    paddingHorizontal: uiTokens.spacing.sm,
-  },
-  cellText: {
-    ...userTextStyles.body,
-    color: uiTokens.colors.textPrimary,
-  },
-  checkboxCell: {
-    ...getMinimumTouchTargetStyle(),
-    width: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  usernameCell: {
-    flex: 2,
-    minWidth: 150,
-  },
-  emailCell: {
-    flex: 2,
-    minWidth: 180,
-  },
-  roleCell: {
-    flex: 1,
-    minWidth: 100,
-  },
-  statusCell: {
-    flex: 1,
-    minWidth: 80,
-  },
-  dateCell: {
-    flex: 1,
-    minWidth: 100,
-  },
-  actionsCell: {
-    width: 120,
-  },
-  userInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: uiTokens.spacing.sm,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.12),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: {
-    ...userTextStyles.label,
-    color: uiTokens.colors.accentStrong,
-    fontWeight: "700",
-  },
-  username: {
-    ...userTextStyles.body,
-    color: uiTokens.colors.textPrimary,
-    fontWeight: "600",
-  },
-  fullName: {
-    ...userTextStyles.caption,
-    color: uiTokens.colors.textSecondary,
-  },
-  badge: {
-    paddingHorizontal: uiTokens.spacing.sm,
-    paddingVertical: uiTokens.spacing.xxs,
-    borderRadius: uiTokens.radius.sm,
-  },
-  badgeText: {
-    ...userTextStyles.caption,
-    fontWeight: "600",
-  },
-  actionButtons: {
-    flexDirection: "row",
-    gap: uiTokens.spacing.xs,
-  },
-  actionButton: {
-    ...getMinimumTouchTargetStyle(),
-    alignItems: "center",
-    justifyContent: "center",
-    padding: uiTokens.spacing.xs,
-    borderRadius: uiTokens.radius.sm,
-  },
-  emptyState: {
-    padding: uiTokens.spacing["2xl"],
-    alignItems: "center",
-    gap: uiTokens.spacing.md,
-  },
-  emptyText: {
-    ...userTextStyles.body,
-    color: uiTokens.colors.textMuted,
-  },
-  pagination: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: uiTokens.spacing.lg,
-    paddingVertical: uiTokens.spacing.md,
-  },
-  paginationText: {
-    ...userTextStyles.caption,
-    color: uiTokens.colors.textSecondary,
-  },
-  paginationButtons: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: uiTokens.spacing.sm,
-  },
-  pageButton: {
-    ...getMinimumTouchTargetStyle(),
-    alignItems: "center",
-    justifyContent: "center",
-    padding: uiTokens.spacing.xs,
-    borderRadius: uiTokens.radius.sm,
-    borderWidth: 1,
-    borderColor: uiTokens.colors.border,
-  },
-  pageButtonDisabled: {
-    opacity: 0.5,
-  },
-  pageNumber: {
-    ...userTextStyles.label,
-    color: uiTokens.colors.textPrimary,
-  },
-  mobileCard: {
-    backgroundColor: uiTokens.colors.background,
-    margin: uiTokens.spacing.sm,
-    borderRadius: uiTokens.radius.md,
-    padding: uiTokens.spacing.md,
-    borderWidth: 1,
-    borderColor: colorWithAlpha(uiTokens.colors.textMuted, 0.12),
-  },
-  mobileCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: uiTokens.spacing.md,
-  },
-  mobileBadges: {
-    flexDirection: "row",
-    gap: uiTokens.spacing.xs,
-  },
-  mobileEmail: {
-    ...userTextStyles.caption,
-    color: uiTokens.colors.textSecondary,
-  },
-  mobileCardActions: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    borderTopWidth: 1,
-    borderTopColor: colorWithAlpha(uiTokens.colors.textMuted, 0.12),
-    paddingTop: uiTokens.spacing.sm,
-  },
-  mobileAction: {
-    ...getMinimumTouchTargetStyle(),
-    alignItems: "center",
-    justifyContent: "center",
-    gap: uiTokens.spacing.xxs,
-  },
-  mobileActionText: {
-    ...userTextStyles.caption,
-    color: uiTokens.colors.textSecondary,
-  },
-});
+    tableContainer: {
+      marginHorizontal: uiTokens.spacing.lg,
+      backgroundColor: uiTokens.colors.surface,
+      borderRadius: uiTokens.radius.lg,
+      overflow: "hidden",
+    },
+    listContent: {
+      paddingBottom: uiTokens.spacing.lg,
+    },
+    mobileListTitle: {
+      ...userTextStyles.label,
+      color: uiTokens.colors.textSecondary,
+      padding: uiTokens.spacing.md,
+      textTransform: "uppercase",
+    },
+    tableHeader: {
+      flexDirection: "row",
+      backgroundColor: colorWithAlpha(uiTokens.colors.textMuted, 0.1),
+      borderBottomWidth: 1,
+      borderBottomColor: uiTokens.colors.border,
+      paddingVertical: uiTokens.spacing.sm,
+    },
+    headerCell: {
+      ...getMinimumTouchTargetStyle(),
+      flexDirection: "row",
+      alignItems: "center",
+      gap: uiTokens.spacing.xs,
+      paddingHorizontal: uiTokens.spacing.sm,
+    },
+    headerText: {
+      ...userTextStyles.label,
+      color: uiTokens.colors.textSecondary,
+      fontWeight: "600",
+    },
+    tableRow: {
+      flexDirection: "row",
+      marginHorizontal: uiTokens.spacing.lg,
+      backgroundColor: uiTokens.colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colorWithAlpha(uiTokens.colors.textMuted, 0.12),
+      paddingVertical: uiTokens.spacing.sm,
+      alignItems: "center",
+    },
+    tableRowSelected: {
+      backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.08),
+    },
+    cell: {
+      paddingHorizontal: uiTokens.spacing.sm,
+    },
+    cellText: {
+      ...userTextStyles.body,
+      color: uiTokens.colors.textPrimary,
+    },
+    checkboxCell: {
+      ...getMinimumTouchTargetStyle(),
+      width: 44,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    usernameCell: {
+      flex: 2,
+      minWidth: 150,
+    },
+    emailCell: {
+      flex: 2,
+      minWidth: 180,
+    },
+    roleCell: {
+      flex: 1,
+      minWidth: 100,
+    },
+    statusCell: {
+      flex: 1,
+      minWidth: 80,
+    },
+    dateCell: {
+      flex: 1,
+      minWidth: 100,
+    },
+    actionsCell: {
+      width: 120,
+    },
+    userInfo: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: uiTokens.spacing.sm,
+    },
+    avatar: {
+      width: 36,
+      height: 36,
+      borderRadius: uiTokens.radius.full,
+      backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.12),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    avatarText: {
+      ...userTextStyles.label,
+      color: uiTokens.colors.accentStrong,
+      fontWeight: "700",
+    },
+    username: {
+      ...userTextStyles.body,
+      color: uiTokens.colors.textPrimary,
+      fontWeight: "600",
+    },
+    fullName: {
+      ...userTextStyles.caption,
+      color: uiTokens.colors.textSecondary,
+    },
+    badge: {
+      paddingHorizontal: uiTokens.spacing.sm,
+      paddingVertical: uiTokens.spacing.xxs,
+      borderRadius: uiTokens.radius.sm,
+    },
+    badgeText: {
+      ...userTextStyles.caption,
+      fontWeight: "600",
+    },
+    actionButtons: {
+      flexDirection: "row",
+      gap: uiTokens.spacing.xs,
+    },
+    actionButton: {
+      ...getMinimumTouchTargetStyle(),
+      alignItems: "center",
+      justifyContent: "center",
+      padding: uiTokens.spacing.xs,
+      borderRadius: uiTokens.radius.sm,
+    },
+    emptyState: {
+      padding: uiTokens.spacing["2xl"],
+      alignItems: "center",
+      gap: uiTokens.spacing.md,
+    },
+    emptyText: {
+      ...userTextStyles.body,
+      color: uiTokens.colors.textMuted,
+    },
+    pagination: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: uiTokens.spacing.lg,
+      paddingVertical: uiTokens.spacing.md,
+    },
+    paginationText: {
+      ...userTextStyles.caption,
+      color: uiTokens.colors.textSecondary,
+    },
+    paginationButtons: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: uiTokens.spacing.sm,
+    },
+    pageButton: {
+      ...getMinimumTouchTargetStyle(),
+      alignItems: "center",
+      justifyContent: "center",
+      padding: uiTokens.spacing.xs,
+      borderRadius: uiTokens.radius.sm,
+      borderWidth: 1,
+      borderColor: uiTokens.colors.border,
+    },
+    pageButtonDisabled: {
+      opacity: 0.5,
+    },
+    pageNumber: {
+      ...userTextStyles.label,
+      color: uiTokens.colors.textPrimary,
+    },
+    mobileCard: {
+      backgroundColor: uiTokens.colors.background,
+      margin: uiTokens.spacing.sm,
+      borderRadius: uiTokens.radius.md,
+      padding: uiTokens.spacing.md,
+      borderWidth: 1,
+      borderColor: colorWithAlpha(uiTokens.colors.textMuted, 0.12),
+    },
+    mobileCardHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: uiTokens.spacing.md,
+    },
+    mobileBadges: {
+      flexDirection: "row",
+      gap: uiTokens.spacing.xs,
+    },
+    mobileEmail: {
+      ...userTextStyles.caption,
+      color: uiTokens.colors.textSecondary,
+    },
+    mobileCardActions: {
+      flexDirection: "row",
+      justifyContent: "space-around",
+      borderTopWidth: 1,
+      borderTopColor: colorWithAlpha(uiTokens.colors.textMuted, 0.12),
+      paddingTop: uiTokens.spacing.sm,
+    },
+    mobileAction: {
+      ...getMinimumTouchTargetStyle(),
+      alignItems: "center",
+      justifyContent: "center",
+      gap: uiTokens.spacing.xxs,
+    },
+    mobileActionText: {
+      ...userTextStyles.caption,
+      color: uiTokens.colors.textSecondary,
+    },
+  });

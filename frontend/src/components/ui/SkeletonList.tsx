@@ -8,6 +8,7 @@ import React from "react";
 import { View, StyleSheet, ViewStyle } from "react-native";
 import { Skeleton, SkeletonListItem, SkeletonCard } from "./Skeleton";
 import { FadeIn } from "./FadeIn";
+import { spacing, radius, duration } from "../../theme/unified";
 import { legacyColors as modernColors } from "../../theme/unified";
 
 interface SkeletonListProps {
@@ -39,7 +40,7 @@ export const SkeletonList: React.FC<SkeletonListProps> = ({
             <Skeleton
               width="100%"
               height={rowHeight}
-              borderRadius={8}
+              borderRadius={radius.sm}
               style={{ marginBottom: gap }}
             />
           );
@@ -51,12 +52,7 @@ export const SkeletonList: React.FC<SkeletonListProps> = ({
 
     if (animated) {
       return (
-        <FadeIn
-          key={index}
-          delay={index * staggerDelay}
-          duration={300}
-          direction="up"
-        >
+        <FadeIn key={index} delay={index * staggerDelay} duration={duration.normal} direction="up">
           {content}
         </FadeIn>
       );
@@ -98,9 +94,9 @@ export const SkeletonGrid: React.FC<SkeletonGridProps> = ({
             <FadeIn
               key={colIndex}
               delay={(rowIndex * columns + colIndex) * 50}
-              duration={300}
+              duration={duration.normal}
             >
-              <Skeleton width={itemSize} height={itemSize} borderRadius={12} />
+              <Skeleton width={itemSize} height={itemSize} borderRadius={radius.md} />
             </FadeIn>
           ))}
         </View>
@@ -126,29 +122,24 @@ export const SkeletonScreen: React.FC<SkeletonScreenProps> = ({
   return (
     <View style={styles.screen}>
       {header && (
-        <FadeIn direction="down" duration={200}>
+        <FadeIn direction="down" duration={duration.fast}>
           <View style={styles.header}>
             <Skeleton width={40} height={40} variant="circular" />
-            <Skeleton width="60%" height={24} style={{ marginLeft: 12 }} />
-            <Skeleton
-              width={40}
-              height={40}
-              variant="circular"
-              style={{ marginLeft: "auto" }}
-            />
+            <Skeleton width="60%" height={24} style={{ marginLeft: spacing.md }} />
+            <Skeleton width={40} height={40} variant="circular" style={{ marginLeft: "auto" }} />
           </View>
         </FadeIn>
       )}
 
       {tabs && (
-        <FadeIn direction="left" delay={100} duration={200}>
+        <FadeIn direction="left" delay={100} duration={duration.fast}>
           <View style={styles.tabs}>
             {[1, 2, 3].map((_, i) => (
               <Skeleton
                 key={i}
                 width={80}
                 height={32}
-                borderRadius={16}
+                borderRadius={radius.lg}
                 style={{ marginRight: 8 }}
               />
             ))}
@@ -156,12 +147,7 @@ export const SkeletonScreen: React.FC<SkeletonScreenProps> = ({
         </FadeIn>
       )}
 
-      <SkeletonList
-        count={listCount}
-        variant="list"
-        animated
-        staggerDelay={75}
-      />
+      <SkeletonList count={listCount} variant="list" animated staggerDelay={75} />
     </View>
   );
 };
@@ -176,19 +162,17 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-    padding: 16,
+    padding: spacing.lg,
     backgroundColor: modernColors.background.default,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 16,
-    marginBottom: 16,
+    paddingVertical: spacing.lg,
+    marginBottom: spacing.lg,
   },
   tabs: {
     flexDirection: "row",
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
 });
-
-

@@ -1,6 +1,6 @@
 /**
  * Improved Supervisor Dashboard - Enhanced UI/UX
- * 
+ *
  * Features:
  * - Enhanced offline status indicators
  * - Standardized error handling
@@ -70,7 +70,7 @@ const useNetworkStatus = () => {
     lastSyncTime,
     refreshStatus: () => {
       // Simulate refresh
-    }
+    },
   };
 };
 
@@ -154,7 +154,7 @@ const ImprovedSupervisorDashboard = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const sessionsRes = await getSessions(1, 100);
       const sessionData = sessionsRes.items || [];
       setSessions(sessionData);
@@ -378,7 +378,7 @@ const ImprovedSupervisorDashboard = () => {
         highRiskSessions: stats.highRiskSessions,
         openSessions: stats.openSessions,
       }),
-    [stats.highRiskSessions, stats.openSessions],
+    [stats.highRiskSessions, stats.openSessions]
   );
 
   const handleTriagePress = useCallback(
@@ -387,7 +387,7 @@ const ImprovedSupervisorDashboard = () => {
         router.push(item.linkTo.route as any);
       }
     },
-    [router],
+    [router]
   );
 
   return (
@@ -416,7 +416,7 @@ const ImprovedSupervisorDashboard = () => {
         showQueue={true}
         showLastSync={true}
       />
-      
+
       {/* Error Boundary */}
       {error && (
         <StandardizedErrorCard
@@ -427,7 +427,7 @@ const ImprovedSupervisorDashboard = () => {
           errorType={isOnline ? "sync" : "offline"}
         />
       )}
-      
+
       {loading && !refreshing ? (
         <View style={styles.loadingState}>
           <Ionicons
@@ -465,10 +465,7 @@ const ImprovedSupervisorDashboard = () => {
           />
 
           {/* Exception-first triage surface (§6.5) — renders nothing when clean. */}
-          <ExceptionTriageList
-            items={triageItems}
-            onPressItem={handleTriagePress}
-          />
+          <ExceptionTriageList items={triageItems} onPressItem={handleTriagePress} />
 
           <SupervisorStatsSection
             completionPercentage={completionPercentage}
@@ -676,7 +673,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingIcon: {
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
   },
   loadingText: {},
   recommendationsCard: {
@@ -706,8 +703,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   recommendationIcon: {
-    width: 28,
-    height: 28,
+    width: theme.componentSizes.icon.md,
+    height: theme.componentSizes.icon.md,
     borderRadius: theme.borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
@@ -725,10 +722,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   bottomSpacer: {
-    height: 100,
+    height: theme.spacing["4xl"],
   },
   bottomSpacerCompact: {
-    height: 24,
+    height: theme.spacing.lg,
   },
 });
 
