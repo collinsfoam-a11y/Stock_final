@@ -58,7 +58,13 @@ def assert_mobile_compatibility(app: FastAPI) -> None:
 
         responses = getattr(route, "responses", None) or {}
         for status_code in responses.keys():
-            if status_code in FORBIDDEN_REDIRECT_CODES:
+            # FastAPI accepts both int and str keys in `responses`, e.g.
+            # {"301": {...}}. Normalize so string keys are not silently missed.
+            try:
+                code = int(status_code)
+            except (TypeError, ValueError):
+                continue
+            if code in FORBIDDEN_REDIRECT_CODES:
                 violations.append(
                     f"{route.name} {route.path} [{sorted(route.methods)}] "
                     f"has 301/302 redirect response — this corrupts "
@@ -186,34 +192,30 @@ async def check_mongodb_replica_set(client: Any) -> None:
     environment = getattr(settings, "ENVIRONMENT", "development").lower()
 
     try:
-        admin_db = client.admin
-        repl_status = await admin_db.command("replSetGetStatus")
-
-        if repl_status and repl_status.get("set"):
-            logger.info(
-                "✅ MongoDB replica set verified: %s",
-                repl_status.get("set"),
-            )
-        else:
-            _raise_or_warn(
-                environment,
-                "MongoDB is not configured as a replica set. "
-                "Transactions will degrade to no-op (non-atomic writes).",
-                repl_status,
-            )
+        repl_status = await client.admin.command("replSetGetStatus")
     except Exception as exc:
-        error_msg = str(exc)
-        if "no replset config" in error_msg or "not running with" in error_msg:
-            _raise_or_warn(
-                environment,
-                "MongoDB is running as a standalone instance (not a replica set). "
-                "Transactions will degrade to no-op (non-atomic writes).",
-                exc,
-            )
-        else:
-            logger.warning(
-                "Could not verify replica-set status: %s", error_msg
-            )
+        # Any failure to query means we could not positively confirm a replica
+        # set. Fail closed in prod/staging: an auth error or a network blip must
+        # not be mistaken for a healthy topology.
+        _raise_or_warn(
+            environment,
+            "Could not verify that MongoDB is a replica set. "
+            "Transactions may degrade to no-op (non-atomic writes).",
+            exc,
+        )
+        return
+
+    if repl_status and repl_status.get("set"):
+        logger.info("✅ MongoDB replica set verified: %s", repl_status.get("set"))
+        return
+
+    # Command succeeded but reported no set name — standalone or misconfigured.
+    _raise_or_warn(
+        environment,
+        "MongoDB is not configured as a replica set. "
+        "Transactions will degrade to no-op (non-atomic writes).",
+        repl_status,
+    )
 
 
 def _raise_or_warn(environment: str, message: str, detail: Any) -> None:

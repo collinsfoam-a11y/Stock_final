@@ -12,11 +12,32 @@ import { showErrorToast, showWarningToast } from "./toastService";
 
 const log = createLogger("httpClient");
 
+const asNonEmptyString = (value: unknown): string | null =>
+  typeof value === "string" && value.trim().length > 0 ? value : null;
+
+/**
+ * Pull the user-facing message out of a backend error body.
+ *
+ * The API emits several shapes, so all are handled:
+ *   {"detail": "Admin access required"}                       - FastAPI default
+ *   {"detail": {"success": false, "error": {"message": "..."}}}
+ *   {"detail": {"error": "CODE", "message": "..."}}            - to_dict()
+ *   {"message": "..."}
+ *   "plain string body"
+ */
 export const extractUserErrorMessage = (error: any): string | null => {
   const data = error?.response?.data;
-  if (data?.message) return data.message;
-  if (typeof data === "string" && data.length > 0) return data;
-  return null;
+  if (!data) return null;
+
+  const detail = data.detail;
+  return (
+    asNonEmptyString(detail) ??
+    asNonEmptyString(detail?.error?.message) ??
+    asNonEmptyString(detail?.message) ??
+    asNonEmptyString(data.error?.message) ??
+    asNonEmptyString(data.message) ??
+    asNonEmptyString(data)
+  );
 };
 
 export const isErrorToastSuppressedRequest = (fullUrl: string): boolean => {
@@ -487,7 +508,9 @@ const logResponseError = (error: any, fullUrl: string, status: number | undefine
 
   if (error.request) {
     log.warn("API no response received (timeout/network)", { url: fullUrl });
-    showErrorToast("Network error. Please check your connection and try again.");
+    if (!isErrorToastSuppressedRequest(fullUrl)) {
+      showErrorToast("Network error. Please check your connection and try again.");
+    }
     return;
   }
 

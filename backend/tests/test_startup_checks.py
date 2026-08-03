@@ -70,6 +70,32 @@ class TestMobileCompatibility:
         with pytest.raises(RuntimeError, match="301/302.*mutation"):
             assert_mobile_compatibility(app)
 
+    def test_string_status_key_on_mutation_fails(self):
+        """
+        FastAPI accepts string keys in `responses`. Comparing raw keys against
+        an int set let {"301": ...} slip past the guard.
+        """
+        app = FastAPI()
+        route = _make_mock_route(
+            "/api/items", {"PATCH"}, "patch_item",
+            responses={"301": {"description": "Moved"}}
+        )
+        app.routes.append(route)
+
+        with pytest.raises(RuntimeError, match="301/302.*mutation"):
+            assert_mobile_compatibility(app)
+
+    def test_non_numeric_response_key_is_ignored(self):
+        """A non-numeric key must not blow up the guard."""
+        app = FastAPI()
+        route = _make_mock_route(
+            "/api/items", {"POST"}, "create_item",
+            responses={"default": {"description": "Fallback"}}
+        )
+        app.routes.append(route)
+
+        assert_mobile_compatibility(app)
+
 
 class TestPrefixConsistency:
     def test_allowed_root_paths_pass(self):
@@ -132,5 +158,61 @@ class TestReplicaSetGuard:
         try:
             result = await check_mongodb_replica_set(mock_client)
             assert result is None  # Returns without raising in dev
+        finally:
+            config_mod.settings.ENVIRONMENT = original
+
+    @pytest.mark.asyncio
+    async def test_raises_when_command_succeeds_but_reports_no_set(self):
+        """
+        Regression: replSetGetStatus can succeed while reporting no set name.
+
+        The raise for that case previously sat inside the try block, so the
+        RuntimeError was caught by the surrounding `except Exception` and
+        downgraded to a warning — the production guard never fired.
+        """
+        mock_client = AsyncMock()
+        mock_client.admin.command.return_value = {"ok": 1}  # no "set" key
+
+        import backend.config.core as config_mod
+        original = config_mod.settings.ENVIRONMENT
+        config_mod.settings.ENVIRONMENT = "production"
+        try:
+            with pytest.raises(RuntimeError, match="replica set"):
+                await check_mongodb_replica_set(mock_client)
+        finally:
+            config_mod.settings.ENVIRONMENT = original
+
+    @pytest.mark.asyncio
+    async def test_fails_closed_in_production_on_unrelated_error(self):
+        """
+        An error that is not a recognizable standalone signal (an auth failure
+        reaching admin.replSetGetStatus, say) must still fail in production.
+        Inability to confirm a replica set is not evidence of a healthy one.
+        """
+        mock_client = AsyncMock()
+        mock_client.admin.command.side_effect = Exception(
+            "not authorized on admin to execute command"
+        )
+
+        import backend.config.core as config_mod
+        original = config_mod.settings.ENVIRONMENT
+        config_mod.settings.ENVIRONMENT = "production"
+        try:
+            with pytest.raises(RuntimeError):
+                await check_mongodb_replica_set(mock_client)
+        finally:
+            config_mod.settings.ENVIRONMENT = original
+
+    @pytest.mark.asyncio
+    async def test_warns_in_development_on_unrelated_error(self):
+        """The same unverifiable state stays non-fatal in development."""
+        mock_client = AsyncMock()
+        mock_client.admin.command.side_effect = Exception("connection refused")
+
+        import backend.config.core as config_mod
+        original = config_mod.settings.ENVIRONMENT
+        config_mod.settings.ENVIRONMENT = "development"
+        try:
+            assert await check_mongodb_replica_set(mock_client) is None
         finally:
             config_mod.settings.ENVIRONMENT = original

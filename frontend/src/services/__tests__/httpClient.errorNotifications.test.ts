@@ -71,6 +71,53 @@ describe("httpClient error notification helpers", () => {
       expect(extractUserErrorMessage(error)).toBe("Item not found");
     });
 
+    // FastAPI's default shape, used by ~231 `detail="..."` raises in backend/api.
+    it("extracts a plain string detail", () => {
+      const error = { response: { data: { detail: "Admin access required" } } };
+      expect(extractUserErrorMessage(error)).toBe("Admin access required");
+    });
+
+    // detail={"success": False, "error": {"code": ..., "message": ...}}
+    it("extracts a nested detail.error.message", () => {
+      const error = {
+        response: {
+          data: {
+            detail: {
+              success: false,
+              error: { code: "NOT_FOUND", message: "Observation not found" },
+            },
+          },
+        },
+      };
+      expect(extractUserErrorMessage(error)).toBe("Observation not found");
+    });
+
+    // StockVerifyException.to_dict() puts message beside error, not under it.
+    it("extracts detail.message from the to_dict envelope", () => {
+      const error = {
+        response: {
+          data: {
+            detail: {
+              error: "DATABASE_CONNECTION_ERROR",
+              message: "SQL Server unreachable",
+              details: {},
+            },
+          },
+        },
+      };
+      expect(extractUserErrorMessage(error)).toBe("SQL Server unreachable");
+    });
+
+    it("extracts a plain string body", () => {
+      const error = { response: { data: "Gateway timeout" } };
+      expect(extractUserErrorMessage(error)).toBe("Gateway timeout");
+    });
+
+    it("ignores blank messages", () => {
+      const error = { response: { data: { detail: "   " } } };
+      expect(extractUserErrorMessage(error)).toBeNull();
+    });
+
     it("returns null when no message is available", () => {
       const error = { response: { data: { code: 404 } } };
       expect(extractUserErrorMessage(error)).toBeNull();
