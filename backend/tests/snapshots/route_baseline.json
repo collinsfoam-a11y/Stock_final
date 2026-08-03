@@ -1,0 +1,2634 @@
+[
+  {
+    "path": "/",
+    "name": "root",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/activity-logs",
+    "name": "get_activity_logs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/activity-logs/stats",
+    "name": "get_activity_stats",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/control/devices",
+    "name": "get_login_devices",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/control/logs/clear",
+    "name": "clear_service_logs",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/control/logs/{service}",
+    "name": "get_service_logs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/control/reports/available",
+    "name": "get_available_reports",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/control/reports/generate",
+    "name": "generate_report",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/control/services/backend/start",
+    "name": "start_backend",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/control/services/backend/stop",
+    "name": "stop_backend",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/control/services/frontend/start",
+    "name": "start_frontend",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/control/services/frontend/stop",
+    "name": "stop_frontend",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/control/services/status",
+    "name": "get_services_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/control/sql-server/config",
+    "name": "get_sql_server_config",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/control/sql-server/config",
+    "name": "update_sql_server_config",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/control/sql-server/test",
+    "name": "test_sql_server_connection",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/control/system/health-score",
+    "name": "get_system_health_score",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/control/system/issues",
+    "name": "get_system_issues",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/control/system/stats",
+    "name": "get_system_stats",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/control/watchdog/run",
+    "name": "run_watchdog_checks",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/dashboard/active-users",
+    "name": "get_active_users",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/dashboard/error-logs",
+    "name": "get_error_logs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/dashboard/kpis",
+    "name": "get_dashboard_kpis",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/dashboard/performance-metrics",
+    "name": "get_performance_metrics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/dashboard/summary",
+    "name": "get_dashboard_summary",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/dashboard/system-status",
+    "name": "get_system_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/errors",
+    "name": "get_errors",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/errors/dashboard",
+    "name": "get_error_dashboard",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/errors/report",
+    "name": "report_error",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/errors/stats/summary",
+    "name": "get_error_summary",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/errors/{error_id}",
+    "name": "delete_error",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/admin/errors/{error_id}",
+    "name": "get_error_detail",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/errors/{error_id}/status",
+    "name": "update_error_status",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/admin/logs/backend",
+    "name": "get_backend_logs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/logs/clear",
+    "name": "clear_logs",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/logs/frontend",
+    "name": "get_frontend_logs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/logs/mongodb",
+    "name": "get_mongodb_logs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/logs/system",
+    "name": "get_system_logs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/security/audit-log",
+    "name": "get_audit_log",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/security/failed-logins",
+    "name": "get_failed_logins",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/security/ip-tracking",
+    "name": "get_ip_tracking",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/security/sessions",
+    "name": "get_security_sessions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/security/summary",
+    "name": "get_security_summary",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/security/suspicious-activity",
+    "name": "get_suspicious_activity",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/settings/categories",
+    "name": "get_settings_categories",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/settings/parameters",
+    "name": "get_system_parameters",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/settings/parameters",
+    "name": "update_system_parameters",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/admin/settings/reset",
+    "name": "reset_to_defaults",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/unknown-items",
+    "name": "list_unknown_items",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/unknown-items/{item_id}",
+    "name": "delete_unknown_item",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/admin/unknown-items/{item_id}/create-sku",
+    "name": "create_sku_from_unknown",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/unknown-items/{item_id}/map",
+    "name": "map_unknown_to_sku",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/analytics/heatmap",
+    "name": "get_heatmap",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/approval/observations/{observation_id}/evaluate",
+    "name": "evaluate_observation",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/approval/recount/requests",
+    "name": "create_recount_request",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/approval/recount/requests/{request_id}/assign",
+    "name": "assign_recount",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/approval/recount/requests/{request_id}/start",
+    "name": "start_recount",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/approval/recount/requests/{request_id}/submit",
+    "name": "submit_recount",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/approval/reports/supervisor-queues",
+    "name": "supervisor_queue_summary",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/approval/sessions/{session_id}/additional-location",
+    "name": "create_additional_location_investigation",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/approval/sessions/{session_id}/summary",
+    "name": "session_approval_summary",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/approval/supervisor/observations/{observation_id}/decide",
+    "name": "supervisor_decide",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/approval/supervisor/queues/{queue_type}",
+    "name": "supervisor_queue",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/auth/change-password",
+    "name": "change_password",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/auth/change-pin",
+    "name": "change_pin",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/auth/heartbeat",
+    "name": "heartbeat",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/auth/login",
+    "name": "login",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/auth/login-pin",
+    "name": "login_with_pin",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/auth/login/pin",
+    "name": "login_with_pin",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/auth/logout",
+    "name": "logout",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/auth/me",
+    "name": "get_me",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/auth/password-reset/confirm",
+    "name": "password_reset_confirm",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/auth/password-reset/request",
+    "name": "password_reset_request",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/auth/password-reset/verify",
+    "name": "password_reset_verify",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/auth/pin-setup",
+    "name": "pin_setup",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/auth/pin/change",
+    "name": "change_pin",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/auth/refresh",
+    "name": "refresh_token",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/auth/register",
+    "name": "register",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/commands/sync",
+    "name": "sync_commands",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/count-lines",
+    "name": "create_count_line",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/count-lines",
+    "name": "list_count_lines",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/count-lines/batch",
+    "name": "create_count_lines_batch",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/count-lines/bulk/approve",
+    "name": "bulk_approve_count_lines",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/count-lines/bulk/reject",
+    "name": "bulk_reject_count_lines",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/count-lines/check-serial/{session_id}/{serial_number}",
+    "name": "check_serial_uniqueness",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/count-lines/check/{session_id}/{item_code}",
+    "name": "check_item_counted",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/count-lines/draft",
+    "name": "save_count_line_draft",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/count-lines/item-batches/{item_identifier}",
+    "name": "get_item_batches",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/count-lines/merge",
+    "name": "merge_count_lines",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/count-lines/session/{session_id}",
+    "name": "get_count_lines_route",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/count-lines/{line_id}",
+    "name": "delete_count_line",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/count-lines/{line_id}",
+    "name": "get_count_line_detail",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/count-lines/{line_id}",
+    "name": "update_count_line",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/count-lines/{line_id}/add-quantity",
+    "name": "add_quantity_to_count_line",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/count-lines/{line_id}/approve",
+    "name": "approve_count_line_route",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/count-lines/{line_id}/reject",
+    "name": "reject_count_line_route",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/count-lines/{line_id}/unverify",
+    "name": "unverify_stock_route",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/count-lines/{line_id}/verify",
+    "name": "verify_stock_route",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/damage/cases",
+    "name": "create_damage_case",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/damage/cases",
+    "name": "list_damage_cases",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/damage/cases/{case_id}",
+    "name": "get_damage_case",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/damage/cases/{case_id}/decide",
+    "name": "decide_damage_case",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/damage/session/{session_id}/summary",
+    "name": "session_damage_summary",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/dashboard/columns",
+    "name": "get_available_columns",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/dashboard/data",
+    "name": "get_dashboard_data",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/dashboard/export/csv",
+    "name": "export_dashboard_csv",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/dashboard/export/xlsx",
+    "name": "export_dashboard_xlsx",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/dashboard/filters/options",
+    "name": "get_filter_options",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/dashboard/item/{item_id}",
+    "name": "get_item_details",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/dashboard/stats",
+    "name": "get_dashboard_stats",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/dashboard/stream",
+    "name": "dashboard_stream",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/diagnosis/auto-fix",
+    "name": "attempt_auto_fix",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/diagnosis/diagnose",
+    "name": "diagnose_error_endpoint",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/diagnosis/health",
+    "name": "get_health_with_diagnosis",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/diagnosis/patterns",
+    "name": "get_error_patterns",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/diagnosis/statistics",
+    "name": "get_error_statistics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/dynamic-fields/definitions",
+    "name": "create_field_definition",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/dynamic-fields/definitions",
+    "name": "get_field_definitions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/dynamic-fields/definitions/{field_id}",
+    "name": "delete_field_definition",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/dynamic-fields/definitions/{field_id}",
+    "name": "update_field_definition",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/dynamic-fields/items",
+    "name": "get_items_with_fields",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/dynamic-fields/statistics/{field_name}",
+    "name": "get_field_statistics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/dynamic-fields/values",
+    "name": "set_field_value",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/dynamic-fields/values/bulk",
+    "name": "set_field_values_bulk",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/dynamic-fields/values/{item_code}",
+    "name": "get_item_field_values",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/dynamic-reports/generate",
+    "name": "generate_report",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/dynamic-reports/history",
+    "name": "get_generated_reports",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/dynamic-reports/quick/items-with-fields",
+    "name": "quick_report_items_with_fields",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/dynamic-reports/quick/variance-summary",
+    "name": "quick_report_variance_summary",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/dynamic-reports/templates",
+    "name": "create_report_template",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/dynamic-reports/templates",
+    "name": "get_report_templates",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/dynamic-reports/{report_id}/download",
+    "name": "download_report",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/audit/compliance-report",
+    "name": "get_compliance_report",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/audit/logs",
+    "name": "get_audit_logs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/audit/verify-integrity",
+    "name": "verify_audit_integrity",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/circuit-breakers",
+    "name": "get_circuit_breakers",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/features",
+    "name": "create_feature_flag",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/enterprise/features",
+    "name": "get_feature_flags",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/features/enabled",
+    "name": "get_enabled_features",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/features/{key}",
+    "name": "check_feature",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/features/{key}",
+    "name": "delete_feature_flag",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/enterprise/features/{key}",
+    "name": "update_feature_flag",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/enterprise/features/{key}/disable",
+    "name": "disable_feature",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/enterprise/features/{key}/enable",
+    "name": "enable_feature",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/enterprise/governance/apply-retention",
+    "name": "apply_retention_policies",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/enterprise/governance/compliance-report",
+    "name": "get_governance_compliance_report",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/governance/data-requests",
+    "name": "create_data_request",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/enterprise/governance/data-requests",
+    "name": "get_pending_data_requests",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/governance/data-requests/{request_id}/process",
+    "name": "process_data_request",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/enterprise/governance/inventory",
+    "name": "get_data_inventory",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/governance/retention-policies",
+    "name": "get_retention_policies",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/governance/retention-policies",
+    "name": "set_retention_policy",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/enterprise/metrics",
+    "name": "get_enterprise_metrics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/metrics/prometheus",
+    "name": "get_prometheus_metrics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/security/events",
+    "name": "get_security_events",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/security/ip-list",
+    "name": "add_to_ip_list",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/enterprise/security/ip-list/{ip_address}",
+    "name": "remove_from_ip_list",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/enterprise/security/ip-lists",
+    "name": "get_ip_lists",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/security/locked-accounts",
+    "name": "get_locked_accounts",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/security/sessions/{user_id}",
+    "name": "get_user_sessions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/security/sessions/{user_id}",
+    "name": "terminate_user_sessions",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/enterprise/security/summary",
+    "name": "get_security_summary",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/enterprise/security/unlock-account",
+    "name": "unlock_account",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/erp/config",
+    "name": "get_erp_config",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/erp/items",
+    "name": "get_all_items",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/erp/items/barcode/{barcode}",
+    "name": "get_item_by_barcode",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/erp/items/{item_code}/refresh-stock",
+    "name": "refresh_item_stock",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/erp/test",
+    "name": "test_erp_connection",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/error-logs",
+    "name": "delete_error_logs",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/error-logs",
+    "name": "get_error_logs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/error-logs/stats",
+    "name": "get_error_stats",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/error-logs/{log_id}",
+    "name": "get_error_detail",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/error-logs/{log_id}/resolve",
+    "name": "resolve_error",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/exports/results",
+    "name": "list_export_results",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/exports/results/{result_id}/download",
+    "name": "download_export_result",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/exports/schedules",
+    "name": "create_export_schedule",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/exports/schedules",
+    "name": "list_export_schedules",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/exports/schedules/{schedule_id}",
+    "name": "delete_export_schedule",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/exports/schedules/{schedule_id}",
+    "name": "get_export_schedule",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/exports/schedules/{schedule_id}",
+    "name": "update_export_schedule",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/exports/schedules/{schedule_id}/execute",
+    "name": "execute_export_schedule",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/health",
+    "name": "health_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/health/",
+    "name": "health_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/health/detailed",
+    "name": "detailed_health_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/health/live",
+    "name": "liveness_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/health/ready",
+    "name": "readiness_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/health/startup",
+    "name": "startup_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/item-batches/{item_code}",
+    "name": "get_item_batches",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/items/search",
+    "name": "search_items_compatibility",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/items/search/filters",
+    "name": "get_search_filters",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/items/search/optimized",
+    "name": "search_optimized",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/items/search/optimized",
+    "name": "search_optimized_post",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/items/search/suggestions",
+    "name": "get_suggestions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/legacy/sessions/analytics",
+    "name": "get_sessions_analytics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/legacy/sessions/{session_id}",
+    "name": "get_session_by_id",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/locations/warehouses",
+    "name": "get_warehouses",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/locations/zones",
+    "name": "get_zones",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/mapping/columns",
+    "name": "get_columns",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/mapping/current",
+    "name": "get_current_mapping",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/mapping/preview",
+    "name": "preview_mapping",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/mapping/save",
+    "name": "save_mapping",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/mapping/tables",
+    "name": "get_tables",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/mapping/test_direct",
+    "name": "test_direct",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/metrics",
+    "name": "get_prometheus_metrics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/metrics/health",
+    "name": "get_health_metrics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/metrics/json",
+    "name": "get_metrics_json",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/metrics/staff-performance",
+    "name": "get_staff_performance",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/metrics/stats",
+    "name": "get_metrics_stats",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/notes",
+    "name": "create_note",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/notes",
+    "name": "list_notes",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/notes/{note_id}",
+    "name": "delete_note",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/notifications",
+    "name": "get_notifications",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/notifications/",
+    "name": "get_notifications",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/notifications/batch",
+    "name": "send_batch_notifications",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/notifications/devices",
+    "name": "register_notification_device",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/notifications/devices/unregister",
+    "name": "unregister_notification_device",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/notifications/mark-all-read",
+    "name": "mark_all_notifications_as_read",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/notifications/unread-count",
+    "name": "get_unread_count",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/notifications/{notification_id}",
+    "name": "delete_notification",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/notifications/{notification_id}/read",
+    "name": "mark_notification_as_read",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/permissions/available",
+    "name": "list_available_permissions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/permissions/roles",
+    "name": "list_role_permissions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/permissions/users/{username}",
+    "name": "get_user_permissions_api",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/permissions/users/{username}/add",
+    "name": "add_user_permissions",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/permissions/users/{username}/disable",
+    "name": "disable_user_permissions",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/permissions/users/{username}/enable",
+    "name": "enable_user_permissions",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/permissions/users/{username}/remove",
+    "name": "remove_user_permissions",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/pi/chat",
+    "name": "chat_with_pi",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/pi/history",
+    "name": "get_chat_history",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/pi/status",
+    "name": "get_pi_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/racks/available",
+    "name": "get_available_racks",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/racks/floors",
+    "name": "get_floors",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/racks/user/active",
+    "name": "get_user_active_racks",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/racks/{rack_id}/claim",
+    "name": "claim_rack",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/racks/{rack_id}/pause",
+    "name": "pause_rack",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/racks/{rack_id}/release",
+    "name": "release_rack",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/racks/{rack_id}/resume",
+    "name": "resume_rack",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/racks/{rack_id}/status",
+    "name": "get_rack_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/recount/assign",
+    "name": "assign_recount_request",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/recount/list",
+    "name": "list_recount_requests",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/recount/request",
+    "name": "create_recount_request",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/recount/staff/{username}/tasks",
+    "name": "get_staff_recount_tasks",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/recount/stats/summary",
+    "name": "get_recount_summary",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/recount/{recount_id}",
+    "name": "get_recount_request",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/recount/{recount_id}/cancel",
+    "name": "cancel_recount_request",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/recount/{recount_id}/complete",
+    "name": "complete_recount_request",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/reports/collections",
+    "name": "get_available_collections",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/reports/compare",
+    "name": "compare_snapshots",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/reports/compare",
+    "name": "list_comparisons",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/reports/compare/{job_id}",
+    "name": "get_comparison",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/reports/export/csv",
+    "name": "export_report_csv",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/reports/export/xlsx",
+    "name": "export_report_xlsx",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/reports/filters/{report_type}",
+    "name": "get_report_filter_options",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/reports/generate",
+    "name": "generate_report",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/reports/query/preview",
+    "name": "preview_query",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/reports/snapshots",
+    "name": "create_snapshot",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/reports/snapshots",
+    "name": "list_snapshots",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/reports/snapshots/{snapshot_id}",
+    "name": "delete_snapshot",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/reports/snapshots/{snapshot_id}",
+    "name": "get_snapshot",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/reports/snapshots/{snapshot_id}/export",
+    "name": "export_snapshot",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/reports/snapshots/{snapshot_id}/refresh",
+    "name": "refresh_snapshot",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/reports/types",
+    "name": "get_report_types",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/session/{session_id}/sql",
+    "name": "get_session_sql_variance",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sessions",
+    "name": "create_session",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sessions",
+    "name": "get_sessions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sessions/",
+    "name": "create_session",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sessions/",
+    "name": "get_sessions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sessions/active",
+    "name": "get_active_sessions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sessions/analytics",
+    "name": "get_sessions_analytics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sessions/bulk/close",
+    "name": "bulk_close_sessions",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sessions/bulk/export",
+    "name": "bulk_export_sessions",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sessions/location-sessions/claim",
+    "name": "claim_location_session",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sessions/location-sessions/{session_id}/pause",
+    "name": "pause_location_session",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sessions/location-sessions/{session_id}/release",
+    "name": "release_location_session",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sessions/location-sessions/{session_id}/resume",
+    "name": "resume_location_session",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sessions/location-sessions/{session_id}/takeover",
+    "name": "takeover_location_session",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sessions/logout-all",
+    "name": "logout_all_sessions",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sessions/user-workflows",
+    "name": "get_user_workflows",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sessions/user/history",
+    "name": "get_user_session_history",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sessions/{session_id}",
+    "name": "get_session_detail",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sessions/{session_id}/complete",
+    "name": "complete_session",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sessions/{session_id}/finalize",
+    "name": "finalize_session",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sessions/{session_id}/finalize-assessment",
+    "name": "get_finalization_assessment",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sessions/{session_id}/heartbeat",
+    "name": "session_heartbeat",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sessions/{session_id}/integrity",
+    "name": "check_session_integrity",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sessions/{session_id}/items/{item_code}/scan-status",
+    "name": "check_item_scan_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sessions/{session_id}/stats",
+    "name": "get_session_stats",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sessions/{session_id}/status",
+    "name": "update_session_status",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/supervisor/verify-pin",
+    "name": "verify_supervisor_pin",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sync/batch",
+    "name": "sync_batch",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sync/changes",
+    "name": "trigger_change_sync",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sync/changes/stats",
+    "name": "get_change_sync_stats",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sync/conflicts",
+    "name": "list_conflicts",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sync/conflicts/auto-resolve",
+    "name": "auto_resolve_conflicts",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sync/conflicts/batch-resolve",
+    "name": "batch_resolve_conflicts",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sync/conflicts/stats/summary",
+    "name": "get_conflict_statistics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sync/conflicts/{conflict_id}",
+    "name": "get_conflict_details",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sync/conflicts/{conflict_id}/resolve",
+    "name": "resolve_conflict",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sync/erp",
+    "name": "trigger_erp_sync",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sync/heartbeat",
+    "name": "session_heartbeat",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/sync/stats",
+    "name": "get_sync_stats",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sync/status",
+    "name": "get_sync_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/sync/trigger",
+    "name": "trigger_manual_sync",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/unknown-items",
+    "name": "report_unknown_item",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/user/settings",
+    "name": "get_user_settings",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/user/settings",
+    "name": "reset_user_settings",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/user/settings",
+    "name": "update_user_settings",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/users",
+    "name": "create_user",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/users",
+    "name": "list_users",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/users/assignable/staff",
+    "name": "list_assignable_staff",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/users/bulk",
+    "name": "bulk_user_action",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/users/me/preferences",
+    "name": "get_my_preferences",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/users/me/preferences",
+    "name": "update_my_preferences",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/users/roles/available",
+    "name": "get_available_roles",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/users/{user_id}",
+    "name": "delete_user",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/users/{user_id}",
+    "name": "get_user",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/users/{user_id}",
+    "name": "update_user",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/users/{user_id}/reset-password",
+    "name": "reset_user_password",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/users/{user_id}/reset-pin",
+    "name": "reset_user_pin",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/enrichment/bulk",
+    "name": "bulk_import_enrichments_endpoint",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/enrichment/completeness/{item_code}",
+    "name": "check_data_completeness",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/enrichment/incomplete",
+    "name": "get_incomplete_items",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/enrichment/leaderboard",
+    "name": "get_enrichment_leaderboard_endpoint",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/enrichment/record",
+    "name": "record_item_enrichment",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/enrichment/stats",
+    "name": "get_enrichment_statistics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/enrichment/validate",
+    "name": "validate_enrichment_data_endpoint",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v2/connections/pool/health-check",
+    "name": "trigger_health_check",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v2/connections/pool/stats",
+    "name": "get_connection_pool_stats",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/connections/pool/status",
+    "name": "get_connection_pool_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/barcode/{barcode}/enhanced",
+    "name": "get_item_by_barcode_enhanced",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/database/optimize",
+    "name": "optimize_database_performance",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/database/status",
+    "name": "get_database_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/export/csv",
+    "name": "export_items_csv",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/export/json",
+    "name": "export_items_json",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/export/xlsx",
+    "name": "export_items_xlsx",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/filtered",
+    "name": "get_filtered_items",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/live/users",
+    "name": "get_live_users",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/live/verifications",
+    "name": "get_live_verifications",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/locations",
+    "name": "get_unique_locations",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/performance/stats",
+    "name": "get_item_api_performance",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/search/advanced",
+    "name": "advanced_item_search",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/sync",
+    "name": "sync_items_for_offline_cache",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/sync/realtime",
+    "name": "trigger_realtime_sync",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/variances",
+    "name": "get_variances",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/variances/export/csv",
+    "name": "export_variances_csv",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/variances/export/xlsx",
+    "name": "export_variances_xlsx",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/{barcode}/refresh-sql-qty",
+    "name": "refresh_item_qty_from_sql",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/{barcode}/update-master",
+    "name": "update_item_master",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v2/erp/items/{barcode}/verify",
+    "name": "verify_item",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v2/health/",
+    "name": "health_check_v2",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/health/detailed",
+    "name": "health_check_detailed_v2",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/health/metrics-detailed",
+    "name": "detailed_health_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/items/",
+    "name": "get_items_v2",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/items/id/{item_id}",
+    "name": "get_item_v2",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/items/identify",
+    "name": "identify_item",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v2/items/semantic",
+    "name": "search_items_semantic",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/items/{item_code}",
+    "name": "get_item_details",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/metrics/pool",
+    "name": "get_connection_pool_metrics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/metrics/system",
+    "name": "get_system_metrics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/reconciliation/session/{session_id}/summary",
+    "name": "get_session_reconciliation_summary",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/sessions/",
+    "name": "get_sessions_v2",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/sessions/watchtower",
+    "name": "get_watchtower_stats",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/sessions/{session_id}/rack-progress",
+    "name": "get_rack_progress",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/supervisor/predictions",
+    "name": "get_session_predictions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v2/verification/items/{item_code}/verify-qty",
+    "name": "verify_item_quantity",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/variance-reasons",
+    "name": "get_variance_reasons",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/variance/trend",
+    "name": "get_variance_trend",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/version",
+    "name": "get_version",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/version/check",
+    "name": "check_version",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/health",
+    "name": "health_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/health/",
+    "name": "health_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/health/detailed",
+    "name": "detailed_health_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/health/live",
+    "name": "liveness_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/health/ready",
+    "name": "readiness_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/health/startup",
+    "name": "startup_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/{full_path:path}",
+    "name": "serve_spa",
+    "methods": [
+      "GET"
+    ]
+  }
+]

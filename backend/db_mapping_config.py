@@ -1,0 +1,6 @@
+"""
+Shim for backward compatibility.
+See backend.config.mappings
+"""
+
+from backend.config.mappings import *

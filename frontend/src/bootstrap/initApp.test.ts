@@ -1,0 +1,124 @@
+import { initializeApp } from "./initApp";
+import { initAuthAndSettings } from "./initAuthAndSettings";
+import { initMobileRuntime } from "./initMobileRuntime";
+import { initMonitoringAndDevTools } from "./initDevTools";
+import { registerBackgroundSync } from "../services/backgroundSync";
+
+jest.mock("../services/mmkvStorage", () => ({
+  mmkvStorage: {
+    initialize: jest.fn(async () => undefined),
+  },
+}));
+
+jest.mock("../services/backgroundSync", () => ({
+  registerBackgroundSync: jest.fn(async () => undefined),
+}));
+
+jest.mock("../store/authStore", () => ({
+  useAuthStore: {
+    getState: jest.fn(() => ({ isAuthenticated: false })),
+  },
+}));
+
+jest.mock("../services/themeService", () => ({
+  ThemeService: {
+    initialize: jest.fn(async () => undefined),
+  },
+}));
+
+jest.mock("./initDevTools", () => ({
+  initMonitoringAndDevTools: jest.fn(),
+}));
+
+jest.mock("./initAuthAndSettings", () => ({
+  initAuthAndSettings: jest.fn(async () => ({
+    authResult: { status: "fulfilled", value: undefined },
+    settingsResult: { status: "fulfilled", value: undefined },
+  })),
+}));
+
+jest.mock("./initMobileRuntime", () => ({
+  initMobileRuntime: jest.fn(async () => () => undefined),
+}));
+
+describe("initializeApp", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    if (jest.isMockFunction(console.warn)) {
+      (console.warn as jest.Mock).mockImplementation(() => undefined);
+    } else {
+      jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    }
+    if (jest.isMockFunction(console.error)) {
+      (console.error as jest.Mock).mockImplementation(() => undefined);
+    } else {
+      jest.spyOn(console, "error").mockImplementation(() => undefined);
+    }
+  });
+
+  it("continues startup when non-critical steps fail", async () => {
+    (initAuthAndSettings as jest.Mock).mockResolvedValueOnce({
+      authResult: { status: "rejected", reason: new Error("auth timeout") },
+      settingsResult: { status: "fulfilled", value: undefined },
+    });
+
+    const result = await initializeApp({
+      fontsLoaded: true,
+      isDev: true,
+      loadStoredAuth: async () => undefined,
+      loadSettings: async () => undefined,
+      isAuthenticated: () => false,
+    });
+
+    expect(initMonitoringAndDevTools).toHaveBeenCalled();
+    expect(typeof result.cleanup).toBe("function");
+  });
+
+  it("continues startup when mobile runtime initialization fails", async () => {
+    (initMobileRuntime as jest.Mock).mockRejectedValueOnce(new Error("mobile runtime failed"));
+
+    const result = await initializeApp({
+      fontsLoaded: true,
+      isDev: true,
+      loadStoredAuth: async () => undefined,
+      loadSettings: async () => undefined,
+      isAuthenticated: () => false,
+    });
+
+    expect(typeof result.cleanup).toBe("function");
+  });
+
+  it("skips background sync registration when user is not authenticated", async () => {
+    await initializeApp({
+      fontsLoaded: true,
+      isDev: true,
+      loadStoredAuth: async () => undefined,
+      loadSettings: async () => undefined,
+      isAuthenticated: () => false,
+    });
+
+    expect(registerBackgroundSync).not.toHaveBeenCalled();
+  });
+
+  it("reports monotonic boot progress without waiting for fonts", async () => {
+    const progressEvents: number[] = [];
+    const messages: string[] = [];
+
+    await initializeApp({
+      fontsLoaded: false,
+      isDev: true,
+      loadStoredAuth: async () => undefined,
+      loadSettings: async () => undefined,
+      isAuthenticated: () => false,
+      onProgress: ({ progress, message }) => {
+        progressEvents.push(progress);
+        messages.push(message);
+      },
+    });
+
+    expect(progressEvents.length).toBeGreaterThan(0);
+    expect(progressEvents).toContain(100);
+    expect(progressEvents).toEqual([...progressEvents].sort((a, b) => a - b));
+    expect(messages).toContain("Using fallback fonts while assets finish loading");
+  });
+});

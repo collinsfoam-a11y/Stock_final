@@ -1,0 +1,328 @@
+"""
+Query Builder Service - Dynamic MongoDB aggregation pipeline builder
+Supports complex queries with filters, grouping, and sorting
+"""
+
+import hashlib
+import json
+import logging
+from datetime import datetime
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+
+# --------------------------------------------------------------------------- #
+# Operator-to-MongoDB mapping (reduces cyclomatic complexity)
+# --------------------------------------------------------------------------- #
+_SIMPLE_OPS = {
+    "ne": "$ne",
+    "gt": "$gt",
+    "gte": "$gte",
+    "lt": "$lt",
+    "lte": "$lte",
+    "in": "$in",
+    "nin": "$nin",
+    "exists": "$exists",
+}
+
+_AGG_OPS = {
+    "sum": "$sum",
+    "avg": "$avg",
+    "min": "$min",
+    "max": "$max",
+}
+
+
+def _apply_operator(mongo_condition: dict, op: str, value: Any) -> None:
+    """Apply a single operator to mongo_condition dict."""
+    if op in _SIMPLE_OPS:
+        mongo_condition[_SIMPLE_OPS[op]] = value
+    elif op == "regex":
+        mongo_condition["$regex"] = value
+        mongo_condition["$options"] = "i"  # Case insensitive
+
+
+class QueryBuilder:
+    """
+    Build MongoDB aggregation pipelines from query specifications
+    """
+
+    # Available collections for querying
+    COLLECTIONS = {
+        "verification_records": "count_lines",
+        "sessions": "sessions",
+        "items": "erp_items",
+        "count_lines": "count_lines",
+    }
+
+    # Available fields per collection
+    FIELDS = {
+        "verification_records": [
+            "item_code",
+            "counted_qty",
+            "damaged_qty",
+            "rack_no",
+            "floor_no",
+            "session_id",
+            "status",
+            "created_at",
+            "updated_at",
+        ],
+        "sessions": [
+            "id",
+            "staff_user",
+            "rack_no",
+            "location_name",
+            "status",
+            "started_at",
+            "completed_at",
+        ],
+        "erp_items": [
+            "item_code",
+            "item_name",
+            "category",
+            "subcategory",
+            "stock_qty",
+            "warehouse",
+            "floor",
+            "rack",
+        ],
+        "count_lines": [
+            "item_code",
+            "session_id",
+            "counted_qty",
+            "verified",
+            "rack_id",
+        ],
+    }
+
+    # Aggregation functions
+    AGGREGATIONS = ["sum", "avg", "min", "max", "count"]
+
+    def __init__(self):
+        pass
+
+    def build_pipeline(
+        self,
+        collection: str,
+        filters: dict[str, Any | None] | None = None,
+        group_by: list[str] | None = None,
+        aggregations: dict[str, str | None] | None = None,
+        sort: dict[str, int | None] | None = None,
+        limit: int | None = None,
+        skip: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Build MongoDB aggregation pipeline
+
+        Args:
+            collection: Collection name
+            filters: Filter conditions
+            group_by: Fields to group by
+            aggregations: Field aggregations {field: function}
+            sort: Sort specification {field: 1/-1}
+            limit: Limit results
+            skip: Skip results
+
+        Returns:
+            MongoDB aggregation pipeline
+        """
+        pipeline = []
+
+        # Validate collection
+        if collection not in self.COLLECTIONS:
+            raise ValueError(f"Invalid collection: {collection}")
+
+        # Match stage (filters)
+        if filters:
+            match_stage = self._build_match_stage(filters)
+            if match_stage:
+                pipeline.append(match_stage)
+
+        # Group stage
+        if group_by or aggregations:
+            group_stage = self._build_group_stage(group_by, aggregations)
+            pipeline.append(group_stage)
+
+        # Sort stage
+        if sort:
+            pipeline.append({"$sort": sort})
+
+        # Skip stage
+        if skip:
+            pipeline.append({"$skip": skip})
+
+        # Limit stage
+        if limit:
+            pipeline.append({"$limit": limit})
+
+        return pipeline
+
+    # Allowed filter keys to prevent injection
+    ALLOWED_FILTER_KEYS = {
+        "warehouse",
+        "status",
+        "date_from",
+        "date_to",
+        "user_id",
+        "session_id",
+        "item_code",
+        "barcode",
+        "category",
+        "subcategory",
+        "floor",
+        "rack",
+        "rack_id",
+        "started_at",
+        "completed_at",
+        "created_at",
+        "updated_at",
+        "verified",
+        "verified_qty",
+        "damaged_qty",
+        "counted_qty",
+    }
+
+    def _build_match_stage(self, filters: dict[str, Any]) -> dict[str, Any]:
+        """
+        Build match stage from filters with input validation
+
+        Supported operators:
+        - eq: Equal
+        - ne: Not equal
+        - gt: Greater than
+        - gte: Greater than or equal
+        - lt: Less than
+        - lte: Less than or equal
+        - in: In array
+        - nin: Not in array
+        - regex: Regular expression
+        - exists: Field exists
+        """
+        match_conditions = {}
+
+        for field, condition in filters.items():
+            # Validate filter key against allowlist
+            if field not in self.ALLOWED_FILTER_KEYS:
+                logger.warning(f"Rejected invalid filter key: {field}")
+                continue
+            if isinstance(condition, dict):
+                mongo_condition: dict[str, Any] = {}
+                for op, value in condition.items():
+                    if op == "eq":
+                        match_conditions[field] = value
+                    else:
+                        _apply_operator(mongo_condition, op, value)
+                if mongo_condition:
+                    match_conditions[field] = mongo_condition
+            else:
+                # Simple equality
+                match_conditions[field] = condition
+
+        return {"$match": match_conditions} if match_conditions else {}
+
+    def _build_group_stage(
+        self,
+        group_by: list[str] | None = None,
+        aggregations: dict[str, str | None] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Build group stage
+
+        Args:
+            group_by: Fields to group by
+            aggregations: {field: function} - e.g., {"verified_qty": "sum"}
+        """
+        group_stage: dict[str, Any] = {"$group": {"_id": {}}}
+
+        # Group by fields
+        if group_by:
+            if len(group_by) == 1:
+                group_stage["$group"]["_id"] = f"${group_by[0]}"
+            else:
+                for field in group_by:
+                    group_stage["$group"]["_id"][field] = f"${field}"
+
+        # Aggregations
+        if aggregations:
+            for field, func in aggregations.items():
+                if func not in self.AGGREGATIONS:
+                    raise ValueError(f"Invalid aggregation function: {func}")
+                if func == "count":
+                    group_stage["$group"][f"{field}_{func}"] = {"$sum": 1}
+                elif func in _AGG_OPS:
+                    group_stage["$group"][f"{field}_{func}"] = {_AGG_OPS[func]: f"${field}"}
+
+        return group_stage
+
+    def generate_query_hash(self, query_spec: dict[str, Any]) -> str:
+        """
+        Generate unique hash for query specification
+        Used for deduplication and caching
+        """
+        query_json = json.dumps(query_spec, sort_keys=True)
+        return hashlib.sha256(query_json.encode()).hexdigest()[:16]
+
+    def validate_query(
+        self, collection: str, fields: list[str], aggregations: dict | None = None
+    ) -> bool:
+        """
+        Validate query fields and aggregations
+        """
+        # Check collection
+        if collection not in self.COLLECTIONS:
+            raise ValueError(f"Invalid collection: {collection}")
+
+        # Check fields
+        available_fields = self.FIELDS.get(collection, [])
+        for field in fields:
+            if field not in available_fields:
+                raise ValueError(f"Invalid field '{field}' for collection '{collection}'")
+
+        # Check aggregations
+        if aggregations:
+            for field, func in aggregations.items():
+                if field not in available_fields:
+                    raise ValueError(
+                        f"Invalid aggregation field '{field}' for collection '{collection}'"
+                    )
+                if func not in self.AGGREGATIONS:
+                    raise ValueError(f"Invalid aggregation function: {func}")
+
+        return True
+
+
+# Example query specifications
+EXAMPLE_QUERIES = {
+    "items_by_floor": {
+        "collection": "verification_records",
+        "group_by": ["floor_no"],
+        "aggregations": {"counted_qty": "sum", "damaged_qty": "sum"},
+        "sort": {"counted_qty_sum": -1},
+    },
+    "session_performance": {
+        "collection": "sessions",
+        "filters": {"status": "COMPLETED"},
+        "group_by": ["staff_user"],
+        "aggregations": {"id": "count"},
+        "sort": {"id_count": -1},
+    },
+    "rack_summary": {
+        "collection": "verification_records",
+        "group_by": ["rack_no", "floor_no"],
+        "aggregations": {
+            "counted_qty": "sum",
+            "damaged_qty": "sum",
+            "item_code": "count",
+        },
+    },
+    "daily_verification": {
+        "collection": "verification_records",
+        "filters": {
+            "created_at": {"gte": datetime.now().replace(hour=0, minute=0, second=0).timestamp()}
+        },
+        "group_by": ["floor_no"],
+        "aggregations": {"counted_qty": "sum"},
+    },
+}

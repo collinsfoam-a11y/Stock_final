@@ -2,16 +2,22 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "backend",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "cd Stock_final && ./scripts/start_backend.sh"],
-      "port": 8001
+      "name": "frontend-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend", "run", "web"],
+      "port": 8081
     },
     {
-      "name": "frontend-web",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "cd Stock_final/frontend && node node_modules/expo/bin/cli start --web --port 8081"],
+      "name": "frontend-expo",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend", "run", "start"],
       "port": 8081
+    },
+    {
+      "name": "backend-api",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "uvicorn", "backend.server:app", "--host", "0.0.0.0", "--port", "8001", "--reload"],
+      "port": 8001
     }
   ]
 }

@@ -1,0 +1,18 @@
+{
+  "updatedAt": "2026-06-03T00:00:00.000Z",
+  "hardLimits": {
+    "offlineSyncImports": 0,
+    "uiToastImports": 0,
+    "syncOrchestratorOwners": 1,
+    "offlineSyncWrapperNonShim": 0
+  },
+  "advisoryCeilings": {
+    "legacyCompatImports": 130,
+    "modernDesignSystemImports": 54,
+    "setIntervalCount": 20,
+    "addEventListenerCount": 15,
+    "appStateAddListenerCount": 4,
+    "intervalOwnerFileCount": 19,
+    "wrapperFileCount": 6
+  }
+}

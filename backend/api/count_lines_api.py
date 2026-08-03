@@ -1,0 +1,6 @@
+"""Compatibility wrapper for count-lines routes.
+
+Route implementation lives in ``backend.api.count_lines_routes``.
+"""
+
+from backend.api.count_lines_routes import *

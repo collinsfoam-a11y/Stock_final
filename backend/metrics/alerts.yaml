@@ -1,0 +1,29 @@
+groups:
+- name: stock_alerts
+  rules:
+  - alert: SQLInjectionDetected
+    expr: sql_injection_attempts_total[1h] > 5
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "SQL injection attempt detected"
+      description: "{{ $value }} SQL injection attempts in the last hour"
+
+  - alert: OptimisticLockConflictHigh
+    expr: optimistic_lock_conflicts_total[1h] > 10
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High optimistic lock conflict rate"
+      description: "{{ $value }} optimistic lock conflicts in the last hour"
+
+  - alert: DatabaseConnectionFailure
+    expr: db_connection_failures_total[1h] > 3
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Database connection failures"
+      description: "{{ $value }} database connection failures in the last hour"

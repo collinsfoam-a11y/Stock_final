@@ -1,0 +1,250 @@
+/Users/noufi1/stk_final/Stock_final/backend/config.py
+    F 706:0 _enforce_production_guards - C (14)
+/Users/noufi1/stk_final/Stock_final/backend/middleware/rate_limit_middleware.py
+    M 39:4 RateLimitMiddleware.__call__ - C (13)
+/Users/noufi1/stk_final/Stock_final/backend/middleware/projection_consistency_guard.py
+    M 196:4 ProjectionConsistencyGuardMiddleware.dispatch - C (15)
+    F 64:0 _to_epoch - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/core/lifespan.py
+    F 340:0 lifespan - F (88)
+/Users/noufi1/stk_final/Stock_final/backend/auth/jwt_provider.py
+    F 41:0 decode - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/tests/test_coverage_final.py
+    F 168:0 test_result_handle_result_mapped_errors - C (11)
+    F 221:0 test_api_handle_result_legacy_fallback - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/tests/test_enhanced_item_search.py
+    F 29:0 test_search_includes_item_code_and_barcode - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/tests/test_offline_sync.py
+    F 31:0 test_modern_batch_sync_success - C (16)
+/Users/noufi1/stk_final/Stock_final/backend/tests/test_coverage_improvements.py
+    F 136:0 test_handle_result_exceptions - D (22)
+/Users/noufi1/stk_final/Stock_final/backend/tests/test_cleanup_synthetic_session_data.py
+    F 10:0 test_cleanup_synthetic_session_data_archives_and_deletes_synthetic_records - C (15)
+/Users/noufi1/stk_final/Stock_final/backend/tests/test_migrate_user_settings.py
+    F 9:0 test_migrate_user_settings_normalizes_existing_documents - C (17)
+/Users/noufi1/stk_final/Stock_final/backend/tests/test_coverage_part2.py
+    F 109:0 test_either_methods - C (13)
+    F 58:0 test_result_methods_comprehensive - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/tests/test_error_logging.py
+    F 13:0 test_error_log_service_writes_document - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/tests/test_repair_legacy_zero_variance_approvals.py
+    F 12:0 test_repair_legacy_zero_variance_approvals_updates_pending_exact_matches - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/tests/test_erp_mapping.py
+    F 4:0 test_map_erp_item_to_schema_with_manual_barcode - C (14)
+/Users/noufi1/stk_final/Stock_final/backend/tests/test_verification.py
+    F 8:0 test_verify_item_with_damage_types - C (14)
+/Users/noufi1/stk_final/Stock_final/backend/tests/utils/in_memory_db.py
+    F 28:0 _match_condition - D (24)
+    F 98:0 _match_filter - C (15)
+/Users/noufi1/stk_final/Stock_final/backend/tests/api/test_session_finalization_and_canonical_reads.py
+    F 127:0 test_finalize_session_locks_canonical_count_lines - C (14)
+/Users/noufi1/stk_final/Stock_final/backend/tests/api/test_count_lines_persistence.py
+    F 106:0 test_verify_and_unverify_persist_flags - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/tests/api/test_user_settings_api.py
+    F 77:0 test_update_settings - C (18)
+/Users/noufi1/stk_final/Stock_final/backend/tests/api/test_session_management_api.py
+    M 1237:4 TestUserWorkflowEndpoint.test_get_user_workflows - C (15)
+/Users/noufi1/stk_final/Stock_final/backend/tests/evaluation/test_business_logic.py
+    M 263:4 TestCountAggregation.test_session_summary_calculation - C (12)
+    C 220:0 TestCountAggregation - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/tests/evaluation/evaluators.py
+    C 34:0 APIPerformanceEvaluator - C (12)
+    M 57:4 APIPerformanceEvaluator.evaluate - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/tests/services/test_sql_sync_service.py
+    F 121:0 test_update_existing_item_updates_qty_and_metadata - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/tests/services/test_projection_write_service.py
+    F 53:0 test_projection_write_service_rebuilds_all_projection_collections - C (13)
+/Users/noufi1/stk_final/Stock_final/backend/utils/erp_utils.py
+    F 111:0 _ensure_sql_connection - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/utils/env_validation.py
+    F 14:0 validate_environment - D (21)
+/Users/noufi1/stk_final/Stock_final/backend/utils/api_utils.py
+    F 90:0 handle_result - C (17)
+/Users/noufi1/stk_final/Stock_final/backend/scripts/repair_legacy_zero_variance_approvals.py
+    F 83:0 repair_legacy_zero_variance_approvals - D (22)
+/Users/noufi1/stk_final/Stock_final/backend/scripts/backfill_session_snapshots.py
+    F 38:0 backfill_empty_session_snapshots - C (17)
+/Users/noufi1/stk_final/Stock_final/backend/scripts/generate_secrets.py
+    F 33:0 write_env_file - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/scripts/cleanup_synthetic_session_data.py
+    F 64:0 cleanup_synthetic_session_data - C (13)
+/Users/noufi1/stk_final/Stock_final/backend/scripts/generate_api_docs.py
+    F 14:0 generate_comprehensive_api_docs - C (14)
+/Users/noufi1/stk_final/Stock_final/backend/scripts/report_generator.py
+    M 183:4 ReportGenerator._create_variance_sheet - C (13)
+/Users/noufi1/stk_final/Stock_final/backend/scripts/archive_orphan_count_lines.py
+    F 431:0 reconcile - C (19)
+/Users/noufi1/stk_final/Stock_final/backend/scripts/validate_projection_parity.py
+    F 180:0 validate - D (23)
+/Users/noufi1/stk_final/Stock_final/backend/scripts/repair_count_line_item_names.py
+    F 112:0 repair_item_names - D (22)
+/Users/noufi1/stk_final/Stock_final/backend/scripts/check_warehouses.py
+    F 11:0 main - C (15)
+/Users/noufi1/stk_final/Stock_final/backend/scripts/batch_condition_manager.py
+    M 263:4 BatchManager.aggregate_batches - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/db/migrations.py
+    M 231:4 MigrationManager._create_index_safe - D (21)
+/Users/noufi1/stk_final/Stock_final/backend/api/reconciliation_api.py
+    F 44:0 get_session_reconciliation_summary - C (14)
+/Users/noufi1/stk_final/Stock_final/backend/api/websocket_api.py
+    F 21:0 _extract_jwt_from_websocket - C (12)
+    F 58:0 websocket_endpoint - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/api/realtime_dashboard_api.py
+    F 369:0 get_filter_options - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/api/enhanced_item_api.py
+    F 223:0 _apply_misplaced_flag - C (12)
+    F 502:0 _build_match_conditions - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/api/test_support_api.py
+    F 296:0 _build_collection_queries - D (25)
+    F 542:0 patch_synthetic_erp_item - C (14)
+/Users/noufi1/stk_final/Stock_final/backend/api/admin_control_api.py
+    F 742:0 _read_log_file - C (13)
+    F 781:0 get_service_logs - C (12)
+    F 60:0 _get_backend_ports - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/api/health.py
+    F 397:0 detailed_health_check - C (16)
+/Users/noufi1/stk_final/Stock_final/backend/api/erp_api.py
+    F 269:0 get_item_batches - C (16)
+    F 34:0 _normalize_barcode_input - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/api/sync_batch_api.py
+    F 227:0 sync_single_record - E (35)
+    F 838:0 _collect_risk_flags - D (21)
+    F 364:0 sync_batch - C (19)
+    F 154:0 validate_record - C (14)
+    F 877:0 _mark_misplacement_if_needed - C (14)
+    F 919:0 _populate_offline_count_line_stats - C (13)
+/Users/noufi1/stk_final/Stock_final/backend/api/item_verification_api.py
+    F 991:0 get_variances - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/api/session_management_api.py
+    F 1036:0 _build_user_workflow_summary - D (28)
+    F 586:0 _calculate_priority_score - C (15)
+    F 1618:0 _finalize_session_canonical - C (15)
+    F 1389:0 get_session_stats - C (14)
+    F 1521:0 update_session_status - C (14)
+    F 503:0 _build_session_detail_from_doc - C (13)
+/Users/noufi1/stk_final/Stock_final/backend/api/auth_routes.py
+    F 813:0 _resolve_pin_login_user - C (15)
+    F 565:0 _check_login_rate_limit - C (13)
+    F 621:0 login - C (13)
+    F 1057:0 _migrate_legacy_password - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/api/recount_api.py
+    F 317:0 complete_recount_request - E (38)
+    F 102:0 create_recount_request - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/api/schemas.py
+    C 233:0 CountLineCreate - C (16)
+    M 287:4 CountLineCreate.normalize_location_context - C (15)
+/Users/noufi1/stk_final/Stock_final/backend/api/admin_dashboard_api.py
+    F 324:0 get_active_users - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/api/permissions_api.py
+    F 43:0 list_available_permissions - D (23)
+/Users/noufi1/stk_final/Stock_final/backend/api/user_management_api.py
+    F 484:0 create_user - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/api/error_reporting_api.py
+    F 353:0 get_error_summary - C (18)
+    F 88:0 report_error - C (11)
+    F 198:0 get_error_dashboard - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/api/report_generation_api.py
+    F 137:0 generate_stock_summary - E (33)
+    F 223:0 generate_variance_report - E (31)
+    F 351:0 generate_session_history_report - D (24)
+/Users/noufi1/stk_final/Stock_final/backend/api/pi_api.py
+    F 49:0 chat_with_pi - C (14)
+/Users/noufi1/stk_final/Stock_final/backend/api/count_lines_routes.py
+    F 207:0 detect_risk_flags - D (26)
+    F 604:0 _build_count_line_document - D (24)
+    F 1587:0 reject_count_line - C (18)
+    F 2512:0 merge_count_lines - C (17)
+    F 1927:0 update_count_line - C (15)
+    F 989:0 save_count_line_draft - C (14)
+    F 476:0 _apply_misplaced_stock_flags - C (13)
+    F 1483:0 approve_count_line - C (13)
+    F 1839:0 add_quantity_to_count_line - C (13)
+    F 1205:0 verify_stock - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/api/pin_auth_api.py
+    F 63:0 login_with_pin - C (13)
+/Users/noufi1/stk_final/Stock_final/backend/api/v2/sessions.py
+    F 150:0 get_rack_progress - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/services/projection_write_service.py
+    M 479:4 ProjectionWriteService._rebuild_item_projections - D (27)
+    M 395:4 ProjectionWriteService._load_active_count_lines - C (12)
+    F 38:0 _as_datetime - C (11)
+    M 431:4 ProjectionWriteService._compute_aggregates - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/services/system_report_service.py
+    M 125:4 SystemReportService._get_sync_history_data - D (22)
+    M 360:4 SystemReportService._parse_datetime - C (14)
+    M 297:4 SystemReportService._aggregate_api_metrics - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/services/enterprise_audit.py
+    M 326:4 EnterpriseAuditService.verify_integrity - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/services/auto_error_finder.py
+    M 137:4 AutoErrorFinder._check_function - C (16)
+    M 187:4 AutoErrorFinder._check_name - C (13)
+    M 48:4 AutoErrorFinder.scan_codebase - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/services/session_lifecycle_service.py
+    M 666:4 SessionLifecycleService._finalize_session_canonical_core - C (15)
+    M 141:4 SessionLifecycleService._compute_session_totals - C (13)
+    M 596:4 SessionLifecycleService.transition_recount_request - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/services/sql_verification_service.py
+    M 423:4 SQLVerificationService.verify_item_quantity - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/services/notification_service.py
+    M 335:4 NotificationService._send_push_notification - C (15)
+/Users/noufi1/stk_final/Stock_final/backend/services/database_manager.py
+    M 460:4 DatabaseManager.verify_data_flow - C (13)
+/Users/noufi1/stk_final/Stock_final/backend/services/database_health.py
+    M 130:4 DatabaseHealthService.check_sql_server_health - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/services/dynamic_report_service.py
+    M 229:4 DynamicReportService._fetch_items_data - C (13)
+    M 103:4 DynamicReportService.generate_report - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/services/count_line_write_service.py
+    M 1386:4 CountLineWriteService._collect_risk_flags - F (50)
+    M 701:4 CountLineWriteService._assert_mandatory_write_invariants - E (39)
+    M 1179:4 CountLineWriteService._collect_session_ids_for_write - D (30)
+    F 97:0 _apply_update_document_to_merged - D (29)
+    M 1290:4 CountLineWriteService._evaluate_governance_for_document - D (23)
+    M 450:4 CountLineWriteService._execute_count_line_operation - D (22)
+    M 986:4 CountLineWriteService.resolve_baseline - D (21)
+    M 852:4 CountLineWriteService._apply_state_transition_for_write - C (20)
+    M 415:4 CountLineWriteService._log_count_line_audit - C (16)
+    M 653:4 CountLineWriteService._run_post_write_validation - C (16)
+    M 349:4 CountLineWriteService._compute_session_totals - C (14)
+    M 1245:4 CountLineWriteService._enforce_variance_for_write - C (13)
+    C 199:0 CountLineWriteService - C (12)
+    M 1044:4 CountLineWriteService.evaluate_policy - C (12)
+    M 1488:4 CountLineWriteService._apply_authoritative_fields - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/services/feature_flags.py
+    M 109:4 FeatureFlagService.is_enabled - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/services/canonical_inventory.py
+    F 264:0 recompute_session_totals - C (19)
+/Users/noufi1/stk_final/Stock_final/backend/services/logic_guard.py
+    F 91:0 build_request_context - C (17)
+/Users/noufi1/stk_final/Stock_final/backend/services/error_log.py
+    M 342:4 ErrorLogService.get_statistics - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/services/snapshot_service.py
+    M 24:4 SnapshotService.get_or_create_snapshot - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/services/advanced_report_service.py
+    M 550:4 AdvancedReportService.generate_variance_analysis_report - C (14)
+    M 771:4 AdvancedReportService.export_to_xlsx - C (14)
+    M 425:4 AdvancedReportService.generate_session_summary_report - C (13)
+    M 737:4 AdvancedReportService.export_to_csv - C (13)
+/Users/noufi1/stk_final/Stock_final/backend/services/unknown_item_service.py
+    M 51:4 UnknownItemService._map_unknown_to_known_item - C (19)
+    M 168:4 UnknownItemService.register_unknown_item - C (14)
+    M 285:4 UnknownItemService.escalate_for_review - C (13)
+    M 423:4 UnknownItemService.dismiss_unknown_item - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/services/transaction_manager.py
+    F 11:0 mongo_transaction - C (12)
+/Users/noufi1/stk_final/Stock_final/backend/services/scheduled_export_service.py
+    M 109:4 ScheduledExportService.execute_export - C (11)
+/Users/noufi1/stk_final/Stock_final/backend/services/sync_conflicts_service.py
+    M 152:4 SyncConflictsService.resolve_conflict - C (19)
+    M 331:4 SyncConflictsService._apply_resolved_data - C (15)
+/Users/noufi1/stk_final/Stock_final/backend/services/governance_guard.py
+    F 131:0 assert_valid_write - C (17)
+/Users/noufi1/stk_final/Stock_final/backend/services/variance_service.py
+    M 77:4 VarianceService.check_thresholds - C (15)
+/Users/noufi1/stk_final/Stock_final/backend/services/enrichment_service.py
+    M 308:4 EnrichmentService.get_enrichment_stats - C (13)
+/Users/noufi1/stk_final/Stock_final/backend/services/reporting/snapshot_engine.py
+    M 203:4 SnapshotEngine._calculate_summary - C (12)
+
+159 blocks (classes, functions, methods) analyzed.
+Average complexity: C (16.20125786163522)

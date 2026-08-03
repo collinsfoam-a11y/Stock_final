@@ -1,0 +1,116 @@
+import logging
+
+from fastapi import WebSocket
+
+logger = logging.getLogger(__name__)
+
+
+class WebSocketManager:
+    def __init__(self):
+        # active_connections: { user_id: [WebSocket, ...] }
+        self.active_connections: dict[str, list[WebSocket]] = {}
+        # session_connections: { session_id: [WebSocket, ...] }
+        self.session_connections: dict[str, list[WebSocket]] = {}
+        # user_roles: { user_id: role }
+        self.user_roles: dict[str, str] = {}
+
+    async def connect(
+        self,
+        websocket: WebSocket,
+        user_id: str,
+        session_id: str | None = None,
+        role: str | None = None,
+        *,
+        subprotocol: str | None = None,
+    ):
+        if subprotocol:
+            await websocket.accept(subprotocol=subprotocol)
+        else:
+            await websocket.accept()
+
+        if user_id not in self.active_connections:
+            self.active_connections[user_id] = []
+        self.active_connections[user_id].append(websocket)
+
+        if session_id:
+            if session_id not in self.session_connections:
+                self.session_connections[session_id] = []
+            self.session_connections[session_id].append(websocket)
+
+        if role:
+            self.user_roles[user_id] = role
+
+        logger.info(f"WebSocket connected: user={user_id}, session={session_id}")
+
+    def disconnect(self, websocket: WebSocket, user_id: str, session_id: str | None = None):
+        if user_id in self.active_connections:
+            if websocket in self.active_connections[user_id]:
+                self.active_connections[user_id].remove(websocket)
+            if not self.active_connections[user_id]:
+                del self.active_connections[user_id]
+                self.user_roles.pop(user_id, None)
+
+        if session_id and session_id in self.session_connections:
+            if websocket in self.session_connections[session_id]:
+                self.session_connections[session_id].remove(websocket)
+            if not self.session_connections[session_id]:
+                del self.session_connections[session_id]
+
+        logger.info(f"WebSocket disconnected: user={user_id}, session={session_id}")
+
+    async def send_personal_message(self, message: dict, user_id: str):
+        if user_id in self.active_connections:
+            for connection in self.active_connections[user_id]:
+                await connection.send_json(message)
+
+    async def broadcast_to_session(self, message: dict, session_id: str):
+        if session_id in self.session_connections:
+            for connection in self.session_connections[session_id]:
+                await connection.send_json(message)
+
+    async def broadcast_all(self, message: dict):
+        for user_connections in self.active_connections.values():
+            for connection in user_connections:
+                await connection.send_json(message)
+
+    async def broadcast_to_roles(self, message: dict, roles: set[str]):
+        normalized_roles = {role.lower() for role in roles}
+        for user_id, user_connections in self.active_connections.items():
+            user_role = (self.user_roles.get(user_id) or "").lower()
+            if user_role not in normalized_roles:
+                continue
+            for connection in user_connections:
+                await connection.send_json(message)
+
+    async def get_connection_stats(self) -> dict:
+        """Get WebSocket connection statistics."""
+        return {
+            "total_users": len(self.active_connections),
+            "total_sessions": len(self.session_connections),
+            "user_connections": {
+                user_id: len(connections)
+                for user_id, connections in self.active_connections.items()
+            },
+            "session_connections": {
+                session_id: len(connections)
+                for session_id, connections in self.session_connections.items()
+            },
+        }
+
+    async def ping_all(self) -> int:
+        """Ping all connections to check liveness. Returns count of responsive connections."""
+        responsive = 0
+        for user_id, connections in list(self.active_connections.items()):
+            alive = []
+            for conn in connections:
+                try:
+                    await conn.send_json({"type": "ping", "timestamp": __import__("time").time()})
+                    responsive += 1
+                    alive.append(conn)
+                except Exception:
+                    logger.debug("Suppressed non-fatal exception", exc_info=True)
+            self.active_connections[user_id] = alive
+        return responsive
+
+
+manager = WebSocketManager()

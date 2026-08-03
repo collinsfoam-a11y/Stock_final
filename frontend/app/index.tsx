@@ -1,0 +1,32 @@
+import React from "react";
+import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
+
+import { semanticColors, colors } from "@/theme/unified";
+const IndexScreen = React.lazy(() =>
+  import("../src/screens/routes/IndexScreen").then((module) => ({ default: module.IndexScreen }))
+);
+
+export default function Index() {
+  return (
+    <React.Suspense fallback={<RouteFallback />}>
+      <IndexScreen />
+    </React.Suspense>
+  );
+}
+
+function RouteFallback() {
+  return (
+    <View style={styles.fallback}>
+      <ActivityIndicator size="small" color={colors.secondary[700]} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  fallback: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: semanticColors.background.secondary,
+  },
+});

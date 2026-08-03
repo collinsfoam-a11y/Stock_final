@@ -1,0 +1,12 @@
+[bandit]
+# Skip tests that produce false positives in this codebase:
+# B101: assert_used - used in non-security contexts for invariant checks
+# B105: hardcoded_password_string - false positives on "bearer", "token_type", enum names
+# B110: try_except_pass - intentional pattern for graceful degradation
+# B112: try_except_continue - intentional pattern for batch processing
+# B311: blacklist (random) - non-crypto random usage (UUIDs, jitter, test data)
+# B404: blacklist (subprocess import) - subprocess used for controlled internal scripts
+# B603: subprocess_without_shell_equals_true - all invocations use controlled input
+# B607: start_process_with_partial_path - partial paths resolved via PATH
+# B608: hardcoded_sql_expressions - queries use validated/internal column names only
+skips = B101,B105,B110,B112,B311,B404,B603,B607,B608

@@ -1,0 +1,3 @@
+# Backward-compatible alias for local development and test installs.
+# Prefer `requirements.dev.txt` for explicit non-production environments.
+-r requirements.production.txt

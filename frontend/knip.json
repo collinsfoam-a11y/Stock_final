@@ -1,0 +1,37 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "app/**/*.{ts,tsx}",
+    "scripts/**/*.{cjs,js}",
+    "*.config.{js,ts,cjs}",
+    "src/**/*.stories.{ts,tsx}",
+    "e2e/**/*.{ts,tsx}",
+    "src/types/**/*.{ts,tsx}",
+    "src/theme/**/*.{ts,tsx}",
+    "src/utils/**/*.{ts,tsx}",
+    "src/services/**/*.{ts,tsx}",
+    "src/core/**/*.{ts,tsx}",
+    "src/features/**/*.{ts,tsx}",
+    "src/viewModels/**/*.{ts,tsx}",
+    "src/components/**/*.{ts,tsx}",
+    "src/constants/**/*.{ts,tsx}",
+    "src/context/**/*.{ts,tsx}",
+    "src/hooks/**/*.{ts,tsx}",
+    "src/styles/**/*.{ts,tsx}"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "app/**/*.{ts,tsx}"],
+  "ignore": [],
+  "ignoreDependencies": [
+    "@testing-library/jest-dom",
+    "jest-environment-jsdom",
+    "lint-staged",
+    "postinstall-postinstall",
+    "@storybook/addon-essentials",
+    "@tootallnate/once",
+    "expo-updates",
+    "babel-preset-expo",
+    "reactotron-react-native"
+  ],
+  "ignoreBinaries": ["eas", "npm-check"],
+  "ignoreExportsUsedInFile": true
+}

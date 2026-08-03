@@ -1,0 +1,6 @@
+backend	backend/services/enhanced_connection_pool.py	435	455	backend/services/enhanced_connection_pool.py	379	399	21
+backend	backend/scripts/check_sql_barcodes.py	1	30	backend/scripts/check_sql_barcodes_v2.py	1	30	30
+backend	backend/api/user_management_api.py	837	872	backend/api/user_management_api.py	777	812	36
+backend	backend/api/test_support_api.py	644	688	backend/api/test_support_api.py	574	619	45
+backend	backend/api/test_support_api.py	699	735	backend/api/test_support_api.py	575	612	37
+backend	backend/api/dashboard_analytics_api.py	549	575	backend/api/dashboard_analytics_api.py	476	502	27

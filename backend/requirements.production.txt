@@ -1,0 +1,60 @@
+# Production Requirements
+# Use: pip install -r requirements.production.txt
+# Last updated: December 2025
+
+# Core Framework
+fastapi==0.135.1
+uvicorn[standard]==0.41.0
+gunicorn==25.1.0
+python-dotenv==1.2.2
+pydantic==2.12.5  # v2 stable
+pydantic-settings==2.14.2  # Security: path traversal in NestedSecretsSettingsSource (fixed >=2.14.2)
+
+# Database Drivers
+motor==3.7.1  # MongoDB async driver
+pymongo==4.16.0  # MongoDB sync driver
+pyodbc==5.3.0  # SQL Server ODBC driver
+redis==7.3.0  # Redis client
+
+# Security
+# NOTE: python-jose removed due to CVE-2024-33663/33664 and ecdsa vulnerabilities
+# Using PyJWT + cryptography instead (see backend/auth/jwt_provider.py)
+passlib[argon2]==1.7.4
+bcrypt==4.0.1  # Pinned <4.1: passlib 1.7.x requires bcrypt.__about__.__version__ (removed in 4.1+)
+python-multipart==0.0.31  # Security: DoS/request+parameter smuggling (CVE-2026-53537/53538/53539/53540, fixed >=0.0.31)
+authlib==1.6.12  # JWT provider (authlib.jose); security: open redirect CVE-2026-44681 (fixed >=1.6.12)
+PyJWT==2.13.0  # Secure JWT implementation
+cryptography==48.0.1  # Security: bundled OpenSSL info-disclosure (fixed >=48.0.1)
+
+# Monitoring & Logging
+prometheus-client==0.24.1
+python-json-logger==4.0.0
+sentry-sdk[fastapi]==2.54.0
+
+# Performance
+aiocache==0.12.3
+ujson==5.13.0  # Security: improper UTF-8 validation CVE-2026-54911 (fixed >5.12.1)
+orjson==3.11.7
+
+# Utilities
+httpx==0.28.1
+requests>=2.33.0,<3  # Explicit secure runtime pin
+urllib3>=2.6.3,<3  # Keep aligned with the secure requests range
+chardet>=5.0,<6  # Keep compatible with the runtime requests range
+python-dateutil==2.9.0.post0
+email-validator==2.3.0
+rapidfuzz==3.14.3
+Pillow==12.3.0
+tenacity==9.1.4
+zeroconf==0.149.16
+
+# For production stability
+setuptools==83.0.0
+wheel==0.46.3
+
+# Additional packages for system monitoring and report generation
+psutil==7.2.2
+pandas>=2.2.0
+openpyxl==3.1.5
+xlsxwriter==3.2.9
+reportlab==4.4.10

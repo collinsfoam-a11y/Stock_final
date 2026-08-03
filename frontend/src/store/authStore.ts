@@ -1,0 +1,1000 @@
+import { create } from "zustand";
+import { Platform } from "react-native";
+import * as SecureStore from "expo-secure-store";
+import { secureStorage } from "../services/storage/secureStorage";
+import { useSettingsStore } from "./settingsStore";
+import { setUnauthorizedHandler } from "../services/authUnauthorizedHandler";
+import { createLogger } from "../services/logging";
+import { registerSyncAuthStateProvider } from "../services/syncService";
+import { setUserPreferenceScope } from "../services/userPreferenceScope";
+import * as Sentry from "@sentry/react-native";
+
+interface User {
+  id: string;
+  username: string;
+  full_name: string;
+  role: "staff" | "supervisor" | "admin";
+  email?: string;
+  employee_id?: string | null;
+  phone?: string | null;
+  is_active: boolean;
+  permissions: string[];
+  has_pin?: boolean;
+}
+
+const BASE64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const BASE64_LOOKUP: number[] = (() => {
+  const table = new Array<number>(256).fill(-1);
+  for (let i = 0; i < BASE64_ALPHABET.length; i++) {
+    table[BASE64_ALPHABET.charCodeAt(i)] = i;
+  }
+  return table;
+})();
+
+const normalizeBase64Url = (value: string): string => {
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = base64.length % 4;
+  return padding === 0 ? base64 : base64 + "=".repeat(4 - padding);
+};
+
+const decodeBase64 = (value: string): string => {
+  const atobFn = (globalThis as any).atob as ((input: string) => string) | undefined;
+  if (typeof atobFn === "function") {
+    return atobFn(value);
+  }
+
+  const BufferCtor = (globalThis as any).Buffer as
+    | { from: (input: string, encoding: "base64") => { toString: (enc: "utf8") => string } }
+    | undefined;
+  if (BufferCtor && typeof BufferCtor.from === "function") {
+    return BufferCtor.from(value, "base64").toString("utf8");
+  }
+
+  const cleaned = value.replace(/[^A-Za-z0-9+/=]/g, "");
+  let output = "";
+  for (let i = 0; i < cleaned.length; i += 4) {
+    const c1 = cleaned.charCodeAt(i);
+    const c2 = cleaned.charCodeAt(i + 1);
+    const c3 = cleaned.charAt(i + 2);
+    const c4 = cleaned.charAt(i + 3);
+    const e1 = BASE64_LOOKUP[c1] ?? -1;
+    const e2 = BASE64_LOOKUP[c2] ?? -1;
+    const e3 = c3 === "=" ? 64 : (BASE64_LOOKUP[c3.charCodeAt(0)] ?? -1);
+    const e4 = c4 === "=" ? 64 : (BASE64_LOOKUP[c4.charCodeAt(0)] ?? -1);
+    if (e1 < 0 || e2 < 0 || e3 < 0 || e4 < 0) {
+      throw new Error("Invalid base64 payload");
+    }
+    const triple = (e1 << 18) | (e2 << 12) | ((e3 & 63) << 6) | (e4 & 63);
+    output += String.fromCharCode((triple >> 16) & 255);
+    if (c3 !== "=") output += String.fromCharCode((triple >> 8) & 255);
+    if (c4 !== "=") output += String.fromCharCode(triple & 255);
+  }
+  return output;
+};
+
+const decodeJwtPayload = (token: string): { exp?: number } | null => {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3 || !parts[1]) return null;
+    const payloadJson = decodeBase64(normalizeBase64Url(parts[1]));
+    return JSON.parse(payloadJson);
+  } catch (jwtError) {
+    Sentry.captureMessage("JWT payload decode failed", {
+      level: "warning",
+    });
+    return null;
+  }
+};
+
+type AuthResult = {
+  success: boolean;
+  message?: string;
+  code?: string;
+};
+
+type LastLoggedUser = {
+  username: string;
+  full_name: string;
+  has_pin?: boolean;
+};
+
+type AuthSessionPayload = {
+  access_token: string;
+  refresh_token?: string | null;
+  user: User;
+  has_pin?: boolean;
+  biometricPin?: string | null;
+};
+
+export interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  isInitialized: boolean;
+  pendingRedirectPath: string | null;
+  hasValidToken: () => boolean;
+  checkTokenExpired: (token: string) => boolean;
+  startHeartbeat: () => void;
+  stopHeartbeat: () => void;
+  login: (username: string, password: string, rememberMe?: boolean) => Promise<AuthResult>;
+  loginWithPin: (pin: string, username?: string) => Promise<AuthResult>;
+  authenticateWithBiometrics: () => Promise<{
+    success: boolean;
+    message?: string;
+  }>;
+  savePinForBiometrics: (pin: string) => Promise<void>;
+  getPinForBiometrics: () => Promise<string | null>;
+  establishSession: (payload: AuthSessionPayload) => Promise<void>;
+  setUser: (user: User) => void;
+  logout: () => Promise<void>;
+  logoutAll: (username?: string) => Promise<AuthResult>;
+  clearAuth: () => Promise<void>;
+  pinSetup: (pin: string, confirmPin: string) => Promise<AuthResult>;
+  setLoading: (loading: boolean) => void;
+  loadStoredAuth: () => Promise<void>;
+  lastLoggedUser: LastLoggedUser | null;
+  setLastLoggedUser: (user: LastLoggedUser | null) => void;
+  clearLastLoggedUser: () => Promise<void>;
+  setPendingRedirect: (path: string | null) => Promise<void>;
+  peekPendingRedirect: () => Promise<string | null>;
+  consumePendingRedirect: () => Promise<string | null>;
+  clearPendingRedirect: () => Promise<void>;
+}
+
+const AUTH_STORAGE_KEY = "auth_user";
+const TOKEN_STORAGE_KEY = "auth_token";
+const REFRESH_TOKEN_STORAGE_KEY = "refresh_token";
+const BIOMETRIC_PIN_KEY = "biometric_pin";
+const LAST_USER_STORAGE_KEY = "last_logged_user";
+const PENDING_REDIRECT_STORAGE_KEY = "auth_pending_redirect";
+
+const log = createLogger("authStore");
+let heartbeatInterval: ReturnType<typeof setTimeout> | null = null;
+const IS_TEST_ENV =
+  process.env.NODE_ENV === "test" || typeof process.env.JEST_WORKER_ID !== "undefined";
+let apiClientPromise: Promise<(typeof import("../services/httpClient"))["default"]> | null = null;
+let localAuthenticationPromise: Promise<typeof import("expo-local-authentication")> | null = null;
+
+const getApiClient = async () => {
+  if (!apiClientPromise) {
+    apiClientPromise = IS_TEST_ENV
+      ? Promise.resolve(
+          require("../services/httpClient")
+            .default as (typeof import("../services/httpClient"))["default"]
+        )
+      : import("../services/httpClient").then((module) => module.default);
+  }
+  return apiClientPromise;
+};
+
+const getLocalAuthentication = async () => {
+  if (!localAuthenticationPromise) {
+    localAuthenticationPromise = IS_TEST_ENV
+      ? Promise.resolve(
+          require("expo-local-authentication") as typeof import("expo-local-authentication")
+        )
+      : import("expo-local-authentication");
+  }
+  return localAuthenticationPromise;
+};
+
+const parseAuthError = (
+  error: any,
+  fallbackMessage: string,
+  invalidCredentialsMessage = "Incorrect username or password"
+): AuthResult => {
+  const status = error?.response?.status;
+  const detail = error?.response?.data?.detail;
+  const code = detail?.error || error?.response?.data?.code;
+  const apiMessage = detail?.message || error?.response?.data?.message;
+
+  if (status === 409) {
+    return {
+      success: false,
+      code: "AUTH_SESSION_CONFLICT",
+      message: apiMessage || "This account is already active on another device.",
+    };
+  }
+  if (status === 401) {
+    return {
+      success: false,
+      code: "AUTH_INVALID_CREDENTIALS",
+      message: apiMessage || invalidCredentialsMessage,
+    };
+  }
+  if (status === 422) {
+    return {
+      success: false,
+      code: "AUTH_VALIDATION_ERROR",
+      message: "Invalid login data. Please check username and password.",
+    };
+  }
+  if (status === 403 && code === "NETWORK_NOT_ALLOWED") {
+    return {
+      success: false,
+      code: "NETWORK_NOT_ALLOWED",
+      message: "Network not allowed. Connect to the permitted network.",
+    };
+  }
+  if (error?.code === "ECONNABORTED") {
+    return {
+      success: false,
+      code: "NETWORK_TIMEOUT",
+      message: "Server timeout. Please check your connection and try again.",
+    };
+  }
+  if (error?.request && !error?.response) {
+    return {
+      success: false,
+      code: "NETWORK_CONNECTION_ERROR",
+      message: "Unable to connect to server. Check internet connection and backend status.",
+    };
+  }
+  if (typeof status === "number" && status >= 500) {
+    return {
+      success: false,
+      code: "SERVER_ERROR",
+      message: "Server error. Please try again in a moment.",
+    };
+  }
+  return { success: false, message: fallbackMessage, code: code || "UNKNOWN_ERROR" };
+};
+
+const buildLastLoggedUser = (user: User, hasPinOverride?: boolean): LastLoggedUser => ({
+  username: user.username,
+  full_name: user.full_name,
+  has_pin: hasPinOverride ?? user.has_pin,
+});
+
+const PUBLIC_PENDING_REDIRECT_SEGMENTS = new Set([
+  "(auth)",
+  "login",
+  "welcome",
+  "register",
+  "help",
+  "forgot-password",
+  "otp-verification",
+  "reset-password",
+]);
+
+const normalizePendingRedirect = (path: string | null | undefined): string | null => {
+  if (!path || typeof path !== "string") return null;
+  const trimmed = path.trim();
+  if (!trimmed.startsWith("/")) return null;
+  if (trimmed.startsWith("//") || trimmed.includes("\\")) return null;
+  try {
+    const baseUrl = "https://stock-verify.local";
+    const parsed = new URL(trimmed, baseUrl);
+    if (parsed.origin !== baseUrl) return null;
+    const firstSegment = parsed.pathname.split("/").filter(Boolean)[0];
+    if (!firstSegment || PUBLIC_PENDING_REDIRECT_SEGMENTS.has(firstSegment)) {
+      return null;
+    }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+};
+
+const syncOfflineQueueInBackground = async () => {
+  const { useNetworkStore } = IS_TEST_ENV
+    ? { useNetworkStore: require("./networkStore").useNetworkStore as any }
+    : await import("./networkStore");
+  const networkState = useNetworkStore.getState();
+  if (!networkState.isOnline) return;
+  const { syncOfflineQueue } = IS_TEST_ENV
+    ? { syncOfflineQueue: require("../services/syncService").syncOfflineQueue as any }
+    : await import("../services/syncService");
+  syncOfflineQueue({ background: true }).catch((err: unknown) => {
+    log.warn("Sync after auth failed", { error: err instanceof Error ? err.message : String(err) });
+  });
+};
+
+const initializeNotificationsInBackground = async () => {
+  try {
+    const { NotificationService } = IS_TEST_ENV
+      ? {
+          NotificationService: require("../services/utils/notificationService")
+            .NotificationService as any,
+        }
+      : await import("../services/utils/notificationService");
+    await NotificationService.initialize();
+  } catch (error) {
+    log.warn("Notification initialization failed", { error: String(error) });
+  }
+};
+
+const unregisterNotificationsInBackground = async () => {
+  try {
+    const { NotificationService } = IS_TEST_ENV
+      ? {
+          NotificationService: require("../services/utils/notificationService")
+            .NotificationService as any,
+        }
+      : await import("../services/utils/notificationService");
+    await NotificationService.unregisterCurrentDevice();
+  } catch (error) {
+    log.warn("Notification unregister failed", { error: String(error) });
+  }
+};
+
+const rehydrateFilterStoreForCurrentScope = async () => {
+  try {
+    const { rehydrateFilterStore } = IS_TEST_ENV
+      ? { rehydrateFilterStore: require("./filterStore").rehydrateFilterStore as any }
+      : await import("./filterStore");
+    await rehydrateFilterStore();
+  } catch (error) {
+    log.warn("Filter store rehydration failed", { error: String(error) });
+  }
+};
+
+const resetFilterStoreForLoggedOutUser = async () => {
+  try {
+    const { resetFilterStore } = IS_TEST_ENV
+      ? { resetFilterStore: require("./filterStore").resetFilterStore as any }
+      : await import("./filterStore");
+    await resetFilterStore();
+  } catch (error) {
+    log.warn("Filter store reset failed", { error: String(error) });
+  }
+};
+
+const hydrateAuthenticatedSession = async (
+  user: User,
+  options?: { syncOfflineQueue?: boolean }
+) => {
+  setUserPreferenceScope(user.id);
+  await rehydrateFilterStoreForCurrentScope();
+  await useSettingsStore.getState().loadSettings();
+  useAuthStore.getState().startHeartbeat();
+  const postAuthTasks: Promise<unknown>[] = [
+    useSettingsStore.getState().syncFromBackend(),
+    initializeNotificationsInBackground(),
+  ];
+  if (options?.syncOfflineQueue !== false) {
+    postAuthTasks.push(syncOfflineQueueInBackground());
+  }
+  const results = await Promise.allSettled(postAuthTasks);
+  results.forEach((result) => {
+    if (result.status === "rejected") {
+      log.warn("Post-auth task failed", { error: String(result.reason) });
+    }
+  });
+};
+
+const hydrateAuthenticatedSessionInBackground = (
+  user: User,
+  options?: { syncOfflineQueue?: boolean }
+) => {
+  void hydrateAuthenticatedSession(user, options).catch((error) => {
+    log.warn("Authenticated session hydration failed", {
+      userId: user.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+};
+
+export const useAuthStore = create<AuthState>((set, get) => ({
+  user: null,
+  isAuthenticated: false,
+  isLoading: false,
+  isInitialized: false,
+  lastLoggedUser: null,
+  pendingRedirectPath: null,
+  hasValidToken: (): boolean => !!get().user,
+
+  setLastLoggedUser: async (user: LastLoggedUser | null) => {
+    set({ lastLoggedUser: user });
+    if (user) {
+      await secureStorage.setItem(LAST_USER_STORAGE_KEY, JSON.stringify(user));
+    } else {
+      await secureStorage.removeItem(LAST_USER_STORAGE_KEY);
+    }
+  },
+
+  clearLastLoggedUser: async () => {
+    await secureStorage.removeItem(LAST_USER_STORAGE_KEY);
+    set({ lastLoggedUser: null });
+  },
+
+  setPendingRedirect: async (path: string | null) => {
+    const normalized = normalizePendingRedirect(path);
+    set({ pendingRedirectPath: normalized });
+    if (normalized) {
+      await secureStorage.setItem(PENDING_REDIRECT_STORAGE_KEY, normalized);
+    } else {
+      await secureStorage.removeItem(PENDING_REDIRECT_STORAGE_KEY);
+    }
+  },
+
+  peekPendingRedirect: async () => {
+    const inState = normalizePendingRedirect(get().pendingRedirectPath);
+    if (inState) return inState;
+    const storedRaw = await secureStorage.getItem(PENDING_REDIRECT_STORAGE_KEY);
+    const stored = normalizePendingRedirect(storedRaw);
+    if (stored) {
+      set({ pendingRedirectPath: stored });
+      return stored;
+    }
+    if (storedRaw) {
+      set({ pendingRedirectPath: null });
+      await secureStorage.removeItem(PENDING_REDIRECT_STORAGE_KEY);
+    }
+    return null;
+  },
+
+  consumePendingRedirect: async () => {
+    const pendingPath = await get().peekPendingRedirect();
+    if (!pendingPath) return null;
+    set({ pendingRedirectPath: null });
+    await secureStorage.removeItem(PENDING_REDIRECT_STORAGE_KEY);
+    return pendingPath;
+  },
+
+  clearPendingRedirect: async () => {
+    set({ pendingRedirectPath: null });
+    await secureStorage.removeItem(PENDING_REDIRECT_STORAGE_KEY);
+  },
+
+  establishSession: async ({
+    access_token,
+    refresh_token,
+    user,
+    has_pin,
+    biometricPin,
+  }: AuthSessionPayload) => {
+    if (!access_token) {
+      throw new Error("Invalid response format: missing access_token");
+    }
+    const apiClient = await getApiClient();
+    const authenticatedUser = has_pin === undefined ? user : { ...user, has_pin };
+    const lastUser = buildLastLoggedUser(authenticatedUser, has_pin);
+    apiClient.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
+    await secureStorage.setItem(TOKEN_STORAGE_KEY, access_token);
+    if (refresh_token) {
+      await secureStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refresh_token);
+    } else {
+      await secureStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+    }
+    await secureStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authenticatedUser));
+    await secureStorage.setItem(LAST_USER_STORAGE_KEY, JSON.stringify(lastUser));
+    if (biometricPin) {
+      try {
+        if (Platform.OS !== "web") {
+          await SecureStore.setItemAsync(BIOMETRIC_PIN_KEY, biometricPin, {
+            requireAuthentication: true,
+            keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+          });
+        } else {
+          await secureStorage.setItem(BIOMETRIC_PIN_KEY, biometricPin);
+        }
+      } catch {
+        await secureStorage.setItem(BIOMETRIC_PIN_KEY, biometricPin);
+      }
+    }
+    set({
+      user: authenticatedUser,
+      isAuthenticated: true,
+      isLoading: false,
+      isInitialized: true,
+      lastLoggedUser: lastUser,
+    });
+    hydrateAuthenticatedSessionInBackground(authenticatedUser);
+  },
+
+  login: async (username: string, password: string, _rememberMe?: boolean): Promise<AuthResult> => {
+    set({ isLoading: true });
+    try {
+      const apiClient = await getApiClient();
+      const response = await apiClient.post("/api/auth/login", { username, password });
+      if (response.data.success && response.data.data) {
+        const { access_token, refresh_token, user } = response.data.data;
+        if (!access_token) {
+          log.error("Login successful but no access_token found in response", {
+            dataKeys: Object.keys(response.data.data || {}),
+          });
+          throw new Error("Invalid response format: missing access_token");
+        }
+        await get().establishSession({ access_token, refresh_token, user });
+        return { success: true };
+      }
+      set({ isLoading: false });
+      return { success: false, message: response.data.message || "Login failed" };
+    } catch (_error: any) {
+      set({ isLoading: false });
+      return parseAuthError(_error, "Login failed", "Incorrect username or password");
+    }
+  },
+
+  loginWithPin: async (pin: string, username?: string): Promise<AuthResult> => {
+    set({ isLoading: true });
+    try {
+      const apiClient = await getApiClient();
+      const response = await apiClient.post("/api/auth/login-pin", { pin, username });
+      if (response.data.success && response.data.data) {
+        const { access_token, refresh_token, user } = response.data.data;
+        const settings = useSettingsStore.getState().settings;
+        await get().establishSession({
+          access_token,
+          refresh_token,
+          user,
+          has_pin: true,
+          biometricPin: settings.biometricAuth ? pin : null,
+        });
+        return { success: true };
+      }
+      set({ isLoading: false });
+      return { success: false, message: response.data.message || "Invalid PIN" };
+    } catch (_error: any) {
+      set({ isLoading: false });
+      return parseAuthError(_error, "PIN login failed", "Incorrect PIN");
+    }
+  },
+
+  authenticateWithBiometrics: async (): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const LocalAuthentication = await getLocalAuthentication();
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!hasHardware) {
+        return { success: false, message: "Biometric hardware is not available on this device." };
+      }
+      if (!isEnrolled) {
+        return {
+          success: false,
+          message: "No biometric data (Fingerprint/Face ID) enrolled on this device.",
+        };
+      }
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: "Unlock Lavanya Mart",
+        fallbackLabel: "Use PIN",
+        cancelLabel: "Cancel",
+        disableDeviceFallback: false,
+      });
+      if (result.success) {
+        const storedPin = await get().getPinForBiometrics();
+        if (storedPin) {
+          const username = get().lastLoggedUser?.username || get().user?.username;
+          return await get().loginWithPin(storedPin, username);
+        }
+        return {
+          success: false,
+          message:
+            "No stored PIN found for biometric login. Please log in with your PIN once to link biometrics.",
+        };
+      }
+      if (result.error === "user_cancel" || result.error === "system_cancel") {
+        return { success: false, message: "Authentication cancelled." };
+      }
+      return { success: false, message: result.error || "Biometric authentication failed." };
+    } catch (_error: any) {
+      return { success: false, message: _error?.message || "Biometric authentication error." };
+    }
+  },
+
+  savePinForBiometrics: async (pin: string) => {
+    try {
+      if (Platform.OS !== "web") {
+        await SecureStore.setItemAsync(BIOMETRIC_PIN_KEY, pin, {
+          requireAuthentication: true,
+          keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+        });
+        return;
+      }
+    } catch {
+      // Fallback for devices without biometric-backed keystore support
+    }
+    await secureStorage.setItem(BIOMETRIC_PIN_KEY, pin);
+  },
+
+  getPinForBiometrics: async () => {
+    if (Platform.OS !== "web") {
+      try {
+        const pin = await SecureStore.getItemAsync(BIOMETRIC_PIN_KEY, {
+          requireAuthentication: true,
+        });
+        if (pin) return pin;  // Critical null check for B1 fix
+      } catch {
+        // Fallback for devices without biometric-backed keystore support
+      }
+      // SecureStore returned null - check fallback store
+    }
+    return await secureStorage.getItem(BIOMETRIC_PIN_KEY);
+  },
+
+  setUser: (user: User) => {
+    secureStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+    setUserPreferenceScope(user.id);
+    void rehydrateFilterStoreForCurrentScope();
+    void useSettingsStore.getState().loadSettings();
+    set({ user, isAuthenticated: true, isLoading: false });
+  },
+
+  logout: async () => {
+    const apiClient = await getApiClient();
+    try {
+      get().stopHeartbeat();
+    } catch (_) {}
+    try {
+      const refreshToken = await secureStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
+      if (
+        Platform.OS === "web" ||
+        apiClient.defaults.headers.common["Authorization"] ||
+        refreshToken
+      ) {
+        await apiClient
+          .post("/api/auth/logout", refreshToken ? { refresh_token: refreshToken } : {})
+          .catch(() => {});
+      }
+    } catch (_) {}
+    try {
+      await unregisterNotificationsInBackground();
+    } catch (error) {
+      log.warn("Notifications unregister failed during logout", { error: String(error) });
+    }
+    set({ user: null, isAuthenticated: false, isLoading: false, pendingRedirectPath: null });
+    try {
+      await secureStorage.removeItem(AUTH_STORAGE_KEY);
+      await secureStorage.removeItem(TOKEN_STORAGE_KEY);
+      await secureStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+      if (Platform.OS !== "web") {
+        try {
+          await SecureStore.deleteItemAsync(BIOMETRIC_PIN_KEY);
+        } catch {
+          await secureStorage.removeItem(BIOMETRIC_PIN_KEY);
+        }
+      } else {
+        await secureStorage.removeItem(BIOMETRIC_PIN_KEY);
+      }
+      await secureStorage.removeItem(PENDING_REDIRECT_STORAGE_KEY);
+      delete apiClient.defaults.headers.common["Authorization"];
+    } catch (err) {
+      log.warn("Storage cleanup failed during logout", { error: String(err) });
+    }
+    try {
+      setUserPreferenceScope(null);
+      await resetFilterStoreForLoggedOutUser();
+      await useSettingsStore.getState().loadSettings();
+    } catch (_) {}
+    try {
+      const { clearNotificationStore } = IS_TEST_ENV
+        ? { clearNotificationStore: require("./notificationStore").clearNotificationStore as any }
+        : await import("./notificationStore");
+      await clearNotificationStore();
+    } catch {
+      /* Best-effort */
+    }
+    try {
+      const { queryClient } = IS_TEST_ENV
+        ? { queryClient: require("../services/queryClient").queryClient as any }
+        : await import("../services/queryClient");
+      await queryClient.cancelQueries();
+      queryClient.clear();
+    } catch {
+      /* Best-effort */
+    }
+    try {
+      const { clearScanSessionStore } = IS_TEST_ENV
+        ? { clearScanSessionStore: require("./scanSessionStore").clearScanSessionStore as any }
+        : await import("./scanSessionStore");
+      await clearScanSessionStore();
+    } catch {
+      /* Best-effort */
+    }
+    try {
+      const { RecentItemsService } = IS_TEST_ENV
+        ? { RecentItemsService: require("../services/enhancedFeatures").RecentItemsService as any }
+        : await import("../services/enhancedFeatures");
+      await RecentItemsService.clearRecent();
+    } catch {
+      /* Best-effort */
+    }
+    try {
+      const { clearReadCaches } = IS_TEST_ENV
+        ? { clearReadCaches: require("../services/offline/offlineStorage").clearReadCaches as any }
+        : await import("../services/offline/offlineStorage");
+      await clearReadCaches();
+    } catch {
+      /* Best-effort */
+    }
+  },
+
+  clearAuth: async () => {
+    // Stop heartbeat if running
+    try {
+      get().stopHeartbeat();
+    } catch (_) {}
+    
+    // Clear all state in zustand store
+    set({ user: null, isAuthenticated: false, isLoading: false, pendingRedirectPath: null });
+    
+    // Clear all secure storage
+    try {
+      await secureStorage.removeItem(AUTH_STORAGE_KEY);
+      await secureStorage.removeItem(TOKEN_STORAGE_KEY);
+      await secureStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+      if (Platform.OS !== "web") {
+        try {
+          await SecureStore.deleteItemAsync(BIOMETRIC_PIN_KEY);
+        } catch {
+          await secureStorage.removeItem(BIOMETRIC_PIN_KEY);
+        }
+      } else {
+        await secureStorage.removeItem(BIOMETRIC_PIN_KEY);
+      }
+      await secureStorage.removeItem(PENDING_REDIRECT_STORAGE_KEY);
+      
+      // Remove authorization header from http client
+      const apiClient = await getApiClient();
+      delete apiClient.defaults.headers.common["Authorization"];
+    } catch (err) {
+      log.warn("Storage cleanup failed during clearAuth", { error: String(err) });
+    }
+    
+    // Clear other stores and services
+    try {
+      setUserPreferenceScope(null);
+      await resetFilterStoreForLoggedOutUser();
+      await useSettingsStore.getState().loadSettings();
+    } catch (_) {}
+    
+    try {
+      const { clearNotificationStore } = IS_TEST_ENV
+        ? { clearNotificationStore: require("./notificationStore").clearNotificationStore as any }
+        : await import("./notificationStore");
+      await clearNotificationStore();
+    } catch {
+      /* Best-effort */
+    }
+    
+    try {
+      const { queryClient } = IS_TEST_ENV
+        ? { queryClient: require("../services/queryClient").queryClient as any }
+        : await import("../services/queryClient");
+      await queryClient.cancelQueries();
+      queryClient.clear();
+    } catch {
+      /* Best-effort */
+    }
+    
+    try {
+      const { clearScanSessionStore } = IS_TEST_ENV
+        ? { clearScanSessionStore: require("./scanSessionStore").clearScanSessionStore as any }
+        : await import("./scanSessionStore");
+      await clearScanSessionStore();
+    } catch {
+      /* Best-effort */
+    }
+    
+    try {
+      const { RecentItemsService } = IS_TEST_ENV
+        ? { RecentItemsService: require("../services/enhancedFeatures").RecentItemsService as any }
+        : await import("../services/enhancedFeatures");
+      await RecentItemsService.clearRecent();
+    } catch {
+      /* Best-effort */
+    }
+    
+    try {
+      const { clearReadCaches } = IS_TEST_ENV
+        ? { clearReadCaches: require("../services/offline/offlineStorage").clearReadCaches as any }
+        : await import("../services/offline/offlineStorage");
+      await clearReadCaches();
+    } catch {
+      /* Best-effort */
+    }
+  },
+
+  logoutAll: async (_username?: string): Promise<AuthResult> => {
+    set({ isLoading: true });
+    try {
+      const apiClient = await getApiClient();
+      const response = await apiClient.post("/api/sessions/logout-all");
+      set({ isLoading: false });
+      return { success: response.data.success, message: response.data.message };
+    } catch (_error) {
+      set({ isLoading: false });
+      log.error("Logout all failed", {
+        error: _error instanceof Error ? _error.message : String(_error),
+      });
+      return { success: false, message: "Logout All failed" };
+    }
+  },
+
+  pinSetup: async (pin: string, confirmPin: string): Promise<AuthResult> => {
+    set({ isLoading: true });
+    try {
+      const apiClient = await getApiClient();
+      const response = await apiClient.post("/api/auth/pin-setup", {
+        pin,
+        confirm_pin: confirmPin,
+      });
+      set({ isLoading: false });
+      if (response.data.success) {
+        const settings = useSettingsStore.getState().settings;
+        if (settings.biometricAuth) {
+          await get().savePinForBiometrics(pin);
+        }
+        const currentUser = get().user;
+        const lastUser = get().lastLoggedUser;
+        if (currentUser) {
+          const updatedLastUser = {
+            username: currentUser.username,
+            full_name: currentUser.full_name,
+            has_pin: true,
+          };
+          await secureStorage.setItem(LAST_USER_STORAGE_KEY, JSON.stringify(updatedLastUser));
+          set({ lastLoggedUser: updatedLastUser, user: { ...currentUser, has_pin: true } });
+        } else if (lastUser) {
+          const updatedLastUser = { ...lastUser, has_pin: true };
+          await secureStorage.setItem(LAST_USER_STORAGE_KEY, JSON.stringify(updatedLastUser));
+          set({ lastLoggedUser: updatedLastUser });
+        }
+        return { success: true, message: "PIN updated" };
+      }
+      return { success: false, message: response.data.message || "PIN setup failed" };
+    } catch (_error: any) {
+      set({ isLoading: false });
+      const detail = _error?.response?.data?.detail;
+      return { success: false, message: detail?.message || "Server error during PIN setup" };
+    }
+  },
+
+  setLoading: (loading: boolean) => set({ isLoading: loading }),
+
+  checkTokenExpired: (token: string): boolean => {
+    try {
+      const payload = decodeJwtPayload(token);
+      if (!payload || typeof payload.exp !== "number") return true;
+      const now = Math.floor(Date.now() / 1000);
+      return payload.exp <= now;
+    } catch {
+      return true;
+    }
+  },
+
+  loadStoredAuth: async () => {
+    if (get().isInitialized) return;
+    set({ isLoading: true });
+    try {
+      const apiClient = await getApiClient();
+      const storedUser = await secureStorage.getItem(AUTH_STORAGE_KEY);
+      const storedToken = await secureStorage.getItem(TOKEN_STORAGE_KEY);
+      const storedLastUser = await secureStorage.getItem(LAST_USER_STORAGE_KEY);
+      const storedPendingRedirect = await secureStorage.getItem(PENDING_REDIRECT_STORAGE_KEY);
+
+      if (storedLastUser) {
+        try {
+          set({ lastLoggedUser: JSON.parse(storedLastUser) });
+        } catch (parseError) {
+          log.error("Failed to parse stored last user JSON; clearing corrupted storage", {
+            error: parseError instanceof Error ? parseError.message : String(parseError),
+          });
+          Sentry.captureException(
+            parseError instanceof Error ? parseError : new Error(String(parseError)),
+            {
+              tags: { component: "authStore", operation: "loadStoredAuth" },
+              extra: { storageKey: LAST_USER_STORAGE_KEY },
+            }
+          );
+          await secureStorage.removeItem(LAST_USER_STORAGE_KEY);
+          set({ lastLoggedUser: null });
+        }
+      }
+      if (storedPendingRedirect) {
+        const normalizedPendingRedirect = normalizePendingRedirect(storedPendingRedirect);
+        set({ pendingRedirectPath: normalizedPendingRedirect });
+        if (!normalizedPendingRedirect) {
+          await secureStorage.removeItem(PENDING_REDIRECT_STORAGE_KEY);
+        }
+      }
+
+      if (storedUser && storedToken) {
+        const isExpired = get().checkTokenExpired(storedToken);
+        if (isExpired) {
+          log.warn("Stored token is expired, clearing auth state");
+          await get().logout();
+          set({ isLoading: false, isInitialized: true });
+          return;
+        }
+
+        let user: User | null = null;
+        try {
+          user = JSON.parse(storedUser) as User;
+        } catch (parseError) {
+          log.error("Failed to parse stored user JSON; clearing corrupted storage", parseError);
+          await secureStorage.removeItem(AUTH_STORAGE_KEY);
+          await secureStorage.removeItem(TOKEN_STORAGE_KEY);
+          set({ isLoading: false, isInitialized: true });
+          return;
+        }
+
+        if (user && user.id && user.username) {
+          apiClient.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
+          set({ user, isAuthenticated: true, isLoading: false, isInitialized: true });
+          hydrateAuthenticatedSessionInBackground(user, { syncOfflineQueue: false });
+        } else {
+          log.warn("Stored user payload is invalid; clearing storage");
+          await secureStorage.removeItem(AUTH_STORAGE_KEY);
+          await secureStorage.removeItem(TOKEN_STORAGE_KEY);
+          set({ isLoading: false, isInitialized: true });
+        }
+      } else if (Platform.OS === "web") {
+        try {
+          const response = await apiClient.get("/api/auth/me");
+          const payload =
+            response.data && typeof response.data === "object" && "data" in response.data
+              ? (response.data as { data?: User }).data
+              : (response.data as User | null);
+
+          if (payload?.username) {
+            await secureStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
+            set({ user: payload, isAuthenticated: true, isLoading: false, isInitialized: true });
+            hydrateAuthenticatedSessionInBackground(payload, { syncOfflineQueue: false });
+            return;
+          }
+        } catch (_cookieAuthError) {
+          // No active browser session; continue to unauthenticated state.
+        }
+        set({ isLoading: false, isInitialized: true });
+      } else {
+        set({ isLoading: false, isInitialized: true });
+      }
+    } catch (_error) {
+      log.error("Auth initialization failed", {
+        error: _error instanceof Error ? _error.message : String(_error),
+      });
+      Sentry.captureException(_error instanceof Error ? _error : new Error(String(_error)), {
+        tags: { component: "authStore", operation: "loadStoredAuth" },
+      });
+      set({ isLoading: false, isInitialized: true });
+    }
+  },
+
+  startHeartbeat: () => {
+    if (heartbeatInterval) return;
+    let consecutiveFailures = 0;
+    const MAX_FAILURES = 3;
+    heartbeatInterval = setInterval(async () => {
+      if (!get().isAuthenticated) {
+        get().stopHeartbeat();
+        return;
+      }
+      try {
+        const apiClient = await getApiClient();
+        const response = await apiClient.get("/api/auth/heartbeat");
+        consecutiveFailures = 0;
+        if (
+          response.data.success === false ||
+          (response.data.data && response.data.data.session_valid === false)
+        ) {
+          await get().logout();
+        }
+      } catch (error) {
+        consecutiveFailures++;
+        log.warn("Heartbeat failed", { failureCount: consecutiveFailures, error: String(error) });
+        if (consecutiveFailures >= MAX_FAILURES) {
+          log.error("Heartbeat failed multiple times, logging out");
+          await get().logout();
+        }
+      }
+    }, 45000);
+  },
+
+  stopHeartbeat: () => {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+      heartbeatInterval = null;
+    }
+  },
+}));
+
+setUnauthorizedHandler(() => {
+  void useAuthStore.getState().logout();
+});
+
+registerSyncAuthStateProvider(() => {
+  const state = useAuthStore.getState();
+  return { isAuthenticated: state.isAuthenticated, user: state.user };
+});
