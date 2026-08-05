@@ -70,13 +70,12 @@
       "expo-image",
       "expo-sharing",
       [
-        "sentry-expo",
+        "@sentry/react-native",
         {
           "organization": "${SENTRY_ORG}",
           "project": "${SENTRY_PROJECT}"
         }
-      ],
-      "@sentry/react-native"
+      ]
     ],
     "web": {
       "bundler": "metro"

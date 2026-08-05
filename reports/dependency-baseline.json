@@ -12,6 +12,7 @@
     "@react-native-community/datetimepicker",
     "@react-native-community/netinfo",
     "@react-native-community/slider",
+    "@sentry/react-native",
     "@shopify/flash-list",
     "@tanstack/react-query",
     "axios",
