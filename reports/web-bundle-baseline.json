@@ -3,9 +3,10 @@
   "ceilings": {
     "bundleCount": 68,
     "totalJsKb": 4110.0,
-    "mainBundleKb": 1972.0,
+    "mainBundleKb": 2100.0,
     "commonBundleKb": 1522.0,
     "routeChunkTotalKb": 760.0,
     "largestRouteChunkKb": 130.0
-  }
+  },
+  "note": "mainBundleKb raised 1972 -> 2100 on 2026-08-05 alongside the check-web-bundle-regression.cjs fix in the same commit. The metric is not growing; it was previously under-measured. The guard used .find() on a size-sorted list, so it reported only the largest of the 7 emitted index-*.js chunks (1968.38 kB) and hid the other six (95.09 kB). Those six were invisible to the route-chunk check too, which filters out `index-`, so they reached only totalJsKb. Correctly summed the value is 2063.47 kB. routeChunkTotalKb is deliberately NOT touched here: it fails at 777.19 vs 760 on main today, independently of this change."
 }

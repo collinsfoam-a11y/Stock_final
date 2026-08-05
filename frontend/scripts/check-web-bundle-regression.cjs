@@ -83,10 +83,20 @@ function getRouteName(file) {
   return file.replace(/-[0-9a-f]{32}\.js$/, "").replace(/\.js$/, "");
 }
 
+function sumKb(list) {
+  return list.reduce((total, bundle) => total + bundle.sizeKb, 0);
+}
+
 function buildMetrics() {
   const bundles = readBundles();
-  const mainBundle = bundles.find((bundle) => bundle.file.startsWith("index-")) || null;
-  const commonBundle = bundles.find((bundle) => bundle.file.startsWith("__common-")) || null;
+  // Sum every matching chunk rather than picking one. `bundles` is sorted by
+  // size, so the previous `.find()` measured only the largest of the 7 emitted
+  // `index-*.js` files; the other six were invisible to this check AND to the
+  // route-chunk check below, which filters `index-` out. Roughly 118 kB was
+  // reaching only totalJsKb. Same treatment for `__common-*`, which happens to
+  // be a single file today but need not stay that way.
+  const mainBundles = bundles.filter((bundle) => bundle.file.startsWith("index-"));
+  const commonBundles = bundles.filter((bundle) => bundle.file.startsWith("__common-"));
 
   const routeChunks = bundles
     .filter(
@@ -100,16 +110,18 @@ function buildMetrics() {
       route: getRouteName(chunk.file),
     }));
 
-  const totalJsKb = bundles.reduce((total, bundle) => total + bundle.sizeKb, 0);
-  const routeChunkTotalKb = routeChunks.reduce((total, bundle) => total + bundle.sizeKb, 0);
+  const totalJsKb = sumKb(bundles);
+  const routeChunkTotalKb = sumKb(routeChunks);
   const largestRouteChunkKb = routeChunks[0] ? routeChunks[0].sizeKb : 0;
 
   return {
     generatedAt: new Date().toISOString(),
     bundleCount: bundles.length,
     totalJsKb,
-    mainBundleKb: mainBundle ? mainBundle.sizeKb : 0,
-    commonBundleKb: commonBundle ? commonBundle.sizeKb : 0,
+    mainBundleKb: sumKb(mainBundles),
+    mainBundleCount: mainBundles.length,
+    commonBundleKb: sumKb(commonBundles),
+    commonBundleCount: commonBundles.length,
     routeChunkCount: routeChunks.length,
     routeChunkTotalKb,
     largestRouteChunkKb,
