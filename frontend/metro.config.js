@@ -26,7 +26,25 @@ const zustandMiddlewareFile = path.join(
   "zustand",
   "middleware.js",
 );
+const sentryReplayWebStub = path.join(
+  __dirname,
+  "scripts",
+  "stubs",
+  "sentry-replay-web-stub.js",
+);
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // Drop Session Replay from the web bundle. It is reachable only by static
+  // re-export from the @sentry/react-native entry and is never instantiated
+  // (Sentry.init sets no replay sample rate), but Metro does not tree-shake, so
+  // it costs ~300 kB in the common chunk. See the stub for the full rationale
+  // and for what to do if Replay is ever enabled.
+  if (platform === "web" && moduleName.startsWith("@sentry-internal/replay")) {
+    return {
+      type: "sourceFile",
+      filePath: sentryReplayWebStub,
+    };
+  }
+
   // Force Zustand middleware to CJS build: ESM variant contains import.meta.env
   // which breaks when the bundle runs as a non-module script.
   if (

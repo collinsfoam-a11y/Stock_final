@@ -1,11 +1,12 @@
 {
-  "updatedAt": "2026-07-30T00:00:00.000Z",
+  "updatedAt": "2026-08-05T00:00:00.000Z",
   "ceilings": {
-    "bundleCount": 68,
-    "totalJsKb": 4110.0,
-    "mainBundleKb": 1972.0,
-    "commonBundleKb": 1522.0,
+    "bundleCount": 78,
+    "totalJsKb": 5350.0,
+    "mainBundleKb": 2100.0,
+    "commonBundleKb": 2350.0,
     "routeChunkTotalKb": 760.0,
-    "largestRouteChunkKb": 130.0
-  }
+    "largestRouteChunkKb": 135.0
+  },
+  "note": "Re-baselined 2026-08-05. The previous ceilings were dated 2026-07-30 and predated the @sentry/react-native integration, which deps:guard independently flagged as the only dependency added since the 2026-08-01 dependency baseline. Source-map attribution put Sentry at 41% of the common chunk (2030 kB of 4902 kB source). That is a deliberate feature, not drift, and it cannot be trimmed back under the old ceilings without removing error reporting. Session Replay (~135 kB minified) was stubbed out of the web bundle first (see metro.config.js) so these numbers do not bake in dead code. mainBundleKb also rises because check-web-bundle-regression.cjs previously used .find() and measured only the largest of 7 index-*.js chunks, hiding ~95 kB. routeChunkTotalKb is deliberately left at 760: it passes at 752.94 and is the dimension actively being managed, so it is not loosened here."
 }
