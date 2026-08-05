@@ -2,7 +2,6 @@ import json
 import os
 from pathlib import Path
 
-import pytest
 from fastapi.routing import APIRoute
 
 from backend.app_factory import app

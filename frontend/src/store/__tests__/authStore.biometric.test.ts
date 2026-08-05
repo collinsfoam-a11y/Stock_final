@@ -3,14 +3,18 @@
  *
  * Covers:
  *  - savePinForBiometrics uses SecureStore with requireAuthentication on native
- *  - savePinForBiometrics falls back to secureStorage when SecureStore throws
+ *  - savePinForBiometrics falls back to a PLAIN keystore slot when the gated
+ *    write fails. The fallback must issue a different call than the one that
+ *    threw; the earlier version retried the identical requireAuthentication
+ *    write via secureStorage and so could never succeed.
  *  - getPinForBiometrics returns the SecureStore value when present
- *  - getPinForBiometrics falls back to secureStorage when SecureStore throws
- *  - getPinForBiometrics falls back to secureStorage when SecureStore returns
- *    null (the B1 regression: a PIN saved to the fallback store after a prior
- *    setItemAsync failure must still be readable)
- *  - loginWithBiometric retrieves the PIN via getPinForBiometrics (not a direct
- *    secureStorage read)
+ *  - getPinForBiometrics falls back to the plain slot when the gated read throws
+ *  - getPinForBiometrics falls back to the plain slot when the gated read
+ *    returns null (the B1 regression: a PIN written by the fallback above must
+ *    still be readable)
+ *  - the PIN never reaches secureStorage on native
+ *  - authenticateWithBiometrics retrieves the PIN via getPinForBiometrics (not a
+ *    direct secureStorage read)
  *  - web platform uses secureStorage in both directions
  */
 
@@ -90,14 +94,25 @@ function applyCommonDoMocks(args: {
     useNetworkStore: { getState: () => ({ isOnline: false }) },
   }));
 
+  jest.doMock("expo-local-authentication", () => ({
+    __esModule: true,
+    hasHardwareAsync: jest.fn(async () => true),
+    isEnrolledAsync: jest.fn(async () => true),
+    authenticateAsync: jest.fn(async () => ({ success: true })),
+  }));
+
   jest.doMock("../../services/authUnauthorizedHandler", () => ({
     __esModule: true,
-    default: () => ({}),
+    // authStore imports these as named exports at module scope; a default-only
+    // mock makes the module throw on require before any test body runs.
+    setUnauthorizedHandler: jest.fn(),
+    handleUnauthorized: jest.fn(),
   }));
 
   jest.doMock("../../services/syncService", () => ({
     __esModule: true,
     syncOfflineQueue: jest.fn(async () => undefined),
+    registerSyncAuthStateProvider: jest.fn(),
   }));
 
   jest.doMock("../../services/utils/notificationService", () => ({
@@ -140,20 +155,29 @@ describe("authStore biometric PIN storage", () => {
     expect(storage.setItem).not.toHaveBeenCalled();
   });
 
-  it("savePinForBiometrics falls back to secureStorage when SecureStore throws", async () => {
-    const secureStore = makeSecureStoreMock({
-      setItemAsync: jest.fn(async () => {
-        throw new Error("SecureStore unavailable");
-      }),
+  it("savePinForBiometrics falls back to a plain keystore slot when the gated write fails", async () => {
+    // The fallback must issue a DIFFERENT call, not retry the one that threw:
+    // reject only when requireAuthentication is requested.
+    const setItemAsync = jest.fn(async (_key: string, _value: string, options?: any) => {
+      if (options?.requireAuthentication) {
+        throw new Error("No biometric enrolled");
+      }
+      return undefined;
     });
+    const secureStore = makeSecureStoreMock({ setItemAsync });
     const storage = makeStorageMock();
     applyCommonDoMocks({ secureStore, storage });
 
     const useAuthStore = requireAuthStore();
 
     await useAuthStore.getState().savePinForBiometrics("1234");
-    expect(secureStore.setItemAsync).toHaveBeenCalled();
-    expect(storage.setItem).toHaveBeenCalledWith(SECURE_STORE_KEY, "1234");
+
+    expect(setItemAsync).toHaveBeenCalledTimes(2);
+    expect(setItemAsync).toHaveBeenLastCalledWith(SECURE_STORE_KEY, "1234", {
+      keychainAccessible: WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+    // The PIN stays in the keystore. It must never reach secureStorage on native.
+    expect(storage.setItem).not.toHaveBeenCalled();
   });
 
   it("getPinForBiometrics returns the SecureStore value when present", async () => {
@@ -173,45 +197,54 @@ describe("authStore biometric PIN storage", () => {
     expect(storage.getItem).not.toHaveBeenCalled();
   });
 
-  it("getPinForBiometrics falls back to secureStorage when SecureStore throws", async () => {
-    const secureStore = makeSecureStoreMock({
-      getItemAsync: jest.fn(async () => {
-        throw new Error("SecureStore unavailable");
-      }),
+  it("getPinForBiometrics falls back to the plain keystore slot when the gated read throws", async () => {
+    const getItemAsync = jest.fn(async (_key: string, options?: any) => {
+      if (options?.requireAuthentication) {
+        throw new Error("Key invalidated by enrollment change");
+      }
+      return "plain-slot-pin";
     });
-    const storage = makeStorageMock({
-      getItem: jest.fn(async () => "fallback-pin"),
-    });
+    const secureStore = makeSecureStoreMock({ getItemAsync });
+    const storage = makeStorageMock();
     applyCommonDoMocks({ secureStore, storage });
 
     const useAuthStore = requireAuthStore();
 
     const pin = await useAuthStore.getState().getPinForBiometrics();
-    expect(pin).toBe("fallback-pin");
-    expect(secureStore.getItemAsync).toHaveBeenCalled();
-    expect(storage.getItem).toHaveBeenCalledWith(SECURE_STORE_KEY);
+    expect(pin).toBe("plain-slot-pin");
+    expect(getItemAsync).toHaveBeenCalledTimes(2);
+    expect(storage.getItem).not.toHaveBeenCalled();
   });
 
-  it("getPinForBiometrics falls back to secureStorage when SecureStore returns null", async () => {
-    const secureStore = makeSecureStoreMock({
-      getItemAsync: jest.fn(async () => null),
-    });
-    const storage = makeStorageMock({
-      getItem: jest.fn(async () => "fallback-pin"),
-    });
+  it("getPinForBiometrics falls back to the plain keystore slot when the gated read returns null", async () => {
+    const getItemAsync = jest.fn(async (_key: string, options?: any) =>
+      options?.requireAuthentication ? null : "plain-slot-pin",
+    );
+    const secureStore = makeSecureStoreMock({ getItemAsync });
+    const storage = makeStorageMock();
     applyCommonDoMocks({ secureStore, storage });
 
     const useAuthStore = requireAuthStore();
 
     const pin = await useAuthStore.getState().getPinForBiometrics();
-    expect(pin).toBe("fallback-pin");
-    expect(secureStore.getItemAsync).toHaveBeenCalledWith(SECURE_STORE_KEY, {
+    expect(pin).toBe("plain-slot-pin");
+    expect(getItemAsync).toHaveBeenNthCalledWith(1, SECURE_STORE_KEY, {
       requireAuthentication: true,
     });
-    expect(storage.getItem).toHaveBeenCalledWith(SECURE_STORE_KEY);
+    expect(storage.getItem).not.toHaveBeenCalled();
   });
 
-  it("loginWithBiometric retrieves the PIN via getPinForBiometrics (not a direct secureStorage read)", async () => {
+  it("getPinForBiometrics returns null when neither keystore slot has a PIN", async () => {
+    const secureStore = makeSecureStoreMock({ getItemAsync: jest.fn(async () => null) });
+    const storage = makeStorageMock();
+    applyCommonDoMocks({ secureStore, storage });
+
+    const useAuthStore = requireAuthStore();
+
+    await expect(useAuthStore.getState().getPinForBiometrics()).resolves.toBeNull();
+  });
+
+  it("authenticateWithBiometrics retrieves the PIN via getPinForBiometrics (not a direct secureStorage read)", async () => {
     const secureStore = makeSecureStoreMock({
       getItemAsync: jest.fn(async () => "1234"),
     });
@@ -231,7 +264,7 @@ describe("authStore biometric PIN storage", () => {
     const loginWithPin = jest.fn(async () => ({ success: true, message: "ok" }));
     useAuthStore.setState({ loginWithPin });
 
-    const result = await useAuthStore.getState().loginWithBiometric();
+    const result = await useAuthStore.getState().authenticateWithBiometrics();
 
     expect(result.success).toBe(true);
     // The PIN must come from SecureStore (getPinForBiometrics), not secureStorage.

@@ -19,7 +19,7 @@ def _make_mock_route(
 ):
     return APIRoute(
         path=path,
-        endpoint=lambda: {},  # noqa: PIE807 — lambda required for FastAPI signature introspection
+        endpoint=lambda: {},
         methods=methods,
         name=name,
         responses=responses or {},

@@ -38,14 +38,6 @@ export function getNetworkStatus(): NetworkCheckResult {
 
   let status: NetworkStatus;
 
-  // If the backend has told us we're outside the allowed LAN, treat as offline.
-  // This is distinct from "no internet": the device may be connected, but the app
-  // cannot reach its backend due to policy.
-  if (isRestrictedMode) {
-    status = "OFFLINE";
-  }
-
-  // Determine three-state status
   const connectionInfo = (() => {
     try {
       // Dynamic import / inline requirement for ConnectionManager to avoid circular imports
@@ -58,14 +50,27 @@ export function getNetworkStatus(): NetworkCheckResult {
 
   const isBackendHealthy = connectionInfo?.isHealthy === true;
 
-  if (isBackendHealthy) {
+  // Determine three-state status. Branches are ordered by precedence, and every
+  // branch assigns `status` exactly once: a standalone `if` before this chain
+  // would be silently overwritten by it.
+  if (isRestrictedMode) {
+    // The backend has told us we're outside the allowed LAN, so treat as offline.
+    // This is distinct from "no internet": the device may be connected, and the
+    // backend may even be healthy, but policy forbids reaching it. This must take
+    // precedence over every other signal, including isBackendHealthy.
+    status = "OFFLINE";
+  } else if (isBackendHealthy) {
     status = "ONLINE";
   } else if (isOnline === undefined || isOnline === null) {
     status = typeof window !== "undefined" && navigator.onLine ? "ONLINE" : "UNKNOWN";
   } else if (!isOnline) {
     status = "OFFLINE";
-  } else if (isInternetReachable === false && !isBackendHealthy) {
+  } else if (isInternetReachable === false) {
     status = "OFFLINE";
+  } else if (isInternetReachable === null || isInternetReachable === undefined) {
+    // Connected to a network, but reachability is unconfirmed and the backend is
+    // not known-healthy. Indeterminate, not online: writes stay blocked.
+    status = "UNKNOWN";
   } else {
     status = "ONLINE";
   }

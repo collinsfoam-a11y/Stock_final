@@ -9,7 +9,7 @@
 
 import type { FinalizationBlocker, FinalizationGateViewModel } from "./types";
 
-type FinalizationAssessmentDTO = {
+export type FinalizationAssessmentDTO = {
   allowed?: boolean;
   can_finalize?: boolean;
   ready?: boolean;

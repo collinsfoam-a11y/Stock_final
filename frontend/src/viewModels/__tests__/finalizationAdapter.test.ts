@@ -46,11 +46,11 @@ describe("toFinalizationGateViewModel — authority boundary", () => {
 
     expect(vm.allowed).toBe(false);
     expect(vm.blockers).toHaveLength(1);
-    expect(vm.blockers[0].code).toBe("UNKNOWN_ITEMS_PENDING");
-    expect(vm.blockers[0].canonicalCode).toBe("FI-01");
-    expect(vm.blockers[0].description).toBe("3 unresolved unknown item(s)");
-    expect(vm.blockers[0].entityId).toBe("item-abc");
-    expect(vm.blockers[0].severity).toBe("blocking");
+    expect(vm.blockers[0]?.code).toBe("UNKNOWN_ITEMS_PENDING");
+    expect(vm.blockers[0]?.canonicalCode).toBe("FI-01");
+    expect(vm.blockers[0]?.description).toBe("3 unresolved unknown item(s)");
+    expect(vm.blockers[0]?.entityId).toBe("item-abc");
+    expect(vm.blockers[0]?.severity).toBe("blocking");
   });
 
   it("maps blocking_reasons array of strings as generic blockers", () => {
@@ -60,8 +60,8 @@ describe("toFinalizationGateViewModel — authority boundary", () => {
     });
 
     expect(vm.blockers).toHaveLength(1);
-    expect(vm.blockers[0].code).toBe("UNKNOWN");
-    expect(vm.blockers[0].description).toBe("Something is wrong");
+    expect(vm.blockers[0]?.code).toBe("UNKNOWN");
+    expect(vm.blockers[0]?.description).toBe("Something is wrong");
   });
 
   it("merges blockers and blocking_reasons arrays", () => {
@@ -72,8 +72,8 @@ describe("toFinalizationGateViewModel — authority boundary", () => {
     });
 
     expect(vm.blockers).toHaveLength(2);
-    expect(vm.blockers[0].code).toBe("A");
-    expect(vm.blockers[1].code).toBe("B");
+    expect(vm.blockers[0]?.code).toBe("A");
+    expect(vm.blockers[1]?.code).toBe("B");
   });
 
   it("handles empty blockers gracefully", () => {

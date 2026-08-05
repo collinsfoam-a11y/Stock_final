@@ -5,12 +5,23 @@ import { createLogger } from "../logging";
 const log = createLogger("secureStorage");
 
 /**
- * Platform-independent secure storage wrapper
- * Uses expo-secure-store on native platforms
- * Note: On web, SecureStore is not available, so this would need a fallback
- * if we supported web for secure features. Ideally, we shouldn't store sensitive
- * tokens on web local storage without careful consideration, but for now
- * we'll focus on native mobile security.
+ * Platform-independent secure storage wrapper.
+ *
+ * Native: expo-secure-store (Keychain / Keystore).
+ * Web: localStorage, except for the keys in WEB_MEMORY_ONLY_KEYS, which are held
+ * in memory only and never persisted.
+ *
+ * Values round-trip unchanged: whatever setItem stores, getItem returns. Callers
+ * depend on this. An earlier version special-cased "biometric_pin" by storing a
+ * hash under "biometric_pin_hash" while getItem returned null for that key, which
+ * silently broke biometric login on every fallback path (the write and the read
+ * could never meet).
+ *
+ * SECURITY: on web the biometric PIN is therefore recoverable from localStorage,
+ * so any XSS on this origin yields account takeover via PIN login. This is an
+ * accepted tradeoff to keep biometric login working on the web build. Prefer
+ * moving to a device-bound biometric refresh token issued by the backend, which
+ * removes the need to persist a replayable credential at all.
  */
 
 // Configure SecureStore options
@@ -35,26 +46,16 @@ class SecureStorage {
    */
   async setItem(key: string, value: string): Promise<void> {
     try {
-      if (key === "biometric_pin") {
-        // For biometric PIN, derive a hash instead of storing the raw PIN
-        const hashedValue = await this.hashBiometricPin(value);
-        if (Platform.OS === "web") {
-          localStorage.setItem(`${key}_hash`, hashedValue);
+      if (Platform.OS === "web") {
+        if (isWebMemoryOnlyKey(key)) {
+          webMemoryStore.set(key, value);
+          localStorage.removeItem(key);
           return;
         }
-        await SecureStore.setItemAsync(`${key}_hash`, hashedValue, OPTIONS);
-      } else {
-        if (Platform.OS === "web") {
-          if (isWebMemoryOnlyKey(key)) {
-            webMemoryStore.set(key, value);
-            localStorage.removeItem(key);
-            return;
-          }
-          localStorage.setItem(key, value);
-          return;
-        }
-        await SecureStore.setItemAsync(key, value, OPTIONS);
+        localStorage.setItem(key, value);
+        return;
       }
+      await SecureStore.setItemAsync(key, value, OPTIONS);
     } catch (error) {
       log.error("SecureStorage setItem error", { error, key });
       throw error;
@@ -66,12 +67,6 @@ class SecureStorage {
    */
   async getItem(key: string): Promise<string | null> {
     try {
-      if (key === "biometric_pin") {
-        // For biometric PIN, we only store the hash, so return null for the raw PIN
-        // This ensures the raw PIN is never retrievable
-        return null;
-      }
-
       if (Platform.OS === "web") {
         if (isWebMemoryOnlyKey(key)) {
           const cached = webMemoryStore.get(key);
@@ -106,87 +101,6 @@ class SecureStorage {
   }
 
   /**
-   * Safe get biometric PIN hash for verification
-   */
-  async getBiometricPinHash(): Promise<string | null> {
-    try {
-      if (Platform.OS === "web") {
-        return localStorage.getItem("biometric_pin_hash");
-      }
-
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise<null>((resolve) =>
-        setTimeout(() => resolve(null), 2000),
-      );
-
-      const getPromise = SecureStore.getItemAsync("biometric_pin_hash", OPTIONS);
-      const result = await Promise.race([getPromise, timeoutPromise]);
-
-      return result;
-    } catch (error) {
-      log.error("SecureStorage getBiometricPinHash error", { error });
-      return null;
-    }
-  }
-
-  /**
-   * Verify a biometric PIN against the stored hash
-   */
-  async verifyBiometricPin(inputPin: string): Promise<boolean> {
-    try {
-      const storedHash = await this.getBiometricPinHash();
-      if (!storedHash) {
-        return false;
-      }
-
-      const inputHash = await this.hashBiometricPin(inputPin);
-      return inputHash === storedHash;
-    } catch (error) {
-      log.error("SecureStorage verifyBiometricPin error", { error });
-      return false;
-    }
-  }
-
-  /**
-   * Hash a biometric PIN using a simple approach
-   * Note: In a real implementation, we'd use a proper PBKDF2 implementation
-   */
-  private async hashBiometricPin(pin: string): Promise<string> {
-    // For now, implement a simple approach without importing modules dynamically
-    // In a real implementation, we'd use a proper PBKDF2 implementation
-    try {
-      // Since we can't rely on expo-crypto import in this context,
-      // we'll use a simple hash approach for now
-      const fixedSalt = "fixed_salt_for_fallback";
-      let hash = 0;
-      
-      // Simple hash computation
-      for (let i = 0; i < (pin + fixedSalt).length; i++) {
-        const char = (pin + fixedSalt).charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash |= 0; // Convert to 32-bit integer
-      }
-      
-      return `${fixedSalt}:${Math.abs(hash).toString(16)}`;
-    } catch (error) {
-      // Fallback to a simple approach if crypto is not available
-      log.warn("Crypto not available, using fallback PIN hashing", { error });
-      
-      // Simple fallback: combine pin with fixed salt and create hash
-      const fixedSalt = "fixed_salt_for_fallback";
-      let hash = 0;
-      
-      for (let i = 0; i < (pin + fixedSalt).length; i++) {
-        const char = (pin + fixedSalt).charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash |= 0; // Convert to 32-bit integer
-      }
-      
-      return `${fixedSalt}:${Math.abs(hash).toString(16)}`;
-    }
-  }
-
-  /**
    * Safe remove item
    */
   async removeItem(key: string): Promise<void> {
@@ -206,14 +120,20 @@ class SecureStorage {
   }
   
   /**
-   * Remove biometric PIN hash
+   * Remove the stored biometric PIN.
+   *
+   * Also clears `biometric_pin_hash`, which earlier builds wrote instead of the
+   * PIN itself. That hash is no longer produced or read, but installs upgraded
+   * from those builds still carry one, so unlinking biometrics must clear both.
    */
   async removeBiometricPin(): Promise<void> {
     try {
       if (Platform.OS === "web") {
+        localStorage.removeItem("biometric_pin");
         localStorage.removeItem("biometric_pin_hash");
         return;
       }
+      await SecureStore.deleteItemAsync("biometric_pin", OPTIONS);
       await SecureStore.deleteItemAsync("biometric_pin_hash", OPTIONS);
     } catch (error) {
       log.error("SecureStorage removeBiometricPin error", { error });

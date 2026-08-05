@@ -460,17 +460,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await secureStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authenticatedUser));
     await secureStorage.setItem(LAST_USER_STORAGE_KEY, JSON.stringify(lastUser));
     if (biometricPin) {
+      // Delegate rather than inline: savePinForBiometrics owns the storage
+      // policy, and a second copy of it here is how the two drifted apart.
       try {
-        if (Platform.OS !== "web") {
-          await SecureStore.setItemAsync(BIOMETRIC_PIN_KEY, biometricPin, {
-            requireAuthentication: true,
-            keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-          });
-        } else {
-          await secureStorage.setItem(BIOMETRIC_PIN_KEY, biometricPin);
-        }
-      } catch {
-        await secureStorage.setItem(BIOMETRIC_PIN_KEY, biometricPin);
+        await get().savePinForBiometrics(biometricPin);
+      } catch (error) {
+        // Linking biometrics is best-effort. A storage failure must not fail
+        // the login that just succeeded.
+        log.warn("Could not store PIN for biometric login", { error });
       }
     }
     set({
@@ -573,34 +570,62 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  // Storage policy for the biometric PIN, in descending order of protection:
+  //
+  //   1. native, keystore slot gated on biometrics (requireAuthentication)
+  //   2. native, plain keystore slot  <- fallback
+  //   3. web, localStorage
+  //
+  // Tier 2 exists because tier 1's write fails on devices with no enrolled
+  // biometric, and because Android invalidates such keys when enrollment
+  // changes. The previous fallback called secureStorage.setItem, which on native
+  // re-issues the very same requireAuthentication write that just failed, so it
+  // could never succeed. Dropping to a plain keystore slot keeps the PIN
+  // hardware-backed and app-sandboxed; it is not equivalent to plaintext.
+  //
+  // Dropping requireAuthentication does not remove the biometric gate: reads go
+  // through authenticateWithBiometrics, which runs hasHardwareAsync +
+  // isEnrolledAsync + authenticateAsync before it ever calls
+  // getPinForBiometrics. Tier 2 moves that check from the OS to the app layer.
   savePinForBiometrics: async (pin: string) => {
-    try {
-      if (Platform.OS !== "web") {
-        await SecureStore.setItemAsync(BIOMETRIC_PIN_KEY, pin, {
-          requireAuthentication: true,
-          keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-        });
-        return;
-      }
-    } catch {
-      // Fallback for devices without biometric-backed keystore support
+    if (Platform.OS === "web") {
+      await secureStorage.setItem(BIOMETRIC_PIN_KEY, pin);
+      return;
     }
-    await secureStorage.setItem(BIOMETRIC_PIN_KEY, pin);
+    try {
+      await SecureStore.setItemAsync(BIOMETRIC_PIN_KEY, pin, {
+        requireAuthentication: true,
+        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      });
+    } catch (error) {
+      log.warn("Biometric-gated keystore unavailable; using plain keystore slot", {
+        error,
+      });
+      await SecureStore.setItemAsync(BIOMETRIC_PIN_KEY, pin, {
+        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      });
+    }
   },
 
   getPinForBiometrics: async () => {
-    if (Platform.OS !== "web") {
-      try {
-        const pin = await SecureStore.getItemAsync(BIOMETRIC_PIN_KEY, {
-          requireAuthentication: true,
-        });
-        if (pin) return pin;  // Critical null check for B1 fix
-      } catch {
-        // Fallback for devices without biometric-backed keystore support
-      }
-      // SecureStore returned null - check fallback store
+    if (Platform.OS === "web") {
+      return await secureStorage.getItem(BIOMETRIC_PIN_KEY);
     }
-    return await secureStorage.getItem(BIOMETRIC_PIN_KEY);
+    try {
+      const pin = await SecureStore.getItemAsync(BIOMETRIC_PIN_KEY, {
+        requireAuthentication: true,
+      });
+      if (pin) return pin;
+    } catch (error) {
+      log.warn("Biometric-gated keystore read failed; trying plain slot", { error });
+    }
+    // Tier 2: written by the fallback above, or by a build predating it.
+    try {
+      return await SecureStore.getItemAsync(BIOMETRIC_PIN_KEY);
+    } catch (error) {
+      log.warn("Could not read stored PIN for biometric login", { error });
+      return null;
+    }
   },
 
   setUser: (user: User) => {

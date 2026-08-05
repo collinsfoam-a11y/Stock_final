@@ -12,7 +12,7 @@ from backend.api.count_lines_api import get_count_lines, unverify_stock, verify_
 # Since run_server_main uses "backend.server:app", we must export it here.
 from backend.app.factory import create_app
 from backend.app.settings_runtime import run_server_main
-from backend.app_factory import *
+from backend.app_factory import *  # noqa: F403 - back-compat shim: re-exports the moved module's public API
 from backend.auth.dependencies import get_current_user  # noqa: F401
 from backend.config import settings
 from backend.core.lifespan import cache_service  # noqa: F401
