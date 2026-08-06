@@ -84,8 +84,7 @@ async def bulk_export_sessions(
             "format": body.format,
         }
     except Exception as e:
-        logger.error("Bulk export sessions error: %s", sanitize_for_logging(str(e), 200))
-        raise HTTPException(status_code=500, detail="Internal server error") from e
+        _handle_router_exception(e, "Bulk export sessions error")
 
 
 @api_router.get("/legacy/sessions/analytics")
@@ -169,8 +168,7 @@ async def get_sessions_analytics(current_user: dict = Depends(get_current_user))
             },
         }
     except Exception as e:
-        logger.error("Analytics error: %s", sanitize_for_logging(str(e), 200))
-        raise HTTPException(status_code=500, detail="Internal server error") from e
+        _handle_router_exception(e, "Analytics error")
 
 
 @api_router.get("/legacy/sessions/{session_id}")
@@ -192,12 +190,12 @@ async def get_session_by_id(session_id: str, current_user: dict = Depends(get_cu
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
-            "Error fetching session %s: %s",
-            sanitize_for_logging(session_id),
-            sanitize_for_logging(str(e), 200),
-        )
-        raise HTTPException(status_code=500, detail="Internal server error") from e
+        _handle_router_exception(e, f"Error fetching session {sanitize_for_logging(session_id)}")
+
+
+def _handle_router_exception(e: Exception, error_msg: str) -> None:
+    logger.error("%s: %s", error_msg, sanitize_for_logging(str(e), 200))
+    raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 def _get_db_client(db_override=None):
