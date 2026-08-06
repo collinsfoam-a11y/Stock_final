@@ -11,3 +11,6 @@
 ## 2024-07-11 - Fix N+1 queries in loop validation logic
 **Learning:** Checking idempotency constraints or performing validations via database lookups *inside* a loop that processes batched records is a significant performance bottleneck due to sequential N+1 queries.
 **Action:** When a batch process iterates over multiple records, always extract necessary constraints (e.g., `client_record_id`) into a list first. Then perform a single bulk query (e.g., `db.collection.find({"field": {"$in": constraints}}).to_list(length=None)`) and build an in-memory dictionary or set for $O(1)$ lookups during the main processing loop.
+## 2024-08-06 - N+1 query fix in bulk_export_sessions
+**Learning:** Sequential db.sessions.find_one calls inside a loop in `bulk_export_sessions` created a significant N+1 I/O bottleneck when exporting large amounts of sessions.
+**Action:** Replaced the sequential `find_one` inside a loop with a single `db.sessions.find({"$or": [{"id": {"$in": ...}}]})` call, changing an $O(n)$ query pattern to an $O(1)$ batch query.
