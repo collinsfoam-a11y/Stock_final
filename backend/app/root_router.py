@@ -85,7 +85,7 @@ async def bulk_export_sessions(
         }
     except Exception as e:
         logger.error("Bulk export sessions error: %s", sanitize_for_logging(str(e), 200))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @api_router.get("/legacy/sessions/analytics")
@@ -93,6 +93,18 @@ async def get_sessions_analytics(current_user: dict = Depends(get_current_user))
     if current_user["role"] not in ["supervisor", "admin"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     try:
+
+        def get_group_pipeline(group_id, total_field, sum_field):
+            return [
+                {
+                    "$group": {
+                        "_id": group_id,
+                        total_field: {"$sum": sum_field},
+                        "session_count": {"$sum": 1},
+                    }
+                }
+            ]
+
         pipeline = [
             {
                 "$group": {
@@ -124,24 +136,10 @@ async def get_sessions_analytics(current_user: dict = Depends(get_current_user))
             {"$group": {"_id": "$date", "count": {"$sum": 1}}},
             {"$sort": {"_id": 1}},
         ]
-        warehouse_pipeline = [
-            {
-                "$group": {
-                    "_id": "$warehouse",
-                    "total_variance": {"$sum": {"$abs": "$total_variance"}},
-                    "session_count": {"$sum": 1},
-                }
-            }
-        ]
-        staff_pipeline = [
-            {
-                "$group": {
-                    "_id": "$staff_name",
-                    "total_items": {"$sum": "$total_items"},
-                    "session_count": {"$sum": 1},
-                }
-            }
-        ]
+        warehouse_pipeline = get_group_pipeline(
+            "$warehouse", "total_variance", {"$abs": "$total_variance"}
+        )
+        staff_pipeline = get_group_pipeline("$staff_name", "total_items", "$total_items")
 
         import asyncio
 
@@ -164,7 +162,7 @@ async def get_sessions_analytics(current_user: dict = Depends(get_current_user))
             "data": {
                 "overall": overall_doc,
                 "sessions_by_date": to_dict(by_date, "count"),
-                "sessions_by_status": overall_doc["sessions_by_status"],
+                "sessions_by_status": overall_doc.get("sessions_by_status", {}),
                 "variance_by_warehouse": to_dict(by_warehouse, "total_variance"),
                 "items_by_staff": to_dict(by_staff, "total_items"),
                 "total_sessions": overall_doc.get("total_sessions", 0),
@@ -172,7 +170,7 @@ async def get_sessions_analytics(current_user: dict = Depends(get_current_user))
         }
     except Exception as e:
         logger.error("Analytics error: %s", sanitize_for_logging(str(e), 200))
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @api_router.get("/legacy/sessions/{session_id}")
@@ -199,7 +197,7 @@ async def get_session_by_id(session_id: str, current_user: dict = Depends(get_cu
             sanitize_for_logging(session_id),
             sanitize_for_logging(str(e), 200),
         )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 def _get_db_client(db_override=None):
