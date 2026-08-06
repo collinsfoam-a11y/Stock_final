@@ -156,14 +156,17 @@ async def get_sessions_analytics(current_user: dict = Depends(get_current_user))
         overall_doc = overall[0] if overall else {}
         overall_doc["sessions_by_status"] = {item["_id"]: item["count"] for item in by_status}
 
+        def to_dict(data, val_key):
+            return {item["_id"]: item[val_key] for item in data}
+
         return {
             "success": True,
             "data": {
                 "overall": overall_doc,
-                "sessions_by_date": {item["_id"]: item["count"] for item in by_date},
+                "sessions_by_date": to_dict(by_date, "count"),
                 "sessions_by_status": overall_doc["sessions_by_status"],
-                "variance_by_warehouse": {item["_id"]: item["total_variance"] for item in by_warehouse},
-                "items_by_staff": {item["_id"]: item["total_items"] for item in by_staff},
+                "variance_by_warehouse": to_dict(by_warehouse, "total_variance"),
+                "items_by_staff": to_dict(by_staff, "total_items"),
                 "total_sessions": overall_doc.get("total_sessions", 0),
             },
         }
@@ -236,15 +239,7 @@ async def verify_stock(
         raise HTTPException(status_code=404, detail="Count line not found")
 
     if activity_log_service:
-        await activity_log_service.log_activity(
-            user=current_user["username"],
-            role=current_user.get("role", ""),
-            action="verify_stock",
-            entity_type="count_line",
-            entity_id=line_id,
-            ip_address=request.client.host if request and request.client else None,
-            user_agent=request.headers.get("user-agent") if request else None,
-        )
+        await _log_verification_action(current_user, "verify_stock", line_id, request)
 
     return {"message": "Stock verified", "verified": True}
 
@@ -274,16 +269,22 @@ async def unverify_stock(
         raise HTTPException(status_code=404, detail="Count line not found")
 
     if activity_log_service:
-        await activity_log_service.log_activity(
-            user=current_user["username"],
-            role=current_user.get("role", ""),
-            action="unverify_stock",
-            entity_type="count_line",
-            entity_id=line_id,
-            ip_address=request.client.host if request and request.client else None,
-            user_agent=request.headers.get("user-agent") if request else None,
-        )
+        await _log_verification_action(current_user, "unverify_stock", line_id, request)
     return {"message": "Stock verification removed", "verified": False}
+
+
+async def _log_verification_action(
+    current_user: dict, action: str, line_id: str, request: Request | None
+):
+    await activity_log_service.log_activity(
+        user=current_user["username"],
+        role=current_user.get("role", ""),
+        action=action,
+        entity_type="count_line",
+        entity_id=line_id,
+        ip_address=request.client.host if request and request.client else None,
+        user_agent=request.headers.get("user-agent") if request else None,
+    )
 
 
 async def get_count_lines(
