@@ -2,18 +2,20 @@ import inspect
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, NoReturn, Optional
+from typing import Any, NoReturn
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import ConfigDict, Field
 from pymongo.errors import DuplicateKeyError
-from pydantic import BaseModel, ConfigDict, Field
 
 from backend.api.schemas import BulkCountLineUpdate, CountLineCreate
 from backend.auth.dependencies import get_current_user
+from backend.core.uow import MongoUnitOfWork
 from backend.core.websocket_manager import manager
 from backend.db.runtime import get_db
 from backend.models.audit import AuditEventType, AuditLogStatus
+from backend.models.base import StrictBaseModel
 from backend.services.activity_log import ActivityLogService
 from backend.services.canonical_inventory import (
     can_reuse_rejected_count_line,
@@ -22,42 +24,40 @@ from backend.services.canonical_inventory import (
     find_duplicate_count_line,
     find_duplicate_count_observation,
     find_session,
-    is_count_line_locked,
     is_count_line_effectively_reviewed,
+    is_count_line_locked,
     is_session_finalized,
     materialize_count_line_review_state,
     recompute_session_totals,
     record_duplicate_governance_event,
 )
 from backend.services.concurrency import ConcurrencyError, coerce_version
-from backend.services.count_lines.governance import CountLineGovernanceDecision
 from backend.services.count_line_write_service import CountLineWriteService
+from backend.services.count_lines.governance import CountLineGovernanceDecision
 from backend.services.lock_service import LockService, ResourceLockedError
 from backend.services.logic_guard import build_request_context, enforce_session_logic
 from backend.services.notification_service import NotificationService
-from backend.services.snapshot_service import SnapshotService
-from backend.services.session_lifecycle_service import SessionLifecycleService
-from backend.core.uow import MongoUnitOfWork
 from backend.services.read_router import InventoryReadRouter, ProjectionReadError
+from backend.services.session_lifecycle_service import SessionLifecycleService
+from backend.services.snapshot_service import SnapshotService
 from backend.services.variant_service import VariantService
 from backend.utils.api_utils import sanitize_for_logging
-from backend.models.base import StrictBaseModel
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-_activity_log_service: Optional[ActivityLogService] = None
-_lock_service: Optional[LockService] = None
-_snapshot_service: Optional[SnapshotService] = None
-_variant_service: Optional[VariantService] = None
+_activity_log_service: ActivityLogService | None = None
+_lock_service: LockService | None = None
+_snapshot_service: SnapshotService | None = None
+_variant_service: VariantService | None = None
 
 
 def _safe_log_value(value: Any, *, max_length: int = 120) -> str:
     return sanitize_for_logging("" if value is None else str(value), max_length=max_length)
 
 
-def _normalize_idempotency_key(value: Any) -> Optional[str]:
+def _normalize_idempotency_key(value: Any) -> str | None:
     if not isinstance(value, str):
         return None
     normalized = value.strip()
@@ -71,35 +71,35 @@ def _raise_count_lines_internal_error(detail: str, exc: Exception) -> NoReturn:
 class CountLineApprovalRequest(StrictBaseModel):
     """Optional metadata for approving a count line."""
 
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class CountLineRejectRequest(StrictBaseModel):
     """Optional metadata for requesting a recount."""
 
-    notes: Optional[str] = None
-    assign_to: Optional[str] = None
+    notes: str | None = None
+    assign_to: str | None = None
 
 
 class AddQuantityRequest(StrictBaseModel):
     """Payload for incrementing quantity on an existing count line."""
 
     additional_qty: float
-    batches: Optional[list[dict[str, Any]]] = None
+    batches: list[dict[str, Any]] | None = None
 
 
 class CountLineUpdateRequest(StrictBaseModel):
     """Minimal update payload for a count line (used by bulk tooling)."""
 
-    counted_qty: Optional[float] = None
-    batches: Optional[list[dict[str, Any]]] = None
+    counted_qty: float | None = None
+    batches: list[dict[str, Any]] | None = None
 
 
 def init_count_lines_api(
     activity_log_service: ActivityLogService,
-    lock_service: Optional[LockService] = None,
-    snapshot_service: Optional[SnapshotService] = None,
-    variant_service: Optional[VariantService] = None,
+    lock_service: LockService | None = None,
+    snapshot_service: SnapshotService | None = None,
+    variant_service: VariantService | None = None,
 ):
     global _activity_log_service, _lock_service, _snapshot_service, _variant_service
     if snapshot_service is None:
@@ -201,7 +201,7 @@ async def _ensure_count_line_mutable(
     db: Any,
     count_line: dict[str, Any],
     *,
-    session: Optional[dict[str, Any]] = None,
+    session: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if is_count_line_locked(count_line):
         raise HTTPException(
@@ -325,7 +325,7 @@ def _build_legacy_count_line_draft_filter(
     }
 
 
-async def _resolve_item_name_for_draft(db: Any, line_data: CountLineCreate) -> Optional[str]:
+async def _resolve_item_name_for_draft(db: Any, line_data: CountLineCreate) -> str | None:
     if line_data.item_name:
         return line_data.item_name
 
@@ -345,9 +345,9 @@ async def _resolve_item_name_for_draft(db: Any, line_data: CountLineCreate) -> O
 def _build_dashboard_refresh_message(
     event: str,
     *,
-    session_id: Optional[str] = None,
-    session_ids: Optional[set[str]] = None,
-    count_line: Optional[dict[str, Any]] = None,
+    session_id: str | None = None,
+    session_ids: set[str] | None = None,
+    count_line: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "event": event,
@@ -375,9 +375,9 @@ def _build_dashboard_refresh_message(
 async def _broadcast_dashboard_refresh(
     event: str,
     *,
-    session_id: Optional[str] = None,
-    session_ids: Optional[set[str]] = None,
-    count_line: Optional[dict[str, Any]] = None,
+    session_id: str | None = None,
+    session_ids: set[str] | None = None,
+    count_line: dict[str, Any] | None = None,
 ) -> None:
     try:
         await manager.broadcast_to_roles(
@@ -406,7 +406,7 @@ def _ensure_session_accepts_counts(session: dict[str, Any]) -> None:
 async def _find_idempotent_count_line(
     db: Any,
     line_data: CountLineCreate,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     idempotency_key = _normalize_idempotency_key(line_data.idempotency_key)
     if not idempotency_key:
         return None
@@ -424,7 +424,7 @@ async def _find_idempotent_count_line(
 
 async def _find_erp_item_for_count_line(
     db: Any, line_data: CountLineCreate
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     erp_item = None
     if line_data.barcode:
         result_item = db.erp_items.find_one({"barcode": line_data.barcode})
@@ -538,7 +538,7 @@ def _build_count_line_risk_context(
 def _build_count_line_lock_keys(
     line_data: CountLineCreate,
     erp_item: dict[str, Any],
-) -> tuple[str, Optional[str]]:
+) -> tuple[str, str | None]:
     item_id = erp_item.get("item_id")
     variant_lock_key = f"product:{item_id}" if item_id else None
     session_variant_lock = (
@@ -597,7 +597,7 @@ async def _release_count_line_locks(lock_state: dict[str, Any], username: str) -
 async def _resolve_recount_target(
     db: Any,
     line_data: CountLineCreate,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     line_payload = line_data.model_dump(mode="json")
     existing_count = await find_duplicate_count_line(db, line_payload)
     if existing_count and can_reuse_rejected_count_line(existing_count, line_payload):
@@ -623,7 +623,7 @@ def _build_count_line_document(
     risk_flags: list[str],
     financial_impact: float,
     is_misplaced: bool,
-    recount_update_target: Optional[dict[str, Any]],
+    recount_update_target: dict[str, Any] | None,
 ) -> tuple[dict[str, Any], datetime]:
     count_line_id = str(uuid.uuid4())
     previous_version_id = (
@@ -739,7 +739,7 @@ async def _persist_count_line_document(
     username: str,
     count_line: dict[str, Any],
     counted_at: datetime,
-    recount_update_target: Optional[dict[str, Any]],
+    recount_update_target: dict[str, Any] | None,
     *,
     write_service: CountLineWriteService,
     session: dict[str, Any],
@@ -880,8 +880,8 @@ def _build_count_line_mutation_update(
     governance: CountLineGovernanceDecision,
     counted_qty: float,
     financial_impact: float,
-    variance_reason: Optional[str],
-    batches: Optional[list[dict[str, Any]]] = None,
+    variance_reason: str | None,
+    batches: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     update_data: dict[str, Any] = {
         "counted_qty": counted_qty,
@@ -1021,7 +1021,9 @@ async def _create_and_evaluate_observation(
         await db["count_observations"].insert_one(observation)
         count_line["observation_id"] = observation["id"]
     except Exception as exc:
-        logger.error("Failed to create approval observation: %s", _safe_log_value(exc, max_length=200))
+        logger.error(
+            "Failed to create approval observation: %s", _safe_log_value(exc, max_length=200)
+        )
 
 
 async def _record_high_risk_correction(
@@ -1441,7 +1443,7 @@ async def get_count_lines(
     current_user: dict,
     page: int = 1,
     page_size: int = 50,
-    verified: Optional[bool] = None,
+    verified: bool | None = None,
     *,
     db_override=None,
 ):
@@ -1504,11 +1506,11 @@ async def get_count_lines(
 @router.get("/count-lines")
 async def list_count_lines(
     current_user: dict = Depends(get_current_user),
-    session_id: Optional[str] = Query(None),
-    item_code: Optional[str] = Query(None),
+    session_id: str | None = Query(None),
+    item_code: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    limit: Optional[int] = Query(None, ge=1, le=200),
+    limit: int | None = Query(None, ge=1, le=200),
 ):
     db_client = _get_db_client()
     filter_query: dict[str, Any] = {}
@@ -1571,7 +1573,7 @@ async def get_count_line_detail(
 
 async def approve_count_line(
     line_id: str,
-    request: Optional[CountLineApprovalRequest] = None,
+    request: CountLineApprovalRequest | None = None,
     current_user: dict = Depends(get_current_user),
     *,
     http_request: Request | None = None,
@@ -1675,7 +1677,7 @@ async def approve_count_line(
 
 async def reject_count_line(
     line_id: str,
-    request: Optional[CountLineRejectRequest] = None,
+    request: CountLineRejectRequest | None = None,
     current_user: dict = Depends(get_current_user),
     *,
     http_request: Request | None = None,
@@ -1793,7 +1795,7 @@ async def reject_count_line(
 async def approve_count_line_route(
     line_id: str,
     http_request: Request,
-    request: Optional[CountLineApprovalRequest] = None,
+    request: CountLineApprovalRequest | None = None,
     current_user: dict = Depends(get_current_user),
 ):
     return await approve_count_line(
@@ -1808,7 +1810,7 @@ async def approve_count_line_route(
 async def reject_count_line_route(
     line_id: str,
     http_request: Request,
-    request: Optional[CountLineRejectRequest] = None,
+    request: CountLineRejectRequest | None = None,
     current_user: dict = Depends(get_current_user),
 ):
     return await reject_count_line(
@@ -1831,7 +1833,7 @@ async def check_item_counted(
         session = await find_session(db, session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
-            
+
         if current_user.get("role") == "staff":
             allowed = {session.get("created_by")} | set(session.get("participants", []))
             if current_user.get("username") not in allowed:
@@ -1881,7 +1883,7 @@ async def check_item_counted(
 async def check_serial_uniqueness(
     session_id: str,
     serial_number: str,
-    item_code: Optional[str] = Query(None),
+    item_code: str | None = Query(None),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -1933,7 +1935,7 @@ async def get_count_lines_route(
     current_user: dict = Depends(get_current_user),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
-    verified: Optional[bool] = Query(None, description="Filter by verification status"),
+    verified: bool | None = Query(None, description="Filter by verification status"),
 ):
     return await get_count_lines(
         session_id,
@@ -1944,7 +1946,7 @@ async def get_count_lines_route(
     )
 
 
-async def _find_count_line(db, line_id: str) -> Optional[dict]:
+async def _find_count_line(db, line_id: str) -> dict | None:
     """Find a count line by id or _id."""
     count_line = await db.count_lines.find_one({"id": line_id})
     if count_line:
@@ -1997,7 +1999,7 @@ async def add_quantity_to_count_line(
         raise HTTPException(status_code=403, detail="Not authorized to modify this count line")
 
     erp_item = await _get_erp_item_for_existing_count_line(db, count_line)
-    
+
     set_data = {
         "updated_at": _current_timestamp(),
         "updated_by": current_user.get("username"),
@@ -2021,7 +2023,7 @@ async def add_quantity_to_count_line(
                 },
                 "$set": set_data,
             },
-            "return_document": True
+            "return_document": True,
         },
         context={
             "session": session,
@@ -2033,7 +2035,9 @@ async def add_quantity_to_count_line(
         },
     )
     if not update_result:
-        raise HTTPException(status_code=409, detail="Count line was modified concurrently or not found")
+        raise HTTPException(
+            status_code=409, detail="Count line was modified concurrently or not found"
+        )
 
     try:
         await _recompute_session_totals(db, str(count_line.get("session_id") or ""))
@@ -2056,7 +2060,7 @@ async def add_quantity_to_count_line(
             "counted_qty": update_result.get("counted_qty"),
             "updated_at": update_result.get("updated_at"),
             "updated_by": update_result.get("updated_by"),
-            "batches": update_result.get("batches")
+            "batches": update_result.get("batches"),
         },
         "financial_impact": update_result.get("financial_impact"),
     }
@@ -2142,7 +2146,9 @@ async def update_count_line(
         },
     )
     if not update_result:
-        raise HTTPException(status_code=409, detail="Document version conflict or document not found")
+        raise HTTPException(
+            status_code=409, detail="Document version conflict or document not found"
+        )
 
     try:
         await _recompute_session_totals(db, str(count_line.get("session_id") or ""))
@@ -2359,6 +2365,7 @@ async def bulk_approve_count_lines(
 
 class CountLineBatchCreate(StrictBaseModel):
     """Batch create payload for multiple count lines."""
+
     model_config = ConfigDict(extra="forbid")
 
     session_id: str
@@ -2405,7 +2412,14 @@ async def create_count_lines_batch(
             )
             existing = await _find_idempotent_count_line(db, enriched_line)
             if existing:
-                results.append({"index": idx, "id": str(existing.get("id") or ""), "success": True, "idempotent": True})
+                results.append(
+                    {
+                        "index": idx,
+                        "id": str(existing.get("id") or ""),
+                        "success": True,
+                        "idempotent": True,
+                    }
+                )
                 continue
 
             (
@@ -2423,12 +2437,16 @@ async def create_count_lines_batch(
             )
             results.append({"index": idx, "id": str(count_line.get("id") or ""), "success": True})
         except Exception as e:
-            logger.error("Batch line %s processing failed: %s", idx, _safe_log_value(e, max_length=200))
-            errors.append({
-                "index": idx,
-                "error": "Processing failed",
-                "error_code": "LINE_PROCESSING_FAILED",
-            })
+            logger.error(
+                "Batch line %s processing failed: %s", idx, _safe_log_value(e, max_length=200)
+            )
+            errors.append(
+                {
+                    "index": idx,
+                    "error": "Processing failed",
+                    "error_code": "LINE_PROCESSING_FAILED",
+                }
+            )
 
     await _recompute_session_totals(db, batch_data.session_id)
 
@@ -2669,6 +2687,7 @@ async def get_item_batches(
 
 class CountLineMergeRequest(StrictBaseModel):
     """Request to merge duplicate count lines"""
+
     model_config = ConfigDict(extra="forbid")
 
     source_line_ids: list[str]
@@ -2744,7 +2763,7 @@ async def merge_count_lines(
                             "$inc": {"counted_qty": source_qty, "version": 1},
                             "$push": {"merged_from": source_id},
                         },
-                        "return_document": True
+                        "return_document": True,
                     },
                     context={
                         "session": target_session,
@@ -2789,12 +2808,16 @@ async def merge_count_lines(
             merged_count += 1
 
         except Exception as e:
-            logger.error("Merge failed for source line %s: %s", source_id, _safe_log_value(e, max_length=200))
-            results["failed"].append({
-                "id": source_id,
-                "error": "Merge failed",
-                "error_code": "MERGE_FAILED",
-            })
+            logger.error(
+                "Merge failed for source line %s: %s", source_id, _safe_log_value(e, max_length=200)
+            )
+            results["failed"].append(
+                {
+                    "id": source_id,
+                    "error": "Merge failed",
+                    "error_code": "MERGE_FAILED",
+                }
+            )
 
     if merged_count > 0 and target_session_id:
         try:
