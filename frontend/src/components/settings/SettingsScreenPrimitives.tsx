@@ -10,10 +10,11 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
 
+import { getDecorativeIconProps } from "../../utils/accessibility";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { colorWithAlpha } from "../../theme/themeTokens";
 import { AnimatedPressable } from "../ui/AnimatedPressable";
-import ModernCard from "../ui/ModernCard";
+import { ModernCard } from "../ui/ModernCard";
 import { Switch } from "../ui/Switch";
 
 type SettingsRowType = "navigation" | "action" | "switch" | "select";
@@ -124,7 +125,7 @@ export function SettingsTextInputRow({
             },
           ]}
         >
-          <Ionicons name={icon} size={19} color={uiTokens.colors.accent} />
+          <Ionicons name={icon} size={19} color={uiTokens.colors.accent} {...getDecorativeIconProps()} />
         </View>
         <View style={styles.copy}>
           <Text style={[styles.label, { color: uiTokens.colors.textPrimary }]}>{label}</Text>
@@ -230,6 +231,7 @@ export function SettingsActionRow({
             name="chevron-forward"
             size={18}
             color={disabled ? uiTokens.colors.textMuted : uiTokens.colors.textSecondary}
+            {...getDecorativeIconProps()}
           />
         ) : null}
       </View>
@@ -247,7 +249,7 @@ export function SettingsActionRow({
             },
           ]}
         >
-          <Ionicons name={icon} size={19} color={toneColor} />
+          <Ionicons name={icon} size={19} color={toneColor} {...getDecorativeIconProps()} />
         </View>
         <View style={styles.copy}>
           <Text
