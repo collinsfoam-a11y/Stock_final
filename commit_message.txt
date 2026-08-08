@@ -1,0 +1,9 @@
+⚡ Bolt: Optimize in-memory document counting to use native MongoDB count_documents in System Reports
+
+💡 What: Refactored `_count_rows_in_range` inside `backend/services/system_report_service.py` to use a native MongoDB `count_documents` query rather than pulling up to 5000 full documents into application memory and looping through them in Python. Also resolved unrelated CI failures concerning unused Pydantic imports in `backend/api/sync_batch_api.py` and `backend/api/count_lines_routes.py`, and an incorrect default import in `frontend/src/components/settings/SettingsScreenPrimitives.tsx`.
+
+🎯 Why: Pulling potentially thousands of documents into application memory just to count how many fall within a given date range creates an O(N) memory and network bandwidth bottleneck. Leveraging the database engine allows this to be an O(1) bulk fetch operations on the application side.
+
+📊 Impact: Reduces memory footprint heavily when reports aggregate errors, audits, or user logs, and lowers the database CPU load and network transit time. Also fixes a latent bug where the count would be artificially capped at the 5,000 document limit of the `_fetch_collection_documents` fetch operation.
+
+🔬 Measurement: Verify changes by checking that the `SystemReportService` outputs the exact same error counts as before, using `pytest backend/tests/test_system_report_service.py`.
