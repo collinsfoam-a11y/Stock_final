@@ -139,3 +139,4 @@ awesome-codex-skills/
 
 # Git worktrees (created dynamically, not version controlled)
 worktrees/
+venv/
