@@ -11,3 +11,7 @@
 ## 2024-07-11 - Fix N+1 queries in loop validation logic
 **Learning:** Checking idempotency constraints or performing validations via database lookups *inside* a loop that processes batched records is a significant performance bottleneck due to sequential N+1 queries.
 **Action:** When a batch process iterates over multiple records, always extract necessary constraints (e.g., `client_record_id`) into a list first. Then perform a single bulk query (e.g., `db.collection.find({"field": {"$in": constraints}}).to_list(length=None)`) and build an in-memory dictionary or set for $O(1)$ lookups during the main processing loop.
+
+## 2024-05-27 - [MongoDB Native Query Optimization]
+**Learning:** Bypassing application-level data-access wrappers (e.g., `_fetch_collection_documents`) to use native database queries (like `count_documents`) can inadvertently omit critical, implicitly applied filters or default behaviors. Always ensure that the native query replicates the exact logic and constraints of the original wrapper.
+**Action:** When refactoring to native database queries to optimize performance, explicitly verify that bypassing application-level data-access wrappers does not inadvertently omit critical, implicitly applied filters or default behaviors set by those wrappers.
