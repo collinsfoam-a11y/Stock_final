@@ -108,7 +108,6 @@
     "@react-native-community/slider": "5.1.2",
     "@shopify/flash-list": "^2.3.2",
     "@tanstack/react-query": "^5.101.4",
-    "axios": "^1.19.0",
     "expo": "~55.0.28",
     "expo-background-task": "~55.0.20",
     "expo-blur": "~55.0.16",

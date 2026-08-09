@@ -7,7 +7,7 @@ from typing import Any, NoReturn, Optional
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pymongo.errors import DuplicateKeyError
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field, ConfigDict
 
 from backend.api.schemas import BulkCountLineUpdate, CountLineCreate
 from backend.auth.dependencies import get_current_user
