@@ -41,3 +41,6 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+## 2024-08-10 - Disable Decorate Buttons without Actions
+**Learning:** In React Native components (like `Input.tsx`), conditionally assigning an empty `onPress` handler unconditionally to an `AppTouchable` makes the element interactive to screen readers and touch events, even if there's no actual underlying action prop (e.g. `onRightIconPress`). This causes empty dummy buttons.
+**Action:** When conditionally attaching optional touch actions, assign the `onPress` handler conditionally (`onPress={action ? () => action() : undefined}`) and ensure `disabled={!action}` is set so it ignores touches entirely.
