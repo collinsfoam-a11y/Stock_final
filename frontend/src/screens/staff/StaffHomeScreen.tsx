@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Haptics from "expo-haptics";
+import { haptics } from "@/services/haptics";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -274,7 +274,7 @@ const StaffHome = React.memo(function StaffHome() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleRefresh = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void haptics.light();
     setIsRefreshing(true);
     await refetch();
     setIsRefreshing(false);
@@ -336,7 +336,7 @@ const StaffHome = React.memo(function StaffHome() {
   };
 
   const handleResumeSession = (session: any) => {
-    Haptics.selectionAsync();
+    void haptics.selection();
     const sessionId = session?.id || session?._id || session?.session_id;
     if (!sessionId) { toastService.showError("Unable to resume (missing ID)."); return; }
     if (session.warehouse) {
@@ -355,7 +355,7 @@ const StaffHome = React.memo(function StaffHome() {
   };
 
   const handleOpenHistory = (session: any) => {
-    Haptics.selectionAsync();
+    void haptics.selection();
     const sessionId = session?.id || session?._id || session?.session_id;
     if (!sessionId) { toastService.showError("Unable to open (missing ID)."); return; }
     router.push({ pathname: "/staff/history", params: { sessionId } } as any);
@@ -548,7 +548,10 @@ const StaffHome = React.memo(function StaffHome() {
                 { borderColor: uiTokens.colors.border, backgroundColor: uiTokens.colors.surface },
                 isActive && { backgroundColor: colorWithAlpha(uiTokens.colors.accent, 0.1), borderColor: uiTokens.colors.accent },
               ]}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => {
+                void haptics.selection();
+                setActiveTab(tab);
+              }}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
  >
