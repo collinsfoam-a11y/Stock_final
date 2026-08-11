@@ -76,5 +76,3 @@ export function InlineAlert({ type = "info", message, testID }: Props) {
     </View>
   );
 }
-
-export default InlineAlert;
