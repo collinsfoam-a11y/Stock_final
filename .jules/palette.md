@@ -29,6 +29,10 @@
 ## 2026-05-21 - Standardizing Accordion Accessibility and Feedback
 **Learning:** Accordion components often lack clear state communication for screen readers and tactile feedback for mobile users. Implementing `accessibilityRole="button"` and `accessibilityState={{ expanded: isExpanded }}` on headers, combined with `haptics.light()` on toggle, ensures a more accessible and responsive experience.
 **Action:** Always use `getAccessibleButtonProps` with the `expanded` state for accordion headers and trigger light haptic feedback upon state change.
+
+## 2026-08-02 - Standardizing Screen-level Custom Tab Interactions and Haptic Service Migration
+**Learning:** Custom screen-level interactive components (such as custom tab systems on screens like `StaffHomeScreen`) can easily miss standardized haptic and selection feedback compared to design system primitive containers. Standardizing interactive screens to use the centralized `haptics` service ensures unified platform/web checks and consistent tactile responsiveness.
+**Action:** Always migrate custom, screen-level touchables and navigation elements from raw `expo-haptics` to the centralized `haptics` service, and guarantee `haptics.selection()` is triggered on tab/toggle changes to preserve standard micro-UX design guidelines.
 ## 2025-05-22 - Enhancing Empty States with Accessible Grouping and Animations
 **Learning:** Empty states benefit from entrance animations (like `FadeIn`) to feel less "stark." For accessibility, grouping the icon, title, and message into a single accessible unit with a descriptive `accessibilityLabel` provides a better experience for screen reader users. However, interactive elements (like action buttons) MUST remain outside this grouping to prevent them from becoming unreachable.
 **Action:** Wrap non-interactive empty state content in a single `accessible={true}` container, but keep action buttons as separate siblings to maintain accessibility tree depth.
