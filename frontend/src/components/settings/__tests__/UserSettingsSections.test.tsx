@@ -1,4 +1,4 @@
-import { AppTouchable } from "@/components/ui/AppTouchable";
+import { AppTouchable } from "../../ui/AppTouchable";
 import React from "react";
 import { Alert } from "react-native";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
