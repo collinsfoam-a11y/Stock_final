@@ -39,6 +39,8 @@ jest.mock("@/theme/themeTokens", () => ({
 
 jest.mock("@/theme/unified", () => ({
     colors: { primary: { 50: "#eff6ff", 400: "#60a5fa", 500: "#3b82f6", 600: "#2563eb", 700: "#1d4ed8" } },
+    spacing: { xxs: 2, xs: 4, sm: 8, md: 16, lg: 24, xl: 32 },
+    radius: { sm: 6, md: 10, lg: 14, xl: 20, full: 9999 },
 }));
 
 // FlashList → simple inline renderer so items are queryable in jest.
