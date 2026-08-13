@@ -29,15 +29,23 @@
 ## 2026-05-21 - Standardizing Accordion Accessibility and Feedback
 **Learning:** Accordion components often lack clear state communication for screen readers and tactile feedback for mobile users. Implementing `accessibilityRole="button"` and `accessibilityState={{ expanded: isExpanded }}` on headers, combined with `haptics.light()` on toggle, ensures a more accessible and responsive experience.
 **Action:** Always use `getAccessibleButtonProps` with the `expanded` state for accordion headers and trigger light haptic feedback upon state change.
+
 ## 2025-05-22 - Enhancing Empty States with Accessible Grouping and Animations
 **Learning:** Empty states benefit from entrance animations (like `FadeIn`) to feel less "stark." For accessibility, grouping the icon, title, and message into a single accessible unit with a descriptive `accessibilityLabel` provides a better experience for screen reader users. However, interactive elements (like action buttons) MUST remain outside this grouping to prevent them from becoming unreachable.
 **Action:** Wrap non-interactive empty state content in a single `accessible={true}` container, but keep action buttons as separate siblings to maintain accessibility tree depth.
+
 ## 2026-05-23 - Standardizing Header Action Accessibility
 **Learning:** Icon-only buttons in the premium application header (like menu, logout, and custom actions) were missing screen reader descriptions and decorative icon flags. Applying `getAccessibleButtonProps` to the `TouchableOpacity` wrapper and `getDecorativeIconProps()` to the internal `Ionicons` ensures full screen reader support and eliminates redundant audio clutter. Integrating the centralized `haptics` service in `onPress` further improves tactile feedback for a smoother interaction.
 **Action:** Always wrap `onPress` actions with `void haptics.light()` and apply appropriate accessibility props to both the button wrapper (accessible label) and the internal icon (decorative) for core navigation and header elements.
+
 ## 2026-05-24 - Standardizing Micro-Interactions in Selection Modals
 **Learning:** Selection modals (like `CreateSessionModal`) frequently use `TouchableOpacity` for selecting options (like zones or warehouses). These buttons were often missing essential haptic feedback upon selection, making the interaction feel less responsive. Additionally, dynamic accessibility labels correctly propagating the selected state (e.g., `selected: locationType === zone.zone_name`) are critical for screen reader users to understand their active choices.
 **Action:** Always apply `haptics.light()` within the `onPress` of list/grid selection items. Use `getAccessibleButtonProps` to explicitly set the `selected` property to match the active component state, ensuring screen readers announce the selection accurately.
+
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+
+## 2026-05-25 - Standardizing Accessibility of KPI and Dashboard Cards
+**Learning:** Multi-metric dashboard components (like `StatsCard`) often lack cohesive announcement structures. Instead of leaving screen readers to read individual text labels sequentially, grouping the layout as a single accessible unit (`accessible={true}`) with a descriptive, natural language `accessibilityLabel` (e.g., "Accuracy Rate, Value: 98.5%, All warehouses, Trend: up by 2.1%") provides screen reader users with a cohesive understanding of the statistic. Additionally, when the card is interactive, it must carry `accessibilityRole="button"`, and redundant child element accessibility must be safely turned off to prevent dual voice announcements.
+**Action:** Group complex metric/KPI display layouts into a single accessible component with custom natural language labels, while setting `accessibilityRole="button"` and enabling light haptic feedback on press if interactive.
