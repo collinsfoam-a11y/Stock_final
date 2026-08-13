@@ -368,20 +368,3 @@ jest.mock("react-native/Libraries/Modal/Modal", () => {
     default: MockModal,
   };
 });
-
-jest.mock("@shopify/flash-list", () => {
-  const React = require("react");
-  const { FlatList } = require("react-native");
-
-  const FlashList = React.forwardRef((props, ref) => {
-    return React.createElement(FlatList, {
-      ...props,
-      ref,
-      // Pass estimatedItemSize down for testing purposes if needed
-      testID: "flash-list",
-    });
-  });
-  FlashList.displayName = "FlashList";
-
-  return { FlashList };
-});
