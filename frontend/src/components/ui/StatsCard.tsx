@@ -19,6 +19,7 @@ import { AnimatedCounter } from "./AnimatedCounter";
 import { ModernCard } from "./ModernCard";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 export type StatVariant = "primary" | "success" | "warning" | "error" | "info";
 
@@ -76,6 +77,18 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   const iconSize = uiTokens.spacing.xl + uiTokens.spacing.lg;
   const iconBackgroundAlpha = uiTokens.mode === "dark" ? 0.24 : 0.12;
 
+  // Construct a descriptive, natural language accessibility label
+  const valueStr = `${prefix}${value}${suffix}`;
+  const labelParts = [];
+  if (title) labelParts.push(title);
+  labelParts.push(`Value: ${valueStr}`);
+  if (subtitle) labelParts.push(subtitle);
+  if (trend) {
+    const trendDirection = trend.isPositive ? "up" : "down";
+    labelParts.push(`Trend: ${trendDirection} by ${Math.abs(trend.value)}%`);
+  }
+  const statAccessibilityLabel = labelParts.filter(Boolean).join(", ");
+
   const content = (
     <View style={[styles.content, { gap: uiTokens.spacing.sm }]}>
       <View
@@ -90,7 +103,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
           },
         ]}
       >
-        <Ionicons name={icon} size={28} color={variantColor} />
+        <Ionicons name={icon} size={28} color={variantColor} {...getDecorativeIconProps()} />
       </View>
 
       {/* Stats */}
@@ -152,6 +165,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
               name={trend.isPositive ? "trending-up" : "trending-down"}
               size={14}
               color={trend.isPositive ? uiTokens.colors.success : uiTokens.colors.error}
+              {...getDecorativeIconProps()}
             />
             <Text
               style={[
@@ -171,7 +185,14 @@ export const StatsCard: React.FC<StatsCardProps> = ({
 
   const cardContent = (
     <Animated.View entering={FadeInDown.delay(delay).springify()}>
-      <ModernCard variant="outlined" elevation="none" padding={uiTokens.spacing.md} style={style}>
+      <ModernCard
+        variant="outlined"
+        elevation="none"
+        padding={uiTokens.spacing.md}
+        style={style}
+        accessible={!onPress}
+        accessibilityLabel={onPress ? undefined : statAccessibilityLabel}
+      >
         {content}
       </ModernCard>
     </Animated.View>
@@ -179,7 +200,13 @@ export const StatsCard: React.FC<StatsCardProps> = ({
 
   if (onPress) {
     return (
-      <AnimatedPressable onPress={onPress} hapticFeedback="light">
+      <AnimatedPressable
+        onPress={onPress}
+        hapticFeedback="light"
+        accessible={true}
+        accessibilityLabel={statAccessibilityLabel}
+        accessibilityRole="button"
+      >
         {cardContent}
       </AnimatedPressable>
     );
