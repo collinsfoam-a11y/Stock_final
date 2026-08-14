@@ -52,7 +52,7 @@ export type CardVariant = "default" | "elevated" | "outlined";
  */
 export type CardElevation = "none" | "sm" | "md" | "lg";
 
-interface ModernCardProps {
+export interface ModernCardProps {
   children: React.ReactNode;
   title?: string;
   subtitle?: string;
