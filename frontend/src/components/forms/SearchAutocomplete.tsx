@@ -99,7 +99,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
 
   const loadMore = React.useCallback(async () => {
     if (isLoadingMore || !hasMore || offlineMode) return;
-    
+
     setIsLoadingMore(true);
     try {
       const nextPage = page + 1;
