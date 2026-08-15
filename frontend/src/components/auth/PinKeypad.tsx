@@ -10,9 +10,8 @@
  */
 
 import React, { useCallback, useMemo } from "react";
-import { View, Text, StyleSheet, Platform, useWindowDimensions, AccessibilityInfo } from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions, AccessibilityInfo } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Haptics from "expo-haptics";
 import Animated, {
   useAnimatedStyle,
   withSequence,
@@ -22,6 +21,8 @@ import Animated, {
 import { legacyColors as modernColors } from "../../theme/unified";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 interface PinKeypadProps {
   pin: string;
@@ -61,9 +62,7 @@ export function PinKeypad({
     (key: string) => {
       if (disabled) return;
 
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      void haptics.light();
 
       if (key === "backspace") {
         onPinChange(pin.slice(0, -1));
@@ -99,9 +98,7 @@ export function PinKeypad({
         withTiming(10, { duration: 50 }),
         withTiming(0, { duration: 50 }),
       );
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
+      void haptics.error();
     }
   }, [error, shakeX]);
 
@@ -175,6 +172,7 @@ export function PinKeypad({
                 ? modernColors.text.disabled
                 : modernColors.text.secondary
             }
+            {...getDecorativeIconProps()}
           />
         ) : key === "clear" ? (
           <Text
