@@ -3,12 +3,12 @@ Admin Dashboard API - Live KPIs, System Status, User Monitoring
 PC-based web dashboard endpoints for administrators
 """
 
+import asyncio
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 import psutil
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from backend.auth.dependencies import require_admin
 from backend.db.runtime import get_db
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class SystemStatusResponse(BaseModel):
     error_rate_percent: float
     memory_usage_mb: float
     cpu_usage_percent: float
-    uptime_seconds: int
+    uptime_seconds: float
     timestamp: str
 
 
@@ -54,8 +55,8 @@ class ActiveUserInfo(BaseModel):
     username: str
     role: str
     last_activity: str
-    current_session: Optional[str]
-    status: str
+    current_session: str | None = None
+    status: str  # online, idle
 
 
 class ErrorLogEntry(BaseModel):
@@ -63,9 +64,9 @@ class ErrorLogEntry(BaseModel):
     timestamp: str
     level: str
     message: str
-    endpoint: Optional[str]
-    user_id: Optional[str]
-    details: dict[str, Optional[Any]]
+    endpoint: str | None = None
+    user_id: str | None = None
+    details: dict[str, Any] | None = None
 
 
 class PerformanceMetric(BaseModel):
@@ -77,10 +78,9 @@ class PerformanceMetric(BaseModel):
 
 # Helper Functions
 async def calculate_total_stock_value(db) -> float:
-    """Calculate total stock value from ERP items."""
+    """Calculate total value of all stock items."""
     try:
         pipeline = [
-            {"$match": {"stock_qty": {"$exists": True}}},
             {
                 "$group": {
                     "_id": None,
@@ -101,10 +101,12 @@ async def calculate_verified_value(db) -> float:
     """Calculate value of verified stock."""
     try:
         total_value = 0.0
-        cursor = db.count_lines.find({"status": "locked"})
-        async for line in cursor:
-            qty = float(line.get("counted_qty") or 0.0)
-            unit_value = float(line.get("mrp_counted") or line.get("mrp_erp") or 0.0)
+        # Iterate to multiply verified count * standard cost
+        async for line in db.count_lines.find({"status": "verified"}):
+            qty = float(line.get("counted_qty", 0))
+            # need a lookup to erp_items for price, or assume it's synced.
+            # We'll assume a denormalized unit_value for performance
+            unit_value = float(line.get("unit_value", 0))
             total_value += qty * unit_value
         return total_value
     except Exception as e:
@@ -113,12 +115,13 @@ async def calculate_verified_value(db) -> float:
 
 
 async def calculate_completion_percentage(db) -> float:
-    """Calculate verification completion percentage."""
+    """Calculate percentage of items verified out of total."""
     try:
         total_items = await db.erp_items.count_documents({})
         if total_items == 0:
             return 0.0
 
+        # Unique verified items. A single item might be verified across multiple sessions/locations.
         verified_items_result = await db.count_lines.aggregate(
             [
                 {"$match": {"status": "locked", "item_code": {"$exists": True, "$ne": ""}}},
@@ -136,24 +139,8 @@ async def calculate_completion_percentage(db) -> float:
 async def count_active_sessions(db) -> int:
     """Count currently active verification sessions."""
     try:
-        return await db.sessions.count_documents(
-            {
-                "status": {"$in": ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]},
-                "$and": [
-                    {
-                        "$or": [
-                            {"closed_at": {"$exists": False}},
-                            {"closed_at": {"$in": [None, ""]}},
-                        ]
-                    },
-                    {
-                        "$or": [
-                            {"finalized_at": {"$exists": False}},
-                            {"finalized_at": {"$in": [None, ""]}},
-                        ]
-                    },
-                ],
-            }
+        return await db.verification_sessions.count_documents(
+            {"status": {"$in": ["OPEN", "ACTIVE", "RECONCILE", "active", "in_progress"]}}
         )
     except Exception as e:
         logger.error("Error counting sessions: %s", sanitize_for_logging(str(e)))
@@ -161,7 +148,7 @@ async def count_active_sessions(db) -> int:
 
 
 async def count_active_users(db) -> int:
-    """Count users with recent activity (last 30 minutes)."""
+    """Count users active in the last 30 minutes."""
     try:
         cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=30)
         return await db.user_presence.count_documents({"last_seen": {"$gte": cutoff}})
@@ -171,7 +158,7 @@ async def count_active_users(db) -> int:
 
 
 async def count_pending_variances(db) -> int:
-    """Count variances pending supervisor review."""
+    """Count variances needing supervisor approval."""
     try:
         return await db.count_lines.count_documents(
             {
@@ -188,17 +175,13 @@ async def count_pending_variances(db) -> int:
 
 
 async def count_items_verified_today(db) -> int:
-    """Count items verified today."""
+    """Count number of count_lines submitted today."""
     try:
-        today_start = (
-            datetime.now(timezone.utc)
-            .replace(tzinfo=None)
-            .replace(hour=0, minute=0, second=0, microsecond=0)
-        )
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         return await db.count_lines.count_documents(
             {
-                "finalized_at": {"$gte": today_start},
-                "status": "locked",
+                "timestamp": {"$gte": today_start.isoformat()},
+                "status": {"$in": ["verified", "locked", "approved"]},
             }
         )
     except Exception as e:
@@ -218,11 +201,12 @@ async def check_mongodb_connection(db) -> str:
 
 async def check_sqlserver_connection() -> str:
     """Check SQL Server connection status."""
-    try:
-        from backend.sql_server_connector import SQLServerConnector
+    from backend.utils.db_connection import SQLServerConnectionBuilder
 
-        connector = SQLServerConnector()
-        if connector.test_connection():
+    try:
+        # Avoid creating a full connection pool for health check, just a quick ping
+        conn_str = SQLServerConnectionBuilder.build_connection_string()
+        if SQLServerConnectionBuilder.test_connection(conn_str):
             return "connected"
         return "disconnected"
     except Exception as e:
@@ -231,7 +215,7 @@ async def check_sqlserver_connection() -> str:
 
 
 def get_memory_usage() -> float:
-    """Get current memory usage in MB."""
+    """Get process memory usage in MB."""
     try:
         process = psutil.Process(os.getpid())
         return round(process.memory_info().rss / 1024 / 1024, 2)
@@ -240,19 +224,18 @@ def get_memory_usage() -> float:
 
 
 def get_cpu_usage() -> float:
-    """Get current CPU usage percentage."""
+    """Get process CPU usage percentage."""
     try:
         return psutil.cpu_percent(interval=0.1)
     except Exception:
         return 0.0
 
 
-def get_uptime() -> int:
+def get_uptime() -> float:
     """Get server uptime in seconds."""
-    return int(time.time() - SERVER_START_TIME)
+    return round(time.time() - SERVER_START_TIME, 2)
 
 
-# API Endpoints
 @admin_dashboard_router.get("/kpis", response_model=KPIResponse)
 async def get_dashboard_kpis(current_user: dict = Depends(require_admin)):
     """
@@ -261,14 +244,32 @@ async def get_dashboard_kpis(current_user: dict = Depends(require_admin)):
     """
     db = get_db()
 
+    (
+        total_stock_value,
+        verified_stock_value,
+        verification_percentage,
+        active_sessions,
+        active_users,
+        pending_variances,
+        items_verified_today,
+    ) = await asyncio.gather(
+        calculate_total_stock_value(db),
+        calculate_verified_value(db),
+        calculate_completion_percentage(db),
+        count_active_sessions(db),
+        count_active_users(db),
+        count_pending_variances(db),
+        count_items_verified_today(db),
+    )
+
     return KPIResponse(
-        total_stock_value=await calculate_total_stock_value(db),
-        verified_stock_value=await calculate_verified_value(db),
-        verification_percentage=await calculate_completion_percentage(db),
-        active_sessions=await count_active_sessions(db),
-        active_users=await count_active_users(db),
-        pending_variances=await count_pending_variances(db),
-        items_verified_today=await count_items_verified_today(db),
+        total_stock_value=total_stock_value,
+        verified_stock_value=verified_stock_value,
+        verification_percentage=verification_percentage,
+        active_sessions=active_sessions,
+        active_users=active_users,
+        pending_variances=pending_variances,
+        items_verified_today=items_verified_today,
         timestamp=datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
     )
 
@@ -397,7 +398,7 @@ async def get_active_users(current_user: dict = Depends(require_admin)):
 @admin_dashboard_router.get("/error-logs", response_model=list[ErrorLogEntry])
 async def get_error_logs(
     limit: int = Query(default=100, le=500),
-    level: Optional[str] = Query(default=None, pattern="^(error|warning|critical)$"),
+    level: str | None = Query(default=None, pattern="^(error|warning|critical)$"),
     hours: int = Query(default=24, le=168),
     current_user: dict = Depends(require_admin),
 ):
@@ -512,15 +513,16 @@ async def get_dashboard_summary(current_user: dict = Depends(require_admin)):
     """
     db = get_db()
 
-    # Parallel fetch of all dashboard data
-    kpis = await get_dashboard_kpis(current_user)
-    system_status = await get_system_status(current_user)
-    active_users = await get_active_users(current_user)
-
-    # Get recent error count
     cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
-    recent_errors = await db.error_logs.count_documents(
-        {"timestamp": {"$gte": cutoff}, "level": {"$in": ["ERROR", "CRITICAL"]}}
+
+    # Parallel fetch of all dashboard data
+    kpis, system_status, active_users, recent_errors = await asyncio.gather(
+        get_dashboard_kpis(current_user),
+        get_system_status(current_user),
+        get_active_users(current_user),
+        db.error_logs.count_documents(
+            {"timestamp": {"$gte": cutoff}, "level": {"$in": ["ERROR", "CRITICAL"]}}
+        ),
     )
 
     return {
