@@ -3,12 +3,12 @@ Admin Dashboard API - Live KPIs, System Status, User Monitoring
 PC-based web dashboard endpoints for administrators
 """
 
+import asyncio
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 import psutil
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from backend.auth.dependencies import require_admin
 from backend.db.runtime import get_db
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ class ActiveUserInfo(BaseModel):
     username: str
     role: str
     last_activity: str
-    current_session: Optional[str]
+    current_session: str | None
     status: str
 
 
@@ -63,9 +64,9 @@ class ErrorLogEntry(BaseModel):
     timestamp: str
     level: str
     message: str
-    endpoint: Optional[str]
-    user_id: Optional[str]
-    details: dict[str, Optional[Any]]
+    endpoint: str | None
+    user_id: str | None
+    details: dict[str, Any | None]
 
 
 class PerformanceMetric(BaseModel):
@@ -261,14 +262,32 @@ async def get_dashboard_kpis(current_user: dict = Depends(require_admin)):
     """
     db = get_db()
 
+    (
+        total_stock_value,
+        verified_stock_value,
+        verification_percentage,
+        active_sessions,
+        active_users,
+        pending_variances,
+        items_verified_today,
+    ) = await asyncio.gather(
+        calculate_total_stock_value(db),
+        calculate_verified_value(db),
+        calculate_completion_percentage(db),
+        count_active_sessions(db),
+        count_active_users(db),
+        count_pending_variances(db),
+        count_items_verified_today(db),
+    )
+
     return KPIResponse(
-        total_stock_value=await calculate_total_stock_value(db),
-        verified_stock_value=await calculate_verified_value(db),
-        verification_percentage=await calculate_completion_percentage(db),
-        active_sessions=await count_active_sessions(db),
-        active_users=await count_active_users(db),
-        pending_variances=await count_pending_variances(db),
-        items_verified_today=await count_items_verified_today(db),
+        total_stock_value=total_stock_value,
+        verified_stock_value=verified_stock_value,
+        verification_percentage=verification_percentage,
+        active_sessions=active_sessions,
+        active_users=active_users,
+        pending_variances=pending_variances,
+        items_verified_today=items_verified_today,
         timestamp=datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
     )
 
@@ -397,7 +416,7 @@ async def get_active_users(current_user: dict = Depends(require_admin)):
 @admin_dashboard_router.get("/error-logs", response_model=list[ErrorLogEntry])
 async def get_error_logs(
     limit: int = Query(default=100, le=500),
-    level: Optional[str] = Query(default=None, pattern="^(error|warning|critical)$"),
+    level: str | None = Query(default=None, pattern="^(error|warning|critical)$"),
     hours: int = Query(default=24, le=168),
     current_user: dict = Depends(require_admin),
 ):
@@ -512,15 +531,16 @@ async def get_dashboard_summary(current_user: dict = Depends(require_admin)):
     """
     db = get_db()
 
-    # Parallel fetch of all dashboard data
-    kpis = await get_dashboard_kpis(current_user)
-    system_status = await get_system_status(current_user)
-    active_users = await get_active_users(current_user)
-
-    # Get recent error count
     cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
-    recent_errors = await db.error_logs.count_documents(
-        {"timestamp": {"$gte": cutoff}, "level": {"$in": ["ERROR", "CRITICAL"]}}
+
+    # Parallel fetch of all dashboard data
+    kpis, system_status, active_users, recent_errors = await asyncio.gather(
+        get_dashboard_kpis(current_user),
+        get_system_status(current_user),
+        get_active_users(current_user),
+        db.error_logs.count_documents(
+            {"timestamp": {"$gte": cutoff}, "level": {"$in": ["ERROR", "CRITICAL"]}}
+        ),
     )
 
     return {
