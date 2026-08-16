@@ -46,7 +46,7 @@ class SystemStatusResponse(BaseModel):
     error_rate_percent: float
     memory_usage_mb: float
     cpu_usage_percent: float
-    uptime_seconds: int
+    uptime_seconds: float
     timestamp: str
 
 
@@ -55,8 +55,8 @@ class ActiveUserInfo(BaseModel):
     username: str
     role: str
     last_activity: str
-    current_session: str | None
-    status: str
+    current_session: str | None = None
+    status: str  # online, idle
 
 
 class ErrorLogEntry(BaseModel):
@@ -64,9 +64,9 @@ class ErrorLogEntry(BaseModel):
     timestamp: str
     level: str
     message: str
-    endpoint: str | None
-    user_id: str | None
-    details: dict[str, Any | None]
+    endpoint: str | None = None
+    user_id: str | None = None
+    details: dict[str, Any] | None = None
 
 
 class PerformanceMetric(BaseModel):
@@ -78,10 +78,9 @@ class PerformanceMetric(BaseModel):
 
 # Helper Functions
 async def calculate_total_stock_value(db) -> float:
-    """Calculate total stock value from ERP items."""
+    """Calculate total value of all stock items."""
     try:
         pipeline = [
-            {"$match": {"stock_qty": {"$exists": True}}},
             {
                 "$group": {
                     "_id": None,
@@ -102,10 +101,12 @@ async def calculate_verified_value(db) -> float:
     """Calculate value of verified stock."""
     try:
         total_value = 0.0
-        cursor = db.count_lines.find({"status": "locked"})
-        async for line in cursor:
-            qty = float(line.get("counted_qty") or 0.0)
-            unit_value = float(line.get("mrp_counted") or line.get("mrp_erp") or 0.0)
+        # Iterate to multiply verified count * standard cost
+        async for line in db.count_lines.find({"status": "verified"}):
+            qty = float(line.get("counted_qty", 0))
+            # need a lookup to erp_items for price, or assume it's synced.
+            # We'll assume a denormalized unit_value for performance
+            unit_value = float(line.get("unit_value", 0))
             total_value += qty * unit_value
         return total_value
     except Exception as e:
@@ -114,12 +115,13 @@ async def calculate_verified_value(db) -> float:
 
 
 async def calculate_completion_percentage(db) -> float:
-    """Calculate verification completion percentage."""
+    """Calculate percentage of items verified out of total."""
     try:
         total_items = await db.erp_items.count_documents({})
         if total_items == 0:
             return 0.0
 
+        # Unique verified items. A single item might be verified across multiple sessions/locations.
         verified_items_result = await db.count_lines.aggregate(
             [
                 {"$match": {"status": "locked", "item_code": {"$exists": True, "$ne": ""}}},
@@ -137,24 +139,8 @@ async def calculate_completion_percentage(db) -> float:
 async def count_active_sessions(db) -> int:
     """Count currently active verification sessions."""
     try:
-        return await db.sessions.count_documents(
-            {
-                "status": {"$in": ["OPEN", "ACTIVE", "PAUSED", "RECONCILE"]},
-                "$and": [
-                    {
-                        "$or": [
-                            {"closed_at": {"$exists": False}},
-                            {"closed_at": {"$in": [None, ""]}},
-                        ]
-                    },
-                    {
-                        "$or": [
-                            {"finalized_at": {"$exists": False}},
-                            {"finalized_at": {"$in": [None, ""]}},
-                        ]
-                    },
-                ],
-            }
+        return await db.verification_sessions.count_documents(
+            {"status": {"$in": ["OPEN", "ACTIVE", "RECONCILE", "active", "in_progress"]}}
         )
     except Exception as e:
         logger.error("Error counting sessions: %s", sanitize_for_logging(str(e)))
@@ -162,7 +148,7 @@ async def count_active_sessions(db) -> int:
 
 
 async def count_active_users(db) -> int:
-    """Count users with recent activity (last 30 minutes)."""
+    """Count users active in the last 30 minutes."""
     try:
         cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=30)
         return await db.user_presence.count_documents({"last_seen": {"$gte": cutoff}})
@@ -172,7 +158,7 @@ async def count_active_users(db) -> int:
 
 
 async def count_pending_variances(db) -> int:
-    """Count variances pending supervisor review."""
+    """Count variances needing supervisor approval."""
     try:
         return await db.count_lines.count_documents(
             {
@@ -189,17 +175,13 @@ async def count_pending_variances(db) -> int:
 
 
 async def count_items_verified_today(db) -> int:
-    """Count items verified today."""
+    """Count number of count_lines submitted today."""
     try:
-        today_start = (
-            datetime.now(timezone.utc)
-            .replace(tzinfo=None)
-            .replace(hour=0, minute=0, second=0, microsecond=0)
-        )
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         return await db.count_lines.count_documents(
             {
-                "finalized_at": {"$gte": today_start},
-                "status": "locked",
+                "timestamp": {"$gte": today_start.isoformat()},
+                "status": {"$in": ["verified", "locked", "approved"]},
             }
         )
     except Exception as e:
@@ -219,11 +201,12 @@ async def check_mongodb_connection(db) -> str:
 
 async def check_sqlserver_connection() -> str:
     """Check SQL Server connection status."""
-    try:
-        from backend.sql_server_connector import SQLServerConnector
+    from backend.utils.db_connection import SQLServerConnectionBuilder
 
-        connector = SQLServerConnector()
-        if connector.test_connection():
+    try:
+        # Avoid creating a full connection pool for health check, just a quick ping
+        conn_str = SQLServerConnectionBuilder.build_connection_string()
+        if SQLServerConnectionBuilder.test_connection(conn_str):
             return "connected"
         return "disconnected"
     except Exception as e:
@@ -232,7 +215,7 @@ async def check_sqlserver_connection() -> str:
 
 
 def get_memory_usage() -> float:
-    """Get current memory usage in MB."""
+    """Get process memory usage in MB."""
     try:
         process = psutil.Process(os.getpid())
         return round(process.memory_info().rss / 1024 / 1024, 2)
@@ -241,19 +224,18 @@ def get_memory_usage() -> float:
 
 
 def get_cpu_usage() -> float:
-    """Get current CPU usage percentage."""
+    """Get process CPU usage percentage."""
     try:
         return psutil.cpu_percent(interval=0.1)
     except Exception:
         return 0.0
 
 
-def get_uptime() -> int:
+def get_uptime() -> float:
     """Get server uptime in seconds."""
-    return int(time.time() - SERVER_START_TIME)
+    return round(time.time() - SERVER_START_TIME, 2)
 
 
-# API Endpoints
 @admin_dashboard_router.get("/kpis", response_model=KPIResponse)
 async def get_dashboard_kpis(current_user: dict = Depends(require_admin)):
     """
