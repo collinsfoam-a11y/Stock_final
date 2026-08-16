@@ -23,6 +23,9 @@ import { colorWithAlpha, type ThemeTokens } from "../../theme/themeTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
+
 export const SyncStatusPill = () => {
   const uiTokens = useUiTokens();
   const styles = makeStyles(uiTokens);
@@ -44,6 +47,7 @@ export const SyncStatusPill = () => {
   const handleSync = async () => {
     if (!status?.isOnline || isSyncing) return;
 
+    void haptics.light();
     setIsSyncing(true);
     if (!reduceMotion) {
       rotation.value = withRepeat(
@@ -118,7 +122,7 @@ export const SyncStatusPill = () => {
     >
       <View style={[styles.pill, { backgroundColor: pillBg, borderColor: pillColor }]}>
         <Animated.View style={isSyncing && !reduceMotion ? animatedIconStyle : undefined}>
-          <Ionicons name={iconName} size={14} color={pillColor} />
+          <Ionicons name={iconName} size={14} color={pillColor} {...getDecorativeIconProps()} />
         </Animated.View>
         <Text style={[styles.label, { color: pillColor }]}>{label}</Text>
       </View>
