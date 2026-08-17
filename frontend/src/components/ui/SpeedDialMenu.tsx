@@ -10,9 +10,8 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Platform } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -25,6 +24,8 @@ import { zIndex as uiZIndex } from "@/theme/designTokens";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha, getTokenShadowStyle, type ThemeTokens } from "@/theme/themeTokens";
 import { semanticColors } from "@/theme/unified";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 
@@ -89,8 +90,9 @@ const SpeedDialActionItem: React.FC<SpeedDialActionItemProps> = ({
       ]}
       onPress={() => onPress(action)}
       activeOpacity={0.9}
-      accessibilityRole="button"
-      accessibilityLabel={action.label}
+      {...getAccessibleButtonProps({
+        label: action.label,
+      })}
     >
       <View
         style={[
@@ -133,7 +135,7 @@ const SpeedDialActionItem: React.FC<SpeedDialActionItemProps> = ({
             },
           ]}
         >
-          <Ionicons name={action.icon} size={22} color={actionColor} />
+          <Ionicons name={action.icon} size={22} color={actionColor} {...getDecorativeIconProps()} />
           {action.badge !== undefined && action.badge > 0 && (
             <View
               style={[
@@ -180,16 +182,12 @@ const SpeedDialMenu: React.FC<SpeedDialMenuProps> = ({
   }, [animationProgress, isOpen, mainRotation, tokens.motion.enabled, tokens.motion.fast]);
 
   const toggleMenu = () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    void haptics.medium();
     setIsOpen(!isOpen);
   };
 
   const handleActionPress = (action: SpeedDialAction) => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    void haptics.light();
     action.onPress();
     setIsOpen(false);
   };
@@ -248,7 +246,8 @@ const SpeedDialMenu: React.FC<SpeedDialMenuProps> = ({
             style={StyleSheet.absoluteFill}
             onPress={toggleMenu}
             activeOpacity={1}
-            accessibilityLabel="Close menu" />
+            {...getAccessibleButtonProps({ label: "Close menu" })}
+          />
         </Animated.View>
       ) : null}
       <View style={[styles.container, getPositionStyles()]}>
@@ -275,11 +274,13 @@ const SpeedDialMenu: React.FC<SpeedDialMenuProps> = ({
           ]}
           onPress={toggleMenu}
           activeOpacity={0.9}
-          accessibilityRole="button"
-          accessibilityLabel={isOpen ? "Close quick actions" : "Open quick actions"}
+          {...getAccessibleButtonProps({
+            label: isOpen ? "Close quick actions" : "Open quick actions",
+            expanded: isOpen,
+          })}
         >
           <Animated.View style={mainRotationStyle}>
-            <Ionicons name={mainIcon} size={28} color={semanticColors.text.inverse} />
+            <Ionicons name={mainIcon} size={28} color={semanticColors.text.inverse} {...getDecorativeIconProps()} />
           </Animated.View>
         </AppTouchable>
       </View>
