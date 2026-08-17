@@ -60,7 +60,7 @@ describe("SpeedDialMenu", () => {
     fireEvent.press(actionButton);
 
     expect(haptics.light).toHaveBeenCalledTimes(1);
-    expect(sampleActions[0].onPress).toHaveBeenCalledTimes(1);
+    expect(sampleActions[0]!.onPress).toHaveBeenCalledTimes(1);
     // Menu should be closed after pressing an action
     expect(getByLabelText("Open quick actions")).toBeTruthy();
   });
