@@ -11,3 +11,6 @@
 ## 2024-07-11 - Fix N+1 queries in loop validation logic
 **Learning:** Checking idempotency constraints or performing validations via database lookups *inside* a loop that processes batched records is a significant performance bottleneck due to sequential N+1 queries.
 **Action:** When a batch process iterates over multiple records, always extract necessary constraints (e.g., `client_record_id`) into a list first. Then perform a single bulk query (e.g., `db.collection.find({"field": {"$in": constraints}}).to_list(length=None)`) and build an in-memory dictionary or set for $O(1)$ lookups during the main processing loop.
+## 2026-08-17 - Optimize Database Counts
+**Learning:** In-memory document counting using sequential loops and `.to_list()` or `.find()` limits creates a severe application memory bottleneck and incorrect aggregation limits.
+**Action:** Replace Python loop iterations that perform simple counting bounds checking with native `.count_documents()` queries using MongoDB operators like `$gte` and `$lte`, ensuring that missing/null values are correctly excluded if previously required by the python loop.

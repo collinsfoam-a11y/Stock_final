@@ -302,12 +302,26 @@ class SystemReportService:
         start_dt: Optional[datetime],
         end_dt: Optional[datetime],
     ) -> int:
-        count = 0
-        for row in await self._fetch_collection_documents(collection_name, limit=5000):
-            timestamp = self._extract_timestamp(row, timestamp_field)
-            if self._is_in_range(timestamp, start_dt, end_dt):
-                count += 1
-        return count
+        query = {}
+        if start_dt or end_dt:
+            query[timestamp_field] = {}
+            if start_dt:
+                query[timestamp_field]['$gte'] = start_dt
+            if end_dt:
+                query[timestamp_field]['$lte'] = end_dt
+
+        # Ensure we only count documents that have the timestamp field, as the previous python iteration ignored rows without a parsed timestamp in range
+        if not query.get(timestamp_field):
+            query[timestamp_field] = {'$exists': True, '$ne': None}
+
+        try:
+            return await self.db[collection_name].count_documents(query)
+        except Exception as exc:
+            logger.warning(
+                "Failed to count rows in range",
+                extra={"collection": collection_name, "error": str(exc)},
+            )
+            return 0
 
     def _aggregate_api_metrics(
         self,
