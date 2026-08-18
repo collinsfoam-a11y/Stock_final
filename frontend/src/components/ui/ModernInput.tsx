@@ -175,8 +175,8 @@ export const ModernInput: React.FC<ModernInputProps> = ({
         style={[getInputContainerStyles(), style]}
         onPress={() => inputRef.current?.focus()}
       >
-        {icon &&
-          (onIconPress ? (
+        {icon && (
+          onIconPress ? (
             <AppTouchable
               onPress={() => {
                 void haptics.light();
@@ -185,7 +185,8 @@ export const ModernInput: React.FC<ModernInputProps> = ({
               style={styles.iconContainer}
               {...getAccessibleButtonProps({
                 label: `${label || "Input"} action`,
-              })}>
+              })}
+            >
               <Ionicons
                 {...getDecorativeIconProps()}
                 name={icon}
@@ -202,7 +203,8 @@ export const ModernInput: React.FC<ModernInputProps> = ({
                 color={error ? uiTokens.colors.error : uiTokens.colors.textSecondary}
               />
             </View>
-          ))}
+          )
+        )}
 
         <TextInput
           ref={inputRef}
@@ -259,8 +261,8 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           </AppTouchable>
         )}
 
-        {rightIcon && !showPasswordToggle && !showClear &&
-          (onRightIconPress ? (
+        {rightIcon && !showPasswordToggle && !showClear && (
+          onRightIconPress ? (
             <AppTouchable
               onPress={() => {
                 void haptics.light();
@@ -269,14 +271,16 @@ export const ModernInput: React.FC<ModernInputProps> = ({
               style={styles.iconContainer}
               {...getAccessibleButtonProps({
                 label: `${label || "Input"} right action`,
-              })}>
+              })}
+            >
               <Ionicons {...getDecorativeIconProps()} name={rightIcon} size={20} color={uiTokens.colors.textSecondary} />
             </AppTouchable>
           ) : (
             <View style={styles.iconContainer}>
               <Ionicons {...getDecorativeIconProps()} name={rightIcon} size={20} color={uiTokens.colors.textSecondary} />
             </View>
-          ))}
+          )
+        )}
       </Pressable>
       {Boolean(error) && <Text style={styles.errorText}>{error}</Text>}
       {!error && Boolean(helperText) && <Text style={styles.helperText}>{helperText}</Text>}
