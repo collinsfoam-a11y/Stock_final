@@ -106,4 +106,37 @@ describe("ModernInput", () => {
     fireEvent.press(getByLabelText("Show password"));
     expect(haptics.light).toHaveBeenCalled();
   });
+
+  it("renders non-interactive icon without button accessibility role", () => {
+    const { queryByRole, queryByLabelText } = render(
+      <ModernInput
+        label="Search"
+        value="test"
+        onChangeText={() => {}}
+        icon="search"
+      />
+    );
+
+    expect(queryByRole("button")).toBeNull();
+    expect(queryByLabelText("Search action")).toBeNull();
+  });
+
+  it("renders interactive icon as accessible button and handles press", () => {
+    const onIconPress = jest.fn();
+    const { getByLabelText } = render(
+      <ModernInput
+        label="Search"
+        value="test"
+        onChangeText={() => {}}
+        icon="search"
+        onIconPress={onIconPress}
+      />
+    );
+
+    const iconButton = getByLabelText("Search action");
+    expect(iconButton).toBeTruthy();
+    fireEvent.press(iconButton);
+    expect(onIconPress).toHaveBeenCalledTimes(1);
+    expect(haptics.light).toHaveBeenCalled();
+  });
 });
