@@ -176,25 +176,34 @@ export const ModernInput: React.FC<ModernInputProps> = ({
         onPress={() => inputRef.current?.focus()}
       >
         {icon && (
-          <AppTouchable
-            onPress={() => {
-              void haptics.light();
-              onIconPress?.();
-            }}
-            style={styles.iconContainer}
-            disabled={!onIconPress}
-            {...(onIconPress
-              ? getAccessibleButtonProps({
-                  label: `${label || "Input"} action`,
-                })
-              : {})}>
-            <Ionicons
-              {...getDecorativeIconProps()}
-              name={icon}
-              size={20}
-              color={error ? uiTokens.colors.error : uiTokens.colors.textSecondary}
-            />
-          </AppTouchable>
+          onIconPress ? (
+            <AppTouchable
+              onPress={() => {
+                void haptics.light();
+                onIconPress();
+              }}
+              style={styles.iconContainer}
+              {...getAccessibleButtonProps({
+                label: `${label || "Input"} action`,
+              })}
+            >
+              <Ionicons
+                {...getDecorativeIconProps()}
+                name={icon}
+                size={20}
+                color={error ? uiTokens.colors.error : uiTokens.colors.textSecondary}
+              />
+            </AppTouchable>
+          ) : (
+            <View style={styles.iconContainer}>
+              <Ionicons
+                {...getDecorativeIconProps()}
+                name={icon}
+                size={20}
+                color={error ? uiTokens.colors.error : uiTokens.colors.textSecondary}
+              />
+            </View>
+          )
         )}
 
         <TextInput
@@ -253,20 +262,24 @@ export const ModernInput: React.FC<ModernInputProps> = ({
         )}
 
         {rightIcon && !showPasswordToggle && !showClear && (
-          <AppTouchable
-            onPress={() => {
-              void haptics.light();
-              onRightIconPress?.();
-            }}
-            style={styles.iconContainer}
-            disabled={!onRightIconPress}
-            {...(onRightIconPress
-              ? getAccessibleButtonProps({
-                  label: `${label || "Input"} right action`,
-                })
-              : {})}>
-            <Ionicons {...getDecorativeIconProps()} name={rightIcon} size={20} color={uiTokens.colors.textSecondary} />
-          </AppTouchable>
+          onRightIconPress ? (
+            <AppTouchable
+              onPress={() => {
+                void haptics.light();
+                onRightIconPress();
+              }}
+              style={styles.iconContainer}
+              {...getAccessibleButtonProps({
+                label: `${label || "Input"} right action`,
+              })}
+            >
+              <Ionicons {...getDecorativeIconProps()} name={rightIcon} size={20} color={uiTokens.colors.textSecondary} />
+            </AppTouchable>
+          ) : (
+            <View style={styles.iconContainer}>
+              <Ionicons {...getDecorativeIconProps()} name={rightIcon} size={20} color={uiTokens.colors.textSecondary} />
+            </View>
+          )
         )}
       </Pressable>
       {Boolean(error) && <Text style={styles.errorText}>{error}</Text>}
