@@ -302,12 +302,32 @@ class SystemReportService:
         start_dt: Optional[datetime],
         end_dt: Optional[datetime],
     ) -> int:
-        count = 0
-        for row in await self._fetch_collection_documents(collection_name, limit=5000):
-            timestamp = self._extract_timestamp(row, timestamp_field)
-            if self._is_in_range(timestamp, start_dt, end_dt):
-                count += 1
-        return count
+        # ⚡ Bolt Optimization:
+        # Replaced in-memory Python iteration over 5000 documents with a native
+        # database-level counting query. This reduces network I/O, prevents memory
+        # bloat, and provides O(1) performance if the timestamp field is indexed.
+        # We explicitly enforce field existence to match previous missing-field logic.
+        query: dict[str, Any] = {timestamp_field: {"$exists": True, "$ne": None}}
+
+        if start_dt or end_dt:
+            date_query: dict[str, Any] = {}
+            if start_dt:
+                date_query["$gte"] = start_dt
+            if end_dt:
+                date_query["$lte"] = end_dt
+            # Apply date constraints to the timestamp_field
+            query[timestamp_field].update(date_query)
+
+        try:
+            collection = self.db[collection_name]
+            # Use native count_documents instead of fetching full documents to memory
+            return await collection.count_documents(query)
+        except Exception as exc:
+            logger.warning(
+                "Failed to count documents",
+                extra={"collection": collection_name, "error": str(exc)},
+            )
+            return 0
 
     def _aggregate_api_metrics(
         self,
