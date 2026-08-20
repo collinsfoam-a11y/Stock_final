@@ -52,7 +52,7 @@ jobs:
       - name: Generate route snapshot and run tests
         run: |
           # Use UPDATE_SNAPSHOTS=1 if you need to baseline a new route locally
-          python -m pytest backend/tests/test_route_snapshot.py
+          mkdir -p frontend/dist && touch frontend/dist/index.html && python -m pytest backend/tests/test_route_snapshot.py
 
       - name: Generate OpenAPI Schema
         env:
