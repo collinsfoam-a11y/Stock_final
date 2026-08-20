@@ -302,12 +302,26 @@ class SystemReportService:
         start_dt: Optional[datetime],
         end_dt: Optional[datetime],
     ) -> int:
-        count = 0
-        for row in await self._fetch_collection_documents(collection_name, limit=5000):
-            timestamp = self._extract_timestamp(row, timestamp_field)
-            if self._is_in_range(timestamp, start_dt, end_dt):
-                count += 1
-        return count
+        try:
+            collection = self.db[collection_name]
+            query = {timestamp_field: {"$exists": True, "$ne": None}}
+
+            date_filter = {}
+            if start_dt:
+                date_filter["$gte"] = start_dt
+            if end_dt:
+                date_filter["$lte"] = end_dt
+
+            if date_filter:
+                query[timestamp_field].update(date_filter)
+
+            return await collection.count_documents(query)
+        except Exception as exc:
+            logger.warning(
+                "Failed to count documents in collection",
+                extra={"collection": collection_name, "error": str(exc)},
+            )
+            return 0
 
     def _aggregate_api_metrics(
         self,
