@@ -5,7 +5,7 @@
  */
 
 import React, { useEffect, useRef } from "react";
-import { View, StyleSheet, Animated, ViewStyle } from "react-native";
+import { View, StyleSheet, Animated, Platform, ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { legacyColors as modernColors } from "../../theme/unified";
 
@@ -36,7 +36,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
         Animated.timing(translateX, {
           toValue: 1,
           duration: 1200,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }),
       );
       shimmerAnimation.start();
@@ -48,12 +48,12 @@ export const Skeleton: React.FC<SkeletonProps> = ({
           Animated.timing(opacity, {
             toValue: 0.7,
             duration: 800,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== "web",
           }),
           Animated.timing(opacity, {
             toValue: 0.3,
             duration: 800,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== "web",
           }),
         ]),
       );

@@ -22,6 +22,8 @@ case "$MONGO_URL" in
     printf 'ERROR: refusing local MongoDB target; staging preflight requires a staging host\n' >&2
     exit 2
     ;;
+  *)
+    ;;
 esac
 
 if ! command -v mongosh >/dev/null 2>&1; then

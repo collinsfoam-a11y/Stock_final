@@ -73,14 +73,14 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
       Animated.parallel([
         Animated.spring(animatedScale, {
           toValue: scaleValue,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
           speed: 50,
           bounciness: 4,
         }),
         Animated.timing(animatedOpacity, {
           toValue: 0.9,
           duration: pressInDuration,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }),
       ]).start();
 
@@ -120,14 +120,14 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
       Animated.parallel([
         Animated.spring(animatedScale, {
           toValue: 1,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
           speed: 20,
           bounciness: 8,
         }),
         Animated.timing(animatedOpacity, {
           toValue: 1,
           duration: pressOutDuration,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }),
       ]).start();
 

@@ -122,7 +122,7 @@ def validate_sql(values: dict[str, str], timeout: int) -> bool:
     if not drivers:
         print("SQL_DRIVER=UNAVAILABLE")
         return False
-    driver = sorted(drivers, reverse=True)[0]
+    driver = max(drivers)
     connection_string = (
         f"DRIVER={{{driver}}};SERVER={host},{port};DATABASE={database};"
         f"UID={user};PWD={password};Encrypt=yes;TrustServerCertificate=yes;"
@@ -157,13 +157,22 @@ def validate_sql(values: dict[str, str], timeout: int) -> bool:
         return False
 
 
+def resolve_env_file(path: Path) -> Path:
+    """Resolve an env file without allowing traversal outside the worktree."""
+    worktree = Path.cwd().resolve()
+    candidate = path.expanduser()
+    resolved = (worktree / candidate).resolve() if not candidate.is_absolute() else candidate.resolve()
+    if resolved != worktree and worktree not in resolved.parents:
+        raise ValueError("--env-file must be inside the current worktree")
+    return resolved
+
 def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env-file", type=Path, default=Path(".env.prod"))
     parser.add_argument("--sql-timeout", type=int, default=8)
     args = parser.parse_args(argv)
 
-    values = load_env_file(args.env_file)
+    values = load_env_file(resolve_env_file(args.env_file))
     for key in REQUIRED_KEYS:
         if key not in values and os.getenv(key):
             values[key] = os.environ[key]  # environment overrides file for secret managers
