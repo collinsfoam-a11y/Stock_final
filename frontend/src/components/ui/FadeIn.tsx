@@ -5,7 +5,7 @@
  */
 
 import React, { useEffect, useRef } from "react";
-import { Animated, ViewStyle, StyleProp } from "react-native";
+import { Animated, Platform, ViewStyle, StyleProp } from "react-native";
 
 interface FadeInProps {
   children: React.ReactNode;
@@ -38,7 +38,7 @@ export const FadeIn: React.FC<FadeInProps> = ({
         toValue: 1,
         duration,
         delay,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== "web",
       }),
     ];
 
@@ -48,7 +48,7 @@ export const FadeIn: React.FC<FadeInProps> = ({
           toValue: 0,
           duration,
           delay,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         })
       );
     }
@@ -59,7 +59,7 @@ export const FadeIn: React.FC<FadeInProps> = ({
           toValue: 0,
           duration,
           delay,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         })
       );
     }

@@ -109,7 +109,7 @@ export default function RootLayout() {
       Animated.timing(bootOpacity, {
         toValue: 0,
         duration: SPLASH_FADE_MS,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== "web",
       }).start(({ finished }) => {
         if (finished && !cancelled) {
           setShowBootOverlay(false);
