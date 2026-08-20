@@ -243,6 +243,13 @@ async function installMockApi(page: Page, role: Role) {
 }
 
 function shouldIgnoreConsoleMessage(message: string): boolean {
+  if (
+    message.includes("Animated: `useNativeDriver` is not supported") ||
+    message.includes("useNativeDriver")
+  ) {
+    return true;
+  }
+
   if (!USE_MOCK_AUTH) {
     return false;
   }
