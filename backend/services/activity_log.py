@@ -3,9 +3,10 @@ Activity Log Service
 Tracks and stores user activities and application events for audit purposes
 """
 
+import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
@@ -14,13 +15,13 @@ logger = logging.getLogger(__name__)
 
 
 def _build_activity_filter(
-    user: Optional[str],
-    role: Optional[str],
-    action: Optional[str],
-    entity_type: Optional[str],
-    status: Optional[str],
-    start_date: Optional[datetime],
-    end_date: Optional[datetime],
+    user: str | None,
+    role: str | None,
+    action: str | None,
+    entity_type: str | None,
+    status: str | None,
+    start_date: datetime | None,
+    end_date: datetime | None,
 ) -> dict[str, Any]:
     """Build MongoDB filter query for activity logs."""
     filter_query: dict[str, Any] = {}
@@ -49,18 +50,18 @@ def _build_activity_filter(
 class ActivityLog(BaseModel):
     """Activity log entry model"""
 
-    id: Optional[str] = None
+    id: str | None = None
     timestamp: datetime
     user: str
     role: str
     action: str  # e.g., "login", "scan_item", "create_session", "approve_count"
-    entity_type: Optional[str] = None  # e.g., "item", "session", "count_line"
-    entity_id: Optional[str] = None
+    entity_type: str | None = None  # e.g., "item", "session", "count_line"
+    entity_id: str | None = None
     details: dict[str, Any] = {}
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
+    ip_address: str | None = None
+    user_agent: str | None = None
     status: str = "success"  # "success", "error", "warning"
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 class ActivityLogService:
@@ -97,13 +98,13 @@ class ActivityLogService:
         user: str,
         role: str,
         action: str,
-        entity_type: Optional[str] = None,
-        entity_id: Optional[str] = None,
-        details: dict[str, Optional[Any]] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        entity_type: str | None = None,
+        entity_id: str | None = None,
+        details: dict[str, Any | None] | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
         status: str = "success",
-        error_message: Optional[str] = None,
+        error_message: str | None = None,
     ) -> str:
         """
         Log a user activity
@@ -144,19 +145,19 @@ class ActivityLogService:
             logger.debug(f"Activity logged: {user} - {action} - {status}")
             return str(result.inserted_id)
         except Exception as e:
-            logger.error(f"Failed to log activity: {str(e)}")
+            logger.error(f"Failed to log activity: {e!s}")
             # Don't raise - logging failures shouldn't break the app
             return ""
 
     async def get_activities(
         self,
-        user: Optional[str] = None,
-        role: Optional[str] = None,
-        action: Optional[str] = None,
-        entity_type: Optional[str] = None,
-        status: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        user: str | None = None,
+        role: str | None = None,
+        action: str | None = None,
+        entity_type: str | None = None,
+        status: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         page: int = 1,
         page_size: int = 50,
     ) -> dict[str, Any]:
@@ -206,7 +207,7 @@ class ActivityLogService:
                 },
             }
         except Exception as e:
-            logger.error(f"Failed to retrieve activities: {str(e)}")
+            logger.error(f"Failed to retrieve activities: {e!s}")
             raise
 
     async def get_user_activities(self, username: str, limit: int = 100) -> list[dict[str, Any]]:
@@ -221,11 +222,11 @@ class ActivityLogService:
 
             return activities
         except Exception as e:
-            logger.error(f"Failed to retrieve user activities: {str(e)}")
+            logger.error(f"Failed to retrieve user activities: {e!s}")
             return []
 
     async def get_statistics(
-        self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None
+        self, start_date: datetime | None = None, end_date: datetime | None = None
     ) -> dict[str, Any]:
         """Get activity statistics"""
         try:
@@ -237,18 +238,6 @@ class ActivityLogService:
                 if end_date:
                     filter_query["timestamp"]["$lte"] = end_date
 
-            # Total activities
-            total = await self.collection.count_documents(filter_query)
-
-            # By status
-            success_count = await self.collection.count_documents(
-                {**filter_query, "status": "success"}
-            )
-            error_count = await self.collection.count_documents({**filter_query, "status": "error"})
-            warning_count = await self.collection.count_documents(
-                {**filter_query, "status": "warning"}
-            )
-
             # By action (top 10)
             top_actions_pipeline: list[dict[str, Any]] = [
                 {"$match": filter_query} if filter_query else {"$match": {}},
@@ -256,7 +245,6 @@ class ActivityLogService:
                 {"$sort": {"count": -1}},
                 {"$limit": 10},
             ]
-            top_actions = await self.collection.aggregate(top_actions_pipeline).to_list(10)
 
             # By user (top 10)
             top_users_pipeline: list[dict[str, Any]] = [
@@ -265,7 +253,23 @@ class ActivityLogService:
                 {"$sort": {"count": -1}},
                 {"$limit": 10},
             ]
-            top_users = await self.collection.aggregate(top_users_pipeline).to_list(10)
+
+            # Execute independent database queries concurrently
+            (
+                total,
+                success_count,
+                error_count,
+                warning_count,
+                top_actions,
+                top_users,
+            ) = await asyncio.gather(
+                self.collection.count_documents(filter_query),
+                self.collection.count_documents({**filter_query, "status": "success"}),
+                self.collection.count_documents({**filter_query, "status": "error"}),
+                self.collection.count_documents({**filter_query, "status": "warning"}),
+                self.collection.aggregate(top_actions_pipeline).to_list(10),
+                self.collection.aggregate(top_users_pipeline).to_list(10),
+            )
 
             return {
                 "total": total,
@@ -280,7 +284,7 @@ class ActivityLogService:
                 "top_users": [{"user": item["_id"], "count": item["count"]} for item in top_users],
             }
         except Exception as e:
-            logger.error(f"Failed to get statistics: {str(e)}")
+            logger.error(f"Failed to get statistics: {e!s}")
             return {
                 "total": 0,
                 "by_status": {"success": 0, "error": 0, "warning": 0},
