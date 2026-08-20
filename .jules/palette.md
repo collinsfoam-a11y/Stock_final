@@ -41,3 +41,6 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+## 2024-05-14 - Improve Search Clear Button UX
+**Learning:** Adding explicit haptic feedback (`haptics.light()`) and semantic accessibility props (`getAccessibleButtonProps`) to clear buttons in forms significantly improves the micro-interaction, ensuring both tactile satisfaction and screen reader clarity. Decorative icons must also be explicitly hidden using `getDecorativeIconProps()`.
+**Action:** Always include both haptic feedback and these standardized accessibility props when adding or refactoring simple icon-only interaction points like clear buttons in forms.
