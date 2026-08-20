@@ -55,6 +55,12 @@ jobs:
           python -m pytest backend/tests/test_route_snapshot.py
 
       - name: Generate OpenAPI Schema
+        env:
+          # Schema generation imports application settings but does not perform
+          # authentication or database operations. These are CI-only placeholders,
+          # not production credentials.
+          JWT_SECRET: ci-openapi-schema-placeholder-not-a-secret-32chars
+          JWT_REFRESH_SECRET: ci-openapi-refresh-placeholder-not-a-secret-32chars
         run: |
           python scripts/generate_openapi.py
 
