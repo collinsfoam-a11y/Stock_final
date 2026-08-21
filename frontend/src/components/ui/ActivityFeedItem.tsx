@@ -12,6 +12,7 @@ import { AnimatedPressable } from "./AnimatedPressable";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 import { getOperationalMotionDuration } from "@/utils/motion";
 
 export type ActivityType = "scan" | "session" | "variance" | "user" | "system";
@@ -118,7 +119,7 @@ export const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
             },
           ]}
         >
-          <Ionicons name={config.icon} size={20} color={typeColor} />
+          <Ionicons name={config.icon} size={20} color={typeColor} {...getDecorativeIconProps()} />
         </View>
 
         <View style={styles.textContent}>
@@ -168,7 +169,12 @@ export const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
         </View>
 
         {onPress && (
-          <Ionicons name="chevron-forward" size={20} color={uiTokens.colors.textMuted} />
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={uiTokens.colors.textMuted}
+            {...getDecorativeIconProps()}
+          />
         )}
       </View>
 
