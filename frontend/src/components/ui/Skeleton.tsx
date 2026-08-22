@@ -16,6 +16,8 @@ interface SkeletonProps {
   style?: ViewStyle;
   variant?: "text" | "circular" | "rectangular";
   shimmer?: boolean;
+  accessible?: boolean;
+  accessibilityLabel?: string;
 }
 
 export const Skeleton: React.FC<SkeletonProps> = ({
@@ -25,6 +27,8 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   style,
   variant = "rectangular",
   shimmer = true,
+  accessible = true,
+  accessibilityLabel = "Loading...",
 }) => {
   const translateX = useRef(new Animated.Value(-1)).current;
   const opacity = useRef(new Animated.Value(0.3)).current;
@@ -88,6 +92,9 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   if (shimmer) {
     return (
       <View
+        accessible={accessible}
+        accessibilityRole={accessible ? "progressbar" : undefined}
+        accessibilityLabel={accessible ? accessibilityLabel : undefined}
         style={[
           styles.skeleton,
           {
@@ -127,6 +134,9 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 
   return (
     <Animated.View
+      accessible={accessible}
+      accessibilityRole={accessible ? "progressbar" : undefined}
+      accessibilityLabel={accessible ? accessibilityLabel : undefined}
       style={[
         styles.skeleton,
         {
@@ -154,7 +164,11 @@ export const SkeletonText: React.FC<SkeletonTextProps> = ({
   lastLineWidth = "60%",
 }) => {
   return (
-    <View>
+    <View
+      accessible={true}
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading content..."
+    >
       {Array.from({ length: lines }).map((_, index) => (
         <Skeleton
           key={index}
@@ -162,6 +176,7 @@ export const SkeletonText: React.FC<SkeletonTextProps> = ({
           width={index === lines - 1 ? lastLineWidth : "100%"}
           style={{ marginBottom: 8 }}
           variant="text"
+          accessible={false}
         />
       ))}
     </View>
@@ -171,12 +186,17 @@ export const SkeletonText: React.FC<SkeletonTextProps> = ({
 // Card skeleton for common card loading states
 export const SkeletonCard: React.FC<{ style?: ViewStyle }> = ({ style }) => {
   return (
-    <View style={[styles.card, style]}>
+    <View
+      accessible={true}
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading card..."
+      style={[styles.card, style]}
+    >
       <View style={styles.cardHeader}>
-        <Skeleton width={48} height={48} variant="circular" />
+        <Skeleton width={48} height={48} variant="circular" accessible={false} />
         <View style={styles.cardHeaderText}>
-          <Skeleton width="70%" height={16} style={{ marginBottom: 8 }} />
-          <Skeleton width="40%" height={12} />
+          <Skeleton width="70%" height={16} style={{ marginBottom: 8 }} accessible={false} />
+          <Skeleton width="40%" height={12} accessible={false} />
         </View>
       </View>
       <SkeletonText lines={2} lineHeight={14} lastLineWidth="80%" />
@@ -189,13 +209,18 @@ export const SkeletonListItem: React.FC<{ style?: ViewStyle }> = ({
   style,
 }) => {
   return (
-    <View style={[styles.listItem, style]}>
-      <Skeleton width={40} height={40} borderRadius={8} />
+    <View
+      accessible={true}
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading item..."
+      style={[styles.listItem, style]}
+    >
+      <Skeleton width={40} height={40} borderRadius={8} accessible={false} />
       <View style={styles.listItemContent}>
-        <Skeleton width="60%" height={14} style={{ marginBottom: 6 }} />
-        <Skeleton width="40%" height={12} />
+        <Skeleton width="60%" height={14} style={{ marginBottom: 6 }} accessible={false} />
+        <Skeleton width="40%" height={12} accessible={false} />
       </View>
-      <Skeleton width={60} height={24} borderRadius={12} />
+      <Skeleton width={60} height={24} borderRadius={12} accessible={false} />
     </View>
   );
 };
