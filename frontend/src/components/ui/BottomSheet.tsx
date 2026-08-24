@@ -11,6 +11,8 @@ import { flags } from "../../constants/flags";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+
 interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -58,6 +60,11 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     ],
   }));
 
+  const handleClose = () => {
+    void haptics.light();
+    onClose();
+  };
+
   if (!render) return null;
 
   return (
@@ -67,14 +74,16 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       animationType={
         !flags.enableAnimations ? (Platform.OS === "ios" ? "slide" : "fade") : undefined
       }
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <Animated.View style={[styles.backdrop, backdropStyle]}>
         <AppTouchable
           style={{ flex: 1 }}
           activeOpacity={1}
-          onPress={onClose}
-          accessibilityLabel="Close" />
+          onPress={handleClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close bottom sheet"
+        />
       </Animated.View>
       <Animated.View style={[styles.sheet, { height }, sheetStyle]}>{children}</Animated.View>
     </Modal>
