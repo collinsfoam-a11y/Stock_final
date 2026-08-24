@@ -5,7 +5,7 @@ Allows supervisors to dynamically add custom fields to items with database mappi
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from bson import ObjectId
 
@@ -28,16 +28,16 @@ class DynamicFieldsService:
         field_name: str,
         field_type: str,
         display_label: str,
-        db_mapping: Optional[str] = None,
-        options: Optional[list[str]] = None,
-        validation_rules: dict[str, Optional[Any]] = None,
-        default_value: Optional[Any] = None,
+        db_mapping: str | None = None,
+        options: list[str] | None = None,
+        validation_rules: dict[str, Any | None] | None = None,
+        default_value: Any | None = None,
         required: bool = False,
         visible: bool = True,
         searchable: bool = False,
         in_reports: bool = True,
         order: int = 0,
-        created_by: str = None,
+        created_by: str | None = None,
     ) -> dict[str, Any]:
         """
         Create a new dynamic field definition
@@ -114,7 +114,7 @@ class DynamicFieldsService:
             return field_def
 
         except Exception as e:
-            logger.error(f"Error creating field definition: {str(e)}")
+            logger.error(f"Error creating field definition: {e!s}")
             raise
 
     async def get_field_definitions(
@@ -134,11 +134,11 @@ class DynamicFieldsService:
             return fields
 
         except Exception as e:
-            logger.error(f"Error getting field definitions: {str(e)}")
+            logger.error(f"Error getting field definitions: {e!s}")
             raise
 
     async def update_field_definition(
-        self, field_id: str, updates: dict[str, Any], updated_by: str = None
+        self, field_id: str, updates: dict[str, Any], updated_by: str | None = None
     ) -> dict[str, Any]:
         """Update a field definition"""
         try:
@@ -157,7 +157,7 @@ class DynamicFieldsService:
             return result
 
         except Exception as e:
-            logger.error(f"Error updating field definition: {str(e)}")
+            logger.error(f"Error updating field definition: {e!s}")
             raise
 
     async def delete_field_definition(self, field_id: str) -> bool:
@@ -176,11 +176,11 @@ class DynamicFieldsService:
             return result.modified_count > 0
 
         except Exception as e:
-            logger.error(f"Error deleting field definition: {str(e)}")
+            logger.error(f"Error deleting field definition: {e!s}")
             raise
 
     async def set_field_value(
-        self, item_code: str, field_name: str, value: Any, set_by: str = None
+        self, item_code: str, field_name: str, value: Any, set_by: str | None = None
     ) -> dict[str, Any]:
         """
         Set value for a dynamic field on an item
@@ -254,7 +254,7 @@ class DynamicFieldsService:
                 return field_value
 
         except Exception as e:
-            logger.error(f"Error setting field value: {str(e)}")
+            logger.error(f"Error setting field value: {e!s}")
             raise
 
     async def get_item_field_values(self, item_code: str) -> dict[str, Any]:
@@ -276,12 +276,12 @@ class DynamicFieldsService:
             return result
 
         except Exception as e:
-            logger.error(f"Error getting item field values: {str(e)}")
+            logger.error(f"Error getting item field values: {e!s}")
             raise
 
     async def get_items_with_fields(
         self,
-        field_filters: dict[str, Optional[Any]] = None,
+        field_filters: dict[str, Any | None] | None = None,
         limit: int = 100,
         skip: int = 0,
     ) -> list[dict[str, Any]]:
@@ -332,22 +332,30 @@ class DynamicFieldsService:
             cursor = self.field_values.aggregate(pipeline)
             results = await cursor.to_list(length=None)
 
-            # Get item details from main items collection
-            items = []
-            for result in results:
-                item_code = result["_id"]
-                item = await self.db.items.find_one({"item_code": item_code})
+            # Pre-fetch items from main items collection to avoid N+1 queries
+            item_codes = [result["_id"] for result in results]
 
-                if item:
-                    item["dynamic_fields"] = {
-                        field["field_name"]: field["value"] for field in result["fields"]
-                    }
-                    items.append(item)
+            items = []
+            if item_codes:
+                items_cursor = self.db.items.find({"item_code": {"$in": item_codes}})
+                db_items = await items_cursor.to_list(length=None)
+                items_cache = {item["item_code"]: item for item in db_items}
+
+                # Map dynamic fields to items
+                for result in results:
+                    item_code = result["_id"]
+                    item = items_cache.get(item_code)
+
+                    if item:
+                        item["dynamic_fields"] = {
+                            field["field_name"]: field["value"] for field in result["fields"]
+                        }
+                        items.append(item)
 
             return items
 
         except Exception as e:
-            logger.error(f"Error getting items with fields: {str(e)}")
+            logger.error(f"Error getting items with fields: {e!s}")
             raise
 
     def _validate_number(self, value: Any, validation_rules: dict) -> float:
@@ -409,7 +417,7 @@ class DynamicFieldsService:
             await self.db.items.update_one({"item_code": item_code}, {"$set": {db_field: value}})
             logger.info(f"Updated DB mapping {db_field} for item {item_code}")
         except Exception as e:
-            logger.warning(f"Failed to update DB mapping: {str(e)}")
+            logger.warning(f"Failed to update DB mapping: {e!s}")
 
     async def get_field_statistics(self, field_name: str) -> dict[str, Any]:
         """Get statistics for a specific field"""
@@ -459,5 +467,5 @@ class DynamicFieldsService:
             return stats
 
         except Exception as e:
-            logger.error(f"Error getting field statistics: {str(e)}")
+            logger.error(f"Error getting field statistics: {e!s}")
             raise
