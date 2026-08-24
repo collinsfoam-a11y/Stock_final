@@ -15,3 +15,6 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+## 2024-08-24 - Resolving N+1 database queries in backend items with dynamic fields
+**Learning:** Checking or fetching dynamic fields individually in a loop (`await self.db.items.find_one(...)` for each item code) severely impacts performance because of the sequential N+1 query problem.
+**Action:** Consolidate required item lookups by gathering all IDs (`item_codes = [result["_id"] for result in results]`) upfront, performing a single `$in` query against the database, and mapping the results to an in-memory dictionary cache before continuing the iteration.
