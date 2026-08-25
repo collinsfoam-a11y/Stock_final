@@ -15,6 +15,8 @@ import {
 } from "@/theme/unified";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 
 interface DateRangePickerProps {
   startDate: Date;
@@ -48,12 +50,19 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       <View style={styles.dateRow}>
         <AppTouchable
           style={styles.dateButton}
-          onPress={() => setShowStartPicker(true)}
- >
+          onPress={() => {
+            void haptics.light();
+            setShowStartPicker(true);
+          }}
+          {...getAccessibleButtonProps({
+            label: `Select start date, currently ${formatDate(startDate)}`,
+          })}
+        >
           <Ionicons
             name="calendar"
             size={20}
             color={modernColors.primary[500]}
+            {...getDecorativeIconProps()}
           />
           <View style={styles.dateContent}>
             <Text style={styles.dateLabel}>Start Date</Text>
@@ -65,16 +74,24 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           name="arrow-forward"
           size={20}
           color={modernColors.text.secondary}
+          {...getDecorativeIconProps()}
         />
 
         <AppTouchable
           style={styles.dateButton}
-          onPress={() => setShowEndPicker(true)}
- >
+          onPress={() => {
+            void haptics.light();
+            setShowEndPicker(true);
+          }}
+          {...getAccessibleButtonProps({
+            label: `Select end date, currently ${formatDate(endDate)}`,
+          })}
+        >
           <Ionicons
             name="calendar"
             size={20}
             color={modernColors.primary[500]}
+            {...getDecorativeIconProps()}
           />
           <View style={styles.dateContent}>
             <Text style={styles.dateLabel}>End Date</Text>

@@ -8,6 +8,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -17,6 +19,9 @@ interface InputProps extends TextInputProps {
   rightIconColor?: string;
   onRightIconPress?: () => void;
   containerStyle?: object;
+  rightIconAccessibilityLabel?: string;
+  showClearButton?: boolean;
+  onClear?: () => void;
 }
 
 export const Input = React.forwardRef<TextInput, InputProps>(
@@ -29,11 +34,30 @@ export const Input = React.forwardRef<TextInput, InputProps>(
       rightIconColor,
       onRightIconPress,
       containerStyle,
+      rightIconAccessibilityLabel,
+      showClearButton = false,
+      onClear,
       ...textInputProps
     },
     ref
   ) => {
     const theme = useTheme();
+    const internalRef = React.useRef<TextInput>(null);
+    const resolvedRef = (ref as React.MutableRefObject<TextInput>) || internalRef;
+    const valueStr = String(textInputProps.value ?? textInputProps.defaultValue ?? "");
+
+    const showClear = showClearButton && valueStr.length > 0 && textInputProps.editable !== false;
+
+    const handleClear = () => {
+      void haptics.light();
+      if (textInputProps.onChangeText) {
+        textInputProps.onChangeText("");
+      }
+      if (onClear) {
+        onClear();
+      }
+      resolvedRef.current?.focus();
+    };
 
     return (
       <View style={[styles.container, containerStyle]}>
@@ -54,12 +78,13 @@ export const Input = React.forwardRef<TextInput, InputProps>(
               size={20}
               color={theme.colors.placeholder}
               style={styles.leftIcon}
+              {...getDecorativeIconProps()}
             />
           )}
           <TextInput
             autoCapitalize="none"
             autoCorrect={false}
-            ref={ref}
+            ref={resolvedRef}
             style={[
               styles.input,
               {
@@ -71,23 +96,53 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             placeholderTextColor={theme.colors.placeholder}
             {...(Platform.OS === "web"
               ? {
-                // Web-specific props to ensure input works
-                autoComplete: textInputProps.autoComplete || "off",
-                spellCheck:
-                  textInputProps.spellCheck !== undefined ? textInputProps.spellCheck : true,
-              }
+                  // Web-specific props to ensure input works
+                  autoComplete: textInputProps.autoComplete || "off",
+                  spellCheck:
+                    textInputProps.spellCheck !== undefined ? textInputProps.spellCheck : true,
+                }
               : {})}
             {...textInputProps}
           />
-          {rightIcon && (
+          {showClear && (
             <AppTouchable
-              onPress={onRightIconPress}
+              onPress={handleClear}
               style={styles.rightIcon}
-              activeOpacity={0.7}>
+              activeOpacity={0.7}
+              {...getAccessibleButtonProps({
+                label: `Clear ${label || "input"}`,
+              })}
+            >
+              <Ionicons
+                name="close-circle"
+                size={20}
+                color={theme.colors.placeholder}
+                {...getDecorativeIconProps()}
+              />
+            </AppTouchable>
+          )}
+          {rightIcon && !showClear && (
+            <AppTouchable
+              onPress={() => {
+                if (onRightIconPress) {
+                  void haptics.light();
+                  onRightIconPress();
+                }
+              }}
+              style={styles.rightIcon}
+              activeOpacity={0.7}
+              disabled={!onRightIconPress}
+              {...(onRightIconPress
+                ? getAccessibleButtonProps({
+                    label: rightIconAccessibilityLabel ?? `${label || "Input"} right action`,
+                  })
+                : {})}
+            >
               <Ionicons
                 name={rightIcon}
                 size={20}
                 color={rightIconColor || theme.colors.placeholder}
+                {...getDecorativeIconProps()}
               />
             </AppTouchable>
           )}
