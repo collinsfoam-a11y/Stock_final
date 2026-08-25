@@ -4,7 +4,15 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, TextInput, StyleSheet, FlatList, ActivityIndicator, Keyboard } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  Keyboard,
+} from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
 import { useSettingsStore } from "../../store/settingsStore";
@@ -15,6 +23,9 @@ import { localDb } from "../../db/localDb";
 import { shadows as uiShadows } from "@/theme/unified";
 import { zIndex as uiZIndex } from "@/theme/designTokens";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+
 interface SearchAutocompleteProps {
   onSelectItem: (item: SearchResult) => void;
   onBarcodeScan?: (barcode: string) => void;
@@ -99,12 +110,12 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
 
   const loadMore = React.useCallback(async () => {
     if (isLoadingMore || !hasMore || offlineMode) return;
-    
+
     setIsLoadingMore(true);
     try {
       const nextPage = page + 1;
       const response = await searchItems({ query }, nextPage, 20);
-      setResults(prev => [...prev, ...(response.items || [])]);
+      setResults((prev) => [...prev, ...(response.items || [])]);
       setPage(response.page || nextPage);
       setHasMore((response.page || nextPage) < (response.totalPages || 1));
     } catch (error) {
@@ -151,6 +162,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   };
 
   const handleClear = () => {
+    void haptics.light();
     setQuery("");
     setResults([]);
     setShowDropdown(false);
@@ -174,7 +186,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
         ]}
         onPress={() => handleSelectItem(item)}
         activeOpacity={0.7}
- >
+      >
         <View style={styles.resultContent}>
           {/* Header: Name and Badge */}
           <View style={styles.resultHeader}>
@@ -324,8 +336,14 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
             style={styles.clearButton}
             onPress={handleClear}
             activeOpacity={0.7}
-            accessibilityLabel="Clear">
-            <Ionicons name="close-circle" size={20} color={theme.colors.placeholder} />
+            {...getAccessibleButtonProps({ label: "Clear search" })}
+          >
+            <Ionicons
+              {...getDecorativeIconProps()}
+              name="close-circle"
+              size={20}
+              color={theme.colors.placeholder}
+            />
           </AppTouchable>
         )}
       </View>
