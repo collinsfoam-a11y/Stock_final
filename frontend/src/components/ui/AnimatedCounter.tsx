@@ -24,6 +24,7 @@ interface AnimatedCounterProps {
   suffix?: string;
   decimalPlaces?: number;
   formatNumber?: boolean;
+  accessibilityLabel?: string;
 }
 
 export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
@@ -34,6 +35,7 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
   suffix = "",
   decimalPlaces = 0,
   formatNumber = true,
+  accessibilityLabel,
 }) => {
   const uiTokens = useUiTokens();
   const prefersReducedMotion = useReducedMotion();
@@ -85,8 +87,18 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
     };
   }, [value, resolvedDuration, prefix, suffix, decimalPlaces, formatNumber]);
 
+  const defaultFormattedTarget =
+    formatNumber && decimalPlaces === 0
+      ? Math.round(value).toLocaleString()
+      : value.toFixed(decimalPlaces);
+  const computedAccessibilityLabel =
+    accessibilityLabel ?? `${prefix}${defaultFormattedTarget}${suffix}`;
+
   return (
     <Text
+      accessible={true}
+      accessibilityRole="text"
+      accessibilityLabel={computedAccessibilityLabel}
       style={[
         {
           fontSize: 32,
