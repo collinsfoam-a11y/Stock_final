@@ -3,6 +3,7 @@ Session Management API - Enhanced session tracking with heartbeat
 Extends existing session API with rack-based workflow support
 """
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -1387,9 +1388,11 @@ async def get_active_sessions(
     sessions_cursor = db.sessions.find(query).sort("started_at", -1)
     sessions = await sessions_cursor.to_list(length=100)
 
+    tasks = [_get_session_line_summary(db, _session_identifier(session)) for session in sessions]
+    line_summaries = await asyncio.gather(*tasks, return_exceptions=False)
+
     result = []
-    for session in sessions:
-        line_summary = await _get_session_line_summary(db, _session_identifier(session))
+    for session, line_summary in zip(sessions, line_summaries, strict=True):
         result.append(_build_session_detail_from_doc(session, line_summary))
 
     return result
@@ -1852,10 +1855,14 @@ async def get_user_session_history(
 
     sessions = await sessions_cursor.to_list(length=limit)
 
+    tasks = [
+        _get_session_line_summary(db, str(session.get("id") or session.get("session_id")))
+        for session in sessions
+    ]
+    line_summaries = await asyncio.gather(*tasks, return_exceptions=False)
+
     result = []
-    for session in sessions:
-        session_identifier = str(session.get("id") or session.get("session_id"))
-        line_summary = await _get_session_line_summary(db, session_identifier)
+    for session, line_summary in zip(sessions, line_summaries, strict=True):
         result.append(_build_session_detail_from_doc(session, line_summary))
 
     return result
