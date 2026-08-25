@@ -15,6 +15,8 @@ import { localDb } from "../../db/localDb";
 import { shadows as uiShadows } from "@/theme/unified";
 import { zIndex as uiZIndex } from "@/theme/designTokens";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 interface SearchAutocompleteProps {
   onSelectItem: (item: SearchResult) => void;
   onBarcodeScan?: (barcode: string) => void;
@@ -322,10 +324,15 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
         {query.length > 0 && !isSearching && (
           <AppTouchable
             style={styles.clearButton}
-            onPress={handleClear}
+            onPress={() => {
+              void haptics.light();
+              handleClear();
+            }}
             activeOpacity={0.7}
-            accessibilityLabel="Clear">
-            <Ionicons name="close-circle" size={20} color={theme.colors.placeholder} />
+            {...getAccessibleButtonProps({
+              label: "Clear search query",
+            })}>
+            <Ionicons {...getDecorativeIconProps()} name="close-circle" size={20} color={theme.colors.placeholder} />
           </AppTouchable>
         )}
       </View>

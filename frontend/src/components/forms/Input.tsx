@@ -8,6 +8,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -81,10 +83,20 @@ export const Input = React.forwardRef<TextInput, InputProps>(
           />
           {rightIcon && (
             <AppTouchable
-              onPress={onRightIconPress}
+              onPress={() => {
+                void haptics.light();
+                onRightIconPress?.();
+              }}
               style={styles.rightIcon}
-              activeOpacity={0.7}>
+              activeOpacity={0.7}
+              disabled={!onRightIconPress}
+              {...(onRightIconPress
+                ? getAccessibleButtonProps({
+                    label: `${label || "Input"} action`,
+                  })
+                : {})}>
               <Ionicons
+                {...getDecorativeIconProps()}
                 name={rightIcon}
                 size={20}
                 color={rightIconColor || theme.colors.placeholder}
