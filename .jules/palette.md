@@ -41,3 +41,7 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+
+## 2026-08-01 - Input Refocus on Clear
+**Learning:** For a smooth data entry experience, when a user clicks a "clear" button inside an input (like a search bar), they almost always intend to immediately type a new value. Failing to automatically refocus the input after clearing forces an extra, frustrating tap.
+**Action:** Always include a `ref` on inputs with clear buttons and call `ref.current?.focus()` within the clear button's `onPress` handler (after clearing the state).

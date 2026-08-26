@@ -3,7 +3,7 @@
  * Modal with searchable dropdown for selecting options
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { View, Text, Modal, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -16,6 +16,8 @@ import {
 } from "../../theme/unified";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 
 interface SearchableSelectModalProps {
   visible: boolean;
@@ -37,6 +39,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
   testID,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<TextInput>(null);
 
   // Filter options based on search query
   const filteredOptions = useMemo(() => {
@@ -63,11 +66,16 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
   const renderOption = ({ item }: { item: string }) => (
     <AppTouchable
       style={styles.optionItem}
-      onPress={() => handleSelect(item)}
+      onPress={() => {
+        void haptics.light();
+        handleSelect(item);
+      }}
       testID={`${testID}-option-${item}`}
+      {...getAccessibleButtonProps({ label: item })}
     >
       <Text style={styles.optionText}>{item}</Text>
       <Ionicons
+        {...getDecorativeIconProps()}
         name="chevron-forward"
         size={20}
         color={modernColors.text.tertiary}
@@ -93,10 +101,14 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
             <Text style={styles.title}>{title}</Text>
             <AppTouchable
               style={styles.closeButton}
-              onPress={handleClose}
+              onPress={() => {
+                void haptics.light();
+                handleClose();
+              }}
               testID={`${testID}-close`}
-              accessibilityLabel="Close">
+              {...getAccessibleButtonProps({ label: "Close modal" })}>
               <Ionicons
+                {...getDecorativeIconProps()}
                 name="close"
                 size={24}
                 color={modernColors.text.primary}
@@ -113,6 +125,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
               style={styles.searchIcon}
             />
             <TextInput
+              ref={searchInputRef}
               style={styles.searchInput}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -124,10 +137,15 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
             />
             {searchQuery.length > 0 && (
               <AppTouchable
-                onPress={() => setSearchQuery("")}
+                onPress={() => {
+                  void haptics.light();
+                  setSearchQuery("");
+                  searchInputRef.current?.focus();
+                }}
                 style={styles.clearButton}
-                accessibilityLabel="Clear search">
+                {...getAccessibleButtonProps({ label: "Clear search" })}>
                 <Ionicons
+                  {...getDecorativeIconProps()}
                   name="close-circle"
                   size={20}
                   color={modernColors.text.tertiary}
