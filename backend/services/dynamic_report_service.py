@@ -7,7 +7,7 @@ import io
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 from bson import ObjectId
@@ -31,12 +31,12 @@ class DynamicReportService:
         description: str,
         report_type: str,
         fields: list[dict[str, Any]],
-        filters: dict[str, Optional[Any]] = None,
-        grouping: Optional[list[str]] = None,
-        sorting: list[dict[str, Optional[str]]] = None,
-        aggregations: dict[str, Optional[str]] = None,
+        filters: dict[str, Any | None] | None = None,
+        grouping: list[str] | None = None,
+        sorting: list[dict[str, str | None]] | None = None,
+        aggregations: dict[str, str | None] | None = None,
         format: str = "excel",
-        created_by: Optional[str] = None,
+        created_by: str | None = None,
     ) -> dict[str, Any]:
         """
         Create a new report template
@@ -81,10 +81,10 @@ class DynamicReportService:
             return template
 
         except Exception as e:
-            logger.error(f"Error creating report template: {str(e)}")
+            logger.error(f"Error creating report template: {e!s}")
             raise
 
-    async def get_report_templates(self, report_type: Optional[str] = None) -> list[dict[str, Any]]:
+    async def get_report_templates(self, report_type: str | None = None) -> list[dict[str, Any]]:
         """Get all report templates"""
         try:
             query: dict[str, Any] = {"enabled": True}
@@ -97,15 +97,15 @@ class DynamicReportService:
             return templates
 
         except Exception as e:
-            logger.error(f"Error getting report templates: {str(e)}")
+            logger.error(f"Error getting report templates: {e!s}")
             raise
 
     async def generate_report(
         self,
-        template_id: Optional[str] = None,
-        template_data: dict[str, Optional[Any]] = None,
-        runtime_filters: dict[str, Optional[Any]] = None,
-        generated_by: Optional[str] = None,
+        template_id: str | None = None,
+        template_data: dict[str, Any | None] | None = None,
+        runtime_filters: dict[str, Any | None] | None = None,
+        generated_by: str | None = None,
     ) -> dict[str, Any]:
         """
         Generate a report from template or custom data
@@ -196,7 +196,7 @@ class DynamicReportService:
             return report_record
 
         except Exception as e:
-            logger.error(f"Error generating report: {str(e)}")
+            logger.error(f"Error generating report: {e!s}")
             raise
 
     async def _fetch_report_data(
@@ -223,7 +223,7 @@ class DynamicReportService:
                 raise ValueError(f"Unknown report type: {report_type}")
 
         except Exception as e:
-            logger.error(f"Error fetching report data: {str(e)}")
+            logger.error(f"Error fetching report data: {e!s}")
             raise
 
     async def _fetch_items_data(
@@ -257,19 +257,32 @@ class DynamicReportService:
 
             # Add dynamic fields
             dynamic_fields = [f for f in fields if f.get("source") == "dynamic"]
-            if dynamic_fields:
-                for item in items:
-                    dynamic_values = await self.db.dynamic_field_values.find(
-                        {"item_code": item.get("item_code")}
+            if dynamic_fields and items:
+                item_codes = [item.get("item_code") for item in items if item.get("item_code")]
+                if item_codes:
+                    # ⚡ Bolt: Bulk fetch dynamic fields for all items to eliminate N+1 queries
+                    dynamic_values_all = await self.db.dynamic_field_values.find(
+                        {"item_code": {"$in": item_codes}}
                     ).to_list(length=None)
 
-                    for dv in dynamic_values:
-                        item[dv["field_name"]] = dv["value"]
+                    # ⚡ Bolt: Create an in-memory O(1) lookup dictionary
+                    dv_by_item_code = {}
+                    for dv in dynamic_values_all:
+                        ic = dv.get("item_code")
+                        if ic not in dv_by_item_code:
+                            dv_by_item_code[ic] = []
+                        dv_by_item_code[ic].append(dv)
+
+                    for item in items:
+                        ic = item.get("item_code")
+                        if ic in dv_by_item_code:
+                            for dv in dv_by_item_code[ic]:
+                                item[dv["field_name"]] = dv["value"]
 
             return items
 
         except Exception as e:
-            logger.error(f"Error fetching items data: {str(e)}")
+            logger.error(f"Error fetching items data: {e!s}")
             raise
 
     async def _fetch_sessions_data(
@@ -293,18 +306,30 @@ class DynamicReportService:
             sessions = await cursor.to_list(length=10000)
 
             # Enrich with related data if needed
-            for session in sessions:
-                # Add item details if requested
-                if any(f["name"].startswith("items.") for f in fields):
-                    items = await self.db.session_items.find(
-                        {"session_id": session["_id"]}
+            if any(f["name"].startswith("items.") for f in fields) and sessions:
+                session_ids = [session["_id"] for session in sessions if "_id" in session]
+                if session_ids:
+                    # ⚡ Bolt: Bulk fetch session items for all sessions to eliminate N+1 queries
+                    all_session_items = await self.db.session_items.find(
+                        {"session_id": {"$in": session_ids}}
                     ).to_list(length=None)
-                    session["items"] = items
+
+                    # ⚡ Bolt: Create an in-memory O(1) lookup dictionary
+                    items_by_session_id = {}
+                    for item in all_session_items:
+                        s_id = item.get("session_id")
+                        if s_id not in items_by_session_id:
+                            items_by_session_id[s_id] = []
+                        items_by_session_id[s_id].append(item)
+
+                    for session in sessions:
+                        s_id = session.get("_id")
+                        session["items"] = items_by_session_id.get(s_id, [])
 
             return sessions
 
         except Exception as e:
-            logger.error(f"Error fetching sessions data: {str(e)}")
+            logger.error(f"Error fetching sessions data: {e!s}")
             raise
 
     async def _fetch_variance_data(
@@ -361,7 +386,7 @@ class DynamicReportService:
             return flattened
 
         except Exception as e:
-            logger.error(f"Error fetching variance data: {str(e)}")
+            logger.error(f"Error fetching variance data: {e!s}")
             raise
 
     async def _fetch_audit_data(
@@ -386,7 +411,7 @@ class DynamicReportService:
             return logs
 
         except Exception as e:
-            logger.error(f"Error fetching audit data: {str(e)}")
+            logger.error(f"Error fetching audit data: {e!s}")
             raise
 
     async def _fetch_custom_data(
@@ -464,7 +489,7 @@ class DynamicReportService:
                 raise ValueError(f"Unsupported format: {format}")
 
         except Exception as e:
-            logger.error(f"Error generating file: {str(e)}")
+            logger.error(f"Error generating file: {e!s}")
             raise
 
     def _generate_excel(
@@ -644,7 +669,7 @@ class DynamicReportService:
         return file_data, file_name, mime_type
 
     async def get_generated_reports(
-        self, generated_by: Optional[str] = None, limit: int = 50
+        self, generated_by: str | None = None, limit: int = 50
     ) -> list[dict[str, Any]]:
         """Get list of generated reports"""
         try:
@@ -658,7 +683,7 @@ class DynamicReportService:
             return reports
 
         except Exception as e:
-            logger.error(f"Error getting generated reports: {str(e)}")
+            logger.error(f"Error getting generated reports: {e!s}")
             raise
 
     async def get_report_file(self, report_id: str) -> tuple:
@@ -680,5 +705,5 @@ class DynamicReportService:
             return file_record["file_data"], report["file_name"], report["mime_type"]
 
         except Exception as e:
-            logger.error(f"Error getting report file: {str(e)}")
+            logger.error(f"Error getting report file: {e!s}")
             raise
