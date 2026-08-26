@@ -6,6 +6,10 @@ from pathlib import Path
 # Add backend to sys.path so we can import from it
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Ensure required environment variables for generating OpenAPI schema
+os.environ.setdefault("JWT_SECRET", "ci-generate-openapi-secret-key-32chars")
+os.environ.setdefault("JWT_REFRESH_SECRET", "ci-generate-openapi-refresh-key-32")
+
 from backend.app_factory import app
 
 def main():
