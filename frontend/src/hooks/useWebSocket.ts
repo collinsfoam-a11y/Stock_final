@@ -46,9 +46,6 @@ export const useWebSocket = (sessionId?: string, enabled: boolean = true) => {
     // Convert http:// to ws:// or https:// to wss://
     const wsUrl = API_BASE_URL.replace(/^http/, "ws") + "/ws/updates";
     const query = new URLSearchParams();
-    if (token) {
-      query.set("token", token);
-    }
     if (sessionId) {
       query.set("session_id", sessionId);
     }
@@ -59,8 +56,18 @@ export const useWebSocket = (sessionId?: string, enabled: boolean = true) => {
       sessionId: sessionId ?? null,
     });
 
-    // Use query param auth instead of subprotocols (server doesn't support subprotocol handshake)
-    const socket = new WebSocket(urlWithParams);
+    // Auth travels in Sec-WebSocket-Protocol, not the query string: URLs land in
+    // browser history, proxy logs and server access logs, and this token grants a
+    // full session. The server reads `jwt,<token>` in _extract_jwt_from_websocket()
+    // and echoes the subprotocol back via manager.connect(subprotocol=...), which
+    // browsers require for the handshake to succeed.
+    //
+    // On web the token may legitimately be absent (see the guard above): those
+    // sessions authenticate with the HttpOnly access-token cookie, which the same
+    // server-side helper falls back to. Offering no subprotocol keeps that path.
+    const socket = token
+      ? new WebSocket(urlWithParams, ["jwt", token])
+      : new WebSocket(urlWithParams);
 
     socket.onopen = () => {
       log.info("Websocket connected", { sessionId: sessionId ?? null });

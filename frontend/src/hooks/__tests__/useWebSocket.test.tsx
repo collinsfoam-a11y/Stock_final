@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { Platform } from "react-native";
 import { useWebSocket } from "../useWebSocket";
 import { useAuthStore } from "../../store/authStore";
 import { secureStorage } from "../../services/storage/secureStorage";
@@ -39,7 +40,10 @@ class MockWebSocket {
   onclose: ((event: { code: number; reason: string }) => void) | null = null;
   onerror: ((event?: unknown) => void) | null = null;
 
-  constructor(public url: string) {
+  constructor(
+    public url: string,
+    public protocols?: string | string[]
+  ) {
     mockSockets.push(this);
   }
 
@@ -89,8 +93,34 @@ describe("useWebSocket", () => {
       expect(mockSockets).toHaveLength(1);
     });
 
-    expect(mockSockets[0]?.url).toContain("token=token-123");
+    // The token must travel in Sec-WebSocket-Protocol, never the URL: query
+    // strings are recorded in browser history, proxy logs and access logs.
+    expect(mockSockets[0]?.protocols).toEqual(["jwt", "token-123"]);
+    expect(mockSockets[0]?.url).not.toContain("token-123");
+    expect(mockSockets[0]?.url).not.toContain("token=");
     expect(mockSockets[0]?.url).toContain("session_id=sess-123");
+  });
+
+  it("omits the subprotocol when no token is stored so cookie auth can apply", async () => {
+    // Only web reaches this path: the guard bails early on native without a
+    // token. Web sessions authenticate with the HttpOnly access-token cookie.
+    const originalOS = Platform.OS;
+    (Platform as { OS: string }).OS = "web";
+    mockSecureStorage.getItem.mockResolvedValue(null);
+
+    try {
+      renderHook(() => useWebSocket("sess-123"));
+
+      await waitFor(() => {
+        expect(mockSockets).toHaveLength(1);
+      });
+
+      expect(mockSockets[0]?.protocols).toBeUndefined();
+      expect(mockSockets[0]?.url).toContain("session_id=sess-123");
+      expect(mockSockets[0]?.url).not.toContain("token=");
+    } finally {
+      (Platform as { OS: string }).OS = originalOS;
+    }
   });
 
   it("stops reconnecting and triggers unauthorized handling on auth close", async () => {
