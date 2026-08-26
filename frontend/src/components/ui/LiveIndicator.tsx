@@ -27,6 +27,7 @@ interface LiveIndicatorProps {
   color?: string;
   size?: "small" | "medium" | "large";
   style?: ViewStyle;
+  accessibilityLabel?: string;
 }
 
 const sizeMap = {
@@ -40,6 +41,7 @@ export const LiveIndicator: React.FC<LiveIndicatorProps> = ({
   color,
   size = "medium",
   style,
+  accessibilityLabel,
 }) => {
   const { themeLegacy: theme, getFontSize } = useThemeContext();
   const pulseScale = useSharedValue(1);
@@ -75,8 +77,16 @@ export const LiveIndicator: React.FC<LiveIndicatorProps> = ({
 
   const dotSize = sizeMap[size];
 
+  const computedAccessibilityLabel =
+    accessibilityLabel ?? (label ? `Status: ${label}` : "Live status indicator");
+
   return (
-    <View style={[styles.container, { gap: theme.spacing.sm }, style]}>
+    <View
+      style={[styles.container, { gap: theme.spacing.sm }, style]}
+      accessible={true}
+      accessibilityRole="text"
+      accessibilityLabel={computedAccessibilityLabel}
+    >
       <View style={[styles.dotContainer, { width: dotSize * 2, height: dotSize * 2 }]}>
         {/* Pulse ring */}
         <Animated.View
