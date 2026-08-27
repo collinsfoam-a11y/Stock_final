@@ -15,3 +15,6 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+## 2024-10-27 - [Concurrent Database Operations with Motor]
+**Learning:** Motor `Database` and `Collection` objects (the PyMongo async wrappers) manage connection pooling internally and are completely thread-safe and safe to use with `asyncio.gather()`. This makes them highly effective for resolving sequential N+1 or distinct query bottlenecks without risking connection or session-state corruption (unlike SQLAlchemy scoped sessions).
+**Action:** When a Python endpoint makes multiple independent MongoDB reads (e.g., fetching various KPIs or summary totals in a dashboard route), wrap them in `asyncio.gather(...)` to execute them concurrently instead of awaiting each sequentially, safely reducing total network I/O wait time.
