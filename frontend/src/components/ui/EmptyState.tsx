@@ -16,6 +16,7 @@ interface EmptyStateProps {
   title: string;
   message?: string;
   actionLabel?: string;
+  actionHint?: string;
   onAction?: () => void;
   style?: object;
   accessibilityLabel?: string;
@@ -26,6 +27,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   title,
   message,
   actionLabel,
+  actionHint,
   onAction,
   style,
   accessibilityLabel,
@@ -60,6 +62,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             onPress={onAction}
             variant="primary"
             style={styles.actionButton}
+            accessibilityHint={actionHint}
           />
         </View>
       )}

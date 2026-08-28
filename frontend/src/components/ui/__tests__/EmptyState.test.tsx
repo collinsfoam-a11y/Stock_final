@@ -1,4 +1,3 @@
-import { AppTouchable } from "@/components/ui/AppTouchable";
 import React from "react";
 import { render } from "@testing-library/react-native";
 import { EmptyState } from "../EmptyState";
@@ -28,10 +27,10 @@ jest.mock("../ModernButton", () => {
   const { Text } = require("react-native");
   const { AppTouchable } = require("@/components/ui/AppTouchable");
   return {
-    ModernButton: ({ title, onPress }: any) =>
+    ModernButton: ({ title, onPress, accessibilityHint, testID }: any) =>
       ReactActual.createElement(
         AppTouchable,
-        { onPress },
+        { onPress, accessibilityHint, testID },
         ReactActual.createElement(Text, null, title)
       ),
   };
@@ -79,5 +78,19 @@ describe("EmptyState", () => {
       <EmptyState {...defaultProps} actionLabel="Refresh" onAction={onAction} />
     );
     expect(getByText("Refresh")).toBeTruthy();
+  });
+
+  it("passes actionHint to action button as accessibilityHint", () => {
+    const onAction = jest.fn();
+    const { getByRole } = renderWithTheme(
+      <EmptyState
+        {...defaultProps}
+        actionLabel="Refresh"
+        actionHint="Refreshes the data list"
+        onAction={onAction}
+      />
+    );
+    const button = getByRole("button");
+    expect(button.props.accessibilityHint).toBe("Refreshes the data list");
   });
 });
