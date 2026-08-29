@@ -141,8 +141,8 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
           <VirtualList
             data={filteredOptions}
             estimatedItemSize={55}
-            keyExtractor={(item, index) => `${item}-${index}`}
-            renderItem={renderOption}
+            keyExtractor={(item: any, index: number) => `${item}-${index}`}
+            renderItem={renderOption as any}
             style={styles.list}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}

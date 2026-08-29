@@ -159,8 +159,8 @@ export function RealtimeDashboardTable({
             {/* ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to improve rendering performance and reduce memory usage for potentially long realtime dashboard item lists. */}
             <VirtualList
               data={data}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={renderRow}
+              keyExtractor={(item: any) => String(item.id)}
+              renderItem={renderRow as any}
               extraData={visibleColumns}
               nestedScrollEnabled
               estimatedItemSize={ROW_HEIGHT}

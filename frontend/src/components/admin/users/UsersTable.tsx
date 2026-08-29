@@ -210,12 +210,12 @@ export function UsersTable({
     <VirtualList
       contentContainerStyle={styles.listContent}
       data={users}
-      keyExtractor={(user) => user.id}
+      keyExtractor={(user: any) => user.id}
       ListEmptyComponent={() => <EmptyUsersState styles={styles} uiTokens={uiTokens} />}
       ListFooterComponent={renderFooter}
       ListHeaderComponent={renderHeader}
       refreshControl={refreshControl}
-      renderItem={renderUser}
+      renderItem={renderUser as any}
       estimatedItemSize={showTableLayout ? 53 : 139}
     />
   );
