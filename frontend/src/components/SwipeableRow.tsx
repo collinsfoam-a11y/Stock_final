@@ -4,6 +4,9 @@ import { Swipeable } from "react-native-gesture-handler";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
+
 type Props = {
   children: React.ReactNode;
   leftLabel?: string;
@@ -19,15 +22,23 @@ const Action = ({
 }: {
   label: string;
   color: string;
-  onPress?: () => void;
-}) => (
-  <AppTouchable
-    style={[styles.action, { backgroundColor: color }]}
-    onPress={onPress}
- >
-    <Text style={styles.actionText}>{label}</Text>
-  </AppTouchable>
-);
+  onPress?: (e?: any) => void;
+}) => {
+  const handlePress = (e?: any) => {
+    void haptics.light();
+    onPress?.(e);
+  };
+
+  return (
+    <AppTouchable
+      style={[styles.action, { backgroundColor: color }]}
+      onPress={handlePress}
+      {...getAccessibleButtonProps({ label })}
+    >
+      <Text style={styles.actionText}>{label}</Text>
+    </AppTouchable>
+  );
+};
 
 export const SwipeableRow: React.FC<Props> = ({
   children,
