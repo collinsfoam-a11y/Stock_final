@@ -41,3 +41,7 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+
+## 2026-08-30 - Search Field Clear Button UX Pattern
+**Learning:** For a truly robust accessible input field, decorative icons (like search or clear icons inside the input's bounding box) must be hidden from screen readers using `getDecorativeIconProps()`. Furthermore, simply clearing the text is insufficient UX; clicking clear should invoke `void haptics.light()` and immediately refocus the input via `inputRef.current?.focus()` to maintain a seamless keyboard interaction flow.
+**Action:** Always apply `getDecorativeIconProps()` to visual-only icons inside inputs, and always attach a `useRef` to refocus the text input after a clear action.
