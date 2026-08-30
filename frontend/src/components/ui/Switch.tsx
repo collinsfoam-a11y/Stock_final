@@ -83,6 +83,7 @@ export const Switch: React.FC<SwitchProps> = ({
       style={[styles.container, style]}
       accessibilityRole="switch"
       accessibilityState={{ checked: value, disabled }}
+      accessibilityValue={{ text: value ? "on" : "off" }}
       accessibilityLabel={accessibilityLabel}
     >
       <Animated.View
