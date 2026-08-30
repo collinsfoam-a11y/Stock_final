@@ -3,7 +3,7 @@
  * Modal with searchable dropdown for selecting options
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { View, Text, Modal, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -14,6 +14,8 @@ import {
   legacySpacing as modernSpacing,
   legacyBorderRadius as modernBorderRadius,
 } from "../../theme/unified";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 
@@ -37,6 +39,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
   testID,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const inputRef = useRef<TextInput>(null);
 
   // Filter options based on search query
   const filteredOptions = useMemo(() => {
@@ -95,8 +98,9 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
               style={styles.closeButton}
               onPress={handleClose}
               testID={`${testID}-close`}
-              accessibilityLabel="Close">
+              {...getAccessibleButtonProps({ label: "Close" })}>
               <Ionicons
+                {...getDecorativeIconProps()}
                 name="close"
                 size={24}
                 color={modernColors.text.primary}
@@ -107,12 +111,14 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
           {/* Search Input */}
           <View style={styles.searchContainer}>
             <Ionicons
+              {...getDecorativeIconProps()}
               name="search"
               size={20}
               color={modernColors.text.tertiary}
               style={styles.searchIcon}
             />
             <TextInput
+              ref={inputRef}
               style={styles.searchInput}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -124,10 +130,15 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
             />
             {searchQuery.length > 0 && (
               <AppTouchable
-                onPress={() => setSearchQuery("")}
+                onPress={() => {
+                  setSearchQuery("");
+                  void haptics.light();
+                  inputRef.current?.focus();
+                }}
                 style={styles.clearButton}
-                accessibilityLabel="Clear search">
+                {...getAccessibleButtonProps({ label: "Clear search" })}>
                 <Ionicons
+                  {...getDecorativeIconProps()}
                   name="close-circle"
                   size={20}
                   color={modernColors.text.tertiary}
