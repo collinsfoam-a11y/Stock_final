@@ -212,6 +212,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           maxLength={maxLength}
           multiline={multiline}
           numberOfLines={numberOfLines}
+          accessibilityInvalid={Boolean(error)}
           onFocus={(event) => {
             setIsFocused(true);
             onFocus?.(event);
