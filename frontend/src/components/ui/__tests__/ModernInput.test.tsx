@@ -106,4 +106,27 @@ describe("ModernInput", () => {
     fireEvent.press(getByLabelText("Show password"));
     expect(haptics.light).toHaveBeenCalled();
   });
+
+  it("sets aria-invalid based on error prop", () => {
+    const { getByTestId, rerender } = render(
+      <ModernInput
+        testID="modern-input"
+        value="invalid value"
+        onChangeText={() => {}}
+        error="Invalid entry"
+      />
+    );
+
+    expect(getByTestId("modern-input").props["aria-invalid"]).toBe(true);
+
+    rerender(
+      <ModernInput
+        testID="modern-input"
+        value="valid value"
+        onChangeText={() => {}}
+      />
+    );
+
+    expect(getByTestId("modern-input").props["aria-invalid"]).toBe(false);
+  });
 });
