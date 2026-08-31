@@ -107,7 +107,7 @@ describe("ModernInput", () => {
     expect(haptics.light).toHaveBeenCalled();
   });
 
-  it("sets accessibilityInvalid based on error prop", () => {
+  it("sets aria-invalid based on error prop", () => {
     const { getByTestId, rerender } = render(
       <ModernInput
         testID="modern-input"
@@ -117,7 +117,7 @@ describe("ModernInput", () => {
       />
     );
 
-    expect(getByTestId("modern-input").props.accessibilityInvalid).toBe(true);
+    expect(getByTestId("modern-input").props["aria-invalid"]).toBe(true);
 
     rerender(
       <ModernInput
@@ -127,6 +127,6 @@ describe("ModernInput", () => {
       />
     );
 
-    expect(getByTestId("modern-input").props.accessibilityInvalid).toBe(false);
+    expect(getByTestId("modern-input").props["aria-invalid"]).toBe(false);
   });
 });
