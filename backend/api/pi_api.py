@@ -7,6 +7,7 @@ from typing import Any, Dict
 from backend.auth.dependencies import get_current_user
 from backend.db.runtime import get_db
 from backend.config import settings
+import asyncio
 
 logger = logging.getLogger("stock-verify")
 router = APIRouter(prefix="/api/pi", tags=["AI Assistant"])
@@ -15,11 +16,6 @@ router = APIRouter(prefix="/api/pi", tags=["AI Assistant"])
 async def get_system_stats_context(db: Any) -> str:
     """Gather real-time stats for the AI Assistant context."""
     try:
-        total_items = await db.erp_items.count_documents({})
-        verified_items = await db.erp_items.count_documents({"verified": True})
-        active_sessions = await db.sessions.count_documents({"status": {"$in": ["OPEN", "ACTIVE"]}})
-        total_scans = await db.count_lines.count_documents({})
-
         # Calculate overall accuracy
         pipeline = [
             {
@@ -29,7 +25,15 @@ async def get_system_stats_context(db: Any) -> str:
                 }
             }
         ]
-        stats = await db.count_lines.aggregate(pipeline).to_list(1)
+
+        total_items, verified_items, active_sessions, total_scans, stats = await asyncio.gather(
+            db.erp_items.count_documents({}),
+            db.erp_items.count_documents({"verified": True}),
+            db.sessions.count_documents({"status": {"$in": ["OPEN", "ACTIVE"]}}),
+            db.count_lines.count_documents({}),
+            db.count_lines.aggregate(pipeline).to_list(1)
+        )
+
         accuracy = (stats[0]["accurate"] / total_scans * 100) if total_scans > 0 else 100
 
         return (
