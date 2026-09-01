@@ -5,12 +5,13 @@
  */
 
 import * as React from "react";
-import { View, Text, StyleSheet, Platform } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Haptics from "expo-haptics";
 
 import { useTheme } from "../../hooks/useTheme";
 import { useSettingsStore } from "../../store/settingsStore";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { semanticColors as uiSemanticColors } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
@@ -33,38 +34,45 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ compact = false }) => 
           {[
             { value: "light" as const, label: "Light", icon: "sunny-outline" },
             { value: "dark" as const, label: "Dark", icon: "moon-outline" },
-          ].map((mode) => (
-            <AppTouchable
-              key={mode.value}
-              style={[
-                styles.modeButton,
-                theme === mode.value && { backgroundColor: colors.accent },
-              ]}
-              onPress={() => {
-                if (Platform.OS !== "web") {
-                  Haptics.selectionAsync();
-                }
-                setSetting("theme", mode.value);
-              }}
- >
-              <Ionicons
-                name={mode.icon as any}
-                size={18}
-                color={theme === mode.value ? uiSemanticColors.text.inverse : colors.textSecondary}
-              />
-              <Text
+          ].map((mode) => {
+            const isSelected = theme === mode.value;
+            return (
+              <AppTouchable
+                key={mode.value}
+                {...getAccessibleButtonProps({
+                  label: `${mode.label} theme`,
+                  selected: isSelected,
+                })}
                 style={[
-                  styles.modeButtonText,
-                  {
-                    color:
-                      theme === mode.value ? uiSemanticColors.text.inverse : colors.textSecondary,
-                  },
+                  styles.modeButton,
+                  isSelected && { backgroundColor: colors.accent },
                 ]}
+                onPress={() => {
+                  void haptics.selection();
+                  setSetting("theme", mode.value);
+                }}
               >
-                {mode.label}
-              </Text>
-            </AppTouchable>
-          ))}
+                <Ionicons
+                  name={mode.icon as any}
+                  size={18}
+                  color={isSelected ? uiSemanticColors.text.inverse : colors.textSecondary}
+                  {...getDecorativeIconProps()}
+                />
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    {
+                      color: isSelected
+                        ? uiSemanticColors.text.inverse
+                        : colors.textSecondary,
+                    },
+                  ]}
+                >
+                  {mode.label}
+                </Text>
+              </AppTouchable>
+            );
+          })}
         </View>
       </View>
     </View>

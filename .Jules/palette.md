@@ -1,0 +1,3 @@
+## 2026-05-25 - Standardizing Theme Selection Micro-Interactions and Accessibility
+**Learning:** Appearance toggles often omit selected state indicators for screen readers and bypass centralized haptics services. Using `getAccessibleButtonProps` with `selected: isSelected` and `getDecorativeIconProps()` on internal icons ensures screen reader users receive explicit feedback on active preferences while `haptics.selection()` provides tactile feedback across mobile platforms.
+**Action:** Always wrap theme and option selection touchables with `getAccessibleButtonProps({ label, selected })` and `getDecorativeIconProps()` for internal icons, using `haptics.selection()` for feedback.
