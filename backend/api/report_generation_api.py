@@ -3,13 +3,13 @@ Report Generation API - Multiple report types with filtering and export
 Supports Stock Summary, Variance, User Activity, Session History, and Audit Trail reports
 """
 
+import asyncio
 import csv
 import io
 import json
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 from datetime import date, datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from backend.auth.dependencies import get_current_user, require_role
 from backend.db.runtime import get_db
 from backend.services.projection_read_service import ProjectionReadService
+from backend.utils.api_utils import sanitize_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -56,18 +57,18 @@ REPORT_TYPES = {
 
 # Request/Response Models
 class ReportFilter(BaseModel):
-    date_from: Optional[date] = None
-    date_to: Optional[date] = None
-    warehouse: Optional[str] = None
-    user_id: Optional[str] = None
-    status: Optional[str] = None
-    floor: Optional[str] = None
-    category: Optional[str] = None
+    date_from: date | None = None
+    date_to: date | None = None
+    warehouse: str | None = None
+    user_id: str | None = None
+    status: str | None = None
+    floor: str | None = None
+    category: str | None = None
 
 
 class ReportRequest(BaseModel):
     report_type: str
-    filters: Optional[ReportFilter] = None
+    filters: ReportFilter | None = None
     format: str = Field(default="json", pattern="^(json|csv|xlsx)$")
     include_summary: bool = True
 
@@ -86,9 +87,7 @@ class ReportResponse(BaseModel):
 
 
 # Helper Functions
-def build_date_filter(
-    date_from: Optional[date], date_to: Optional[date]
-) -> Optional[dict[str, Any]]:
+def build_date_filter(date_from: date | None, date_to: date | None) -> dict[str, Any] | None:
     """Build MongoDB date range filter."""
     date_filter: dict[str, Any] = {}
 
@@ -692,11 +691,21 @@ async def get_report_filter_options(
             }
 
         # Get distinct values for common filters
-        warehouses = await db.erp_items.distinct("warehouse")
-        floors = await db.erp_items.distinct("floor")
-        categories = await db.erp_items.distinct("category")
-        count_line_statuses = await db.count_lines.distinct("status")
-        session_statuses = await db.sessions.distinct("status")
+        # ⚡ Bolt Optimization: Fetch independent distinct options concurrently using asyncio.gather.
+        # This prevents sequential I/O blocking and reduces the total fetch latency to the slowest single query.
+        (
+            warehouses,
+            floors,
+            categories,
+            count_line_statuses,
+            session_statuses,
+        ) = await asyncio.gather(
+            db.erp_items.distinct("warehouse"),
+            db.erp_items.distinct("floor"),
+            db.erp_items.distinct("category"),
+            db.count_lines.distinct("status"),
+            db.sessions.distinct("status"),
+        )
         statuses = sorted(set(count_line_statuses) | set(session_statuses))
 
         # Get user list for admin/supervisor
