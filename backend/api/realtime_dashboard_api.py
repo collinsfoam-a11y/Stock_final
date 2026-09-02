@@ -6,7 +6,6 @@ Server-Sent Events (SSE) and WebSocket endpoints for live data updates
 import asyncio
 import json
 import logging
-from backend.utils.api_utils import sanitize_for_logging
 from datetime import datetime, timezone
 from typing import Any
 
@@ -14,8 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSock
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from backend.auth.dependencies import get_current_user, require_role
 from backend.api.websocket_api import _extract_jwt_from_websocket
+from backend.auth.dependencies import get_current_user, require_role
 from backend.auth.jwt_provider import decode
 from backend.config import settings
 from backend.db.runtime import get_db
@@ -27,6 +26,7 @@ from backend.services.advanced_report_service import (
     SortOrder,
 )
 from backend.services.projection_read_service import ProjectionReadService
+from backend.utils.api_utils import sanitize_for_logging
 from backend.utils.tracing import trace_dashboard_query, trace_span
 
 logger = logging.getLogger(__name__)
@@ -288,12 +288,8 @@ async def get_dashboard_stats(
                 "$group": {
                     "_id": None,
                     "total_variance": {"$sum": "$variance"},
-                    "positive": {
-                        "$sum": {"$cond": [{"$gt": ["$variance", 0]}, "$variance", 0]}
-                    },
-                    "negative": {
-                        "$sum": {"$cond": [{"$lt": ["$variance", 0]}, "$variance", 0]}
-                    },
+                    "positive": {"$sum": {"$cond": [{"$gt": ["$variance", 0]}, "$variance", 0]}},
+                    "negative": {"$sum": {"$cond": [{"$lt": ["$variance", 0]}, "$variance", 0]}},
                     "avg_variance": {"$avg": "$variance"},
                 }
             }
@@ -310,16 +306,25 @@ async def get_dashboard_stats(
         ]
 
         res: Any = await asyncio.gather(
-                db.count_lines.count_documents({}),
-                db.count_lines.count_documents({"verified": True}),
-                db.count_lines.count_documents({"verified": False}),
-                db.count_lines.count_documents({"counted_at": {"$gte": today_start}}),
-                db.count_lines.aggregate(variance_pipeline).to_list(1),
-                db.count_lines.aggregate(warehouse_pipeline).to_list(10),
-                db.count_lines.aggregate(status_pipeline).to_list(100),
-            )
-        total_count, verified_count, pending_count, today_count = int(res[0] or 0), int(res[1] or 0), int(res[2] or 0), int(res[3] or 0)
-        variance_result, warehouse_result, status_result = list(res[4] or []), list(res[5] or []), list(res[6] or [])
+            db.count_lines.count_documents({}),
+            db.count_lines.count_documents({"verified": True}),
+            db.count_lines.count_documents({"verified": False}),
+            db.count_lines.count_documents({"counted_at": {"$gte": today_start}}),
+            db.count_lines.aggregate(variance_pipeline).to_list(1),
+            db.count_lines.aggregate(warehouse_pipeline).to_list(10),
+            db.count_lines.aggregate(status_pipeline).to_list(100),
+        )
+        total_count, verified_count, pending_count, today_count = (
+            int(res[0] or 0),
+            int(res[1] or 0),
+            int(res[2] or 0),
+            int(res[3] or 0),
+        )
+        variance_result, warehouse_result, status_result = (
+            list(res[4] or []),
+            list(res[5] or []),
+            list(res[6] or []),
+        )
 
     variance_stats = variance_result[0] if variance_result else {}
 
@@ -334,17 +339,14 @@ async def get_dashboard_stats(
             "positive_variance": variance_stats.get("positive", 0),
             "negative_variance": variance_stats.get("negative", 0),
             "avg_variance": variance_stats.get("avg_variance", 0),
-            "verification_rate": (
-                (verified_count / total_count * 100) if total_count > 0 else 0
-            ),
+            "verification_rate": ((verified_count / total_count * 100) if total_count > 0 else 0),
         },
         "by_warehouse": [
             {"warehouse": item["_id"] or "Unknown", "count": item["count"]}
             for item in warehouse_result
         ],
         "by_status": [
-            {"status": item["_id"] or "Unknown", "count": item["count"]}
-            for item in status_result
+            {"status": item["_id"] or "Unknown", "count": item["count"]} for item in status_result
         ],
         "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
     }
@@ -362,11 +364,21 @@ async def get_filter_options(
         return await projection_reads.get_dashboard_filter_options()
 
     with trace_span("fetch_filter_options"):
-        warehouses = await db.count_lines.distinct("warehouse")
-        floors = await db.count_lines.distinct("floor")
-        categories = await db.count_lines.distinct("category")
-        statuses = await db.count_lines.distinct("status")
-        users = await db.count_lines.distinct("counted_by")
+        # ⚡ Bolt Optimization: Fetch distinct filter options concurrently instead of sequentially.
+        # This resolves the N+1 I/O wait issue where each distinct lookup previously blocked the next.
+        (
+            warehouses,
+            floors,
+            categories,
+            statuses,
+            users,
+        ) = await asyncio.gather(
+            db.count_lines.distinct("warehouse"),
+            db.count_lines.distinct("floor"),
+            db.count_lines.distinct("category"),
+            db.count_lines.distinct("status"),
+            db.count_lines.distinct("counted_by"),
+        )
 
     return {
         "success": True,
@@ -602,9 +614,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 
 
 @realtime_dashboard_router.websocket("/ws")
-async def websocket_endpoint_no_path_token(
-    websocket: WebSocket, token: str | None = Query(None)
-):
+async def websocket_endpoint_no_path_token(websocket: WebSocket, token: str | None = Query(None)):
     """WebSocket endpoint for bidirectional real-time communication."""
     jwt_token, _accept_subprotocol = _extract_jwt_from_websocket(websocket, token)
 
