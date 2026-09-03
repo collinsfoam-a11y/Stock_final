@@ -5,6 +5,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { AppTouchable } from "@/components/ui/AppTouchable";
 import { borderRadius, spacing, typography } from "@/theme/unified";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 export interface TableColumn {
   key: string;
@@ -82,6 +84,8 @@ export const DataTable: React.FC<DataTableProps> = ({
       return;
     }
 
+    void haptics.light();
+
     if (sortColumn === column) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -93,56 +97,84 @@ export const DataTable: React.FC<DataTableProps> = ({
   // Render header
   const renderHeader = () => (
     <View style={[styles.header, { backgroundColor: t.colors.surfaceElevated, borderBottomColor: t.colors.border }]}>
-      {columns.map((column) => (
-        <AppTouchable
-          key={column.key}
-          style={[styles.headerCell, column.width ? { width: column.width, flex: 0 } : { flex: 1 }] as any}
-          onPress={() => column.sortable && handleSort(column.key)}
-          disabled={!column.sortable}
-        >
-          <Text style={[styles.headerText, { color: t.colors.textSecondary }]}>{column.label}</Text>
-          {sortable && column.sortable && sortColumn === column.key && (
-            <Ionicons
-              name={sortDirection === "asc" ? "arrow-up" : "arrow-down"}
-              size={14}
-              color={t.colors.accent}
-              style={styles.sortIcon}
-            />
-          )}
-        </AppTouchable>
-      ))}
+      {columns.map((column) => {
+        const isSortColumn = sortable && column.sortable && sortColumn === column.key;
+        const buttonProps = column.sortable
+          ? getAccessibleButtonProps({
+              label: `${column.label}, ${
+                isSortColumn ? `sorted ${sortDirection === "asc" ? "ascending" : "descending"}` : "sortable"
+              }`,
+            })
+          : {};
+
+        return (
+          <AppTouchable
+            key={column.key}
+            style={[styles.headerCell, column.width ? { width: column.width, flex: 0 } : { flex: 1 }] as any}
+            onPress={() => column.sortable && handleSort(column.key)}
+            disabled={!column.sortable}
+            {...buttonProps}
+          >
+            <Text style={[styles.headerText, { color: t.colors.textSecondary }]}>{column.label}</Text>
+            {isSortColumn && (
+              <Ionicons
+                name={sortDirection === "asc" ? "arrow-up" : "arrow-down"}
+                size={14}
+                color={t.colors.accent}
+                style={styles.sortIcon}
+                {...getDecorativeIconProps()}
+              />
+            )}
+          </AppTouchable>
+        );
+      })}
     </View>
   );
 
   // Render row
-  const renderRow = (item: TableData, index: number) => (
-    <AppTouchable
-      key={index}
-      style={[
-        styles.row,
-        { borderBottomColor: t.colors.border },
-        index % 2 === 1 && { backgroundColor: `${t.colors.border}22` },
-      ]}
-      onPress={() => onRowPress?.(item)}
-      disabled={!onRowPress}
-      accessibilityLabel="Select row"
-    >
-      {columns.map((column) => (
-        <View
-          key={column.key}
-          style={[styles.cell, column.width ? { width: column.width, flex: 0 } : { flex: 1 }] as any}
-        >
-          {column.render ? (
-            column.render(item[column.key], item)
-          ) : (
-            <Text style={[styles.cellText, { color: t.colors.textPrimary }]}>
-              {String(item[column.key] ?? "")}
-            </Text>
-          )}
-        </View>
-      ))}
-    </AppTouchable>
-  );
+  const renderRow = (item: TableData, index: number) => {
+    const handleRowPress = () => {
+      if (onRowPress) {
+        void haptics.light();
+        onRowPress(item);
+      }
+    };
+
+    const touchProps = onRowPress
+      ? getAccessibleButtonProps({
+          label: `Row ${index + 1}`,
+        })
+      : {};
+
+    return (
+      <AppTouchable
+        key={index}
+        style={[
+          styles.row,
+          { borderBottomColor: t.colors.border },
+          index % 2 === 1 && { backgroundColor: `${t.colors.border}22` },
+        ]}
+        onPress={handleRowPress}
+        disabled={!onRowPress}
+        {...touchProps}
+      >
+        {columns.map((column) => (
+          <View
+            key={column.key}
+            style={[styles.cell, column.width ? { width: column.width, flex: 0 } : { flex: 1 }] as any}
+          >
+            {column.render ? (
+              column.render(item[column.key], item)
+            ) : (
+              <Text style={[styles.cellText, { color: t.colors.textPrimary }]}>
+                {String(item[column.key] ?? "")}
+              </Text>
+            )}
+          </View>
+        ))}
+      </AppTouchable>
+    );
+  };
 
   // Render pagination
   const renderPagination = () => {
@@ -150,18 +182,36 @@ export const DataTable: React.FC<DataTableProps> = ({
       return null;
     }
 
+    const handlePrevPage = () => {
+      if (currentPage > 1) {
+        void haptics.light();
+        setCurrentPage(currentPage - 1);
+      }
+    };
+
+    const handleNextPage = () => {
+      if (currentPage < totalPages) {
+        void haptics.light();
+        setCurrentPage(currentPage + 1);
+      }
+    };
+
     return (
       <View style={[styles.pagination, { backgroundColor: t.colors.surfaceElevated, borderTopColor: t.colors.border }]}>
         <AppTouchable
           style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
-          onPress={() => setCurrentPage(currentPage - 1)}
+          onPress={handlePrevPage}
           disabled={currentPage === 1}
-          accessibilityLabel="Previous page"
+          {...getAccessibleButtonProps({
+            label: "Previous page",
+            disabled: currentPage === 1,
+          })}
         >
           <Ionicons
             name="chevron-back"
             size={18}
             color={currentPage === 1 ? t.colors.textMuted : t.colors.accent}
+            {...getDecorativeIconProps()}
           />
         </AppTouchable>
         <Text style={[styles.paginationText, { color: t.colors.textSecondary }]}>
@@ -172,14 +222,18 @@ export const DataTable: React.FC<DataTableProps> = ({
             styles.paginationButton,
             currentPage === totalPages && styles.paginationButtonDisabled,
           ]}
-          onPress={() => setCurrentPage(currentPage + 1)}
+          onPress={handleNextPage}
           disabled={currentPage === totalPages}
-          accessibilityLabel="Next page"
+          {...getAccessibleButtonProps({
+            label: "Next page",
+            disabled: currentPage === totalPages,
+          })}
         >
           <Ionicons
             name="chevron-forward"
             size={18}
             color={currentPage === totalPages ? t.colors.textMuted : t.colors.accent}
+            {...getDecorativeIconProps()}
           />
         </AppTouchable>
       </View>
@@ -198,7 +252,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           <View style={styles.tableContent}>
             {paginatedData.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Ionicons name="folder-open-outline" size={32} color={t.colors.textMuted} />
+                <Ionicons name="folder-open-outline" size={32} color={t.colors.textMuted} {...getDecorativeIconProps()} />
                 <Text style={[styles.emptyText, { color: t.colors.textMuted }]}>{emptyText}</Text>
               </View>
             ) : (
