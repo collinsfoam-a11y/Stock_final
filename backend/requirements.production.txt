@@ -24,7 +24,7 @@ bcrypt==4.0.1  # Pinned <4.1: passlib 1.7.x requires bcrypt.__about__.__version_
 python-multipart==0.0.31  # Security: DoS/request+parameter smuggling (CVE-2026-53537/53538/53539/53540, fixed >=0.0.31)
 authlib==1.6.12  # JWT provider (authlib.jose); security: open redirect CVE-2026-44681 (fixed >=1.6.12)
 PyJWT==2.13.0  # Secure JWT implementation
-cryptography==48.0.1  # Security: bundled OpenSSL info-disclosure (fixed >=48.0.1)
+cryptography==50.0.1  # Security: bundled OpenSSL info-disclosure (fixed >=48.0.1), Bleichenbacher Oracle attack CVE-2026-69247 (fixed >=50.0.0)
 
 # Monitoring & Logging
 prometheus-client==0.24.1
