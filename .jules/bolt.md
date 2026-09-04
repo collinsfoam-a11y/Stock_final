@@ -15,3 +15,7 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+
+## 2024-09-04 - N+1 Queries via Nested Object Hydration
+**Learning:** Functions that perform data aggregation or completeness checks (like `calculate_completeness`) often defensively fetch their own data using `find_one()` to ensure they have the full record. When these functions are called from within loops that already iterate over pre-fetched document lists, this creates a severe N+1 query problem, as the same data is unnecessarily fetched twice.
+**Action:** To resolve N+1 query bottlenecks in batch processing loops, pass pre-fetched document data directly to computation or validation functions (e.g., using a `prefetched_item` parameter) to bypass redundant database lookups (like `find_one`) for items already in memory.
