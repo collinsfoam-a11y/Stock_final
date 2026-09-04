@@ -4,14 +4,15 @@
  */
 
 import React from "react";
-import { View, Text, StyleSheet, Platform } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import Slider from "@react-native-community/slider";
-import { selectionAsync } from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { fontFamily, typography } from "@/theme/unified";
 import { colorWithAlpha } from "../../theme/themeTokens";
+import { haptics } from "@/services/haptics";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 interface FontSizeSliderProps {
   value: number;
@@ -58,9 +59,7 @@ export const FontSizeSlider: React.FC<FontSizeSliderProps> = ({
 
     // Only trigger haptics and callback when value actually changes
     if (snappedValue !== value) {
-      if (Platform.OS !== "web") {
-        selectionAsync();
-      }
+      void haptics.selection();
       onValueChange(snappedValue);
     }
   };
@@ -79,14 +78,17 @@ export const FontSizeSlider: React.FC<FontSizeSliderProps> = ({
     >
       <View style={styles.header}>
         <View style={[styles.labelRow, { gap: uiTokens.spacing.xs }]}>
-          <Ionicons name="text-outline" size={18} color={labelColor} />
+          <Ionicons {...getDecorativeIconProps()} name="text-outline" size={18} color={labelColor} />
           <Text style={[styles.label, { color: labelColor }]}>Font Size</Text>
         </View>
         <Text style={[styles.valueLabel, { color: accentColor }]}>{getSizeLabel()}</Text>
       </View>
 
       <View style={[styles.sliderContainer, { gap: uiTokens.spacing.sm }]}>
-        <Text style={[styles.minMaxLabel, { color: secondaryTextColor, fontSize: minValue }]}>
+        <Text
+          {...getDecorativeIconProps()}
+          style={[styles.minMaxLabel, { color: secondaryTextColor, fontSize: minValue }]}
+        >
           A
         </Text>
 
@@ -101,15 +103,28 @@ export const FontSizeSlider: React.FC<FontSizeSliderProps> = ({
           maximumTrackTintColor={mutedTrackColor}
           thumbTintColor={disabled ? uiTokens.colors.textMuted : uiTokens.colors.accentStrong}
           disabled={disabled}
+          accessibilityLabel="Font size"
+          accessibilityValue={{
+            min: minValue,
+            max: maxValue,
+            now: value,
+            text: getSizeLabel(),
+          }}
         />
 
-        <Text style={[styles.minMaxLabel, { color: secondaryTextColor, fontSize: maxValue }]}>
+        <Text
+          {...getDecorativeIconProps()}
+          style={[styles.minMaxLabel, { color: secondaryTextColor, fontSize: maxValue }]}
+        >
           A
         </Text>
       </View>
 
       {/* Preview Text */}
       <View
+        accessible={true}
+        accessibilityRole="text"
+        accessibilityLabel={`Sample Text Preview, ${getSizeLabel()}`}
         style={[
           styles.previewContainer,
           {
