@@ -8,9 +8,19 @@ describe("StatusBadge", () => {
     expect(getByText("ACTIVE")).toBeTruthy();
   });
 
-  it("has correct accessibility attributes", () => {
+  it("has correct default accessibility attributes", () => {
     const { getByLabelText } = render(<StatusBadge label="ACTIVE" />);
     const badge = getByLabelText("Status: ACTIVE");
+
+    expect(badge.props.accessible).toBe(true);
+    expect(badge.props.accessibilityRole).toBe("text");
+  });
+
+  it("supports custom accessibilityLabel", () => {
+    const { getByLabelText } = render(
+      <StatusBadge label="ACTIVE" accessibilityLabel="Custom status label" />
+    );
+    const badge = getByLabelText("Custom status label");
 
     expect(badge.props.accessible).toBe(true);
     expect(badge.props.accessibilityRole).toBe("text");

@@ -37,6 +37,7 @@ interface StatusBadgeProps {
   icon?: keyof typeof Ionicons.glyphMap;
   pulse?: boolean;
   style?: ViewStyle;
+  accessibilityLabel?: string;
 }
 
 const variantColors: Record<
@@ -97,6 +98,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   icon,
   pulse = false,
   style,
+  accessibilityLabel,
 }) => {
   const colors = variantColors[variant];
   const sizeConfig = sizeStyles[size];
@@ -146,7 +148,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   const accessibilityProps = {
     accessible: true,
     accessibilityRole: "text" as const,
-    accessibilityLabel: `Status: ${label}`,
+    accessibilityLabel: accessibilityLabel || `Status: ${label}`,
   };
 
   const content = (
