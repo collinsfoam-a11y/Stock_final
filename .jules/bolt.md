@@ -15,3 +15,9 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+## 2026-07-27 - Fast-path N+1 query loops using pre-fetched memory context
+**Learning:** Functions that perform dictionary enrichment by looking up database items (like `calculate_completeness` calling `find_one(item_code)`) become an N+1 query bottleneck when invoked inside loops that iterate over collections already fetched via `find().to_list()`.
+**Action:** Always provide an optional `prefetched_item: dict = None` parameter on data-enriching functions and pass the existing loop variable context to safely skip the database lookup when the item is already present in memory.
+## 2026-09-05 - Mocking _PYODBC_AVAILABLE correctly during testing
+**Learning:** For tests relying on database connectors, simply mocking pyodbc isn't enough if the connector's internal check uses `_PYODBC_AVAILABLE`. This creates false positives leading to failed DB-dependent tests like mapping APIs.
+**Action:** When mocking pyodbc during unit testing, ensure to also mock the internal flag checking availability (`_PYODBC_AVAILABLE=True`), either via an explicit `patch()` or fixture setting.
