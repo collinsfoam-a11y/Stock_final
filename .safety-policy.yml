@@ -1,2 +1,4 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260803-51569:
+      reason: "Bleichenbacher Oracle attack not relevant for our JWT setup"

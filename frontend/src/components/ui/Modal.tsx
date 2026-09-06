@@ -180,8 +180,7 @@ export const Modal: React.FC<ModalProps> = ({
                         onClose();
                       }}
                       style={styles.closeButton}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      {...getAccessibleButtonProps({ label: "Close" })}
+                      {...getAccessibleButtonProps({ label: "Close", hitSlop: { top: 10, bottom: 10, left: 10, right: 10 } })}
                     >
                       <Ionicons
                         {...getDecorativeIconProps()}
