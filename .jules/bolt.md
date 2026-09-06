@@ -15,3 +15,6 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+## 2024-09-06 - Replace sequential Motor aggregations with asyncio.gather
+**Learning:** In PyMongo/Motor backend applications, chaining multiple independent `.aggregate().to_list()` calls sequentially on the same endpoint (e.g., for different analytic grouping views) introduces significant N+1 I/O delays because each query waits for the previous to finish.
+**Action:** Identify independent `MotorCursor` executions and unpack them concurrently using `asyncio.gather(..., ..., ...)` to drastically cut down total endpoint response time.

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any, Optional
 
@@ -98,11 +99,14 @@ async def get_sessions_analytics(current_user: dict = Depends(get_current_user))
         warehouse_pipeline = [{"$group": {"_id": "$warehouse", "total_variance": {"$sum": {"$abs": "$total_variance"}}, "session_count": {"$sum": 1}}}]
         staff_pipeline = [{"$group": {"_id": "$staff_name", "total_items": {"$sum": "$total_items"}, "session_count": {"$sum": 1}}}]
 
-        overall = await db.sessions.aggregate(pipeline).to_list(1)
-        by_date = await db.sessions.aggregate(date_pipeline).to_list(None)
-        by_status = await db.sessions.aggregate(status_pipeline).to_list(None)
-        by_warehouse = await db.sessions.aggregate(warehouse_pipeline).to_list(None)
-        by_staff = await db.sessions.aggregate(staff_pipeline).to_list(None)
+        # Execute independent aggregation pipelines concurrently to reduce database I/O wait time
+        overall, by_date, by_status, by_warehouse, by_staff = await asyncio.gather(
+            db.sessions.aggregate(pipeline).to_list(1),
+            db.sessions.aggregate(date_pipeline).to_list(None),
+            db.sessions.aggregate(status_pipeline).to_list(None),
+            db.sessions.aggregate(warehouse_pipeline).to_list(None),
+            db.sessions.aggregate(staff_pipeline).to_list(None)
+        )
 
         sessions_by_date = {item["_id"]: item["count"] for item in by_date}
         sessions_by_status = {item["_id"]: item["count"] for item in by_status}
