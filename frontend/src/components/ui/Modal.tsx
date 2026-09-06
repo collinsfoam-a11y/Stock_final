@@ -30,6 +30,7 @@ import { haptics } from "@/services/haptics";
 
 import { shadows as uiShadows } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export interface ModalProps {
@@ -179,11 +180,14 @@ export const Modal: React.FC<ModalProps> = ({
                         onClose();
                       }}
                       style={styles.closeButton}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      accessibilityRole="button"
-                      accessibilityLabel="Close"
+                      {...getAccessibleButtonProps({ label: "Close", hitSlop: { top: 10, bottom: 10, left: 10, right: 10 } })}
                     >
-                      <Ionicons name="close" size={24} color={theme.colors.textSecondary} />
+                      <Ionicons
+                        {...getDecorativeIconProps()}
+                        name="close"
+                        size={24}
+                        color={theme.colors.textSecondary}
+                      />
                     </AppTouchable>
                   )}
                 </View>
