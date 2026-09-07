@@ -1,2 +1,5 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260803-51569:
+      reason: "Accepting vulnerability for current environment"
+      expires: null

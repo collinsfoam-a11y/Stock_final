@@ -281,8 +281,8 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     const Component = isWeb ? AppTouchable : AnimatedAppTouchable;
 
     const finalAccessibilityLabel = loading
-      ? `Loading, ${accessibilityLabel || title}`
-      : accessibilityLabel || title;
+      ? `Loading, ${accessibilityLabel ?? title}`
+      : accessibilityLabel ?? title;
 
     const props = {
       onPress,
