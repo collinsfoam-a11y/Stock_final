@@ -1,9 +1,10 @@
 import React from "react";
-import { View, Text, StyleSheet, Platform, Pressable } from "react-native";
-import * as Haptics from "expo-haptics";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useUiTokens } from "../../hooks/useUiTokens";
+import { haptics } from "../../services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "../../utils/accessibility";
 import { typography } from "@/theme/unified";
 import { colorWithAlpha } from "../../theme/themeTokens";
 import {
@@ -40,7 +41,7 @@ export const FontStylePicker: React.FC<FontStylePickerProps> = ({
     >
       <View style={styles.header}>
         <View style={[styles.labelRow, { gap: uiTokens.spacing.xs }]}>
-          <Ionicons name="text" size={18} color={labelColor} />
+          <Ionicons name="text" size={18} color={labelColor} {...getDecorativeIconProps()} />
           <Text style={[styles.label, { color: labelColor }]}>Font Style</Text>
         </View>
       </View>
@@ -52,9 +53,12 @@ export const FontStylePicker: React.FC<FontStylePickerProps> = ({
 
           return (
             <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ disabled, selected: isSelected }}
               key={option.value}
+              {...getAccessibleButtonProps({
+                label: `${option.label} font style`,
+                selected: isSelected,
+                disabled,
+              })}
               style={[
                 styles.option,
                 {
@@ -71,9 +75,7 @@ export const FontStylePicker: React.FC<FontStylePickerProps> = ({
                 if (disabled) {
                   return;
                 }
-                if (Platform.OS !== "web") {
-                  Haptics.selectionAsync();
-                }
+                void haptics.selection();
                 onValueChange(option.value);
               }}
             >
