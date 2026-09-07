@@ -1,5 +1,6 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { FontStylePicker } from "../FontStylePicker";
 import { haptics } from "../../../services/haptics";
@@ -76,7 +77,7 @@ describe("FontStylePicker", () => {
       <FontStylePicker value="system" onValueChange={jest.fn()} />
     );
 
-    const icon = UNSAFE_getByType("Ionicons");
+    const icon = UNSAFE_getByType(Ionicons);
     expect(icon.props.accessibilityElementsHidden).toBe(true);
     expect(icon.props.importantForAccessibility).toBe("no");
     expect(icon.props["aria-hidden"]).toBe(true);
