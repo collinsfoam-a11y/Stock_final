@@ -109,4 +109,19 @@ describe("ModernButton", () => {
 
     expect(getByLabelText("Submit Form")).toBeTruthy();
   });
+
+  it("respects empty string accessibilityLabel when intentionally silenced", () => {
+    const { getByText } = render(
+      <ModernButton
+        title="Submit"
+        onPress={() => {}}
+        accessibilityLabel=""
+      />
+    );
+
+    const buttonText = getByText("Submit");
+    const buttonContainer = buttonText.parent?.parent?.parent; // the enclosing touchable
+
+    expect(buttonContainer?.props.accessibilityLabel).toBe("");
+  });
 });

@@ -24,12 +24,15 @@ describe("Badge", () => {
     expect(badge.props.accessibilityRole).toBe("text");
   });
 
-  it("falls back to default label when accessibilityLabel is empty string", () => {
-    const { getByLabelText } = render(<Badge label="5" accessibilityLabel="" />);
-    const badge = getByLabelText("Badge: 5");
+  it("respects empty string accessibilityLabel", () => {
+    const { getByText } = render(<Badge label="5" accessibilityLabel="" />);
+    // When the label is intentionally empty to silence screen readers,
+    // it won't be accessible by label text. We find by the rendered text instead.
+    const badgeText = getByText("5");
+    const badgeContainer = badgeText.parent?.parent?.parent; // the enclosing view
 
-    expect(badge.props.accessible).toBe(true);
-    expect(badge.props.accessibilityLabel).toBe("Badge: 5");
+    expect(badgeContainer?.props.accessible).toBe(true);
+    expect(badgeContainer?.props.accessibilityLabel).toBe("");
   });
 
   it("uses custom accessibilityLabel when provided", () => {

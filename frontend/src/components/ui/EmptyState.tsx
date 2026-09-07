@@ -36,7 +36,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     <FadeIn style={[styles.container, style]}>
       <View
         accessible={true}
-        accessibilityLabel={accessibilityLabel || `${title}. ${message || ""}`}
+        accessibilityLabel={accessibilityLabel ?? (message ? `${title}. ${message}` : title)}
       >
         <Ionicons
           name={icon}
