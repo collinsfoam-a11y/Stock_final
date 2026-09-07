@@ -15,3 +15,6 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+## $(date +%Y-%m-%d) - Concurrency in Activity Log Statistics
+**Learning:** The `get_statistics` method in `backend/services/activity_log.py` previously executed six MongoDB aggregation and count operations sequentially. Because database queries are inherently I/O bound, sequentially awaiting them creates an unnecessary performance bottleneck proportional to the number of queries.
+**Action:** Always inspect methods that fetch multiple independent datasets (like report generators or statistics dashboards) for sequential `await` calls. Refactor them using `asyncio.gather(...)` to execute the database requests concurrently, significantly reducing total response latency.
