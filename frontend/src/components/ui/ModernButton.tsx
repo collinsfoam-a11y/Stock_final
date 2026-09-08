@@ -280,9 +280,10 @@ export const ModernButton: React.FC<ModernButtonProps> = ({
     const isWeb = Platform.OS === "web";
     const Component = isWeb ? AppTouchable : AnimatedAppTouchable;
 
+    const labelFallback = accessibilityLabel ?? title;
     const finalAccessibilityLabel = loading
-      ? `Loading, ${accessibilityLabel || title}`
-      : accessibilityLabel || title;
+      ? `Loading, ${labelFallback}`
+      : labelFallback;
 
     const props = {
       onPress,
