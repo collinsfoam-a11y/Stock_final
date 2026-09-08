@@ -61,6 +61,14 @@ jest.mock("../../../services/enhancedSearchService", () => ({
   searchItems: (...args: unknown[]) => mockRemoteSearchItems(...args),
 }));
 
+jest.mock("@/services/haptics", () => ({
+  haptics: {
+    light: jest.fn(),
+  },
+}));
+
+import { haptics } from "@/services/haptics";
+
 describe("SearchAutocomplete", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -125,5 +133,49 @@ describe("SearchAutocomplete", () => {
 
     expect(mockLocalSearchItems).not.toHaveBeenCalled();
     expect(await findByText("Remote Item")).toBeTruthy();
+  });
+
+  it("provides haptic feedback and accessibility labels when selecting an item and clearing search", async () => {
+    mockRemoteSearchItems.mockResolvedValue({
+      items: [
+        {
+          id: "remote-1",
+          item_code: "ITEM-2",
+          item_name: "Remote Item",
+          stock_qty: 4,
+        },
+      ],
+    });
+
+    const onSelectItem = jest.fn();
+    const { getByPlaceholderText, findByLabelText, getByLabelText } = render(
+      <SearchAutocomplete
+        onSelectItem={onSelectItem}
+        placeholder="Search inventory"
+      />,
+    );
+
+    fireEvent.changeText(getByPlaceholderText("Search inventory"), "ITEM");
+
+    const resultItem = await findByLabelText("Select Remote Item, code ITEM-2");
+    expect(resultItem).toBeTruthy();
+
+    fireEvent.press(resultItem);
+    expect(haptics.light).toHaveBeenCalled();
+    expect(onSelectItem).toHaveBeenCalledWith({
+      id: "remote-1",
+      item_code: "ITEM-2",
+      item_name: "Remote Item",
+      stock_qty: 4,
+    });
+
+    // Re-type to check clear button accessibility and haptic
+    fireEvent.changeText(getByPlaceholderText("Search inventory"), "TEST");
+    const clearButton = await waitFor(() => getByLabelText("Clear search query"));
+    expect(clearButton).toBeTruthy();
+
+    jest.clearAllMocks();
+    fireEvent.press(clearButton);
+    expect(haptics.light).toHaveBeenCalled();
   });
 });
