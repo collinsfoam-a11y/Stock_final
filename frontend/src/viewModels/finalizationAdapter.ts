@@ -13,8 +13,8 @@ type FinalizationAssessmentDTO = {
   allowed?: boolean;
   can_finalize?: boolean;
   ready?: boolean;
-  blockers?: Array<Record<string, unknown>>;
-  blocking_reasons?: Array<Record<string, unknown> | string>;
+  blockers?: Record<string, unknown>[];
+  blocking_reasons?: (Record<string, unknown> | string)[];
   assessment_id?: string;
   assessmentToken?: string;
   assessed_at?: string;

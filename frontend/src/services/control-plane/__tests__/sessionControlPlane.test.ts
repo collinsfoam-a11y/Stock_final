@@ -1,3 +1,8 @@
+import api from "@/services/httpClient";
+import { getNetworkStatus } from "@/utils/network";
+import { findActiveProjectedSessionForLocation } from "@/data/repositories/sessionControlPlaneRepository";
+import { createSessionCommand } from "../sessionControlPlane";
+
 jest.mock("@/services/httpClient", () => ({
   __esModule: true,
   default: {
@@ -64,11 +69,6 @@ jest.mock("@/services/control-plane/controlPlaneEventBus", () => ({
     publish: jest.fn(),
   },
 }));
-
-import api from "@/services/httpClient";
-import { getNetworkStatus } from "@/utils/network";
-import { findActiveProjectedSessionForLocation } from "@/data/repositories/sessionControlPlaneRepository";
-import { createSessionCommand } from "../sessionControlPlane";
 
 describe("createSessionCommand", () => {
   beforeEach(() => {

@@ -250,7 +250,7 @@ export const ModernCard: React.FC<ModernCardProps> = ({
           ? ("button" as const)
           : ("none" as const)
         : undefined,
-      accessibilityLabel: accessibilityLabel || title,
+      accessibilityLabel: accessibilityLabel ?? title,
       accessibilityHint,
     };
 
