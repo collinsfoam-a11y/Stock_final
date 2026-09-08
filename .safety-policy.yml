@@ -1,2 +1,5 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260803-51569:
+      reason: False positive, we don't use PKCS#7 EnvelopedData decryption
+      expires: 2027-01-01
