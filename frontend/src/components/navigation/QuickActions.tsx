@@ -9,13 +9,17 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
-interface QuickAction {
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+
+export interface QuickAction {
   id: string;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
   color?: string;
   badge?: number;
+  accessibilityHint?: string;
 }
 
 interface QuickActionsProps {
@@ -38,37 +42,58 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {actions.map((action) => (
-          <AppTouchable
-            key={action.id}
-            style={[
-              styles.actionButton,
-              compact && styles.actionButtonCompact,
-              { width: compact ? undefined : actionWidth } as any,
-              action.color && { backgroundColor: action.color + "20" },
-            ]}
-            onPress={action.onPress}
-            accessibilityLabel={action.label}>
-            <View style={styles.actionIconContainer}>
-              <Ionicons
-                name={action.icon}
-                size={compact ? 20 : 24}
-                color={action.color || uiColors.info[500]}
-              />
-              {action.badge !== undefined && action.badge > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{action.badge > 99 ? "99+" : action.badge}</Text>
-                </View>
-              )}
-            </View>
-            <Text
-              style={[styles.actionLabel, compact && styles.actionLabelCompact]}
-              numberOfLines={1}
+        {actions.map((action) => {
+          const badgeText =
+            action.badge !== undefined && action.badge > 0
+              ? action.badge > 99
+                ? "99+"
+                : `${action.badge}`
+              : null;
+
+          const accessibilityLabel = badgeText
+            ? `${action.label}, ${badgeText} unread`
+            : action.label;
+
+          return (
+            <AppTouchable
+              key={action.id}
+              style={[
+                styles.actionButton,
+                compact && styles.actionButtonCompact,
+                { width: compact ? undefined : actionWidth } as any,
+                action.color && { backgroundColor: action.color + "20" },
+              ]}
+              onPress={() => {
+                void haptics.light();
+                action.onPress();
+              }}
+              {...getAccessibleButtonProps({
+                label: accessibilityLabel,
+                hint: action.accessibilityHint,
+              })}
             >
-              {action.label}
-            </Text>
-          </AppTouchable>
-        ))}
+              <View style={styles.actionIconContainer}>
+                <Ionicons
+                  name={action.icon}
+                  size={compact ? 20 : 24}
+                  color={action.color || uiColors.info[500]}
+                  {...getDecorativeIconProps()}
+                />
+                {badgeText && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{badgeText}</Text>
+                  </View>
+                )}
+              </View>
+              <Text
+                style={[styles.actionLabel, compact && styles.actionLabelCompact]}
+                numberOfLines={1}
+              >
+                {action.label}
+              </Text>
+            </AppTouchable>
+          );
+        })}
       </ScrollView>
     </View>
   );
