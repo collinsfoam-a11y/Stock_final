@@ -32,6 +32,7 @@ import { useAuthStore } from "../../store/authStore";
 import { useThemeContext } from "../../context/ThemeContext";
 import { safeBackNavigation } from "../../utils/navigation";
 import type { UserRole } from "../../utils/roleNavigation";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "../../utils/accessibility";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 
@@ -81,6 +82,7 @@ interface AnimatedButtonProps {
   backgroundColor: string;
   size?: number;
   testID?: string;
+  label?: string;
 }
 
 const AnimatedButton: React.FC<AnimatedButtonProps> = ({
@@ -90,6 +92,7 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   backgroundColor,
   size = 22,
   testID,
+  label,
 }) => {
   const scale = useSharedValue(1);
 
@@ -105,6 +108,11 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = ({
     scale.value = withSpring(1, { damping: 15 });
   }, [scale]);
 
+  const decorativeIconProps = getDecorativeIconProps();
+  const accessibleButtonProps = getAccessibleButtonProps({
+    label: label || testID || "Header action",
+  });
+
   return (
     <Animated.View style={animatedStyle}>
       <AppTouchable
@@ -114,8 +122,8 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = ({
         style={[styles.actionButton, { backgroundColor }]}
         activeOpacity={0.8}
         testID={testID}
-        accessibilityLabel={testID || "Header button"}>
-        <Ionicons name={icon} size={size} color={iconColor} />
+        {...accessibleButtonProps}>
+        <Ionicons {...decorativeIconProps} name={icon} size={size} color={iconColor} />
       </AppTouchable>
     </Animated.View>
   );
@@ -289,6 +297,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
               backgroundColor={colors.buttonBg}
               size={24}
               testID="back-button"
+              label="Go back"
             />
           </Animated.View>
         )}
@@ -325,6 +334,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             iconColor={colors.accent}
             backgroundColor={colors.buttonBg}
             testID="settings-button"
+            label="Open settings"
           />
         )}
         {rightAction && (
@@ -334,6 +344,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             iconColor={colors.accent}
             backgroundColor={colors.buttonBg}
             testID="right-action-button"
+            label={rightAction.label || "Header action"}
           />
         )}
         {showLogoutButton && (
@@ -343,6 +354,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             iconColor={colors.danger}
             backgroundColor={colors.dangerBg}
             testID="logout-button"
+            label="Logout"
           />
         )}
       </Animated.View>
