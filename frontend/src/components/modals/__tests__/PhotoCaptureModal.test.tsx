@@ -1,5 +1,6 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import { AppState, Linking } from "react-native";
+import { haptics } from "@/services/haptics";
 
 import { PhotoCaptureModal } from "../PhotoCaptureModal";
 
@@ -13,6 +14,12 @@ jest.mock("expo-camera", () => ({
   useCameraPermissions: () => mockUseCameraPermissions(),
 }));
 
+jest.mock("@/services/haptics", () => ({
+  haptics: {
+    light: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
 describe("PhotoCaptureModal permission handling", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -20,6 +27,31 @@ describe("PhotoCaptureModal permission handling", () => {
     jest
       .spyOn(AppState, "addEventListener")
       .mockImplementation(mockAppStateAddEventListener);
+  });
+
+  it("triggers haptics and has correct accessibility attributes for grant permission button", async () => {
+    mockUseCameraPermissions.mockReturnValue([
+      { granted: false, canAskAgain: true },
+      mockRequestPermission,
+      mockGetPermission,
+    ]);
+
+    const { getByText } = render(
+      <PhotoCaptureModal
+        visible
+        onClose={jest.fn()}
+        onCapture={jest.fn()}
+      />,
+    );
+
+    const grantBtn = getByText("Grant Permission");
+    expect(grantBtn).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(grantBtn);
+    });
+
+    expect(haptics.light).toHaveBeenCalled();
   });
 
   it("auto-requests permission and allows a manual retry when camera access can still be asked", async () => {
@@ -109,5 +141,32 @@ describe("PhotoCaptureModal permission handling", () => {
       expect(queryByText("Open Settings")).toBeNull();
       expect(getByTestId("photo-capture-capture")).toBeTruthy();
     });
+  });
+
+  it("verifies close button accessibility and haptic feedback when modal is open", async () => {
+    mockUseCameraPermissions.mockReturnValue([
+      { granted: true, canAskAgain: true },
+      mockRequestPermission,
+      mockGetPermission,
+    ]);
+
+    const onCloseMock = jest.fn();
+    const { getByLabelText } = render(
+      <PhotoCaptureModal
+        visible
+        onClose={onCloseMock}
+        onCapture={jest.fn()}
+      />,
+    );
+
+    const closeBtn = getByLabelText("Close");
+    expect(closeBtn).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(closeBtn);
+    });
+
+    expect(haptics.light).toHaveBeenCalled();
+    expect(onCloseMock).toHaveBeenCalled();
   });
 });
