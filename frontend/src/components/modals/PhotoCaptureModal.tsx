@@ -27,6 +27,8 @@ import {
 
 import { semanticColors as uiSemanticColors } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 interface PhotoCaptureModalProps {
   visible: boolean;
   onClose: () => void;
@@ -71,6 +73,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   // Handle photo capture
   const handleCapture = async () => {
     if (!cameraRef.current) return;
+    void haptics.light();
 
     try {
       setIsCapturing(true);
@@ -92,6 +95,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   // Handle photo confirmation
   const handleConfirm = () => {
+    void haptics.light();
     if (capturedPhoto) {
       onCapture(capturedPhoto);
       handleClose();
@@ -100,16 +104,19 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 
   // Handle retake
   const handleRetake = () => {
+    void haptics.light();
     setCapturedPhoto(null);
   };
 
   // Handle close
   const handleClose = () => {
+    void haptics.light();
     setCapturedPhoto(null);
     onClose();
   };
 
   const handleOpenSettings = async () => {
+    void haptics.light();
     try {
       await Linking.openSettings();
     } catch {
@@ -172,19 +179,21 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             <AppTouchable
               style={styles.closeButton}
               onPress={handleClose}
-              accessibilityLabel="Close">
-              <Ionicons name="close" size={24} color={modernColors.text.primary} />
+              {...getAccessibleButtonProps({ label: "Close" })}>
+              <Ionicons name="close" size={24} color={modernColors.text.primary} {...getDecorativeIconProps()} />
             </AppTouchable>
           </View>
           <View style={styles.permissionContainer}>
-            <Ionicons name="camera-outline" size={64} color={modernColors.text.tertiary} />
+            <Ionicons name="camera-outline" size={64} color={modernColors.text.tertiary} {...getDecorativeIconProps()} />
             <Text style={styles.permissionText}>
               Camera permission is required to capture photos
             </Text>
             {canAskPermission ? (
               <AppTouchable
                 style={styles.permissionButton}
+                {...getAccessibleButtonProps({ label: "Grant Permission" })}
                 onPress={() => {
+                  void haptics.light();
                   void requestCameraPermission();
                 }}
  >
@@ -198,6 +207,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 </Text>
                 <AppTouchable
                   style={styles.permissionButton}
+                  {...getAccessibleButtonProps({ label: "Open Settings" })}
                   onPress={handleOpenSettings}
  >
                   <Text style={styles.permissionButtonText}>Open Settings</Text>
@@ -225,8 +235,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
           <AppTouchable
             style={styles.closeButton}
             onPress={handleClose}
-            accessibilityLabel="Close">
-            <Ionicons name="close" size={24} color={modernColors.text.primary} />
+            {...getAccessibleButtonProps({ label: "Close" })}>
+            <Ionicons name="close" size={24} color={modernColors.text.primary} {...getDecorativeIconProps()} />
           </AppTouchable>
         </View>
 
@@ -252,15 +262,15 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               <AppTouchable
                 style={[styles.controlButton, styles.retakeButton]}
                 onPress={handleRetake}
-                accessibilityLabel="Refresh">
-                <Ionicons name="refresh" size={24} color={uiSemanticColors.text.inverse} />
+                {...getAccessibleButtonProps({ label: "Retake photo" })}>
+                <Ionicons name="refresh" size={24} color={uiSemanticColors.text.inverse} {...getDecorativeIconProps()} />
                 <Text style={styles.controlButtonText}>Retake</Text>
               </AppTouchable>
               <AppTouchable
                 style={[styles.controlButton, styles.confirmButton]}
                 onPress={handleConfirm}
-                accessibilityLabel="Confirm">
-                <Ionicons name="checkmark" size={24} color={uiSemanticColors.text.inverse} />
+                {...getAccessibleButtonProps({ label: "Use photo" })}>
+                <Ionicons name="checkmark" size={24} color={uiSemanticColors.text.inverse} {...getDecorativeIconProps()} />
                 <Text style={styles.controlButtonText}>Use Photo</Text>
               </AppTouchable>
             </>
@@ -270,7 +280,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               onPress={handleCapture}
               disabled={isCapturing}
               testID={`${testID}-capture`}
-              accessibilityLabel="Take photo">
+              {...getAccessibleButtonProps({ label: "Take photo", disabled: isCapturing })}>
               <View style={styles.captureButtonInner} />
             </AppTouchable>
           )}
