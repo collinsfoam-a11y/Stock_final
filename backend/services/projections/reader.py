@@ -457,7 +457,8 @@ class ProjectionReadService:
     ) -> dict[str, Any]:
         rows = await self._filtered_verified_items(config.filters)
         rows = self._sort_verified_items(rows, sort_by=config.sort_by, sort_order=config.sort_order)
-        total_records = len(await self._list_documents("verified_items_projection"))
+        # ⚡ Bolt Optimization: Use native db counting instead of fetching all docs to memory
+        total_records = await self.db["verified_items_projection"].count_documents({})
         filtered_records = len(rows)
         skip = max((int(config.page) - 1) * int(config.page_size), 0)
         paged_rows = rows[skip : skip + int(config.page_size)]
