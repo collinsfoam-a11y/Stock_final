@@ -1,2 +1,5 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260803-51569:
+      reason: "Ignore Bleichenbacher Oracle attack vulnerability as this codebase only uses JWT signing/verification, not PKCS#7 decryption"
+      expires: "2027-01-01"
