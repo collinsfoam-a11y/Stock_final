@@ -15,6 +15,11 @@ import {
 } from "@/theme/unified";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import {
+  getAccessibleButtonProps,
+  getDecorativeIconProps,
+} from "@/utils/accessibility";
 
 interface DateRangePickerProps {
   startDate: Date;
@@ -42,22 +47,42 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     });
   };
 
+  const formattedStartDate = formatDate(startDate);
+  const formattedEndDate = formatDate(endDate);
+
+  const handleStartPress = () => {
+    void haptics.light();
+    setShowStartPicker(true);
+  };
+
+  const handleEndPress = () => {
+    void haptics.light();
+    setShowEndPicker(true);
+  };
+
+  const decorativeProps = getDecorativeIconProps();
+
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
       <View style={styles.dateRow}>
         <AppTouchable
           style={styles.dateButton}
-          onPress={() => setShowStartPicker(true)}
- >
+          onPress={handleStartPress}
+          {...getAccessibleButtonProps({
+            label: `Start date, currently ${formattedStartDate}`,
+            hint: "Opens date picker to change start date",
+          })}
+        >
           <Ionicons
             name="calendar"
             size={20}
             color={modernColors.primary[500]}
+            {...decorativeProps}
           />
           <View style={styles.dateContent}>
             <Text style={styles.dateLabel}>Start Date</Text>
-            <Text style={styles.dateValue}>{formatDate(startDate)}</Text>
+            <Text style={styles.dateValue}>{formattedStartDate}</Text>
           </View>
         </AppTouchable>
 
@@ -65,20 +90,26 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           name="arrow-forward"
           size={20}
           color={modernColors.text.secondary}
+          {...decorativeProps}
         />
 
         <AppTouchable
           style={styles.dateButton}
-          onPress={() => setShowEndPicker(true)}
- >
+          onPress={handleEndPress}
+          {...getAccessibleButtonProps({
+            label: `End date, currently ${formattedEndDate}`,
+            hint: "Opens date picker to change end date",
+          })}
+        >
           <Ionicons
             name="calendar"
             size={20}
             color={modernColors.primary[500]}
+            {...decorativeProps}
           />
           <View style={styles.dateContent}>
             <Text style={styles.dateLabel}>End Date</Text>
-            <Text style={styles.dateValue}>{formatDate(endDate)}</Text>
+            <Text style={styles.dateValue}>{formattedEndDate}</Text>
           </View>
         </AppTouchable>
       </View>
