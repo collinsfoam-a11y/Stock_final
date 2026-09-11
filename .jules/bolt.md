@@ -15,3 +15,7 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+
+## 2026-09-11 - Efficient User Resolution with Bulk MongoDB Queries
+**Learning:** Extracting relationships from an N+1 fetching loop and performing a single MongoDB query with `$in` is far more performant than looping and making individual `find_one()` requests. Sequential database requests in Python incur massive network and wait-time latency overhead. Constructing a temporary lookup dictionary using the bulk result changes (N)$ query requests to an (1)$ query with an (N)$ local lookup.
+**Action:** Whenever identifying multiple associated records (e.g. resolving a list of usernames in session tokens), collect the unique keys, issue a single bulk `find({"key": {"$in": keys}})` request, and build a dictionary to enrich the objects locally.
