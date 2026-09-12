@@ -10,6 +10,8 @@ import {
 } from "@/theme/unified";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 
 interface OptionSelectModalProps {
   visible: boolean;
@@ -17,6 +19,8 @@ interface OptionSelectModalProps {
   options: string[];
   onSelect: (value: string) => void;
   onClose: () => void;
+  selectedValue?: string;
+  testID?: string;
 }
 
 export const OptionSelectModal: React.FC<OptionSelectModalProps> = ({
@@ -25,25 +29,67 @@ export const OptionSelectModal: React.FC<OptionSelectModalProps> = ({
   options,
   onSelect,
   onClose,
+  selectedValue,
+  testID = "option-select-modal",
 }) => {
+  const handleClose = () => {
+    void haptics.light();
+    onClose();
+  };
+
+  const handleSelectOption = (item: string) => {
+    void haptics.light();
+    onSelect(item);
+  };
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={handleClose}
+      testID={testID}
+    >
       <View style={styles.backdrop}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={handleClose}
+          testID={`${testID}-backdrop`}
+          accessibilityLabel="Dismiss modal backdrop"
+          accessibilityRole="button"
+        />
         <View style={styles.content}>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            {title}
+          </Text>
           <FlatList
             data={options}
             keyExtractor={(item) => item}
-            renderItem={({ item }) => (
-              <Pressable onPress={() => onSelect(item)} style={styles.option}>
-                <Text style={styles.optionText}>{item}</Text>
-              </Pressable>
-            )}
+            renderItem={({ item }) => {
+              const isSelected = selectedValue === item;
+              return (
+                <Pressable
+                  onPress={() => handleSelectOption(item)}
+                  style={styles.option}
+                  testID={`${testID}-option-${item}`}
+                  {...getAccessibleButtonProps({
+                    label: item,
+                    selected: isSelected,
+                  })}
+                >
+                  <Text style={[styles.optionText, isSelected && styles.selectedOptionText]}>
+                    {item}
+                  </Text>
+                </Pressable>
+              );
+            }}
           />
           <AppTouchable
             style={styles.closeButton}
-            onPress={onClose}
- >
+            onPress={handleClose}
+            testID={`${testID}-close`}
+            {...getAccessibleButtonProps({ label: "Close" })}
+          >
             <Text style={styles.closeButtonText}>Close</Text>
           </AppTouchable>
         </View>
@@ -67,6 +113,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     backgroundColor: semanticColors.background.paper,
     padding: spacing.lg,
+    zIndex: 1,
   },
   title: {
     fontSize: fontSize.lg,
@@ -82,6 +129,10 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: fontSize.md,
     color: semanticColors.text.primary,
+  },
+  selectedOptionText: {
+    fontWeight: fontWeight.bold,
+    color: colors.primary[600],
   },
   closeButton: {
     marginTop: spacing.md,
