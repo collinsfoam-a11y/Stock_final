@@ -41,3 +41,6 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+## 2026-09-13 - ModernInput showClearButton Refactor
+**Learning:** The `ModernInput` component has a native `showClearButton` prop that provides better accessibility, haptic feedback, and built-in clearing logic compared to manually implementing a clear icon via `rightIcon` and `onRightIconPress`.
+**Action:** When adding clear buttons to form inputs (like search fields), always check for and use built-in props like `showClearButton={true}` instead of manually re-implementing clear icons.

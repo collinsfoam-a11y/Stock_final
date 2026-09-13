@@ -305,14 +305,10 @@ const ScanScreen = React.memo(function ScanScreen() {
           searchResults={searchResults}
           notice={lookupNotice}
           onChangeSearchQuery={(value) => {
-            if (lookupNotice) {
+            if (lookupNotice || value === "") {
               safeSetState(setLookupNotice, null);
             }
             safeSetState(setSearchQuery, value);
-          }}
-          onClearSearchQuery={() => {
-            safeSetState(setLookupNotice, null);
-            safeSetState(setSearchQuery, "");
           }}
           onDismissNotice={() => safeSetState(setLookupNotice, null)}
           onOpenScanner={() => {
