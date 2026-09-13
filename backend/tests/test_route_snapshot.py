@@ -1,8 +1,11 @@
 import json
 import os
 from pathlib import Path
-from backend.app_factory import app
+
 from fastapi.routing import APIRoute
+
+from backend.app_factory import app
+
 
 def test_route_snapshot():
     routes = []
@@ -11,7 +14,7 @@ def test_route_snapshot():
             routes.append({
                 "path": route.path,
                 "name": route.name,
-                "methods": sorted(list(route.methods))
+                "methods": sorted(route.methods)
             })
     
     # Sort for deterministic comparison
