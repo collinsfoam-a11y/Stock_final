@@ -14,6 +14,8 @@ import {
   legacySpacing as modernSpacing,
   legacyBorderRadius as modernBorderRadius,
 } from "../../theme/unified";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 
@@ -49,6 +51,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
 
   // Handle option selection
   const handleSelect = (option: string) => {
+    void haptics.light();
     onSelect(option);
     setSearchQuery("");
     onClose();
@@ -56,8 +59,14 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
 
   // Handle close
   const handleClose = () => {
+    void haptics.light();
     setSearchQuery("");
     onClose();
+  };
+
+  const handleClearSearch = () => {
+    void haptics.light();
+    setSearchQuery("");
   };
 
   const renderOption = ({ item }: { item: string }) => (
@@ -65,12 +74,17 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
       style={styles.optionItem}
       onPress={() => handleSelect(item)}
       testID={`${testID}-option-${item}`}
+      {...getAccessibleButtonProps({
+        label: item,
+        hint: `Selects ${item}`,
+      })}
     >
       <Text style={styles.optionText}>{item}</Text>
       <Ionicons
         name="chevron-forward"
         size={20}
         color={modernColors.text.tertiary}
+        {...getDecorativeIconProps()}
       />
     </AppTouchable>
   );
@@ -90,16 +104,21 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.title} accessibilityRole="header">{title}</Text>
             <AppTouchable
               style={styles.closeButton}
               onPress={handleClose}
               testID={`${testID}-close`}
-              accessibilityLabel="Close">
+              {...getAccessibleButtonProps({
+                label: "Close modal",
+                hint: "Closes option selection modal",
+              })}
+            >
               <Ionicons
                 name="close"
                 size={24}
                 color={modernColors.text.primary}
+                {...getDecorativeIconProps()}
               />
             </AppTouchable>
           </View>
@@ -111,6 +130,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
               size={20}
               color={modernColors.text.tertiary}
               style={styles.searchIcon}
+              {...getDecorativeIconProps()}
             />
             <TextInput
               style={styles.searchInput}
@@ -120,17 +140,23 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
               placeholderTextColor={modernColors.text.disabled}
               autoCapitalize="none"
               autoCorrect={false}
+              accessibilityLabel={placeholder}
               testID={`${testID}-search`}
             />
             {searchQuery.length > 0 && (
               <AppTouchable
-                onPress={() => setSearchQuery("")}
+                onPress={handleClearSearch}
                 style={styles.clearButton}
-                accessibilityLabel="Clear search">
+                {...getAccessibleButtonProps({
+                  label: "Clear search query",
+                  hint: "Clears current search text",
+                })}
+              >
                 <Ionicons
                   name="close-circle"
                   size={20}
                   color={modernColors.text.tertiary}
+                  {...getDecorativeIconProps()}
                 />
               </AppTouchable>
             )}
@@ -152,6 +178,7 @@ export const SearchableSelectModal: React.FC<SearchableSelectModalProps> = ({
                   name="search-outline"
                   size={48}
                   color={modernColors.text.disabled}
+                  {...getDecorativeIconProps()}
                 />
                 <Text style={styles.emptyText}>No options found</Text>
               </View>
