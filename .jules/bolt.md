@@ -15,3 +15,6 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+## $(date +%Y-%m-%d) - Optimize Independent MongoDB Aggregations with asyncio.gather
+**Learning:** In FastAPI applications using Motor (async MongoDB client), executing multiple independent database queries (like aggregations for dashboard metrics) sequentially in a single endpoint creates an unnecessary I/O bottleneck. Each await block forces the application to idle while waiting for the database to respond, accumulating total wait time linearly.
+**Action:** When an endpoint requires data from multiple independent MongoDB queries, wrap the `await motor_collection.operation()` calls in `asyncio.gather(...)` to execute them concurrently, significantly reducing overall latency by taking advantage of the connection pool.
