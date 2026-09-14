@@ -12,10 +12,12 @@ import { useRouter, useSegments } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { haptics } from "@/services/haptics";
 import { useAuthStore } from "@/store/authStore";
 import type { ThemeTokens } from "@/theme/themeTokens";
 import {
   getAccessibleButtonProps,
+  getDecorativeIconProps,
   getMinimumTouchTargetStyle,
 } from "@/utils/accessibility";
 import { ADMIN_NAV_GROUPS } from "./adminNavShared";
@@ -75,7 +77,18 @@ export function MobileNavDrawer({ role, testID }: MobileNavDrawerProps) {
     return currentRoute === routePath || currentRoute.startsWith(routePath + "/");
   };
 
+  const handleOpen = () => {
+    void haptics.light();
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    void haptics.light();
+    setOpen(false);
+  };
+
   const handleSelect = (route: string) => {
+    void haptics.light();
     setOpen(false);
     router.push(route as never);
   };
@@ -84,21 +97,21 @@ export function MobileNavDrawer({ role, testID }: MobileNavDrawerProps) {
     <>
       <AppTouchable
         style={[styles.fab, { bottom: insets.bottom + uiTokens.spacing.lg }]}
-        onPress={() => setOpen(true)}
+        onPress={handleOpen}
         activeOpacity={0.8}
         testID={testID}
         {...getAccessibleButtonProps({ label: "Open navigation menu" })}>
-        <Ionicons name="menu" size={24} color={uiTokens.colors.background} />
+        <Ionicons name="menu" size={24} color={uiTokens.colors.background} {...getDecorativeIconProps()} />
       </AppTouchable>
       <Modal
         visible={open}
         transparent
         animationType="fade"
-        onRequestClose={() => setOpen(false)}
+        onRequestClose={handleClose}
       >
         <Pressable
           style={styles.backdrop}
-          onPress={() => setOpen(false)}
+          onPress={handleClose}
           accessibilityLabel="Close navigation menu"
           accessibilityRole="button"
         >
@@ -108,10 +121,10 @@ export function MobileNavDrawer({ role, testID }: MobileNavDrawerProps) {
                 {effectiveRole === "admin" ? "Admin" : "Supervisor"}
               </Text>
               <AppTouchable
-                onPress={() => setOpen(false)}
+                onPress={handleClose}
                 style={styles.closeButton}
                 {...getAccessibleButtonProps({ label: "Close navigation menu" })}>
-                <Ionicons name="close" size={22} color={uiTokens.colors.textSecondary} />
+                <Ionicons name="close" size={22} color={uiTokens.colors.textSecondary} {...getDecorativeIconProps()} />
               </AppTouchable>
             </View>
 
@@ -134,6 +147,7 @@ export function MobileNavDrawer({ role, testID }: MobileNavDrawerProps) {
                           name={item.icon}
                           size={20}
                           color={active ? uiTokens.colors.accent : uiTokens.colors.textSecondary}
+                          {...getDecorativeIconProps()}
                         />
                         <Text style={[styles.itemLabel, active && styles.itemLabelActive]}>
                           {item.label}

@@ -1,7 +1,14 @@
 import React from "react";
 import { fireEvent, render } from "@testing-library/react-native";
 
+import { haptics } from "@/services/haptics";
 import { MobileNavDrawer } from "../MobileNavDrawer";
+
+jest.mock("@/services/haptics", () => ({
+  haptics: {
+    light: jest.fn(),
+  },
+}));
 
 const mockPush = jest.fn();
 
@@ -39,7 +46,10 @@ jest.mock("../../../hooks/useUiTokens", () => ({
 }));
 
 describe("MobileNavDrawer", () => {
-  beforeEach(() => mockPush.mockClear());
+  beforeEach(() => {
+    mockPush.mockClear();
+    jest.clearAllMocks();
+  });
 
   it("renders a menu button and keeps the drawer closed initially", () => {
     const { getByLabelText, queryByText } = render(<MobileNavDrawer role="supervisor" />);
@@ -49,16 +59,29 @@ describe("MobileNavDrawer", () => {
     expect(queryByText("Count Sessions")).toBeNull();
   });
 
-  it("opens the drawer and navigates to the selected supervisor route", () => {
+  it("opens the drawer and navigates to the selected supervisor route with haptic feedback", () => {
     const { getByLabelText, getByText } = render(<MobileNavDrawer role="supervisor" />);
 
     fireEvent.press(getByLabelText("Open navigation menu"));
+    expect(haptics.light).toHaveBeenCalled();
 
     expect(getByText("Count Sessions")).toBeTruthy();
 
     fireEvent.press(getByText("Count Sessions"));
+    expect(haptics.light).toHaveBeenCalledTimes(2);
 
     expect(mockPush).toHaveBeenCalledWith("/supervisor/sessions");
+  });
+
+  it("triggers haptics when closing the drawer via close button", () => {
+    const { getByLabelText, getAllByLabelText } = render(<MobileNavDrawer role="supervisor" />);
+
+    fireEvent.press(getByLabelText("Open navigation menu"));
+    expect(haptics.light).toHaveBeenCalledTimes(1);
+
+    const closeButtons = getAllByLabelText("Close navigation menu");
+    fireEvent.press(closeButtons[0]);
+    expect(haptics.light).toHaveBeenCalledTimes(2);
   });
 
   it("shows admin navigation when role is admin", () => {
