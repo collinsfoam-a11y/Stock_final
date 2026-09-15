@@ -4,7 +4,15 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import { View, ScrollView, ActivityIndicator, Alert, RefreshControl, Text, Keyboard } from "react-native";
+import {
+  View,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  Text,
+  Keyboard,
+} from "react-native";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useCameraPermissions } from "../../src/services/device/expoCamera";
@@ -80,18 +88,14 @@ const ScanScreen = React.memo(function ScanScreen() {
   const scanLocationLabel = [currentFloor, currentRack].filter(Boolean).join(" • ");
 
   // Custom Hooks
-  const {
-    sessionStats,
-    loadSessionStats,
-    performanceMetrics,
-    performanceWarning,
-  } = useScanSessionState({
-    sessionId,
-    offlineMode,
-    isScreenFocused,
-    setIsScanning: (val) => safeSetState(setIsScanning, val),
-    isFinishing,
-  });
+  const { sessionStats, loadSessionStats, performanceMetrics, performanceWarning } =
+    useScanSessionState({
+      sessionId,
+      offlineMode,
+      isScreenFocused,
+      setIsScanning: (val) => safeSetState(setIsScanning, val),
+      isFinishing,
+    });
 
   const {
     searchQuery,
@@ -309,10 +313,6 @@ const ScanScreen = React.memo(function ScanScreen() {
               safeSetState(setLookupNotice, null);
             }
             safeSetState(setSearchQuery, value);
-          }}
-          onClearSearchQuery={() => {
-            safeSetState(setLookupNotice, null);
-            safeSetState(setSearchQuery, "");
           }}
           onDismissNotice={() => safeSetState(setLookupNotice, null)}
           onOpenScanner={() => {
