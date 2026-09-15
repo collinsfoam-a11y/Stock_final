@@ -223,6 +223,10 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           onSubmitEditing={onSubmitEditing}
           returnKeyType={returnKeyType}
           testID={testID}
+          accessibilityLabel={label || placeholder}
+          accessibilityHint={error ? `Error: ${error}` : helperText}
+          aria-invalid={Boolean(error)}
+          aria-required={required}
         />
 
         {showClear && (
