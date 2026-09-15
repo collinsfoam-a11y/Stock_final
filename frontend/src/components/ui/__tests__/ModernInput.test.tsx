@@ -106,4 +106,24 @@ describe("ModernInput", () => {
     fireEvent.press(getByLabelText("Show password"));
     expect(haptics.light).toHaveBeenCalled();
   });
+
+  it("passes correct accessibility attributes to underlying TextInput", () => {
+    const { getByTestId } = render(
+      <ModernInput
+        label="Email"
+        placeholder="user@example.com"
+        value=""
+        onChangeText={() => {}}
+        error="Email is required"
+        required
+        testID="email-input"
+      />
+    );
+
+    const input = getByTestId("email-input");
+    expect(input.props.accessibilityLabel).toBe("Email");
+    expect(input.props.accessibilityHint).toBe("Error: Email is required");
+    expect(input.props["aria-invalid"]).toBe(true);
+    expect(input.props["aria-required"]).toBe(true);
+  });
 });
