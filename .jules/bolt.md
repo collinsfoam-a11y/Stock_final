@@ -15,3 +15,6 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+## $(date +%Y-%m-%d) - Replicating Python Truthiness in MongoDB Aggregations
+**Learning:** When translating Python's truthiness-based fallback logic (e.g., `val1 or val2 or 0.0`) to a native MongoDB aggregation pipeline, `$ifNull` is insufficient because it treats falsy values (like `0` or `""`) as valid, whereas Python treats them as falsy and triggers the fallback.
+**Action:** Use the `$in` operator against an array of falsy values (e.g., `{"$in": ["$field", [null, "", 0, 0.0]]}`) within a `$cond` expression to correctly replicate the fallback behavior in MongoDB aggregations.
