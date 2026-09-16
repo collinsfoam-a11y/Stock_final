@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from dataclasses import dataclass
@@ -457,7 +458,9 @@ class ProjectionReadService:
     ) -> dict[str, Any]:
         rows = await self._filtered_verified_items(config.filters)
         rows = self._sort_verified_items(rows, sort_by=config.sort_by, sort_order=config.sort_order)
-        total_records = len(await self._list_documents("verified_items_projection"))
+        # ⚡ Bolt Optimization: Use native MongoDB count_documents instead of loading entire collection into memory
+        # Impact: O(1) network/memory instead of O(N). Prevents memory exhaustion on large collections.
+        total_records = await self.db["verified_items_projection"].count_documents({})
         filtered_records = len(rows)
         skip = max((int(config.page) - 1) * int(config.page_size), 0)
         paged_rows = rows[skip : skip + int(config.page_size)]
@@ -878,15 +881,18 @@ class ProjectionReadService:
         return results
 
     async def build_projection_validation_report(self) -> dict[str, Any]:
-        legacy_sessions = await self._list_documents("sessions")
+        # ⚡ Bolt Optimization: Concurrently fetch native counts instead of sequentially fetching full collections
+        # Impact: Avoids N+1 sequential I/O latency and entirely eliminates the O(N) memory overhead of loading full session docs merely to count them.
+        legacy_total_sessions, projection_total_sessions = await asyncio.gather(
+            self.db["sessions"].count_documents({}),
+            self.db["session_dashboard_projection"].count_documents({}),
+        )
+
         legacy_lines = await self._list_documents("count_lines")
-        projection_sessions = await self._list_documents("session_dashboard_projection")
         projection_items = await self._list_documents("verified_items_projection")
         financial_rows = await self._list_documents("financial_projection")
         variance_rows = await self._list_documents("variance_summary_projection")
 
-        legacy_total_sessions = len(legacy_sessions)
-        projection_total_sessions = len(projection_sessions)
         legacy_verified_items = sum(
             1
             for row in legacy_lines
