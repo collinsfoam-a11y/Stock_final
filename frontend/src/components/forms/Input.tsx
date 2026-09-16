@@ -65,7 +65,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             ref={ref}
             accessibilityLabel={textInputProps.accessibilityLabel || label || textInputProps.placeholder}
             accessibilityHint={textInputProps.accessibilityHint || (error ? `Error: ${error}` : undefined)}
-            aria-invalid={textInputProps["aria-invalid"] ?? Boolean(error)}
+            aria-invalid={Boolean(error)}
             style={[
               styles.input,
               {
