@@ -1,3 +1,7 @@
+## 2026-08-01 - Standardizing Clear Buttons in Form Inputs
+**Learning:** Adding a clear button to form inputs is a high-impact micro-UX improvement that reduces friction during data correction. When implemented with haptic feedback and automatic refocusing, it creates a "delightful" and efficient interaction.
+**Action:** Use the built-in `showClearButton={true}` prop on `ModernInput` rather than manually re-implementing clear icons via `rightIcon` for any searchable or high-correction fields. The built-in prop automatically handles haptic feedback, accessibility labels, and refocusing after clearing.
+
 ## 2026-04-30 - Standardizing Header Accessibility and Tactile Feedback
 **Learning:** Icon-only buttons in the application header were missing both screen reader descriptions and tactile confirmation, which are essential for an inclusive and responsive mobile experience.
 **Action:** Always implement `accessibilityRole="button"`, `accessibilityLabel`, and `Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)` for header-level icon actions to ensure they are both discoverable and satisfying to use.
