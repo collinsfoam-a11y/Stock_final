@@ -6,6 +6,8 @@ import React from "react";
 import { TextInput, View, Text, StyleSheet, TextInputProps, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 
@@ -50,6 +52,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
         >
           {leftIcon && (
             <Ionicons
+              {...getDecorativeIconProps()}
               name={leftIcon}
               size={20}
               color={theme.colors.placeholder}
@@ -60,6 +63,9 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             autoCapitalize="none"
             autoCorrect={false}
             ref={ref}
+            accessibilityLabel={textInputProps.accessibilityLabel || label || textInputProps.placeholder}
+            accessibilityHint={textInputProps.accessibilityHint || (error ? `Error: ${error}` : undefined)}
+            aria-invalid={Boolean(error)}
             style={[
               styles.input,
               {
@@ -81,10 +87,22 @@ export const Input = React.forwardRef<TextInput, InputProps>(
           />
           {rightIcon && (
             <AppTouchable
-              onPress={onRightIconPress}
+              onPress={() => {
+                if (onRightIconPress) {
+                  void haptics.light();
+                  onRightIconPress();
+                }
+              }}
               style={styles.rightIcon}
-              activeOpacity={0.7}>
+              activeOpacity={0.7}
+              disabled={!onRightIconPress}
+              {...(onRightIconPress
+                ? getAccessibleButtonProps({
+                    label: `${label || textInputProps.placeholder || "Input"} right action`,
+                  })
+                : {})}>
               <Ionicons
+                {...getDecorativeIconProps()}
                 name={rightIcon}
                 size={20}
                 color={rightIconColor || theme.colors.placeholder}
