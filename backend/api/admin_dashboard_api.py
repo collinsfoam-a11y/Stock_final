@@ -4,6 +4,7 @@ PC-based web dashboard endpoints for administrators
 """
 
 import logging
+import asyncio
 from backend.utils.api_utils import sanitize_for_logging
 import os
 import time
@@ -261,14 +262,33 @@ async def get_dashboard_kpis(current_user: dict = Depends(require_admin)):
     """
     db = get_db()
 
+    # ⚡ Bolt: Execute independent dashboard queries concurrently to avoid sequential I/O bottleneck
+    (
+        total_stock_value,
+        verified_stock_value,
+        verification_percentage,
+        active_sessions,
+        active_users,
+        pending_variances,
+        items_verified_today,
+    ) = await asyncio.gather(
+        calculate_total_stock_value(db),
+        calculate_verified_value(db),
+        calculate_completion_percentage(db),
+        count_active_sessions(db),
+        count_active_users(db),
+        count_pending_variances(db),
+        count_items_verified_today(db),
+    )
+
     return KPIResponse(
-        total_stock_value=await calculate_total_stock_value(db),
-        verified_stock_value=await calculate_verified_value(db),
-        verification_percentage=await calculate_completion_percentage(db),
-        active_sessions=await count_active_sessions(db),
-        active_users=await count_active_users(db),
-        pending_variances=await count_pending_variances(db),
-        items_verified_today=await count_items_verified_today(db),
+        total_stock_value=total_stock_value,
+        verified_stock_value=verified_stock_value,
+        verification_percentage=verification_percentage,
+        active_sessions=active_sessions,
+        active_users=active_users,
+        pending_variances=pending_variances,
+        items_verified_today=items_verified_today,
         timestamp=datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
     )
 
@@ -512,15 +532,16 @@ async def get_dashboard_summary(current_user: dict = Depends(require_admin)):
     """
     db = get_db()
 
-    # Parallel fetch of all dashboard data
-    kpis = await get_dashboard_kpis(current_user)
-    system_status = await get_system_status(current_user)
-    active_users = await get_active_users(current_user)
-
-    # Get recent error count
     cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
-    recent_errors = await db.error_logs.count_documents(
-        {"timestamp": {"$gte": cutoff}, "level": {"$in": ["ERROR", "CRITICAL"]}}
+
+    # ⚡ Bolt: Execute independent dashboard queries concurrently to avoid sequential I/O bottleneck
+    kpis, system_status, active_users, recent_errors = await asyncio.gather(
+        get_dashboard_kpis(current_user),
+        get_system_status(current_user),
+        get_active_users(current_user),
+        db.error_logs.count_documents(
+            {"timestamp": {"$gte": cutoff}, "level": {"$in": ["ERROR", "CRITICAL"]}}
+        ),
     )
 
     return {
