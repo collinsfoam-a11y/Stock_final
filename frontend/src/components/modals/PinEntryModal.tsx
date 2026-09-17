@@ -6,6 +6,8 @@ import { verifyPin } from "@/services/api/api"; // We will add this next
 import { semanticColors as uiSemanticColors } from "@/theme/unified";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 
 interface PinEntryModalProps {
   visible: boolean;
@@ -33,9 +35,11 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
   const handleSubmit = async () => {
     if (!supervisorUsername || !pin || !reason) {
       setError("All fields are required");
+      void haptics.error();
       return;
     }
 
+    void haptics.medium();
     setLoading(true);
     setError(null);
 
@@ -50,12 +54,15 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
       });
 
       if (result.success) {
+        void haptics.success();
         onSuccess();
         handleClose();
       } else {
         setError("Invalid credentials or insufficient permissions");
+        void haptics.error();
       }
     } catch (err: any) {
+      void haptics.error();
       // Handle generic errors or specific 401s
       if (err.message && err.message.includes("401")) {
         setError("Invalid PIN or Username");
@@ -70,6 +77,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
   };
 
   const handleClose = () => {
+    void haptics.light();
     setSupervisorUsername("");
     setPin("");
     setReason("");
@@ -82,7 +90,15 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
       <View style={styles.container}>
         <Text style={styles.description}>This action requires supervisor authorization.</Text>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && (
+          <Text
+            style={styles.errorText}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="assertive"
+          >
+            {error}
+          </Text>
+        )}
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Supervisor Username</Text>
@@ -94,6 +110,9 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             placeholderTextColor={modernColors.text.secondary}
             autoCapitalize="none"
             autoCorrect={false}
+            accessibilityLabel="Supervisor Username"
+            accessibilityHint="Enter the supervisor username for override"
+            aria-invalid={Boolean(error)}
           />
         </View>
 
@@ -108,6 +127,9 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             secureTextEntry
             keyboardType="numeric"
             autoCorrect={false}
+            accessibilityLabel="Supervisor PIN"
+            accessibilityHint="Enter the numeric PIN for supervisor authorization"
+            aria-invalid={Boolean(error)}
           />
         </View>
 
@@ -123,6 +145,9 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             numberOfLines={3}
             autoCapitalize="sentences"
             autoCorrect={false}
+            accessibilityLabel="Reason for Override"
+            accessibilityHint="Enter the reason why supervisor override is required"
+            aria-invalid={Boolean(error)}
           />
         </View>
 
@@ -131,6 +156,11 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             style={[styles.button, styles.cancelButton]}
             onPress={handleClose}
             disabled={loading}
+            {...getAccessibleButtonProps({
+              label: "Cancel",
+              hint: "Cancel supervisor override and close modal",
+              disabled: loading,
+            })}
  >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </AppTouchable>
@@ -139,6 +169,12 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             style={[styles.button, styles.primaryButton]}
             onPress={handleSubmit}
             disabled={loading}
+            {...getAccessibleButtonProps({
+              label: "Authorize",
+              hint: "Submit supervisor credentials for authorization",
+              disabled: loading,
+              busy: loading,
+            })}
  >
             {loading ? (
               <ActivityIndicator color={uiSemanticColors.text.inverse} />
