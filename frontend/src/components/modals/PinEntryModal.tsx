@@ -161,7 +161,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
               hint: "Cancel supervisor override and close modal",
               disabled: loading,
             })}
- >
+          >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </AppTouchable>
 
@@ -175,7 +175,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
               disabled: loading,
               busy: loading,
             })}
- >
+          >
             {loading ? (
               <ActivityIndicator color={uiSemanticColors.text.inverse} />
             ) : (
