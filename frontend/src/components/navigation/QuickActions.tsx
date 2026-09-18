@@ -9,6 +9,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 interface QuickAction {
   id: string;
   label: string;
@@ -41,19 +43,25 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
         {actions.map((action) => (
           <AppTouchable
             key={action.id}
+            {...getAccessibleButtonProps({
+              label: action.badge && action.badge > 0 ? `${action.label}, ${action.badge} notifications` : action.label,
+            })}
             style={[
               styles.actionButton,
               compact && styles.actionButtonCompact,
               { width: compact ? undefined : actionWidth } as any,
               action.color && { backgroundColor: action.color + "20" },
             ]}
-            onPress={action.onPress}
-            accessibilityLabel={action.label}>
+            onPress={() => {
+              void haptics.light();
+              action.onPress();
+            }}>
             <View style={styles.actionIconContainer}>
               <Ionicons
                 name={action.icon}
                 size={compact ? 20 : 24}
                 color={action.color || uiColors.info[500]}
+                {...getDecorativeIconProps()}
               />
               {action.badge !== undefined && action.badge > 0 && (
                 <View style={styles.badge}>
