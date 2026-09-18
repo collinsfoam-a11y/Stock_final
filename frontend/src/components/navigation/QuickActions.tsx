@@ -45,7 +45,6 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
             key={action.id}
             {...getAccessibleButtonProps({
               label: action.badge && action.badge > 0 ? `${action.label}, ${action.badge} notifications` : action.label,
-              role: "button",
             })}
             style={[
               styles.actionButton,
