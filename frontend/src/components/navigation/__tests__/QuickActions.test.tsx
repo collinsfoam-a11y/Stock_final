@@ -43,7 +43,7 @@ describe("QuickActions", () => {
 
     fireEvent.press(scanButton);
 
-    expect(mockActions[0].onPress).toHaveBeenCalledTimes(1);
+    expect(mockActions[0]?.onPress).toHaveBeenCalledTimes(1);
     expect(haptics.light).toHaveBeenCalledTimes(1);
   });
 
@@ -52,6 +52,6 @@ describe("QuickActions", () => {
     const alertsButton = getByLabelText("Alerts, 3 unread notifications");
 
     expect(alertsButton).toBeTruthy();
-    expect(alertsButton.props.accessibilityRole).toBe("button");
+    expect(alertsButton.props?.accessibilityRole).toBe("button");
   });
 });
