@@ -13,8 +13,9 @@ import { layout, spacing, typography, breakpoints } from "../../styles/globalSty
 import { SUPERVISOR_NAV_GROUPS, type SupervisorNavItem } from "./supervisorNavShared";
 
 import { semanticColors as uiSemanticColors } from "@/theme/unified";
-
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 interface SupervisorSidebarProps {
   collapsed?: boolean;
@@ -49,14 +50,17 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
   };
 
   const handleItemPress = (item: SupervisorNavItem) => {
+    void haptics.light();
     router.push(item.route as any);
   };
 
   const handleLogout = async () => {
+    void haptics.light();
     await logout();
   };
 
   const toggleGroup = (title: string) => {
+    void haptics.light();
     const newExpanded = new Set(expandedGroups);
     if (newExpanded.has(title)) {
       newExpanded.delete(title);
@@ -110,6 +114,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
               name="shield-checkmark-outline"
               size={collapsed ? 20 : 18}
               color={theme.colors.primary}
+              {...getDecorativeIconProps()}
             />
           </View>
 
@@ -128,17 +133,20 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                 styles.collapseButton,
                 { backgroundColor: activeBackground, borderColor: subtleBorder },
               ]}
-              onPress={onToggleCollapse}
+              onPress={() => {
+                void haptics.light();
+                onToggleCollapse();
+              }}
               activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={
-                collapsed ? "Expand supervisor sidebar" : "Collapse supervisor sidebar"
-              }
+              {...getAccessibleButtonProps({
+                label: collapsed ? "Expand supervisor sidebar" : "Collapse supervisor sidebar",
+              })}
             >
               <Ionicons
                 name={collapsed ? "chevron-forward-outline" : "chevron-back-outline"}
                 size={18}
                 color={theme.colors.text}
+                {...getDecorativeIconProps()}
               />
             </AppTouchable>
           )}
@@ -156,7 +164,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
             ]}
           >
             <View style={styles.profileAvatar}>
-              <Ionicons name="person" size={24} color={theme.colors.primary} />
+              <Ionicons name="person" size={24} color={theme.colors.primary} {...getDecorativeIconProps()} />
             </View>
             <View style={styles.profileInfo}>
               <Text style={[styles.profileName, { color: theme.colors.text }]} numberOfLines={1}>
@@ -189,7 +197,11 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                   style={styles.groupHeader}
                   onPress={() => toggleGroup(group.title)}
                   activeOpacity={0.7}
- >
+                  {...getAccessibleButtonProps({
+                    label: `${group.title} section`,
+                    expanded: isExpanded,
+                  })}
+                >
                   <Text style={[styles.groupTitle, { color: theme.colors.textSecondary }]}>
                     {group.title}
                   </Text>
@@ -197,6 +209,7 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                     name={isExpanded ? "chevron-down" : "chevron-forward"}
                     size={16}
                     color={theme.colors.textSecondary}
+                    {...getDecorativeIconProps()}
                   />
                 </AppTouchable>
               )}
@@ -222,11 +235,12 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
                         ]}
                         onPress={() => handleItemPress(item)}
                         activeOpacity={0.7}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: active }}
-                        accessibilityLabel={item.label}
+                        {...getAccessibleButtonProps({
+                          label: item.label,
+                          selected: active,
+                        })}
                       >
-                        <Ionicons name={item.icon} size={20} color={iconColor} />
+                        <Ionicons name={item.icon} size={20} color={iconColor} {...getDecorativeIconProps()} />
                         {!collapsed && (
                           <>
                             <Text
@@ -271,10 +285,11 @@ export const SupervisorSidebar: React.FC<SupervisorSidebarProps> = ({
           ]}
           onPress={handleLogout}
           activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Logout"
+          {...getAccessibleButtonProps({
+            label: "Logout",
+          })}
         >
-          <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
+          <Ionicons name="log-out-outline" size={20} color={theme.colors.error} {...getDecorativeIconProps()} />
           <Text style={[styles.logoutLabel, { color: theme.colors.error }]}>Logout</Text>
         </AppTouchable>
       )}

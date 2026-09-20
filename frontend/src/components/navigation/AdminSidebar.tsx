@@ -24,6 +24,8 @@ import { ADMIN_NAV_GROUPS, AdminNavItem } from "./adminNavShared";
 
 import { semanticColors as uiSemanticColors } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 interface AdminSidebarProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -55,6 +57,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   };
 
   const handleItemPress = (item: AdminNavItem) => {
+    void haptics.light();
     if (item.route.startsWith("http")) {
       Linking.openURL(item.route);
       return;
@@ -63,10 +66,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   };
 
   const handleLogout = async () => {
+    void haptics.light();
     await logout();
   };
 
   const toggleGroup = (title: string) => {
+    void haptics.light();
     const newExpanded = new Set(expandedGroups);
     if (newExpanded.has(title)) {
       newExpanded.delete(title);
@@ -121,6 +126,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 name="shield-checkmark-outline"
                 size={collapsed ? 20 : 18}
                 color={theme.colors.primary}
+                {...getDecorativeIconProps()}
               />
             </View>
 
@@ -139,15 +145,20 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   styles.collapseButton,
                   { backgroundColor: activeBackground, borderColor: subtleBorder },
                 ]}
-                onPress={onToggleCollapse}
+                onPress={() => {
+                  void haptics.light();
+                  onToggleCollapse();
+                }}
                 activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={collapsed ? "Expand admin sidebar" : "Collapse admin sidebar"}
+                {...getAccessibleButtonProps({
+                  label: collapsed ? "Expand admin sidebar" : "Collapse admin sidebar",
+                })}
               >
                 <Ionicons
                   name={collapsed ? "chevron-forward-outline" : "chevron-back-outline"}
                   size={18}
                   color={theme.colors.text}
+                  {...getDecorativeIconProps()}
                 />
               </AppTouchable>
             )}
@@ -157,7 +168,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           {!collapsed && (
             <View style={[styles.profileSection, { borderBottomColor: theme.colors.border }]}>
               <View style={styles.profileAvatar}>
-                <Ionicons name="person" size={24} color={theme.colors.primary} />
+                <Ionicons name="person" size={24} color={theme.colors.primary} {...getDecorativeIconProps()} />
               </View>
               <View style={styles.profileInfo}>
                 <Text style={[styles.profileName, { color: theme.colors.text }]} numberOfLines={1}>
@@ -181,7 +192,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                     style={styles.groupHeader}
                     onPress={() => toggleGroup(group.title)}
                     activeOpacity={0.7}
- >
+                    {...getAccessibleButtonProps({
+                      label: `${group.title} section`,
+                      expanded: isExpanded,
+                    })}
+                  >
                     <Text style={[styles.groupTitle, { color: theme.colors.textSecondary }]}>
                       {group.title}
                     </Text>
@@ -189,6 +204,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                       name={isExpanded ? "chevron-down" : "chevron-forward"}
                       size={16}
                       color={theme.colors.textSecondary}
+                      {...getDecorativeIconProps()}
                     />
                   </AppTouchable>
                 )}
@@ -211,11 +227,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                           ]}
                           onPress={() => handleItemPress(item)}
                           activeOpacity={0.7}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: active }}
-                          accessibilityLabel={item.label}
+                          {...getAccessibleButtonProps({
+                            label: item.label,
+                            selected: active,
+                          })}
                         >
-                          <Ionicons name={item.icon} size={20} color={iconColor} />
+                          <Ionicons name={item.icon} size={20} color={iconColor} {...getDecorativeIconProps()} />
                           {!collapsed && (
                             <>
                               <Text
@@ -258,10 +275,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
             style={[styles.logoutButton, { borderTopColor: theme.colors.border }]}
             onPress={handleLogout}
             activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Logout"
+            {...getAccessibleButtonProps({
+              label: "Logout",
+            })}
           >
-            <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
+            <Ionicons name="log-out-outline" size={20} color={theme.colors.error} {...getDecorativeIconProps()} />
             <Text style={[styles.logoutLabel, { color: theme.colors.error }]}>Logout</Text>
           </AppTouchable>
         )}
