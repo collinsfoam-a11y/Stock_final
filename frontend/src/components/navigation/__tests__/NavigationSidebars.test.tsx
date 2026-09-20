@@ -69,7 +69,7 @@ describe("Navigation Sidebars (SupervisorSidebar & AdminSidebar)", () => {
       headerSectionLabel: "Overview section",
       itemLabel: "Count Sessions",
       expectedRoute: "/supervisor/sessions",
-      collapseLabel: "Collapse supervisor sidebar",
+      collapseLabel: "Collapse supervisor hub",
     },
     {
       name: "AdminSidebar",
@@ -79,7 +79,7 @@ describe("Navigation Sidebars (SupervisorSidebar & AdminSidebar)", () => {
       headerSectionLabel: "Access Control section",
       itemLabel: "User Accounts",
       expectedRoute: "/admin/users",
-      collapseLabel: "Collapse admin sidebar",
+      collapseLabel: "Collapse admin control",
     },
   ];
 
