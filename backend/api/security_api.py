@@ -196,10 +196,16 @@ async def get_security_sessions(
 
         # Get user info for each token
         sessions: list[dict[str, Any]] = []
+
+        # O(1) optimization: extract unique usernames and fetch all in one query
+        usernames = list({t.get("username") for t in tokens if t.get("username")})
+        users = await db.users.find({"username": {"$in": usernames}}).to_list(length=None)
+        user_cache = {u["username"]: u for u in users if "username" in u}
+
         for token in tokens:
             username = token.get("username")
             if username:
-                user = await db.users.find_one({"username": username})
+                user = user_cache.get(username)
                 if user:
                     sessions.append(
                         {
