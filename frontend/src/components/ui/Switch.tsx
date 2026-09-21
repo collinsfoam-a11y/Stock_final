@@ -14,6 +14,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { colorPalette } from "@/theme/designTokens";
 import { haptics } from "@/services/haptics";
+import { OPERATIONAL_HIT_SLOP } from "@/utils/accessibility";
 
 import { shadows as uiShadows } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
@@ -83,7 +84,9 @@ export const Switch: React.FC<SwitchProps> = ({
       style={[styles.container, style]}
       accessibilityRole="switch"
       accessibilityState={{ checked: value, disabled }}
+      accessibilityValue={{ text: value ? "on" : "off" }}
       accessibilityLabel={accessibilityLabel}
+      hitSlop={OPERATIONAL_HIT_SLOP.standard}
     >
       <Animated.View
         style={[
