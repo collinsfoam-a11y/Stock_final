@@ -72,4 +72,28 @@ describe("Switch", () => {
 
     expect(getByLabelText("Enable notifications")).toBeTruthy();
   });
+
+  it("applies accessibilityValue with 'on' or 'off' text based on value", () => {
+    const { getByRole, rerender } = render(
+      <Switch value={true} onValueChange={() => {}} />
+    );
+
+    expect(getByRole("switch").props.accessibilityValue).toEqual({ text: "on" });
+
+    rerender(<Switch value={false} onValueChange={() => {}} />);
+    expect(getByRole("switch").props.accessibilityValue).toEqual({ text: "off" });
+  });
+
+  it("applies hitSlop for comfortable touch target size", () => {
+    const { getByRole } = render(
+      <Switch value={false} onValueChange={() => {}} size="sm" />
+    );
+
+    expect(getByRole("switch").props.hitSlop).toEqual({
+      top: 8,
+      bottom: 8,
+      left: 8,
+      right: 8,
+    });
+  });
 });
