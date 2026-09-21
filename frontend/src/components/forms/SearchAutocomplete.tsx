@@ -15,6 +15,8 @@ import { localDb } from "../../db/localDb";
 import { shadows as uiShadows } from "@/theme/unified";
 import { zIndex as uiZIndex } from "@/theme/designTokens";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 interface SearchAutocompleteProps {
   onSelectItem: (item: SearchResult) => void;
   onBarcodeScan?: (barcode: string) => void;
@@ -99,6 +101,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
 
   const loadMore = React.useCallback(async () => {
     if (isLoadingMore || !hasMore || offlineMode) return;
+    void haptics.light();
     
     setIsLoadingMore(true);
     try {
@@ -143,6 +146,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   };
 
   const handleSelectItem = (item: SearchResult) => {
+    void haptics.selection();
     onSelectItem(item);
     setQuery("");
     setResults([]);
@@ -151,6 +155,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   };
 
   const handleClear = () => {
+    void haptics.light();
     setQuery("");
     setResults([]);
     setShowDropdown(false);
@@ -174,7 +179,8 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
         ]}
         onPress={() => handleSelectItem(item)}
         activeOpacity={0.7}
- >
+        {...getAccessibleButtonProps({ label: `Select ${item.item_name}` })}
+      >
         <View style={styles.resultContent}>
           {/* Header: Name and Badge */}
           <View style={styles.resultHeader}>
@@ -299,6 +305,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
             size={20}
             color={showDropdown ? theme.colors.primary : theme.colors.placeholder}
             style={styles.searchIcon}
+            {...getDecorativeIconProps()}
           />
         )}
 
@@ -324,8 +331,14 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
             style={styles.clearButton}
             onPress={handleClear}
             activeOpacity={0.7}
-            accessibilityLabel="Clear">
-            <Ionicons name="close-circle" size={20} color={theme.colors.placeholder} />
+            {...getAccessibleButtonProps({ label: "Clear search query" })}
+          >
+            <Ionicons
+              name="close-circle"
+              size={20}
+              color={theme.colors.placeholder}
+              {...getDecorativeIconProps()}
+            />
           </AppTouchable>
         )}
       </View>
@@ -370,6 +383,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                       style={styles.loadMoreButton}
                       onPress={loadMore}
                       disabled={isLoadingMore}
+                      {...getAccessibleButtonProps({ label: "Load more search results", disabled: isLoadingMore })}
                     >
                       {isLoadingMore ? (
                         <ActivityIndicator size="small" color={theme.colors.primary} />
