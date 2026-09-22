@@ -100,13 +100,50 @@ async def calculate_total_stock_value(db) -> float:
 async def calculate_verified_value(db) -> float:
     """Calculate value of verified stock."""
     try:
-        total_value = 0.0
-        cursor = db.count_lines.find({"status": "locked"})
-        async for line in cursor:
-            qty = float(line.get("counted_qty") or 0.0)
-            unit_value = float(line.get("mrp_counted") or line.get("mrp_erp") or 0.0)
-            total_value += qty * unit_value
-        return total_value
+        # ⚡ Bolt: Replaced Python-side iteration with MongoDB aggregation.
+        # This eliminates fetching all 'locked' documents into memory, reducing N+1 cursor I/O overhead.
+        # We explicitly replicate Python's truthiness-based fallback logic (val or 0.0)
+        # by checking for falsy values using $in.
+        pipeline = [
+            {"$match": {"status": "locked"}},
+            {
+                "$group": {
+                    "_id": None,
+                    "total_value": {
+                        "$sum": {
+                            "$multiply": [
+                                {
+                                    "$toDouble": {
+                                        "$cond": [
+                                            {"$in": ["$counted_qty", [None, "", 0, 0.0]]},
+                                            0.0,
+                                            "$counted_qty"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "$toDouble": {
+                                        "$cond": [
+                                            {"$not": {"$in": ["$mrp_counted", [None, "", 0, 0.0]]}},
+                                            "$mrp_counted",
+                                            {
+                                                "$cond": [
+                                                    {"$not": {"$in": ["$mrp_erp", [None, "", 0, 0.0]]}},
+                                                    "$mrp_erp",
+                                                    0.0
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        ]
+        result = await db.count_lines.aggregate(pipeline).to_list(1)
+        return float(result[0]["total_value"]) if result else 0.0
     except Exception as e:
         logger.error("Error calculating verified value: %s", sanitize_for_logging(str(e)))
         return 0.0
