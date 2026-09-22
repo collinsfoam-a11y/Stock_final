@@ -41,3 +41,7 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+
+## 2026-07-28 - Accessible Grouping for Composite Skeleton Loading States
+**Learning:** Skeleton loading elements (placeholders) can create repetitive screen reader clutter if every individual rectangle is exposed as an accessible node. Grouping composite skeletons (`SkeletonCard`, `SkeletonListItem`, `SkeletonText`) under a single accessible container (`accessible={true}`, `accessibilityRole="progressbar"`, `accessibilityLabel="Loading..."`) and setting `accessible={false}` on inner child `Skeleton` shapes delivers a clean, singular status announcement to screen reader users without audio clutter.
+**Action:** Always group composite loading placeholder states under a single accessible progressbar parent and set `accessible={false}` on child skeleton elements.
