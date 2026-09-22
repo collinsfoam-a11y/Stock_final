@@ -13,6 +13,7 @@ import {
   legacyTypography as modernTypography,
   legacyBorderRadius as modernBorderRadius,
 } from "@/theme/unified";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 
@@ -49,8 +50,12 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         <AppTouchable
           style={styles.dateButton}
           onPress={() => setShowStartPicker(true)}
+          {...getAccessibleButtonProps({
+            label: `Start date, currently selected ${formatDate(startDate)}`,
+          })}
  >
           <Ionicons
+            {...getDecorativeIconProps()}
             name="calendar"
             size={20}
             color={modernColors.primary[500]}
@@ -62,6 +67,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         </AppTouchable>
 
         <Ionicons
+          {...getDecorativeIconProps()}
           name="arrow-forward"
           size={20}
           color={modernColors.text.secondary}
@@ -70,8 +76,12 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         <AppTouchable
           style={styles.dateButton}
           onPress={() => setShowEndPicker(true)}
+          {...getAccessibleButtonProps({
+            label: `End date, currently selected ${formatDate(endDate)}`,
+          })}
  >
           <Ionicons
+            {...getDecorativeIconProps()}
             name="calendar"
             size={20}
             color={modernColors.primary[500]}

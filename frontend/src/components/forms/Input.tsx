@@ -6,6 +6,7 @@ import React from "react";
 import { TextInput, View, Text, StyleSheet, TextInputProps, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 
@@ -50,6 +51,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
         >
           {leftIcon && (
             <Ionicons
+              {...getDecorativeIconProps()}
               name={leftIcon}
               size={20}
               color={theme.colors.placeholder}
@@ -83,8 +85,12 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             <AppTouchable
               onPress={onRightIconPress}
               style={styles.rightIcon}
-              activeOpacity={0.7}>
+              activeOpacity={0.7}
+              {...getAccessibleButtonProps({
+                label: `${label || "Input"} action`,
+              })}>
               <Ionicons
+                {...getDecorativeIconProps()}
                 name={rightIcon}
                 size={20}
                 color={rightIconColor || theme.colors.placeholder}

@@ -11,6 +11,7 @@ import { useSettingsStore } from "../../store/settingsStore";
 import { searchItems, SearchResult } from "../../services/enhancedSearchService";
 import { useStableDebouncedCallback } from "../../hooks/useDebouncedCallback";
 import { localDb } from "../../db/localDb";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { shadows as uiShadows } from "@/theme/unified";
 import { zIndex as uiZIndex } from "@/theme/designTokens";
@@ -174,6 +175,9 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
         ]}
         onPress={() => handleSelectItem(item)}
         activeOpacity={0.7}
+        {...getAccessibleButtonProps({
+          label: `${item.item_name}, code ${item.item_code}, quantity ${item.stock_qty}`,
+        })}
  >
         <View style={styles.resultContent}>
           {/* Header: Name and Badge */}
@@ -213,14 +217,14 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
           <View style={styles.primaryDetailsRow}>
             {item.floor || item.rack ? (
               <View style={styles.detailChip}>
-                <Ionicons name="location-sharp" size={14} color={theme.colors.primary} />
+                <Ionicons {...getDecorativeIconProps()} name="location-sharp" size={14} color={theme.colors.primary} />
                 <Text style={[styles.detailText, { color: theme.colors.text }]}>
                   {[item.floor, item.rack].filter(Boolean).join(" / ")}
                 </Text>
               </View>
             ) : (
               <View style={[styles.detailChip, { opacity: 0.5 }]}>
-                <Ionicons name="location-outline" size={14} color={theme.colors.textSecondary} />
+                <Ionicons {...getDecorativeIconProps()} name="location-outline" size={14} color={theme.colors.textSecondary} />
                 <Text style={[styles.detailText, { color: theme.colors.textSecondary }]}>
                   No Loc
                 </Text>
@@ -228,7 +232,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
             )}
 
             <View style={styles.detailChip}>
-              <Ionicons name="cube-outline" size={14} color={theme.colors.secondary} />
+              <Ionicons {...getDecorativeIconProps()} name="cube-outline" size={14} color={theme.colors.secondary} />
               <Text style={[styles.detailText, { color: theme.colors.text }]}>
                 Qty: {item.stock_qty}
               </Text>
@@ -236,7 +240,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
 
             {(item.mrp ?? 0) > 0 && (
               <View style={styles.detailChip}>
-                <Ionicons name="pricetag-outline" size={14} color={theme.colors.success} />
+                <Ionicons {...getDecorativeIconProps()} name="pricetag-outline" size={14} color={theme.colors.success} />
                 <Text style={[styles.detailText, { color: theme.colors.text }]}>₹{item.mrp}</Text>
               </View>
             )}
@@ -251,7 +255,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
               <>
                 <Text style={[styles.metaDivider, { color: theme.colors.border }]}>|</Text>
                 <View style={styles.metaWithIcon}>
-                  <Ionicons name="barcode-outline" size={12} color={theme.colors.textSecondary} />
+                  <Ionicons {...getDecorativeIconProps()} name="barcode-outline" size={12} color={theme.colors.textSecondary} />
                   <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
                     {item.barcode}
                   </Text>
@@ -272,6 +276,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
           </View>
         </View>
         <Ionicons
+          {...getDecorativeIconProps()}
           name="chevron-forward"
           size={20}
           color={theme.colors.placeholder}
@@ -295,6 +300,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
       >
         {showIcon && (
           <Ionicons
+            {...getDecorativeIconProps()}
             name="search"
             size={20}
             color={showDropdown ? theme.colors.primary : theme.colors.placeholder}
@@ -324,8 +330,10 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
             style={styles.clearButton}
             onPress={handleClear}
             activeOpacity={0.7}
-            accessibilityLabel="Clear">
-            <Ionicons name="close-circle" size={20} color={theme.colors.placeholder} />
+            {...getAccessibleButtonProps({
+              label: "Clear",
+            })}>
+            <Ionicons {...getDecorativeIconProps()} name="close-circle" size={20} color={theme.colors.placeholder} />
           </AppTouchable>
         )}
       </View>
@@ -388,7 +396,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
               <View
                 style={[styles.noResultsIconCircle, { backgroundColor: theme.colors.background }]}
               >
-                <Ionicons name="search-outline" size={32} color={theme.colors.placeholder} />
+                <Ionicons {...getDecorativeIconProps()} name="search-outline" size={32} color={theme.colors.placeholder} />
               </View>
               <Text style={[styles.noResultsText, { color: theme.colors.text }]}>
                 No items found
