@@ -41,3 +41,7 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+
+## 2026-05-25 - Expanding Form Accessibility via Built-in Helpers
+**Learning:** React Native custom forms (like `Input`, `SearchAutocomplete`, and `DateRangePicker`) frequently lack basic accessibility markings (like accessible buttons and decorative icons). We should consistently rely on `@/utils/accessibility` (e.g., `getAccessibleButtonProps` and `getDecorativeIconProps`) for interactive touchables (e.g. `AppTouchable`) and non-interactive `Ionicons` within forms to enforce project standards and avoid simple `accessibilityLabel="..."` string prop replacements.
+**Action:** Replace `accessibilityLabel="Text"` in custom forms with `{...getAccessibleButtonProps({ label: "Text" })}` for `AppTouchable` elements and add `{...getDecorativeIconProps()}` to `Ionicons` to maintain standard behavior.
