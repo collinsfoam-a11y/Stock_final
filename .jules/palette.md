@@ -41,3 +41,6 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+## 2024-05-18 - TextInput Accessibility
+**Learning:** In React Native forms, native `TextInput` components do not automatically inherit screen reader contexts from surrounding visual `<Text>` labels. The lack of `accessibilityLabel` means screen readers often just read out "text box" or the placeholder, ignoring the visual label.
+**Action:** Always pass `accessibilityLabel`, `accessibilityHint` and `accessibilityState` directly to the `TextInput` element. Use `accessibilityLabel={label || placeholder}` as a fallback chain, and map props like `disabled` to `accessibilityState={{ disabled }}`.
