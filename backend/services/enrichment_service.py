@@ -169,7 +169,7 @@ class EnrichmentService:
             update_fields["enriched_by"] = user_id
 
             # Calculate data completeness
-            completeness = await self.calculate_completeness(item_code, update_fields)
+            completeness = await self.calculate_completeness(item_code, update_fields, prefetched_item=existing_item)
             update_fields["data_complete"] = completeness["is_complete"]
             update_fields["completion_percentage"] = completeness["percentage"]
 
@@ -249,7 +249,7 @@ class EnrichmentService:
         return {"is_valid": len(errors) == 0, "errors": errors}
 
     async def calculate_completeness(
-        self, item_code: str, additional_fields: dict[str, Optional[Any]] = None
+        self, item_code: str, additional_fields: dict[str, Optional[Any]] = None, prefetched_item: dict[str, Any] = None
     ) -> dict[str, Any]:
         """
         Calculate data completeness for an item
@@ -257,12 +257,13 @@ class EnrichmentService:
         Args:
             item_code: Item code to check
             additional_fields: Additional fields to consider (for preview)
+            prefetched_item: Pre-fetched item to avoid N+1 DB lookup
 
         Returns:
             Dictionary with completeness information
         """
-        # Get current item
-        item = await self.db.erp_items.find_one({"item_code": item_code})
+        # Get current item if not prefetched
+        item = dict(prefetched_item) if prefetched_item else await self.db.erp_items.find_one({"item_code": item_code})
         if not item:
             return {
                 "is_complete": False,
@@ -398,7 +399,7 @@ class EnrichmentService:
         # Add missing fields info for incomplete items
         if not complete:
             for item in items:
-                completeness = await self.calculate_completeness(item["item_code"], item)
+                completeness = await self.calculate_completeness(item["item_code"], prefetched_item=item)
                 item["missing_fields"] = completeness["missing_fields"]
                 item["completion_percentage"] = completeness["percentage"]
 
@@ -549,7 +550,7 @@ class EnrichmentService:
         # Add missing fields info
         result = []
         for item in items:
-            completeness = await self.calculate_completeness(item["item_code"], item)
+            completeness = await self.calculate_completeness(item["item_code"], prefetched_item=item)
             priority = "low"
             if completeness["percentage"] < 25:
                 priority = "high"
