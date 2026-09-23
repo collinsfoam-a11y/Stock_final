@@ -15,3 +15,6 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+## 2024-06-25 - Prevent Mutation of Pre-fetched Documents
+**Learning:** When optimizing N+1 query bottlenecks in Python by passing pre-fetched dictionaries (like MongoDB documents) into functions that merge or update fields, the original pre-fetched object is mutated because Python dictionaries are passed by reference.
+**Action:** When introducing a `prefetched_item` parameter to bypass database queries, always wrap the object in a new dictionary (e.g., `dict(prefetched_item) if prefetched_item else await ...`) to guarantee safety and side-effect free execution.
