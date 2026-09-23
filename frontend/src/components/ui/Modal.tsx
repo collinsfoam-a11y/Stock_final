@@ -30,6 +30,8 @@ import { haptics } from "@/services/haptics";
 
 import { shadows as uiShadows } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export interface ModalProps {
@@ -140,8 +142,18 @@ export const Modal: React.FC<ModalProps> = ({
   return (
     <RNModal visible={visible} transparent animationType={animationType} onRequestClose={onClose}>
       <AnimatedPressable
-        onPress={closeOnBackdropPress ? onClose : undefined}
+        onPress={
+          closeOnBackdropPress
+            ? () => {
+                void haptics.light();
+                onClose();
+              }
+            : undefined
+        }
         style={[styles.backdrop, backdropAnimatedStyle]}
+        accessibilityRole={closeOnBackdropPress ? "button" : undefined}
+        accessibilityLabel={closeOnBackdropPress ? "Close modal backdrop" : undefined}
+        accessibilityHint={closeOnBackdropPress ? "Navigates out of the modal dialog" : undefined}
       >
         {Platform.OS !== "web" ? (
           <BlurView intensity={20} style={StyleSheet.absoluteFill} />
@@ -170,7 +182,12 @@ export const Modal: React.FC<ModalProps> = ({
               {(title || showCloseButton) && (
                 <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
                   {title && (
-                    <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
+                    <Text
+                      style={[styles.title, { color: theme.colors.text }]}
+                      accessibilityRole="header"
+                    >
+                      {title}
+                    </Text>
                   )}
                   {showCloseButton && (
                     <AppTouchable
@@ -179,11 +196,18 @@ export const Modal: React.FC<ModalProps> = ({
                         onClose();
                       }}
                       style={styles.closeButton}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      accessibilityRole="button"
-                      accessibilityLabel="Close"
+                      {...getAccessibleButtonProps({
+                        label: title ? `Close ${title}` : "Close modal",
+                        hint: "Closes the modal dialog",
+                        hitSlop: { top: 10, bottom: 10, left: 10, right: 10 },
+                      })}
                     >
-                      <Ionicons name="close" size={24} color={theme.colors.textSecondary} />
+                      <Ionicons
+                        name="close"
+                        size={24}
+                        color={theme.colors.textSecondary}
+                        {...getDecorativeIconProps()}
+                      />
                     </AppTouchable>
                   )}
                 </View>
