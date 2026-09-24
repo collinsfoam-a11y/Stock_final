@@ -124,8 +124,8 @@ export const KpiTile: React.FC<KpiTileProps> = ({ vm, onPress, delay = 0 }) => {
         <Animated.View
             entering={entering}
             style={styles.tile}
-            accessible={true}
-            accessibilityLabel={accessibilityLabel}
+            accessible={!interactive}
+            accessibilityLabel={!interactive ? accessibilityLabel : undefined}
         >
             {content}
         </Animated.View>
