@@ -3,6 +3,7 @@ import { render, fireEvent } from "@testing-library/react-native";
 
 import { KpiTile } from "../KpiTile";
 import { ExceptionTriageList } from "../ExceptionTriageList";
+import { haptics } from "@/services/haptics";
 import {
     toDashboardKpiViewModel,
     toExceptionTriageItem,
@@ -47,6 +48,12 @@ jest.mock("@/hooks/useMotionAwareEntering", () => ({
 
 jest.mock("@/theme/themeTokens", () => ({
     colorWithAlpha: (hex: string, _alpha: number) => hex,
+}));
+
+jest.mock("@/services/haptics", () => ({
+    haptics: {
+        light: jest.fn(),
+    },
 }));
 
 // AppTouchable → simple pressable for deterministic press testing.
@@ -168,11 +175,17 @@ describe("KpiTile", () => {
         expect(getByText("Verified Value")).toBeTruthy();
     });
 
-    it("fires onPress when tapped", () => {
+    it("fires onPress and triggers haptics when tapped", () => {
         const onPress = jest.fn();
         const { getByLabelText } = render(<KpiTile vm={vm} onPress={onPress} />);
         fireEvent(getByLabelText(/Verified Value/), "press");
+        expect(haptics.light).toHaveBeenCalledTimes(1);
         expect(onPress).toHaveBeenCalledTimes(1);
+    });
+
+    it("provides cohesive accessibilityLabel for non-interactive metrics", () => {
+        const { getByLabelText } = render(<KpiTile vm={vm} />);
+        expect(getByLabelText("Verified Value, ₹1.2L")).toBeTruthy();
     });
 
     it("renders an em-dash value for absent metrics", () => {
