@@ -333,12 +333,19 @@ class DynamicFieldsService:
             results = await cursor.to_list(length=None)
 
             # Get item details from main items collection
+            item_codes = [r["_id"] for r in results]
+            items_cursor = self.db.items.find({"item_code": {"$in": item_codes}})
+            fetched_items = await items_cursor.to_list(length=None)
+            items_map = {item["item_code"]: item for item in fetched_items}
+
             items = []
             for result in results:
                 item_code = result["_id"]
-                item = await self.db.items.find_one({"item_code": item_code})
+                item = items_map.get(item_code)
 
                 if item:
+                    # Pass a pre-fetched dictionary wrapped in dict() to avoid unintended mutation side-effects
+                    item = dict(item)
                     item["dynamic_fields"] = {
                         field["field_name"]: field["value"] for field in result["fields"]
                     }
