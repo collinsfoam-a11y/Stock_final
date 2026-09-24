@@ -23,6 +23,8 @@ import { useMotionAwareEntering } from "../../hooks/useMotionAwareEntering";
 import type { ThemeTokens } from "../../theme/themeTokens";
 import { AppTouchable } from "../ui/AppTouchable";
 import type { DashboardKpiViewModel, DashboardStatus } from "../../viewModels/types";
+import { getDecorativeIconProps } from "../../utils/accessibility";
+import { haptics } from "../../services/haptics";
 
 export interface KpiTileProps {
     vm: DashboardKpiViewModel;
@@ -62,6 +64,15 @@ export const KpiTile: React.FC<KpiTileProps> = ({ vm, onPress, delay = 0 }) => {
         .filter(Boolean)
         .join(", ");
 
+    const handlePress = () => {
+        if (onPress) {
+            void haptics.light();
+            onPress();
+        }
+    };
+
+    const decorativeIconProps = getDecorativeIconProps();
+
     const content = (
         <View
             style={[
@@ -83,6 +94,7 @@ export const KpiTile: React.FC<KpiTileProps> = ({ vm, onPress, delay = 0 }) => {
                 {vm.trend ? (
                     <View style={styles.trendRow}>
                         <Ionicons
+                            {...decorativeIconProps}
                             name={TREND_ICON[vm.trend.direction]}
                             size={13}
                             color={vm.trend.direction === "flat" ? t.colors.textMuted : accent}
@@ -97,14 +109,24 @@ export const KpiTile: React.FC<KpiTileProps> = ({ vm, onPress, delay = 0 }) => {
             </View>
             {interactive ? (
                 <View style={styles.chevron}>
-                    <Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />
+                    <Ionicons
+                        {...decorativeIconProps}
+                        name="chevron-forward"
+                        size={16}
+                        color={t.colors.textMuted}
+                    />
                 </View>
             ) : null}
         </View>
     );
 
     const wrapped = (
-        <Animated.View entering={entering} style={styles.tile}>
+        <Animated.View
+            entering={entering}
+            style={styles.tile}
+            accessible={true}
+            accessibilityLabel={accessibilityLabel}
+        >
             {content}
         </Animated.View>
     );
@@ -113,7 +135,7 @@ export const KpiTile: React.FC<KpiTileProps> = ({ vm, onPress, delay = 0 }) => {
 
     return (
         <AppTouchable
-            onPress={onPress}
+            onPress={handlePress}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel={accessibilityLabel}
