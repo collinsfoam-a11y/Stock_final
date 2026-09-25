@@ -6,6 +6,7 @@ Generate custom reports with user-defined fields and filters
 import io
 import json
 import logging
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -257,14 +258,26 @@ class DynamicReportService:
 
             # Add dynamic fields
             dynamic_fields = [f for f in fields if f.get("source") == "dynamic"]
-            if dynamic_fields:
-                for item in items:
+            if dynamic_fields and items:
+                # O(1) bulk fetch
+                item_codes = list(
+                    {item.get("item_code") for item in items if item.get("item_code")}
+                )
+                if item_codes:
                     dynamic_values = await self.db.dynamic_field_values.find(
-                        {"item_code": item.get("item_code")}
+                        {"item_code": {"$in": item_codes}}
                     ).to_list(length=None)
 
+                    # Build dictionary mapping
+                    dv_map = defaultdict(list)
                     for dv in dynamic_values:
-                        item[dv["field_name"]] = dv["value"]
+                        dv_map[dv["item_code"]].append(dv)
+
+                    for item in items:
+                        item_code = item.get("item_code")
+                        if item_code in dv_map:
+                            for dv in dv_map[item_code]:
+                                item[dv["field_name"]] = dv["value"]
 
             return items
 
@@ -293,13 +306,20 @@ class DynamicReportService:
             sessions = await cursor.to_list(length=10000)
 
             # Enrich with related data if needed
-            for session in sessions:
-                # Add item details if requested
-                if any(f["name"].startswith("items.") for f in fields):
-                    items = await self.db.session_items.find(
-                        {"session_id": session["_id"]}
-                    ).to_list(length=None)
-                    session["items"] = items
+            if any(f["name"].startswith("items.") for f in fields) and sessions:
+                # O(1) bulk fetch
+                session_ids = [session["_id"] for session in sessions]
+                items_bulk = await self.db.session_items.find(
+                    {"session_id": {"$in": session_ids}}
+                ).to_list(length=None)
+
+                # Build dictionary mapping
+                items_map = defaultdict(list)
+                for item in items_bulk:
+                    items_map[item["session_id"]].append(item)
+
+                for session in sessions:
+                    session["items"] = items_map.get(session["_id"], [])
 
             return sessions
 
