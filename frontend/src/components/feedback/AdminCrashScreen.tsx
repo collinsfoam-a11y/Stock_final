@@ -11,8 +11,9 @@ import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { haptics } from "@/services/haptics";
 import { colorWithAlpha } from "@/theme/themeTokens";
-import { getAccessibleButtonProps } from "@/utils/accessibility";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 
@@ -26,12 +27,19 @@ export const AdminCrashScreen: React.FC<AdminCrashScreenProps> = ({ error, reset
   const uiTokens = useUiTokens();
   const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
 
+  const handleTryAgain = () => {
+    void haptics.light();
+    resetError();
+  };
+
   const handleGoHome = () => {
+    void haptics.light();
     resetError();
     router.replace("/admin");
   };
 
   const handleLogout = () => {
+    void haptics.light();
     resetError();
     router.replace("/welcome" as any);
   };
@@ -40,7 +48,7 @@ export const AdminCrashScreen: React.FC<AdminCrashScreenProps> = ({ error, reset
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Ionicons name="warning-outline" size={64} color={uiTokens.colors.error} />
+          <Ionicons name="warning-outline" size={64} color={uiTokens.colors.error} {...getDecorativeIconProps()} />
         </View>
 
         <Text style={styles.title}>Admin Panel Error</Text>
@@ -67,27 +75,24 @@ export const AdminCrashScreen: React.FC<AdminCrashScreenProps> = ({ error, reset
           <AppTouchable
             {...getAccessibleButtonProps({ label: "Retry loading admin panel" })}
             style={[styles.button, styles.primaryButton]}
-            onPress={resetError}
-            accessibilityLabel="Refresh">
-            <Ionicons name="refresh" size={20} color={uiTokens.colors.surface} />
+            onPress={handleTryAgain}>
+            <Ionicons name="refresh" size={20} color={uiTokens.colors.surface} {...getDecorativeIconProps()} />
             <Text style={styles.primaryButtonText}>Try Again</Text>
           </AppTouchable>
 
           <AppTouchable
             {...getAccessibleButtonProps({ label: "Return to admin dashboard" })}
             style={[styles.button, styles.secondaryButton]}
-            onPress={handleGoHome}
-            accessibilityLabel="Home">
-            <Ionicons name="home-outline" size={20} color={uiTokens.colors.accent} />
+            onPress={handleGoHome}>
+            <Ionicons name="home-outline" size={20} color={uiTokens.colors.accent} {...getDecorativeIconProps()} />
             <Text style={styles.secondaryButtonText}>Go to Dashboard</Text>
           </AppTouchable>
 
           <AppTouchable
             {...getAccessibleButtonProps({ label: "Log out after admin panel error" })}
             style={[styles.button, styles.outlineButton]}
-            onPress={handleLogout}
-            accessibilityLabel="Log out">
-            <Ionicons name="log-out-outline" size={20} color={uiTokens.colors.textSecondary} />
+            onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={20} color={uiTokens.colors.textSecondary} {...getDecorativeIconProps()} />
             <Text style={styles.outlineButtonText}>Logout</Text>
           </AppTouchable>
         </View>
