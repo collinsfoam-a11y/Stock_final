@@ -12,8 +12,9 @@ import { useGlobalSearchParams, usePathname, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
+import { haptics } from "@/services/haptics";
 import { colorWithAlpha } from "@/theme/themeTokens";
-import { getAccessibleButtonProps } from "@/utils/accessibility";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 
@@ -126,6 +127,7 @@ export const StaffCrashScreen: React.FC<StaffCrashScreenProps> = ({ error, reset
   const [isRecovering, setIsRecovering] = useState(false);
 
   const handleRetry = useCallback(() => {
+    void haptics.light();
     if (staleBundleError && Platform.OS === "web") {
       setIsRecovering(true);
       void recoverFromStaleWebBundle()
@@ -167,11 +169,13 @@ export const StaffCrashScreen: React.FC<StaffCrashScreenProps> = ({ error, reset
   }, [staleBundleError]);
 
   const handleGoToScan = () => {
+    void haptics.light();
     resetError();
     router.replace(recoveryTarget.href as any);
   };
 
   const handleLogout = () => {
+    void haptics.light();
     resetError();
     router.replace("/welcome" as any);
   };
@@ -180,7 +184,7 @@ export const StaffCrashScreen: React.FC<StaffCrashScreenProps> = ({ error, reset
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color={uiTokens.colors.error} />
+          <Ionicons name="alert-circle-outline" size={64} color={uiTokens.colors.error} {...getDecorativeIconProps()} />
         </View>
 
         <Text style={styles.title}>Scan Workflow Recovery Required</Text>
@@ -210,9 +214,8 @@ export const StaffCrashScreen: React.FC<StaffCrashScreenProps> = ({ error, reset
             {...getAccessibleButtonProps({ label: "Retry loading scan workflow" })}
             style={[styles.button, styles.primaryButton]}
             onPress={handleRetry}
-            disabled={isRecovering}
-            accessibilityLabel="Refresh">
-            <Ionicons name="refresh" size={20} color={uiTokens.colors.surface} />
+            disabled={isRecovering}>
+            <Ionicons name="refresh" size={20} color={uiTokens.colors.surface} {...getDecorativeIconProps()} />
             <Text style={styles.primaryButtonText}>
               {isRecovering ? "Refreshing..." : staleBundleError ? "Refresh App" : "Try Again"}
             </Text>
@@ -221,18 +224,16 @@ export const StaffCrashScreen: React.FC<StaffCrashScreenProps> = ({ error, reset
           <AppTouchable
             {...getAccessibleButtonProps({ label: recoveryTarget.accessibilityLabel })}
             style={[styles.button, styles.secondaryButton]}
-            onPress={handleGoToScan}
-            accessibilityLabel="Scan">
-            <Ionicons name="scan-outline" size={20} color={uiTokens.colors.accent} />
+            onPress={handleGoToScan}>
+            <Ionicons name="scan-outline" size={20} color={uiTokens.colors.accent} {...getDecorativeIconProps()} />
             <Text style={styles.secondaryButtonText}>{recoveryTarget.label}</Text>
           </AppTouchable>
 
           <AppTouchable
             {...getAccessibleButtonProps({ label: "Log out after scan workflow error" })}
             style={[styles.button, styles.outlineButton]}
-            onPress={handleLogout}
-            accessibilityLabel="Log out">
-            <Ionicons name="log-out-outline" size={20} color={uiTokens.colors.textSecondary} />
+            onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={20} color={uiTokens.colors.textSecondary} {...getDecorativeIconProps()} />
             <Text style={styles.outlineButtonText}>Logout</Text>
           </AppTouchable>
         </View>
