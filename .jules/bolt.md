@@ -15,6 +15,3 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
-## 2024-05-14 - Backend Route Snapshot Test Maintenance
-**Learning:** Adding new generic routes (like `/{full_path:path}` for SPA serving) will naturally break `test_route_snapshot.py` because the baseline API snapshot `route_baseline.json` no longer matches the current API topology.
-**Action:** Always update the API route snapshot (`UPDATE_SNAPSHOTS=1 python -m pytest tests/test_route_snapshot.py`) and commit `backend/tests/snapshots/route_baseline.json` when adding or modifying API endpoints in the FastAPI backend to ensure CI tests pass.
