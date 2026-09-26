@@ -41,3 +41,9 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+## 2024-05-14 - React Native TextInput Accessibility State Fallback
+**Learning:** In React Native, the `TextInput` component's `editable` prop defaults to `true` when omitted. If a component destructures `editable` without explicitly setting a default, `editable` will be `undefined`. Using `!editable` inside `accessibilityState={{ disabled: ... }}` will mistakenly flag the input as disabled to screen readers for all standard, non-explicitly enabled inputs.
+**Action:** When mapping `editable` to `accessibilityState.disabled`, safely check for explicit false values using `editable === false` to ensure inputs default to enabled.
+## 2024-05-14 - Playwright E2E Text Selection Conflicts
+**Learning:** When using Playwright for E2E testing a React Native Web layout, generic text selectors (like `page.locator("text=Sign In")`) can conflict with other elements containing similar sub-text strings (like "Sign in with the account...").
+**Action:** Use `exact=True` for specific button texts (e.g. `page.get_by_text("Sign In", exact=True)`) or use nth selectors (e.g. `page.locator("text=Sign in").nth(1)`) to avoid strict mode violations on pages with heavy repetitive copy.

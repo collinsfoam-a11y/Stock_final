@@ -199,6 +199,13 @@ export const ModernInput: React.FC<ModernInputProps> = ({
 
         <TextInput
           ref={inputRef}
+          accessibilityLabel={label ? label : (placeholder ? placeholder : "Text input")}
+          accessibilityHint={error ? error : (helperText ? helperText : undefined)}
+          accessibilityState={{
+            disabled: disabled || editable === false,
+            required: !!required,
+            ...(error ? { invalid: true } : {})
+          }}
           style={[getInputStyles(), inputStyle]}
           placeholder={placeholder}
           placeholderTextColor={uiTokens.colors.textSecondary}
