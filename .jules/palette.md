@@ -47,3 +47,6 @@
 ## 2024-05-14 - Playwright E2E Text Selection Conflicts
 **Learning:** When using Playwright for E2E testing a React Native Web layout, generic text selectors (like `page.locator("text=Sign In")`) can conflict with other elements containing similar sub-text strings (like "Sign in with the account...").
 **Action:** Use `exact=True` for specific button texts (e.g. `page.get_by_text("Sign In", exact=True)`) or use nth selectors (e.g. `page.locator("text=Sign in").nth(1)`) to avoid strict mode violations on pages with heavy repetitive copy.
+## 2024-05-14 - React Native AccessibilityState Types
+**Learning:** React Native's TypeScript definitions for `AccessibilityState` do not include a `required` property, even though it may be conceptually supported or used in some web adaptations. Setting `accessibilityState={{ required: true }}` causes `tsc` typecheck failures.
+**Action:** Do not use `required` inside `accessibilityState`. Instead, safely fallback to appending strings like `", required"` to the `accessibilityLabel` when explicit required states must be announced to screen readers.
