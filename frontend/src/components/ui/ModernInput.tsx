@@ -103,6 +103,11 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   const showPasswordToggle = isPassword && value.length > 0;
   const showClear = showClearButton && value.length > 0 && !disabled && editable;
 
+  const getAccessibilityLabel = (): string => {
+    const baseText = label || placeholder || "Text input";
+    return required ? `${baseText}, required` : baseText;
+  };
+
   const togglePasswordVisibility = () => {
     void haptics.light();
     setIsPasswordVisible(!isPasswordVisible);
@@ -199,7 +204,7 @@ export const ModernInput: React.FC<ModernInputProps> = ({
 
         <TextInput
           ref={inputRef}
-          accessibilityLabel={label ? (required ? `${label}, required` : label) : (placeholder ? (required ? `${placeholder}, required` : placeholder) : "Text input")}
+          accessibilityLabel={getAccessibilityLabel()}
           accessibilityHint={error || helperText}
           accessibilityState={{
             disabled: disabled || editable === false,

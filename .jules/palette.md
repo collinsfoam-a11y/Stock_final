@@ -50,3 +50,6 @@
 ## 2024-05-14 - React Native AccessibilityState Types
 **Learning:** React Native's TypeScript definitions for `AccessibilityState` do not include a `required` property, even though it may be conceptually supported or used in some web adaptations. Setting `accessibilityState={{ required: true }}` causes `tsc` typecheck failures.
 **Action:** Do not use `required` inside `accessibilityState`. Instead, safely fallback to appending strings like `", required"` to the `accessibilityLabel` when explicit required states must be announced to screen readers.
+## 2024-05-14 - React Native Cognitive Complexity in Render
+**Learning:** Complex ternary operations within the `render` function of a React Native component (e.g. nested conditionals for `accessibilityLabel`) trigger SonarCloud's maintainability warnings.
+**Action:** Extract complex prop calculation logic into clear, standalone helper functions within the component to avoid violating cognitive complexity rules.
