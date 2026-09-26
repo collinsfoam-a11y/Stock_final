@@ -96,10 +96,17 @@ async def sync_commands(
         device_seq_state.get("client_sequence", -1) if device_seq_state else -1
     )
 
+    # ⚡ Bolt Optimization: Fix N+1 queries in loop validation logic
+    # Pre-fetch existing commands to replace loop-wise lookups with O(1) dictionary access
+    command_ids = [cmd.command_id for cmd in request.commands]
+    existing_commands_cursor = command_journal.find({"command_id": {"$in": command_ids}})
+    existing_commands_list = await existing_commands_cursor.to_list(length=None)
+    existing_commands_map = {doc["command_id"]: doc for doc in existing_commands_list}
+
     for cmd in request.commands:
         cmd_state = cmd.state or CommandState.PENDING.value
         try:
-            existing = await command_journal.find_one({"command_id": cmd.command_id})
+            existing = existing_commands_map.get(cmd.command_id)
 
             if existing:
                 existing_hash: str = existing.get("payload_hash", "")
