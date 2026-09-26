@@ -35,7 +35,12 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
 }) => {
   if (!data || data.length === 0) {
     return (
-      <View style={styles.container}>
+      <View
+        style={styles.container}
+        accessible={true}
+        accessibilityRole="summary"
+        accessibilityLabel={title ? `${title}: No data available` : "Pie chart with no data available"}
+      >
         {title && <Text style={styles.title}>{title}</Text>}
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>No data available</Text>
@@ -125,14 +130,27 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
     }
   };
 
+  const chartSummaryLabel = `${title ? `${title}. ` : ""}Pie chart summary. Total: ${total}. Breakdown: ${segments
+    .map((s) => `${s.label} ${s.value} (${s.percentage.toFixed(1)}%)`)
+    .join(", ")}`;
+
   return (
     <View style={styles.container}>
       {title && <Text style={styles.title}>{title}</Text>}
       <View style={styles.chartWrapper}>
-        <View style={styles.pieContainer}>
+        <View
+          style={styles.pieContainer}
+          accessible={true}
+          accessibilityRole="summary"
+          accessibilityLabel={chartSummaryLabel}
+        >
           {renderPieChart()}
           {/* Center label with total */}
-          <View style={styles.centerLabel}>
+          <View
+            style={styles.centerLabel}
+            importantForAccessibility="no-hide-descendants"
+            accessibilityElementsHidden={true}
+          >
             <Text style={styles.centerValue}>{total}</Text>
             <Text style={styles.centerText}>Total</Text>
           </View>
@@ -141,9 +159,17 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
         {showLegend && (
           <View style={styles.legend}>
             {segments.map((item, index) => (
-              <View key={index} style={styles.legendItem}>
+              <View
+                key={index}
+                style={styles.legendItem}
+                accessible={true}
+                accessibilityRole="text"
+                accessibilityLabel={`${item.label}: ${item.value} (${item.percentage.toFixed(1)}%)`}
+              >
                 <View
                   style={[styles.legendColor, { backgroundColor: item.color }]}
+                  importantForAccessibility="no"
+                  accessibilityElementsHidden={true}
                 />
                 <View style={styles.legendContent}>
                   <Text style={styles.legendLabel}>{item.label}</Text>
