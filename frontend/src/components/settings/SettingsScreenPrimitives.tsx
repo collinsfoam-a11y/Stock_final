@@ -1,16 +1,16 @@
 import React, { useCallback } from "react";
 import {
   type KeyboardTypeOptions,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Haptics from "expo-haptics";
 
 import { useUiTokens } from "../../hooks/useUiTokens";
+import { getDecorativeIconProps } from "../../utils/accessibility";
+import { haptics } from "../../services/haptics";
 import { colorWithAlpha } from "../../theme/themeTokens";
 import { AnimatedPressable } from "../ui/AnimatedPressable";
 import { ModernCard } from "../ui/ModernCard";
@@ -124,7 +124,7 @@ export function SettingsTextInputRow({
             },
           ]}
         >
-          <Ionicons name={icon} size={19} color={uiTokens.colors.accent} />
+          <Ionicons name={icon} size={19} color={uiTokens.colors.accent} {...getDecorativeIconProps()} />
         </View>
         <View style={styles.copy}>
           <Text style={[styles.label, { color: uiTokens.colors.textPrimary }]}>{label}</Text>
@@ -178,9 +178,7 @@ export function SettingsActionRow({
   const toneColor = destructive ? uiTokens.colors.error : uiTokens.colors.accent;
 
   const triggerSelection = useCallback(() => {
-    if (Platform.OS !== "web") {
-      Haptics.selectionAsync();
-    }
+    void haptics.selection();
   }, []);
 
   const handlePress = useCallback(() => {
@@ -192,9 +190,7 @@ export function SettingsActionRow({
   const handleToggle = useCallback(
     (nextValue: boolean) => {
       if (disabled) return;
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      void haptics.light();
       (onValueChange ?? onToggle)?.(nextValue);
     },
     [disabled, onToggle, onValueChange]
@@ -230,6 +226,7 @@ export function SettingsActionRow({
             name="chevron-forward"
             size={18}
             color={disabled ? uiTokens.colors.textMuted : uiTokens.colors.textSecondary}
+            {...getDecorativeIconProps()}
           />
         ) : null}
       </View>
@@ -247,7 +244,7 @@ export function SettingsActionRow({
             },
           ]}
         >
-          <Ionicons name={icon} size={19} color={toneColor} />
+          <Ionicons name={icon} size={19} color={toneColor} {...getDecorativeIconProps()} />
         </View>
         <View style={styles.copy}>
           <Text
