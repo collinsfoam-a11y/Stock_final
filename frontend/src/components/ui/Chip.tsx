@@ -59,7 +59,7 @@ export const Chip: React.FC<ChipProps> = ({
   textStyle,
 }) => {
   const sizes = sizeStyles[size];
-  const isInteractive = !disabled && (onPress || onRemove);
+  const isInteractive = !disabled && Boolean(onPress);
 
   const getColors = () => {
     if (disabled) {
@@ -146,7 +146,8 @@ export const Chip: React.FC<ChipProps> = ({
       </Text>
       {onRemove && !disabled && (
         <AppTouchable
-          onPress={() => {
+          onPress={(e) => {
+            e?.stopPropagation?.();
             void haptics.light();
             onRemove();
           }}
