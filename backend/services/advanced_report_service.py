@@ -5,6 +5,7 @@ Comprehensive report generation with real-time data, aggregations, and advanced 
 
 import csv
 import io
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -338,9 +339,11 @@ class AdvancedReportService:
         self._add_date_filter(query, filters.date_from, filters.date_to)
         self._add_variance_filter(query, filters.variance_min, filters.variance_max)
 
-        # Get counts
-        total_records = await self.db.count_lines.count_documents({})
-        filtered_records = await self.db.count_lines.count_documents(query)
+        # Get counts concurrently
+        total_records, filtered_records = await asyncio.gather(
+            self.db.count_lines.count_documents({}),
+            self.db.count_lines.count_documents(query)
+        )
 
         # Build sort
         sort_field = config.sort_by or "counted_at"
@@ -458,8 +461,11 @@ class AdvancedReportService:
                 date_filter["$lte"] = filters.date_to
             query["started_at"] = date_filter
 
-        total_records = await self.db.sessions.count_documents({})
-        filtered_records = await self.db.sessions.count_documents(query)
+        # Optimization: Fetch counts concurrently
+        total_records, filtered_records = await asyncio.gather(
+            self.db.sessions.count_documents({}),
+            self.db.sessions.count_documents(query)
+        )
 
         sort_field = config.sort_by or "started_at"
         sort_direction = -1 if config.sort_order == SortOrder.DESC else 1
@@ -581,8 +587,11 @@ class AdvancedReportService:
                 date_filter["$lte"] = filters.date_to
             query["counted_at"] = date_filter
 
-        total_records = await self.db.count_lines.count_documents({"variance": {"$ne": 0}})
-        filtered_records = await self.db.count_lines.count_documents(query)
+        # Optimization: Fetch counts concurrently
+        total_records, filtered_records = await asyncio.gather(
+            self.db.count_lines.count_documents({"variance": {"$ne": 0}}),
+            self.db.count_lines.count_documents(query)
+        )
 
         sort_field = config.sort_by or "variance"
         sort_direction = -1 if config.sort_order == SortOrder.DESC else 1
