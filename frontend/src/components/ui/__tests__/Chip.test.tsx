@@ -70,4 +70,31 @@ describe("Chip", () => {
     expect(onPress).not.toHaveBeenCalled();
     expect(haptics.light).not.toHaveBeenCalled();
   });
+
+  it("prevents onPress from firing when onRemove button is pressed", () => {
+    const onPress = jest.fn();
+    const onRemove = jest.fn();
+    const { getByLabelText } = render(
+      <Chip label="Dual Action" onPress={onPress} onRemove={onRemove} />
+    );
+
+    const removeBtn = getByLabelText("Remove Dual Action");
+    const stopPropagation = jest.fn();
+    fireEvent.press(removeBtn, { stopPropagation });
+
+    expect(onRemove).toHaveBeenCalledTimes(1);
+    expect(stopPropagation).toHaveBeenCalled();
+  });
+
+  it("does not expose button role on main container when only onRemove is provided", () => {
+    const onRemove = jest.fn();
+    const { getAllByRole } = render(
+      <Chip label="Only Remove" onRemove={onRemove} />
+    );
+
+    // Only the remove button should have accessibilityRole="button"
+    const buttons = getAllByRole("button");
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].props.accessibilityLabel).toBe("Remove Only Remove");
+  });
 });
