@@ -41,3 +41,7 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+
+## 2026-05-25 - Accessible Chart Summaries & React Native Accessibility Hierarchy
+**Learning:** In React Native, setting `accessible={true}` on a parent container suppresses screen reader access to all child nodes, making inner interactive or focusable items (like individual chart bars) unreachable. To provide both a overall narrative summary and allow focus on individual data points, place `accessibilityRole="header"` or `accessibilityRole="summary"` with the full narrative label on the title/header node rather than the root container wrapping child nodes.
+**Action:** Avoid placing `accessible={true}` on root containers that wrap focusable children; attach summary labels to header elements so child nodes remain focusable to screen readers.

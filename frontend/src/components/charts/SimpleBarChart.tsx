@@ -30,8 +30,14 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
   const t = useUiTokens();
 
   if (!data || data.length === 0) {
+    const emptyLabel = title ? `${title}: No data available` : "No data available";
     return (
-      <View style={styles.container}>
+      <View
+        style={styles.container}
+        accessible={true}
+        accessibilityRole="summary"
+        accessibilityLabel={emptyLabel}
+      >
         {title && <Text style={[styles.title, { color: t.colors.textPrimary }]}>{title}</Text>}
         <View style={[styles.emptyState, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
           <Text style={[styles.emptyText, { color: t.colors.textMuted }]}>No data available</Text>
@@ -40,6 +46,7 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
     );
   }
 
+  const chartSummaryLabel = `${title ? `${title}, ` : "Bar chart, "}${data.length} ${data.length === 1 ? "item" : "items"}: ${data.map((d) => `${d.label}: ${d.value}`).join(", ")}`;
   const chartWidth = CHART_WIDTH - PADDING;
   const chartHeight = CHART_HEIGHT - PADDING;
 
@@ -59,7 +66,22 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
 
   return (
     <View style={styles.container}>
-      {title && <Text style={[styles.title, { color: t.colors.textPrimary }]}>{title}</Text>}
+      {title ? (
+        <Text
+          style={[styles.title, { color: t.colors.textPrimary }]}
+          accessible={true}
+          accessibilityRole="header"
+          accessibilityLabel={chartSummaryLabel}
+        >
+          {title}
+        </Text>
+      ) : (
+        <View
+          accessible={true}
+          accessibilityRole="summary"
+          accessibilityLabel={chartSummaryLabel}
+        />
+      )}
       <View style={[styles.chartCard, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
         <View style={styles.chartContainer}>
           {/* Y-axis labels */}
@@ -95,7 +117,14 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
               const color = item.color || t.colors.accent;
 
               return (
-                <Animated.View key={index} style={styles.barContainer} entering={FadeInUp.delay(index * 50).duration(300)}>
+                <Animated.View
+                  key={index}
+                  style={styles.barContainer}
+                  entering={FadeInUp.delay(index * 50).duration(300)}
+                  accessible={true}
+                  accessibilityRole="image"
+                  accessibilityLabel={`${item.label}: ${item.value}`}
+                >
                   <View
                     style={[
                       styles.bar,
