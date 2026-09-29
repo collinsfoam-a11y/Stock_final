@@ -41,3 +41,7 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+
+## 2026-05-25 - Accessible Chart Summaries
+**Learning:** Visual data charts (like bar charts or pie charts) are often unannounced or read as disconnected numbers by screen readers. Providing a narrative summary on the chart container (`accessibilityRole="summary"` and a computed `accessibilityLabel` summarizing items and data points) and adding accessible image roles (`accessibilityRole="image"`) with descriptive labels to individual bar elements enables screen reader users to easily digest data visualizations.
+**Action:** Always wrap data visualization containers in `accessible={true}` with `accessibilityRole="summary"` and a narrative `accessibilityLabel` summarizing the chart contents.
