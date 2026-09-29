@@ -16,7 +16,7 @@ describe("SimpleBarChart", () => {
     expect(summaryNode.props.accessibilityRole).toBe("summary");
   });
 
-  it("renders chart data with narrative summary and individual bar accessibility props", () => {
+  it("renders chart data with narrative summary header and individual bar accessibility props without hiding child nodes", () => {
     const sampleData = [
       { label: "Mon", value: 10 },
       { label: "Tue", value: 25 },
@@ -30,10 +30,10 @@ describe("SimpleBarChart", () => {
     expect(getByText("Daily Scans")).toBeTruthy();
 
     const expectedSummaryLabel =
-      "Daily Scans, Bar chart with 3 items: Mon: 10, Tue: 25, Wed: 15";
-    const chartSummaryNode = getByLabelText(expectedSummaryLabel);
-    expect(chartSummaryNode).toBeTruthy();
-    expect(chartSummaryNode.props.accessibilityRole).toBe("summary");
+      "Daily Scans, 3 items: Mon: 10, Tue: 25, Wed: 15";
+    const headerNode = getByLabelText(expectedSummaryLabel);
+    expect(headerNode).toBeTruthy();
+    expect(headerNode.props.accessibilityRole).toBe("header");
 
     const monBar = getByLabelText("Mon: 10");
     expect(monBar).toBeTruthy();

@@ -46,7 +46,7 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
     );
   }
 
-  const chartSummaryLabel = `${title ? `${title}, ` : ""}Bar chart with ${data.length} ${data.length === 1 ? "item" : "items"}: ${data.map((d) => `${d.label}: ${d.value}`).join(", ")}`;
+  const chartSummaryLabel = `${title ? `${title}, ` : "Bar chart, "}${data.length} ${data.length === 1 ? "item" : "items"}: ${data.map((d) => `${d.label}: ${d.value}`).join(", ")}`;
   const chartWidth = CHART_WIDTH - PADDING;
   const chartHeight = CHART_HEIGHT - PADDING;
 
@@ -65,13 +65,23 @@ export const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
   }
 
   return (
-    <View
-      style={styles.container}
-      accessible={true}
-      accessibilityRole="summary"
-      accessibilityLabel={chartSummaryLabel}
-    >
-      {title && <Text style={[styles.title, { color: t.colors.textPrimary }]}>{title}</Text>}
+    <View style={styles.container}>
+      {title ? (
+        <Text
+          style={[styles.title, { color: t.colors.textPrimary }]}
+          accessible={true}
+          accessibilityRole="header"
+          accessibilityLabel={chartSummaryLabel}
+        >
+          {title}
+        </Text>
+      ) : (
+        <View
+          accessible={true}
+          accessibilityRole="summary"
+          accessibilityLabel={chartSummaryLabel}
+        />
+      )}
       <View style={[styles.chartCard, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
         <View style={styles.chartContainer}>
           {/* Y-axis labels */}
