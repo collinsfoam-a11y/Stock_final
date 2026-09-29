@@ -44,3 +44,6 @@
 ## 2025-02-28 - Unified Clear Action Pattern
 **Learning:** Using the unified `showClearButton={true}` prop on inputs instead of ad-hoc custom icons (like `rightIcon="close-circle"`) provides a consistent micro-interaction across the app. This pattern ensures tactile feedback on clear, refocuses the input, and properly applies standard accessibility labels for screen readers without redundant ad-hoc logic.
 **Action:** Always favor `showClearButton` in `ModernInput` when a searchable or clearable field is required, removing ad-hoc `rightIcon` and `onRightIconPress` handlers to reduce code duplication and maintain consistent haptic and a11y standards.
+## 2025-02-28 - Awaiting Haptics Promises in Scan Screens
+**Learning:** `Haptics.impactAsync` and `Haptics.notificationAsync` return promises. When used directly or via the centralized `haptics` service, they must be properly awaited or explicitly marked as intentionally unawaited using the `void` operator (e.g., `void haptics.light()`). Failing to do so triggers SonarCloud quality gate failures regarding unhandled promises.
+**Action:** Always prefix centralized haptics calls with `void` (e.g., `void haptics.light()`) when used within synchronous event handlers or when awaiting is unnecessary, to ensure compliance with promise-handling lint rules.
