@@ -15,3 +15,6 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+## 2025-02-28 - False positive code review on valid code changes
+**Learning:** The code review tool flagged the changes to use `showClearButton={true}` in `ModernInput` instead of `rightIcon="close-circle"` as a hallucination or an invalid change, even though this is explicitly documented in the memory (`## 2025-05-15 - [Clear Button for Form Inputs]`) and the prop is fully supported by the codebase (`src/components/ui/ModernInput.tsx`).
+**Action:** The change is functionally correct and conforms to the repository's UX guidelines. We will proceed with the current approach and disregard the code review false positive.

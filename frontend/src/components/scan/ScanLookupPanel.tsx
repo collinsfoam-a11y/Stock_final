@@ -35,7 +35,6 @@ interface ScanLookupPanelProps {
   searchResults: ScanLookupItem[];
   notice?: ScanLookupNotice | null;
   onChangeSearchQuery: (value: string) => void;
-  onClearSearchQuery: () => void;
   onDismissNotice?: () => void;
   onOpenScanner: () => void;
   onPressItem: (item: ScanLookupItem) => void;
@@ -149,7 +148,6 @@ export function ScanLookupPanel({
   searchResults,
   notice,
   onChangeSearchQuery,
-  onClearSearchQuery,
   onDismissNotice,
   onOpenScanner,
   onPressItem,
@@ -181,8 +179,7 @@ export function ScanLookupPanel({
               value={searchQuery}
               onChangeText={onChangeSearchQuery}
               icon="search"
-              rightIcon={searchQuery ? "close-circle" : undefined}
-              onRightIconPress={onClearSearchQuery}
+              showClearButton={true}
               onSubmitEditing={onSubmitSearch}
               returnKeyType="search"
               keyboardType="default"

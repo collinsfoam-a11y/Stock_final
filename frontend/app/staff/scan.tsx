@@ -8,7 +8,7 @@ import { View, ScrollView, ActivityIndicator, Alert, RefreshControl, Text, Keybo
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useCameraPermissions } from "../../src/services/device/expoCamera";
-import * as Haptics from "expo-haptics";
+import { haptics } from "@/services/haptics";
 import {
   useAnimatedStyle,
   useSharedValue,
@@ -143,7 +143,7 @@ const ScanScreen = React.memo(function ScanScreen() {
   const onRefresh = useCallback(async () => {
     safeSetState(setRefreshing, true);
     if (scannerVibration) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void haptics.light();
     }
     await Promise.all([loadRecentItems(), loadSessionStats()]);
     safeSetState(setRefreshing, false);
@@ -201,7 +201,7 @@ const ScanScreen = React.memo(function ScanScreen() {
     safeSetState(setIsFinishing, true);
     try {
       await safeAsync(() => updateSessionStatus(sessionId, "reconcile"));
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void haptics.success();
       router.replace("/staff/home");
     } catch (error: any) {
       Alert.alert(
@@ -310,10 +310,6 @@ const ScanScreen = React.memo(function ScanScreen() {
             }
             safeSetState(setSearchQuery, value);
           }}
-          onClearSearchQuery={() => {
-            safeSetState(setLookupNotice, null);
-            safeSetState(setSearchQuery, "");
-          }}
           onDismissNotice={() => safeSetState(setLookupNotice, null)}
           onOpenScanner={() => {
             safeSetState(setLookupNotice, null);
@@ -325,13 +321,13 @@ const ScanScreen = React.memo(function ScanScreen() {
           onSubmitSearch={() => {
             if (!searchQuery.trim()) return;
             if (scannerVibration) {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              void haptics.light();
             }
 
             if (searchResults.length > 0) {
               void handleSelectLookupItem(searchResults[0]);
             } else if (/^\d{6,}$/.test(searchQuery.trim())) {
-              handleLookup(searchQuery.trim());
+              void handleLookup(searchQuery.trim());
             } else {
               Keyboard.dismiss();
             }
@@ -339,7 +335,7 @@ const ScanScreen = React.memo(function ScanScreen() {
           onRetryNotice={() => {
             const code = lastLookupBarcode || searchQuery.trim();
             if (code) {
-              handleLookup(code);
+              void handleLookup(code);
             }
           }}
           hasMore={hasMoreSearchResults}
