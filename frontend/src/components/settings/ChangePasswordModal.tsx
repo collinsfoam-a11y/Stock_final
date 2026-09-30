@@ -20,7 +20,7 @@ import {
 import { useThemeContext } from "../../context/ThemeContext";
 import { typography } from "../../theme/designTokens";
 import { authApi } from "../../services/api/authApi";
-import * as Haptics from "expo-haptics";
+import { haptics } from "@/services/haptics";
 
 import {
   colors as uiColors,
@@ -122,9 +122,7 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
       await authApi.changePassword(currentPassword, newPassword);
 
       // Success haptic feedback
-      if (Platform.OS !== "web") {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+      void haptics.success();
 
       Alert.alert(
         "Success",
@@ -142,9 +140,7 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
       );
     } catch (err: any) {
       // Error haptic feedback
-      if (Platform.OS !== "web") {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
+      void haptics.error();
 
       const errorMessage =
         err?.response?.data?.detail?.message || "Failed to change password. Please try again.";
@@ -316,10 +312,16 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
             keyboardDismissMode="on-drag"
             nestedScrollEnabled
           >
-            <Text style={styles.title}>Change Password</Text>
+            <Text style={styles.title} accessibilityRole="header">
+              Change Password
+            </Text>
             <Text style={styles.subtitle}>Choose a strong password with at least 8 characters</Text>
 
-            {error && <Text style={styles.error}>{error}</Text>}
+            {error && (
+              <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">
+                {error}
+              </Text>
+            )}
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Current Password</Text>
@@ -334,11 +336,22 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
                   autoCapitalize="none"
                   autoCorrect={false}
                   editable={!loading}
+                  accessibilityLabel="Current Password"
+                  accessibilityHint="Enter your current password"
+                  aria-required={true}
+                  aria-invalid={Boolean(error?.includes("Current"))}
                 />
                 <AppTouchable
                   style={styles.showButton}
-                  onPress={() => setShowCurrentPassword(!showCurrentPassword)}
- >
+                  onPress={() => {
+                    void haptics.light();
+                    setShowCurrentPassword(!showCurrentPassword);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    showCurrentPassword ? "Hide current password" : "Show current password"
+                  }
+                >
                   <Text style={styles.showButtonText}>{showCurrentPassword ? "Hide" : "Show"}</Text>
                 </AppTouchable>
               </View>
@@ -357,18 +370,37 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
                   autoCapitalize="none"
                   autoCorrect={false}
                   editable={!loading}
+                  accessibilityLabel="New Password"
+                  accessibilityHint="Enter a new password with at least 8 characters, uppercase, lowercase, and a number"
+                  aria-required={true}
+                  aria-invalid={Boolean(error?.includes("New"))}
                 />
                 <AppTouchable
                   style={styles.showButton}
-                  onPress={() => setShowNewPassword(!showNewPassword)}
- >
+                  onPress={() => {
+                    void haptics.light();
+                    setShowNewPassword(!showNewPassword);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={showNewPassword ? "Hide new password" : "Show new password"}
+                >
                   <Text style={styles.showButtonText}>{showNewPassword ? "Hide" : "Show"}</Text>
                 </AppTouchable>
               </View>
             </View>
 
             {newPassword.length > 0 && (
-              <View style={styles.strengthContainer}>
+              <View
+                style={styles.strengthContainer}
+                accessible={true}
+                accessibilityRole="progressbar"
+                accessibilityValue={{
+                  min: 0,
+                  max: passwordStrength.total,
+                  now: passwordStrength.score,
+                }}
+                accessibilityLabel={`Password strength: ${passwordStrength.score} of ${passwordStrength.total} requirements met`}
+              >
                 <View style={styles.strengthBar}>
                   <View
                     style={[
@@ -422,6 +454,10 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
                   autoCapitalize="none"
                   autoCorrect={false}
                   editable={!loading}
+                  accessibilityLabel="Confirm New Password"
+                  accessibilityHint="Re-enter your new password"
+                  aria-required={true}
+                  aria-invalid={Boolean(error?.includes("match"))}
                 />
               </View>
             </View>
@@ -429,9 +465,15 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
             <View style={styles.buttonContainer}>
               <AppTouchable
                 style={[styles.button, styles.cancelButton]}
-                onPress={handleClose}
+                onPress={() => {
+                  void haptics.light();
+                  handleClose();
+                }}
                 disabled={loading}
- >
+                accessibilityRole="button"
+                accessibilityLabel="Cancel changing password"
+                accessibilityState={{ disabled: loading }}
+              >
                 <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
               </AppTouchable>
 
@@ -441,9 +483,15 @@ export function ChangePasswordModal({ visible, onClose, onSuccess }: ChangePassw
                   styles.submitButton,
                   (!isValid || loading) && styles.submitButtonDisabled,
                 ]}
-                onPress={handleSubmit}
+                onPress={() => {
+                  void haptics.light();
+                  handleSubmit();
+                }}
                 disabled={!isValid || loading}
- >
+                accessibilityRole="button"
+                accessibilityLabel="Change Password"
+                accessibilityState={{ disabled: !isValid || loading, busy: loading }}
+              >
                 {loading ? (
                   <ActivityIndicator color={uiSemanticColors.text.inverse} size="small" />
                 ) : (
