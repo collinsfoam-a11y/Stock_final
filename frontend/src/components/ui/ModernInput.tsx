@@ -205,6 +205,9 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           value={value}
           onChangeText={onChangeText}
           editable={editable && !disabled}
+          accessibilityLabel={label || placeholder || "Input"}
+          accessibilityHint={helperText || undefined}
+          accessibilityState={{ disabled: editable === false || disabled }}
           secureTextEntry={isPassword && !isPasswordVisible}
           autoCapitalize={autoCapitalize}
           autoCorrect={autoCorrect}
