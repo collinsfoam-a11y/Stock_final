@@ -11,6 +11,8 @@ import Animated, {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { getTokenShadowStyle } from "../../theme/themeTokens";
+import { haptics } from "@/services/haptics";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 interface ToastProps {
   message: string;
@@ -34,6 +36,21 @@ export const Toast: React.FC<ToastProps> = ({
 
   useEffect(() => {
     if (visible) {
+      switch (type) {
+        case "success":
+          void haptics.success();
+          break;
+        case "error":
+          void haptics.error();
+          break;
+        case "warning":
+          void haptics.warning();
+          break;
+        default:
+          void haptics.light();
+          break;
+      }
+
       if (!tokens.motion.enabled) {
         opacity.value = 1;
         translateY.value = 0;
@@ -88,6 +105,7 @@ export const Toast: React.FC<ToastProps> = ({
     }
   }, [
     visible,
+    type,
     duration,
     onHide,
     opacity,
@@ -141,7 +159,7 @@ export const Toast: React.FC<ToastProps> = ({
       ]}
     >
       <View style={[styles.iconBadge, { backgroundColor: statusBackground }]}>
-        <Ionicons name={getIcon()} size={19} color={statusColor} />
+        <Ionicons name={getIcon()} size={19} color={statusColor} {...getDecorativeIconProps()} />
       </View>
       <Text style={[styles.message, { color: tokens.colors.textPrimary }]}>{message}</Text>
     </Animated.View>
