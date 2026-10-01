@@ -3,7 +3,7 @@
  * Part of FR-M-23: Recount notifications
  */
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
@@ -19,6 +19,7 @@ import { colorWithAlpha, type ThemeTokens } from "@/theme/themeTokens";
 import { safeBackNavigation } from "@/utils/navigation";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { VirtualList } from "@/components/common/VirtualList";
 
 const log = createLogger("notifications");
 
@@ -336,12 +337,14 @@ export default function NotificationsScreen() {
         />
       </View>
 
-      <FlatList
+      {/* ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to improve rendering performance and reduce memory usage for potentially long lists of notifications. */}
+      <VirtualList
         data={notifications}
         renderItem={renderNotificationItem}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={renderEmptyState}
+        estimatedItemSize={120}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
