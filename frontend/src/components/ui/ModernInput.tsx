@@ -61,6 +61,8 @@ interface ModernInputProps {
   style?: ViewStyle;
   inputStyle?: TextStyle;
   containerStyle?: ViewStyle;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 export const ModernInput: React.FC<ModernInputProps> = ({
@@ -93,6 +95,8 @@ export const ModernInput: React.FC<ModernInputProps> = ({
   style,
   inputStyle,
   containerStyle,
+  accessibilityLabel,
+  accessibilityHint,
 }) => {
   const uiTokens = useUiTokens();
   const [isFocused, setIsFocused] = useState(false);
@@ -187,7 +191,8 @@ export const ModernInput: React.FC<ModernInputProps> = ({
               ? getAccessibleButtonProps({
                   label: `${label || "Input"} action`,
                 })
-              : {})}>
+              : {})}
+          >
             <Ionicons
               {...getDecorativeIconProps()}
               name={icon}
@@ -223,6 +228,9 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           onSubmitEditing={onSubmitEditing}
           returnKeyType={returnKeyType}
           testID={testID}
+          accessibilityLabel={accessibilityLabel || label || placeholder || "Text input"}
+          accessibilityHint={accessibilityHint || error || helperText}
+          accessibilityState={{ disabled: disabled || editable === false }}
         />
 
         {showClear && (
@@ -231,8 +239,14 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             style={styles.iconContainer}
             {...getAccessibleButtonProps({
               label: `Clear ${label || "input"}`,
-            })}>
-            <Ionicons {...getDecorativeIconProps()} name="close-circle" size={20} color={uiTokens.colors.textSecondary} />
+            })}
+          >
+            <Ionicons
+              {...getDecorativeIconProps()}
+              name="close-circle"
+              size={20}
+              color={uiTokens.colors.textSecondary}
+            />
           </AppTouchable>
         )}
 
@@ -242,7 +256,8 @@ export const ModernInput: React.FC<ModernInputProps> = ({
             style={styles.iconContainer}
             {...getAccessibleButtonProps({
               label: isPasswordVisible ? "Hide password" : "Show password",
-            })}>
+            })}
+          >
             <Ionicons
               {...getDecorativeIconProps()}
               name={isPasswordVisible ? "eye-off" : "eye"}
@@ -264,8 +279,14 @@ export const ModernInput: React.FC<ModernInputProps> = ({
               ? getAccessibleButtonProps({
                   label: `${label || "Input"} right action`,
                 })
-              : {})}>
-            <Ionicons {...getDecorativeIconProps()} name={rightIcon} size={20} color={uiTokens.colors.textSecondary} />
+              : {})}
+          >
+            <Ionicons
+              {...getDecorativeIconProps()}
+              name={rightIcon}
+              size={20}
+              color={uiTokens.colors.textSecondary}
+            />
           </AppTouchable>
         )}
       </Pressable>
@@ -296,5 +317,3 @@ const styles = StyleSheet.create({
     marginTop: unifiedSpacing.xs,
   },
 });
-
-
