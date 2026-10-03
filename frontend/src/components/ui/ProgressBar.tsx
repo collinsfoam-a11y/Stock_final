@@ -10,6 +10,10 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withRepeat,
+  withTiming,
+  Easing,
+  interpolate,
 } from "react-native-reanimated";
 import { colorPalette, spacing, typography } from "@/theme/designTokens";
 
@@ -17,7 +21,7 @@ export type ProgressBarVariant = "default" | "success" | "warning" | "error";
 export type ProgressBarSize = "sm" | "md" | "lg";
 
 interface ProgressBarProps {
-  progress: number; // 0-100
+  progress?: number; // 0-100 (optional if indeterminate)
   variant?: ProgressBarVariant;
   size?: ProgressBarSize;
   showLabel?: boolean;
@@ -44,55 +48,82 @@ const sizeStyles: Record<
 };
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({
-  progress,
+  progress = 0,
   variant = "default",
   size = "md",
   showLabel = false,
   label,
   animated = true,
-  indeterminate: _indeterminate = false,
+  indeterminate = false,
   style,
 }) => {
   const progressValue = useSharedValue(0);
+  const indeterminateAnim = useSharedValue(0);
   const sizes = sizeStyles[size];
   const color = variantColors[variant];
 
   useEffect(() => {
-    const clampedProgress = Math.min(Math.max(progress, 0), 100);
-
-    if (animated) {
-      progressValue.value = withSpring(clampedProgress, {
-        damping: 15,
-        stiffness: 100,
-      });
+    if (indeterminate) {
+      indeterminateAnim.value = 0;
+      indeterminateAnim.value = withRepeat(
+        withTiming(1, {
+          duration: 1200,
+          easing: Easing.bezier(0.4, 0, 0.6, 1),
+        }),
+        -1,
+        false
+      );
     } else {
-      progressValue.value = clampedProgress;
+      indeterminateAnim.value = 0;
+      const clampedProgress = Math.min(Math.max(progress, 0), 100);
+
+      if (animated) {
+        progressValue.value = withSpring(clampedProgress, {
+          damping: 15,
+          stiffness: 100,
+        });
+      } else {
+        progressValue.value = clampedProgress;
+      }
     }
-  }, [progress, animated, progressValue]);
+  }, [progress, animated, indeterminate, progressValue, indeterminateAnim]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    width: `${progressValue.value}%`,
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    if (indeterminate) {
+      const leftPercent = interpolate(indeterminateAnim.value, [0, 1], [-35, 100]);
+      return {
+        width: "35%",
+        left: `${leftPercent}%`,
+      };
+    }
+    return {
+      width: `${progressValue.value}%`,
+      left: 0,
+    };
+  });
 
-  const displayLabel = label || `${Math.round(progress)}%`;
+  const displayLabel =
+    label || (indeterminate ? "Loading..." : `${Math.round(progress)}%`);
 
   const clampedProgress = Math.min(Math.max(progress, 0), 100);
+
+  const accessibilityValue = indeterminate
+    ? { min: 0, max: 100 }
+    : { min: 0, max: 100, now: clampedProgress };
+
+  const accessibilityLabel = label
+    ? `Progress: ${label}`
+    : indeterminate
+    ? "Progress: Loading..."
+    : `Progress: ${Math.round(clampedProgress)}%`;
 
   return (
     <View
       style={[styles.container, style]}
       accessible={true}
       accessibilityRole="progressbar"
-      accessibilityValue={{
-        min: 0,
-        max: 100,
-        now: clampedProgress,
-      }}
-      accessibilityLabel={
-        label
-          ? `Progress: ${label}`
-          : `Progress: ${Math.round(clampedProgress)}%`
-      }
+      accessibilityValue={accessibilityValue}
+      accessibilityLabel={accessibilityLabel}
     >
       {showLabel && (
         <Text
