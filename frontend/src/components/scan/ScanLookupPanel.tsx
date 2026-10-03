@@ -179,10 +179,12 @@ export function ScanLookupPanel({
             <ModernInput
               placeholder="Enter barcode or item code..."
               value={searchQuery}
-              onChangeText={onChangeSearchQuery}
+              onChangeText={(val) => {
+                onChangeSearchQuery(val);
+                if (!val) onClearSearchQuery();
+              }}
               icon="search"
-              rightIcon={searchQuery ? "close-circle" : undefined}
-              onRightIconPress={onClearSearchQuery}
+              showClearButton={true}
               onSubmitEditing={onSubmitSearch}
               returnKeyType="search"
               keyboardType="default"
