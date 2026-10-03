@@ -41,4 +41,19 @@ describe("ProgressBar", () => {
     expect(progressBarNegative.props.accessibilityValue.now).toBe(0);
     expect(progressBarNegative.props.accessibilityLabel).toBe("Progress: 0%");
   });
+
+  it("handles indeterminate mode accessibility correctly", () => {
+    const { getByRole, getByText } = render(
+      <ProgressBar indeterminate showLabel />
+    );
+    const progressBar = getByRole("progressbar");
+
+    expect(progressBar.props.accessibilityValue).toEqual({
+      min: 0,
+      max: 100,
+    });
+    expect(progressBar.props.accessibilityValue.now).toBeUndefined();
+    expect(progressBar.props.accessibilityLabel).toBe("Progress: Loading...");
+    expect(getByText("Loading...")).toBeTruthy();
+  });
 });
