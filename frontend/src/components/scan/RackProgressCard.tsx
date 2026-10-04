@@ -6,6 +6,11 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { AppTouchable } from "@/components/ui/AppTouchable";
 import { borderRadius, spacing, typography } from "@/theme/unified";
+import { haptics } from "@/services/haptics";
+import {
+  getAccessibleButtonProps,
+  getDecorativeIconProps,
+} from "@/utils/accessibility";
 
 interface RackProgressCardProps {
   rack: string;
@@ -39,6 +44,16 @@ export const RackProgressCard: React.FC<RackProgressCardProps> = ({
 
   const boundedPercentage = Math.min(100, Math.max(0, percentage));
 
+  const handlePress = () => {
+    void haptics.light();
+    onPress?.();
+  };
+
+  const buttonAccessibilityProps = getAccessibleButtonProps({
+    label: `Rack ${rack}, ${boundedPercentage}% completed. ${counted} of ${total} items verified.`,
+    selected: Boolean(isSelected),
+  });
+
   return (
     <Animated.View entering={FadeInDown.duration(250).springify()}>
       <AppTouchable
@@ -48,32 +63,46 @@ export const RackProgressCard: React.FC<RackProgressCardProps> = ({
             backgroundColor: t.colors.surface,
             borderColor: isSelected ? t.colors.accent : t.colors.border,
           },
-          isSelected && { borderWidth: 2, backgroundColor: t.colors.surfaceElevated },
+          isSelected && {
+            borderWidth: 2,
+            backgroundColor: t.colors.surfaceElevated,
+          },
         ]}
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={`Rack ${rack}, ${percentage}% completed`}
+        onPress={handlePress}
+        {...buttonAccessibilityProps}
       >
         <View style={styles.header}>
           <View style={styles.rackTitleRow}>
-            <Ionicons name={statusIcon} size={18} color={progressColor} />
+            <Ionicons
+              name={statusIcon}
+              size={18}
+              color={progressColor}
+              {...getDecorativeIconProps()}
+            />
             <Text style={[styles.rackName, { color: t.colors.textPrimary }]}>
               Rack {rack}
             </Text>
           </View>
 
-          <View style={[styles.badge, { backgroundColor: `${progressColor}18` }]}>
+          <View
+            style={[styles.badge, { backgroundColor: `${progressColor}18` }]}
+          >
             <Text style={[styles.percentage, { color: progressColor }]}>
               {boundedPercentage}%
             </Text>
           </View>
         </View>
 
-        <View style={[styles.progressBarBg, { backgroundColor: t.colors.border }]}>
+        <View
+          style={[styles.progressBarBg, { backgroundColor: t.colors.border }]}
+        >
           <Animated.View
             style={[
               styles.progressBarFill,
-              { width: `${boundedPercentage}%`, backgroundColor: progressColor },
+              {
+                width: `${boundedPercentage}%`,
+                backgroundColor: progressColor,
+              },
             ]}
           />
         </View>
