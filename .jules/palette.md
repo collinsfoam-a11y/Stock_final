@@ -41,3 +41,6 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+## 2025-05-18 - [Add Clear Button for Create Session Rack Identifier]
+**Learning:** For fields where data input frequently needs full replacement or where errors often occur during data entry (e.g. rack identifiers, search text), adding a clear button makes it significantly faster for a user to correct input instead of manually pressing backspace. The 'showClearButton' prop on the 'ModernInput' is very simple to implement and yields an outsized UX improvement.
+**Action:** Identify highly corrected or full-replacement text input fields and add 'showClearButton={true}' to the 'ModernInput' component.
