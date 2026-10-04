@@ -1,5 +1,6 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { RackProgressCard } from "../RackProgressCard";
 import { haptics } from "@/services/haptics";
 
@@ -79,7 +80,7 @@ describe("RackProgressCard Component", () => {
     );
 
     // Get Ionicons component
-    const icon = UNSAFE_getByType("Ionicons" as React.ComponentType<any>);
+    const icon = UNSAFE_getByType(Ionicons);
     expect(icon.props.accessibilityElementsHidden).toBe(true);
     expect(icon.props.importantForAccessibility).toBe("no");
     expect(icon.props["aria-hidden"]).toBe(true);
