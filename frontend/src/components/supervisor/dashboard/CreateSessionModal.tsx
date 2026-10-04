@@ -159,6 +159,7 @@ export function CreateSessionModal({
                     placeholder="e.g. RACK-A1"
                     icon="grid-outline"
                     autoCapitalize="characters"
+                    showClearButton={true}
                   />
                 </View>
               )}
