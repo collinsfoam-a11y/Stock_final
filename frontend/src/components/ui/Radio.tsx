@@ -96,6 +96,7 @@ const RadioItem: React.FC<RadioItemProps> = ({
       hitSlop={OPERATIONAL_HIT_SLOP.standard}
       accessibilityRole="radio"
       accessibilityLabel={option.label}
+      accessibilityHint={option.description}
       accessibilityState={{ selected, disabled }}
     >
       <View

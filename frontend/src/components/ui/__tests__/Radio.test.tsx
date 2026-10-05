@@ -70,6 +70,10 @@ describe("Radio Component", () => {
     expect(option2.props.accessibilityRole).toBe("radio");
     expect(option3.props.accessibilityRole).toBe("radio");
 
+    // Verify accessibilityHint
+    expect(option1.props.accessibilityHint).toBe("First option description");
+    expect(option2.props.accessibilityHint).toBeUndefined();
+
     // Verify accessibilityState.selected
     expect(option1.props.accessibilityState.selected).toBe(false);
     expect(option2.props.accessibilityState.selected).toBe(true);
