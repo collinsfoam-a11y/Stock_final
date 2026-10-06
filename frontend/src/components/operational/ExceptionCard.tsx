@@ -19,6 +19,8 @@ import { useUiTokens } from "../../hooks/useUiTokens";
 import { colorWithAlpha, type ThemeTokens } from "../../theme/themeTokens";
 import { AppTouchable } from "../ui/AppTouchable";
 import type { ExceptionSeverity, ExceptionViewModel } from "../../viewModels/types";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 interface SeverityStyle {
     color: string;
@@ -48,6 +50,13 @@ export const ExceptionCard: React.FC<ExceptionCardProps> = ({ vm, onAction }) =>
     const styles = makeStyles(t);
     const sev = useSeverityStyle(vm.severity, t);
 
+    const handleAction = () => {
+        if (onAction) {
+            void haptics.light();
+            onAction(vm);
+        }
+    };
+
     return (
         <View
             style={[styles.root, { backgroundColor: sev.bg, borderColor: colorWithAlpha(sev.color, 0.3) }]}
@@ -55,7 +64,7 @@ export const ExceptionCard: React.FC<ExceptionCardProps> = ({ vm, onAction }) =>
             accessibilityLabel={`${vm.severity === "blocking" ? "Blocking" : vm.severity} exception: ${vm.title}. ${vm.description}`}
         >
             <View style={styles.headerRow}>
-                <Ionicons name={sev.icon} size={20} color={sev.color} />
+                <Ionicons name={sev.icon} size={20} color={sev.color} {...getDecorativeIconProps()} />
                 <Text style={[styles.title, { color: t.colors.textPrimary }]} numberOfLines={2}>
                     {vm.title}
                 </Text>
@@ -63,13 +72,12 @@ export const ExceptionCard: React.FC<ExceptionCardProps> = ({ vm, onAction }) =>
             <Text style={styles.description}>{vm.description}</Text>
             {vm.action && onAction ? (
                 <AppTouchable
-                    onPress={() => onAction(vm)}
+                    onPress={handleAction}
                     style={[styles.actionBtn, { borderColor: sev.color }]}
-                    accessibilityRole="button"
-                    accessibilityLabel={vm.action.label}
+                    {...getAccessibleButtonProps({ label: vm.action.label })}
                 >
                     <Text style={[styles.actionLabel, { color: sev.color }]}>{vm.action.label}</Text>
-                    <Ionicons name="chevron-forward" size={14} color={sev.color} />
+                    <Ionicons name="chevron-forward" size={14} color={sev.color} {...getDecorativeIconProps()} />
                 </AppTouchable>
             ) : null}
         </View>

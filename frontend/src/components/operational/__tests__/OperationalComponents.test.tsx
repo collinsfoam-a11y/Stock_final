@@ -4,6 +4,7 @@ import { render, fireEvent } from "@testing-library/react-native";
 import { ExceptionCard } from "../ExceptionCard";
 import { FinalizationGateChecklist } from "../FinalizationGateChecklist";
 import type { ExceptionViewModel, FinalizationGateViewModel } from "@/viewModels/types";
+import { haptics } from "@/services/haptics";
 
 // ── Mocks ───────────────────────────────────────────────────────────────────
 jest.mock("@/hooks/useUiTokens", () => ({
@@ -72,11 +73,12 @@ describe("ExceptionCard", () => {
         expect(getByText("This item was already counted in Floor F1 / Rack R2.")).toBeTruthy();
     });
 
-    it("renders the action button and fires onAction with the full VM", () => {
+    it("renders the action button and fires onAction with tactile feedback", () => {
         const onAction = jest.fn();
         const { getByText } = render(<ExceptionCard vm={blockingException} onAction={onAction} />);
         fireEvent.press(getByText("View existing count"));
         expect(onAction).toHaveBeenCalledWith(blockingException);
+        expect(haptics.light).toHaveBeenCalled();
     });
 
     it("does not render an action button when none is provided", () => {
