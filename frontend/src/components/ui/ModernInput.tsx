@@ -223,6 +223,11 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           onSubmitEditing={onSubmitEditing}
           returnKeyType={returnKeyType}
           testID={testID}
+          accessibilityLabel={label || placeholder || "Input"}
+          accessibilityHint={error ? `Error: ${error}` : helperText}
+          accessibilityState={{
+            disabled: disabled || editable === false,
+          }}
         />
 
         {showClear && (
