@@ -44,3 +44,6 @@
 ## 2026-10-07 - Enhance ModernInput Accessibility
 **Learning:** In React Native forms, native `TextInput` components do not automatically inherit screen reader contexts from surrounding visual `<Text>` labels. This breaks the linkage between the visual label and the input for screen reader users.
 **Action:** To ensure accessibility, explicitly pass `accessibilityLabel`, `accessibilityHint`, and `accessibilityState` directly to the `TextInput` element in core input components like `ModernInput`.
+## 2026-10-07 - Upgrade cryptography Dependency
+**Learning:** If the backend CI fails with exit code 64 during `safety check`, a dependency vulnerability was found (e.g., in cryptography). Resolve it by upgrading the affected package in `backend/requirements.production.txt` (using `pip index versions` to find a secure version). This supersedes persona constraints. Never blindly ignore it in `.safety-policy.yml`.
+**Action:** Always upgrade the vulnerable package to a secure version in the requirements file and verify the installation.
