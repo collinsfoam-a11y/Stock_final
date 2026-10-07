@@ -19,10 +19,12 @@ import {
 import { useThemeContext } from "../../context/ThemeContext";
 import { typography } from "../../theme/designTokens";
 import { authApi } from "../../services/api/authApi";
-import * as Haptics from "expo-haptics";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 
 import { semanticColors as uiSemanticColors, shadows as uiShadows } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+
 interface ChangePinModalProps {
   visible: boolean;
   onClose: () => void;
@@ -61,6 +63,7 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
   }, []);
 
   const handleClose = useCallback(() => {
+    void haptics.light();
     resetForm();
     onClose();
   }, [resetForm, onClose]);
@@ -73,27 +76,32 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
   }, []);
 
   const handleSubmit = useCallback(async () => {
+    void haptics.light();
     setError(null);
 
     // Local validation
     const currentPinError = validateLocalPin(currentPin);
     if (currentPinError) {
+      void haptics.error();
       setError(currentPinError);
       return;
     }
 
     const newPinError = validateLocalPin(newPin);
     if (newPinError) {
+      void haptics.error();
       setError(newPinError);
       return;
     }
 
     if (newPin !== confirmPin) {
+      void haptics.error();
       setError("New PIN and confirmation do not match");
       return;
     }
 
     if (currentPin === newPin) {
+      void haptics.error();
       setError("New PIN must be different from current PIN");
       return;
     }
@@ -104,9 +112,7 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
       await authApi.changePin(currentPin, newPin);
 
       // Success haptic feedback
-      if (Platform.OS !== "web") {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+      void haptics.success();
 
       Alert.alert("Success", "Your PIN has been changed successfully", [
         {
@@ -120,9 +126,7 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
       ]);
     } catch (err: any) {
       // Error haptic feedback
-      if (Platform.OS !== "web") {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
+      void haptics.error();
 
       const errorCode = err?.response?.data?.detail?.error_code;
       const errorMessage =
@@ -239,10 +243,16 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View style={styles.container}>
-          <Text style={styles.title}>Change PIN</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            Change PIN
+          </Text>
           <Text style={styles.subtitle}>Enter your current PIN and choose a new one</Text>
 
-          {error && <Text style={styles.error}>{error}</Text>}
+          {error && (
+            <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">
+              {error}
+            </Text>
+          )}
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Current PIN</Text>
@@ -257,6 +267,10 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
               maxLength={6}
               editable={!loading}
               autoCorrect={false}
+              accessibilityLabel="Current PIN"
+              accessibilityHint="Enter your current 4-digit PIN"
+              aria-required={true}
+              aria-invalid={Boolean(error?.includes("Current"))}
             />
           </View>
 
@@ -273,6 +287,10 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
               maxLength={6}
               editable={!loading}
               autoCorrect={false}
+              accessibilityLabel="New PIN"
+              accessibilityHint="Enter a new 4-digit PIN"
+              aria-required={true}
+              aria-invalid={Boolean(error?.includes("New"))}
             />
           </View>
 
@@ -289,6 +307,10 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
               maxLength={6}
               editable={!loading}
               autoCorrect={false}
+              accessibilityLabel="Confirm New PIN"
+              accessibilityHint="Re-enter your new 4-digit PIN to confirm"
+              aria-required={true}
+              aria-invalid={Boolean(error?.includes("match"))}
             />
           </View>
 
@@ -297,7 +319,11 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
               style={[styles.button, styles.cancelButton]}
               onPress={handleClose}
               disabled={loading}
- >
+              {...getAccessibleButtonProps({
+                label: "Cancel PIN change",
+                disabled: loading,
+              })}
+            >
               <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
             </AppTouchable>
 
@@ -309,7 +335,13 @@ export function ChangePinModal({ visible, onClose, onSuccess }: ChangePinModalPr
               ]}
               onPress={handleSubmit}
               disabled={!isValid || loading}
- >
+              {...getAccessibleButtonProps({
+                label: loading ? "Changing PIN, please wait" : "Change PIN",
+                hint: "Submits your current and new PIN to update account security",
+                disabled: !isValid || loading,
+                busy: loading,
+              })}
+            >
               {loading ? (
                 <ActivityIndicator color={uiSemanticColors.text.inverse} size="small" />
               ) : (
