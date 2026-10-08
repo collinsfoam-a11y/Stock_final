@@ -23,161 +23,162 @@ import { useUiTokens } from "../../hooks/useUiTokens";
 import { useMotionAwareEntering } from "../../hooks/useMotionAwareEntering";
 import { colorWithAlpha, type ThemeTokens } from "../../theme/themeTokens";
 import { AppTouchable } from "../ui/AppTouchable";
-import type { ExceptionTriageItem, ExceptionTriageKind, TriageSeverity } from "../../viewModels/types";
+import { haptics } from "../../services/haptics";
+import type {
+  ExceptionTriageItem,
+  ExceptionTriageKind,
+  TriageSeverity,
+} from "../../viewModels/types";
 
 export interface ExceptionTriageListProps {
-    items: ExceptionTriageItem[];
-    /** Tap-through resolver: receives the item. */
-    onPressItem?: (item: ExceptionTriageItem) => void;
+  items: ExceptionTriageItem[];
+  /** Tap-through resolver: receives the item. */
+  onPressItem?: (item: ExceptionTriageItem) => void;
 }
 
 const SEVERITY_RANK: Record<TriageSeverity, number> = {
-    critical: 0,
-    high: 1,
-    medium: 2,
+  critical: 0,
+  high: 1,
+  medium: 2,
 };
 
 const SEVERITY_COLOR: Record<TriageSeverity, keyof ThemeTokens["colors"]> = {
-    critical: "error",
-    high: "warning",
-    medium: "info",
+  critical: "error",
+  high: "warning",
+  medium: "info",
 };
 
 const KIND_ICON: Record<ExceptionTriageKind, keyof typeof Ionicons.glyphMap> = {
-    failed_sync: "cloud-offline-outline",
-    high_variance: "trending-up-outline",
-    stuck_session: "hourglass-outline",
-    overdue_recount: "alert-circle-outline",
-    rejected_submission: "close-circle-outline",
+  failed_sync: "cloud-offline-outline",
+  high_variance: "trending-up-outline",
+  stuck_session: "hourglass-outline",
+  overdue_recount: "alert-circle-outline",
+  rejected_submission: "close-circle-outline",
 };
 
 const sortBySeverity = (items: ExceptionTriageItem[]): ExceptionTriageItem[] =>
-    [...items].sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]);
+  [...items].sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]);
 
 /** Single triage row — a component so the entering hook is called at top level. */
 const TriageRow: React.FC<{
-    item: ExceptionTriageItem;
-    index: number;
-    onPress?: (item: ExceptionTriageItem) => void;
+  item: ExceptionTriageItem;
+  index: number;
+  onPress?: (item: ExceptionTriageItem) => void;
 }> = ({ item, index, onPress }) => {
-    const t = useUiTokens();
-    const styles = makeStyles(t);
-    const entering = useMotionAwareEntering({ delay: index * 60, durationKey: "fast" });
-    const color = t.colors[SEVERITY_COLOR[item.severity]];
-    const interactive = Boolean(onPress);
+  const t = useUiTokens();
+  const styles = makeStyles(t);
+  const entering = useMotionAwareEntering({ delay: index * 60, durationKey: "fast" });
+  const color = t.colors[SEVERITY_COLOR[item.severity]];
+  const interactive = Boolean(onPress);
 
-    const row = (
-        <View
-            style={[
-                styles.row,
-                { backgroundColor: t.colors.surface, borderColor: t.colors.border },
-            ]}
-        >
-            <View style={[styles.iconWell, { backgroundColor: colorWithAlpha(color, 0.12) }]}>
-                <Ionicons name={KIND_ICON[item.kind]} size={20} color={color} />
-            </View>
-            <View style={styles.copy}>
-                <View style={styles.titleRow}>
-                    <Text style={[styles.title, { color: t.colors.textPrimary }]} numberOfLines={1}>
-                        {item.title}
-                    </Text>
-                    <View style={[styles.countBadge, { backgroundColor: colorWithAlpha(color, 0.16) }]}>
-                        <Text style={[styles.countText, { color }]}>{item.count}</Text>
-                    </View>
-                </View>
-                <Text style={[styles.description, { color: t.colors.textSecondary }]} numberOfLines={2}>
-                    {item.description}
-                </Text>
-            </View>
-            {interactive ? (
-                <Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />
-            ) : null}
+  const row = (
+    <View style={[styles.row, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
+      <View style={[styles.iconWell, { backgroundColor: colorWithAlpha(color, 0.12) }]}>
+        <Ionicons name={KIND_ICON[item.kind]} size={20} color={color} />
+      </View>
+      <View style={styles.copy}>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: t.colors.textPrimary }]} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <View style={[styles.countBadge, { backgroundColor: colorWithAlpha(color, 0.16) }]}>
+            <Text style={[styles.countText, { color }]}>{item.count}</Text>
+          </View>
         </View>
-    );
+        <Text style={[styles.description, { color: t.colors.textSecondary }]} numberOfLines={2}>
+          {item.description}
+        </Text>
+      </View>
+      {interactive ? (
+        <Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />
+      ) : null}
+    </View>
+  );
 
-    if (!interactive) {
-        return (
-            <Animated.View entering={entering}>{row}</Animated.View>
-        );
-    }
+  if (!interactive) {
+    return <Animated.View entering={entering}>{row}</Animated.View>;
+  }
 
-    return (
-        <AppTouchable
-            onPress={() => onPress?.(item)}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={`${item.title}, ${item.count} affected`}
-        >
-            <Animated.View entering={entering}>{row}</Animated.View>
-        </AppTouchable>
-    );
+  return (
+    <AppTouchable
+      onPress={() => {
+        void haptics.light();
+        onPress?.(item);
+      }}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.title}, ${item.count} affected`}
+    >
+      <Animated.View entering={entering}>{row}</Animated.View>
+    </AppTouchable>
+  );
 };
 
 export const ExceptionTriageList: React.FC<ExceptionTriageListProps> = ({ items, onPressItem }) => {
-    const t = useUiTokens();
-    const styles = makeStyles(t);
-    const ordered = React.useMemo(() => sortBySeverity(items), [items]);
+  const t = useUiTokens();
+  const styles = makeStyles(t);
+  const ordered = React.useMemo(() => sortBySeverity(items), [items]);
 
-    if (ordered.length === 0) return null;
+  if (ordered.length === 0) return null;
 
-    return (
-        <View style={styles.list} accessibilityRole="list">
-            {ordered.map((item, index) => (
-                <TriageRow key={item.kind} item={item} index={index} onPress={onPressItem} />
-            ))}
-        </View>
-    );
+  return (
+    <View style={styles.list} accessibilityRole="list">
+      {ordered.map((item, index) => (
+        <TriageRow key={item.kind} item={item} index={index} onPress={onPressItem} />
+      ))}
+    </View>
+  );
 };
 
 const makeStyles = (t: ThemeTokens) =>
-    StyleSheet.create({
-        list: {
-            gap: t.spacing.sm,
-        },
-        row: {
-            flexDirection: "row",
-            alignItems: "center",
-            gap: t.spacing.sm,
-            padding: t.spacing.sm + t.spacing.xs,
-            borderRadius: t.radius.md,
-            borderWidth: 1,
-        },
-        iconWell: {
-            width: 36,
-            height: 36,
-            borderRadius: t.radius.md,
-            alignItems: "center",
-            justifyContent: "center",
-        },
-        copy: {
-            flex: 1,
-            gap: 2,
-        },
-        titleRow: {
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: t.spacing.xs,
-        },
-        title: {
-            fontSize: 14,
-            fontWeight: "700",
-            flexShrink: 1,
-        },
-        countBadge: {
-            minWidth: 24,
-            paddingHorizontal: t.spacing.xs,
-            paddingVertical: 2,
-            borderRadius: t.radius.full,
-            alignItems: "center",
-            justifyContent: "center",
-        },
-        countText: {
-            fontSize: 12,
-            fontWeight: "800",
-        },
-        description: {
-            fontSize: 12,
-            lineHeight: 16,
-        },
-    });
+  StyleSheet.create({
+    list: {
+      gap: t.spacing.sm,
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: t.spacing.sm,
+      padding: t.spacing.sm + t.spacing.xs,
+      borderRadius: t.radius.md,
+      borderWidth: 1,
+    },
+    iconWell: {
+      width: 36,
+      height: 36,
+      borderRadius: t.radius.md,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    copy: {
+      flex: 1,
+      gap: 2,
+    },
+    titleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: t.spacing.xs,
+    },
+    title: {
+      fontSize: 14,
+      fontWeight: "700",
+      flexShrink: 1,
+    },
+    countBadge: {
+      minWidth: 24,
+      paddingHorizontal: t.spacing.xs,
+      paddingVertical: 2,
+      borderRadius: t.radius.full,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    countText: {
+      fontSize: 12,
+      fontWeight: "800",
+    },
+    description: {
+      fontSize: 12,
+      lineHeight: 16,
+    },
+  });
