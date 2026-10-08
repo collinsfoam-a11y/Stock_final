@@ -36,11 +36,13 @@ describe("Checkbox Component", () => {
         checked={true}
         onChange={() => {}}
         label="Test Checkbox"
+        description="Select to confirm"
       />
     );
 
     const checkboxTouchable = getByRole("checkbox");
     expect(checkboxTouchable.props.accessibilityLabel).toBe("Test Checkbox");
+    expect(checkboxTouchable.props.accessibilityHint).toBe("Select to confirm");
     expect(checkboxTouchable.props.accessibilityState).toEqual({
       checked: true,
       disabled: false,
@@ -49,6 +51,23 @@ describe("Checkbox Component", () => {
     const icon = UNSAFE_getByType(Ionicons);
     expect(icon.props.accessibilityElementsHidden).toBe(true);
     expect(icon.props.importantForAccessibility).toBe("no");
+  });
+
+  it("supports custom accessibilityLabel and accessibilityHint overrides", () => {
+    const { getByRole } = render(
+      <Checkbox
+        checked={false}
+        onChange={() => {}}
+        label="Test Checkbox"
+        description="Default description"
+        accessibilityLabel="Custom Label"
+        accessibilityHint="Custom Hint"
+      />
+    );
+
+    const checkboxTouchable = getByRole("checkbox");
+    expect(checkboxTouchable.props.accessibilityLabel).toBe("Custom Label");
+    expect(checkboxTouchable.props.accessibilityHint).toBe("Custom Hint");
   });
 
   it("maps mixed/indeterminate state to accessibilityState.checked", () => {
