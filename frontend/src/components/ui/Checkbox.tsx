@@ -33,6 +33,8 @@ interface CheckboxProps {
   description?: string;
   disabled?: boolean;
   indeterminate?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 export const Checkbox: React.FC<CheckboxProps> = ({
@@ -42,6 +44,8 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   description,
   disabled = false,
   indeterminate = false,
+  accessibilityLabel: customAccessibilityLabel,
+  accessibilityHint: customAccessibilityHint,
 }) => {
   const isSelected = checked || indeterminate;
   const scale = useSharedValue(isSelected ? 1 : 0);
@@ -72,7 +76,8 @@ export const Checkbox: React.FC<CheckboxProps> = ({
       activeOpacity={0.8}
       hitSlop={hitSlop.small}
       accessibilityRole="checkbox"
-      accessibilityLabel={label}
+      accessibilityLabel={customAccessibilityLabel || label}
+      accessibilityHint={customAccessibilityHint || description}
       accessibilityState={{
         checked: indeterminate ? "mixed" : checked,
         disabled,
