@@ -41,3 +41,7 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+
+## 2026-10-08 - Standardizing Tactile Feedback for Interactive Dashboard Items
+**Learning:** Interactive summary dashboard items (like KPIs and Exception lists) are main touch targets but lack tactile confirmation. Adding `haptics.light()` when these are pressed makes the dashboard interaction more satisfying.
+**Action:** Always add `haptics.light()` on the interactive tiles and lists on the dashboard to ensure a premium feel.
