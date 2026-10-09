@@ -20,7 +20,7 @@ import { ItemVerificationAPI } from "@/features/inventory/services/itemVerificat
 import { getRackProgress } from "@/services/api/api";
 import { RackProgressCard } from "@/components/scan/RackProgressCard";
 import { VirtualList } from "@/components/common/VirtualList";
-import { log } from "@/services/logging";
+import { logger } from "@/services/logging";
 
 import { semanticColors as uiSemanticColors, shadows as uiShadows } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
@@ -80,7 +80,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
         setFloors(data.floors || []);
         setRacks(data.racks || []);
       } catch (error) {
-        log.error("Failed to load locations", error as Error);
+        logger.error("Failed to load locations", error as Error);
       } finally {
         setLoadingLocations(false);
       }
@@ -98,7 +98,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
         setRackProgress(data);
       }
     } catch (error) {
-      log.error("Failed to load rack progress", error as Error);
+      logger.error("Failed to load rack progress", error as Error);
     } finally {
       setLoadingRacks(false);
     }

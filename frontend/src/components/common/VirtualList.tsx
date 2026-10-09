@@ -13,7 +13,7 @@ interface VirtualListProps<T> extends Omit<FlatListProps<T>, "renderItem"> {
  * Uses Shopify FlashList for high performance with large datasets.
  * Fallback to FlatList if needed, but FlashList is recommended for React Native.
  */
-export const VirtualList = React.forwardRef(<T extends any>(
+export const VirtualList = React.forwardRef(function VirtualList<T extends any>(
   {
     data,
     renderItem,
@@ -21,7 +21,7 @@ export const VirtualList = React.forwardRef(<T extends any>(
     ...props
   }: VirtualListProps<T>,
   ref: React.Ref<any>
-) => {
+) {
   // FlashList requires estimatedItemSize for performance
   return (
     <FlashList
