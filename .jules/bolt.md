@@ -15,3 +15,9 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+## 2024-10-09 - [Replacing FlatList with VirtualList Wrapper]
+**Learning:** When migrating a React Native component from `FlatList` to `VirtualList` (which wraps FlashList), `FlatList`-specific props like `maxToRenderPerBatch` and `windowSize` are incompatible and cause type errors on the new wrapper. Additionally, if the consumer component defines a `useRef<FlatList>` and the custom wrapper does not perfectly forward the type, the ref definition must be relaxed to `useRef<any>`.
+**Action:** When swapping `FlatList` for `VirtualList`, always remember to remove `FlatList`-specific props and adjust the ref typings to match.
+## 2026-10-09 - TS Error Fix: React.forwardRef generic typing
+**Learning:** When wrapping a generic React component with `React.forwardRef`, the generic type parameter is lost, causing the compiler to throw "Property X does not exist" errors on passed props (like `ref`).
+**Action:** When creating a generic wrapper with `forwardRef` (e.g. `VirtualList<T>`), explicitly cast the returned functional component (e.g., `}) as <T>(props: VirtualListProps<T> & { ref?: React.Ref<any> }) => React.ReactElement;`) to preserve the generic typing for consumers.

@@ -11,7 +11,6 @@ import {
   StyleSheet,
   Platform,
   Modal,
-  FlatList,
   ActivityIndicator,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -20,6 +19,8 @@ import { useSettingsStore } from "@/store/settingsStore";
 import { ItemVerificationAPI } from "@/features/inventory/services/itemVerificationApi";
 import { getRackProgress } from "@/services/api/api";
 import { RackProgressCard } from "@/components/scan/RackProgressCard";
+import { VirtualList } from "@/components/common/VirtualList";
+import { logger } from "@/services/logging";
 
 import { semanticColors as uiSemanticColors, shadows as uiShadows } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
@@ -79,7 +80,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
         setFloors(data.floors || []);
         setRacks(data.racks || []);
       } catch (error) {
-        console.error("Failed to load locations", error);
+        logger.error("Failed to load locations", error as Error);
       } finally {
         setLoadingLocations(false);
       }
@@ -97,7 +98,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
         setRackProgress(data);
       }
     } catch (error) {
-      console.error("Failed to load rack progress", error);
+      logger.error("Failed to load rack progress", error as Error);
     } finally {
       setLoadingRacks(false);
     }
@@ -166,9 +167,11 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
             {isLoading ? (
               <ActivityIndicator size="large" color={theme.colors.primary} style={{ margin: 20 }} />
             ) : (
-              <FlatList
+              // ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to improve scrolling performance for large lists of filter options.
+              <VirtualList
                 data={data}
                 keyExtractor={(item) => (typeof item === "string" ? item : item.rack)}
+                estimatedItemSize={60}
                 renderItem={({ item }) => {
                   if (isRack && typeof item !== "string") {
                     // Render Rack Progress Card
