@@ -5,6 +5,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { ModernButton } from "@/components/ui/ModernButton";
 import { borderRadius, colors, spacing, typography } from "@/theme/unified";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 
 import { useUiTokens } from "@/hooks/useUiTokens";
 interface ScanStats {
@@ -51,10 +52,13 @@ export function FinishRackModal({
           ]}
         >
           <View style={[styles.modalIconContainer, { backgroundColor: successWash }]}>
-            <Ionicons name="checkmark-circle" size={36} color={uiTokens.colors.success} />
+            <Ionicons name="checkmark-circle" size={36} color={uiTokens.colors.success} {...getDecorativeIconProps()} />
           </View>
 
-          <Text style={[styles.modalTitle, { color: uiTokens.colors.textPrimary }]}>
+          <Text
+            accessibilityRole="header"
+            style={[styles.modalTitle, { color: uiTokens.colors.textPrimary }]}
+          >
             Complete Rack Scan?
           </Text>
           <Text style={[styles.modalText, { color: uiTokens.colors.textSecondary }]}>
@@ -64,6 +68,8 @@ export function FinishRackModal({
           </Text>
 
           <View
+            accessible={true}
+            accessibilityLabel={`Scan summary: ${sessionStats.scannedItems} items scanned, ${sessionStats.verifiedItems} verified, ${sessionStats.pendingItems} pending review`}
             style={[
               styles.modalSummary,
               {
