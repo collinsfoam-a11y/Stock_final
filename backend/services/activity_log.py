@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
+import asyncio
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -237,35 +238,28 @@ class ActivityLogService:
                 if end_date:
                     filter_query["timestamp"]["$lte"] = end_date
 
-            # Total activities
-            total = await self.collection.count_documents(filter_query)
-
-            # By status
-            success_count = await self.collection.count_documents(
-                {**filter_query, "status": "success"}
-            )
-            error_count = await self.collection.count_documents({**filter_query, "status": "error"})
-            warning_count = await self.collection.count_documents(
-                {**filter_query, "status": "warning"}
-            )
-
-            # By action (top 10)
             top_actions_pipeline: list[dict[str, Any]] = [
                 {"$match": filter_query} if filter_query else {"$match": {}},
                 {"$group": {"_id": "$action", "count": {"$sum": 1}}},
                 {"$sort": {"count": -1}},
                 {"$limit": 10},
             ]
-            top_actions = await self.collection.aggregate(top_actions_pipeline).to_list(10)
 
-            # By user (top 10)
             top_users_pipeline: list[dict[str, Any]] = [
                 {"$match": filter_query} if filter_query else {"$match": {}},
                 {"$group": {"_id": "$user", "count": {"$sum": 1}}},
                 {"$sort": {"count": -1}},
                 {"$limit": 10},
             ]
-            top_users = await self.collection.aggregate(top_users_pipeline).to_list(10)
+
+            total, success_count, error_count, warning_count, top_actions, top_users = await asyncio.gather(
+                self.collection.count_documents(filter_query),
+                self.collection.count_documents({**filter_query, "status": "success"}),
+                self.collection.count_documents({**filter_query, "status": "error"}),
+                self.collection.count_documents({**filter_query, "status": "warning"}),
+                self.collection.aggregate(top_actions_pipeline).to_list(10),
+                self.collection.aggregate(top_users_pipeline).to_list(10),
+            )
 
             return {
                 "total": total,
