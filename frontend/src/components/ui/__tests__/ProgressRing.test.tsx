@@ -44,11 +44,12 @@ describe("ProgressRing", () => {
     expect(progressRing.props.accessibilityLabel).toBe("Progress: Completed (40%)");
   });
 
-  it("uses default accessibility label when no label is provided", () => {
-    const { getByRole } = render(<ProgressRing progress={60} />);
-    const progressRing = getByRole("progressbar");
+  it("uses default accessibility label when no label is provided or label is empty/whitespace", () => {
+    const { getByRole: getByRoleNoLabel } = render(<ProgressRing progress={60} />);
+    expect(getByRoleNoLabel("progressbar").props.accessibilityLabel).toBe("Progress: 60%");
 
-    expect(progressRing.props.accessibilityLabel).toBe("Progress: 60%");
+    const { getByRole: getByRoleWhitespace } = render(<ProgressRing progress={60} label="   " />);
+    expect(getByRoleWhitespace("progressbar").props.accessibilityLabel).toBe("Progress: 60%");
   });
 
   it("clamps progress value for accessibility", () => {
