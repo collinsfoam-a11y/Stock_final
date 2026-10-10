@@ -9,8 +9,10 @@ import traceback
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
+import asyncio
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
+
 
 def _redact_stack_trace(trace: str) -> str:
     """Remove potential secrets from stack traces before storage."""
@@ -21,6 +23,7 @@ def _redact_stack_trace(trace: str) -> str:
     # Redact file paths (information leakage)
     trace = re.sub(r'/Users/[^/]+/[^/]+/', r'/<REDACTED>/', trace)
     return trace
+
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +65,7 @@ def _process_error_for_response(error: dict[str, Any]) -> None:
     """Process error document for API response (in-place modification)."""
     error["id"] = str(error["_id"])
     del error["_id"]
-    
+
     # Replace full stack_trace with preview only
     if error.get("stack_trace"):
         preview = error["stack_trace"][:500]
@@ -381,36 +384,13 @@ class ErrorLogService:
                 if end_date:
                     filter_query["timestamp"]["$lte"] = end_date
 
-            # Total errors
-            total = await self.collection.count_documents(filter_query)
-
-            # By severity
-            critical_count = await self.collection.count_documents(
-                {**filter_query, "severity": "critical"}
-            )
-            error_count = await self.collection.count_documents(
-                {**filter_query, "severity": "error"}
-            )
-            warning_count = await self.collection.count_documents(
-                {**filter_query, "severity": "warning"}
-            )
-            info_count = await self.collection.count_documents({**filter_query, "severity": "info"})
-
-            # Unresolved errors
-            unresolved_count = await self.collection.count_documents(
-                {**filter_query, "resolved": False}
-            )
-
-            # By error type (top 10)
             top_error_types_pipeline: list[dict[str, Any]] = [
                 {"$match": filter_query} if filter_query else {"$match": {}},
                 {"$group": {"_id": "$error_type", "count": {"$sum": 1}}},
                 {"$sort": {"count": -1}},
                 {"$limit": 10},
             ]
-            top_error_types = await self.collection.aggregate(top_error_types_pipeline).to_list(10)
 
-            # By endpoint (top 10)
             top_endpoints_pipeline: list[dict[str, Any]] = [
                 (
                     {
@@ -426,16 +406,35 @@ class ErrorLogService:
                 {"$sort": {"count": -1}},
                 {"$limit": 10},
             ]
-            top_endpoints = await self.collection.aggregate(top_endpoints_pipeline).to_list(10)
 
-            # Recent errors (last 24 hours)
             last_24h = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=24)
             recent_filter = {**filter_query, "timestamp": {"$gte": last_24h}}
             if filter_query.get("timestamp"):
                 recent_filter["timestamp"]["$gte"] = max(
                     filter_query["timestamp"].get("$gte", last_24h), last_24h
                 )
-            recent_count = await self.collection.count_documents(recent_filter)
+
+            (
+                total,
+                critical_count,
+                error_count,
+                warning_count,
+                info_count,
+                unresolved_count,
+                recent_count,
+                top_error_types,
+                top_endpoints
+            ) = await asyncio.gather(
+                self.collection.count_documents(filter_query),
+                self.collection.count_documents({**filter_query, "severity": "critical"}),
+                self.collection.count_documents({**filter_query, "severity": "error"}),
+                self.collection.count_documents({**filter_query, "severity": "warning"}),
+                self.collection.count_documents({**filter_query, "severity": "info"}),
+                self.collection.count_documents({**filter_query, "resolved": False}),
+                self.collection.count_documents(recent_filter),
+                self.collection.aggregate(top_error_types_pipeline).to_list(10),
+                self.collection.aggregate(top_endpoints_pipeline).to_list(10),
+            )
 
             return {
                 "total": total,
