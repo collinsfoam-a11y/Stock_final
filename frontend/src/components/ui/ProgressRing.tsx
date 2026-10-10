@@ -61,6 +61,7 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
   });
 
   const clampedProgress = Math.min(Math.max(progress, 0), 100);
+  const trimmedLabel = label?.trim();
 
   return (
     <View
@@ -73,8 +74,8 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
         now: clampedProgress,
       }}
       accessibilityLabel={
-        label
-          ? `Progress: ${label} (${Math.round(clampedProgress)}%)`
+        trimmedLabel
+          ? `Progress: ${trimmedLabel} (${Math.round(clampedProgress)}%)`
           : `Progress: ${Math.round(clampedProgress)}%`
       }
     >
