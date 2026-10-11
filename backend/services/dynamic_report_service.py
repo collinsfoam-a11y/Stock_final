@@ -257,14 +257,26 @@ class DynamicReportService:
 
             # Add dynamic fields
             dynamic_fields = [f for f in fields if f.get("source") == "dynamic"]
-            if dynamic_fields:
-                for item in items:
+            if dynamic_fields and items:
+                # ⚡ Bolt Optimization: Replace O(N) loop queries with a single O(1) bulk fetch
+                # Reduces network I/O from 10,000 queries to 1 query for large item datasets
+                item_codes = [item.get("item_code") for item in items if item.get("item_code")]
+
+                if item_codes:
                     dynamic_values = await self.db.dynamic_field_values.find(
-                        {"item_code": item.get("item_code")}
+                        {"item_code": {"$in": item_codes}}
                     ).to_list(length=None)
 
+                    from collections import defaultdict
+                    values_by_code = defaultdict(list)
                     for dv in dynamic_values:
-                        item[dv["field_name"]] = dv["value"]
+                        values_by_code[dv["item_code"]].append(dv)
+
+                    for item in items:
+                        item_code = item.get("item_code")
+                        if item_code in values_by_code:
+                            for dv in values_by_code[item_code]:
+                                item[dv["field_name"]] = dv["value"]
 
             return items
 
@@ -293,13 +305,21 @@ class DynamicReportService:
             sessions = await cursor.to_list(length=10000)
 
             # Enrich with related data if needed
-            for session in sessions:
-                # Add item details if requested
-                if any(f["name"].startswith("items.") for f in fields):
-                    items = await self.db.session_items.find(
-                        {"session_id": session["_id"]}
-                    ).to_list(length=None)
-                    session["items"] = items
+            if sessions and any(f["name"].startswith("items.") for f in fields):
+                # ⚡ Bolt Optimization: Pre-fetch session items in bulk instead of looping
+                # Drastically reduces N+1 sequential database lookups during enrichment
+                session_ids = [s["_id"] for s in sessions]
+                all_items = await self.db.session_items.find(
+                    {"session_id": {"$in": session_ids}}
+                ).to_list(length=None)
+
+                from collections import defaultdict
+                items_by_session = defaultdict(list)
+                for item in all_items:
+                    items_by_session[item["session_id"]].append(item)
+
+                for session in sessions:
+                    session["items"] = items_by_session.get(session["_id"], [])
 
             return sessions
 
