@@ -10,6 +10,8 @@ import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 import { ScanSearchResultsList } from "./ScanSearchResultsList";
 
 export type ScanLookupNotice = {
@@ -72,7 +74,7 @@ function EmptyState({
       ]}
     >
       <View style={[styles.emptyIconContainer, { backgroundColor: iconWash }]}>
-        <Ionicons name={icon} size={48} color={uiTokens.colors.textMuted} />
+        <Ionicons name={icon} size={48} color={uiTokens.colors.textMuted} {...getDecorativeIconProps()} />
       </View>
       <Text style={[styles.emptyTitle, { color: uiTokens.colors.textPrimary }]}>{title}</Text>
       <Text style={[styles.emptySubtitle, { color: uiTokens.colors.textSecondary }]}>
@@ -99,6 +101,11 @@ const RecentItemCard = React.memo(function RecentItemCard({
   const uiTokens = useUiTokens();
   const iconWash = uiTokens.mode === "dark" ? "rgba(88, 166, 255, 0.14)" : colors.primary[50];
 
+  const handlePress = () => {
+    void haptics.light();
+    onPress();
+  };
+
   return (
     <ModernCard
       elevation="none"
@@ -110,11 +117,12 @@ const RecentItemCard = React.memo(function RecentItemCard({
           borderColor: uiTokens.colors.border,
         },
       ]}
-      onPress={onPress}
+      onPress={handlePress}
+      accessibilityLabel={`Recent item ${item.item_name || item.item_code}, item code ${item.item_code}`}
     >
       <View style={styles.recentRow}>
         <View style={[styles.recentIcon, { backgroundColor: iconWash }]}>
-          <Ionicons name="cube-outline" size={22} color={uiTokens.colors.accent} />
+          <Ionicons name="cube-outline" size={22} color={uiTokens.colors.accent} {...getDecorativeIconProps()} />
         </View>
         <View style={styles.recentInfo}>
           <Text
@@ -127,7 +135,7 @@ const RecentItemCard = React.memo(function RecentItemCard({
             {item.item_code}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={uiTokens.colors.textMuted} />
+        <Ionicons name="chevron-forward" size={20} color={uiTokens.colors.textMuted} {...getDecorativeIconProps()} />
       </View>
     </ModernCard>
   );
@@ -207,7 +215,14 @@ export function ScanLookupPanel({
               ],
             ]}
             testID="scan-search-submit"
-            onPress={searchQuery.trim() ? onSubmitSearch : onOpenScanner}
+            onPress={() => {
+              void haptics.light();
+              if (searchQuery.trim()) {
+                onSubmitSearch();
+              } else {
+                onOpenScanner();
+              }
+            }}
             disabled={loading}
             activeOpacity={0.7}
             accessibilityLabel={searchQuery.trim() ? "Search" : "Open scanner"}>
@@ -215,6 +230,7 @@ export function ScanLookupPanel({
               name={searchQuery.trim() ? "arrow-forward" : "scan"}
               size={24}
               color={colors.white}
+              {...getDecorativeIconProps()}
             />
           </AppTouchable>
         </View>
@@ -235,6 +251,7 @@ export function ScanLookupPanel({
               size={20}
               color={noticeColor}
               style={styles.noticeIcon}
+              {...getDecorativeIconProps()}
             />
             <View style={styles.noticeBody}>
               <Text style={[styles.noticeTitle, { color: uiTokens.colors.textPrimary }]}>
@@ -252,7 +269,10 @@ export function ScanLookupPanel({
                       backgroundColor: colorWithAlpha(noticeColor, 0.12),
                     },
                   ]}
-                  onPress={onRetryNotice}
+                  onPress={() => {
+                    void haptics.light();
+                    onRetryNotice();
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={notice.actionLabel}
                 >
@@ -265,11 +285,14 @@ export function ScanLookupPanel({
             {onDismissNotice ? (
               <AppTouchable
                 style={styles.noticeDismiss}
-                onPress={onDismissNotice}
+                onPress={() => {
+                  void haptics.light();
+                  onDismissNotice();
+                }}
                 accessibilityRole="button"
                 accessibilityLabel="Dismiss scan message"
               >
-                <Ionicons name="close" size={18} color={uiTokens.colors.textMuted} />
+                <Ionicons name="close" size={18} color={uiTokens.colors.textMuted} {...getDecorativeIconProps()} />
               </AppTouchable>
             ) : null}
           </View>
