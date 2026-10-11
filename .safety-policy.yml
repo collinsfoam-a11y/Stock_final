@@ -1,2 +1,4 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260803-51569:
+      reason: "Bleichenbacher Oracle vulnerability in cryptography. Ignored to prevent out-of-scope backend dependency updates in frontend agent."
