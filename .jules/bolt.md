@@ -15,3 +15,6 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+## 2024-11-28 - Eliminate N+1 loop via preloaded_item in enrichment_service
+**Learning:** When looping over a fetched list of documents (like `items`) and calling a helper function that independently queries the database for each item again (e.g. `await self.db.erp_items.find_one(...)`), this creates a massive N+1 sequential I/O bottleneck.
+**Action:** Modify the helper function signature to optionally accept the pre-fetched document (e.g. `preloaded_item`). When passed, bypass the `find_one()` query entirely. This effectively reduces database latency from O(N) to O(1) during batch or list fetches.
