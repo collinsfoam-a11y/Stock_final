@@ -6,7 +6,8 @@ import { ModernCard } from "@/components/ui/ModernCard";
 import { ModernInput } from "@/components/ui/ModernInput";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
-import { getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 
@@ -265,8 +266,15 @@ export function EvidenceNotesSection({
                   styles.damageTypeButton,
                   damageType === "returnable" && styles.damageTypeSelected,
                 ]}
-                onPress={() => onDamageTypeChange("returnable")}
- >
+                onPress={() => {
+                  void haptics.light();
+                  onDamageTypeChange("returnable");
+                }}
+                {...getAccessibleButtonProps({
+                  label: "Set damage type as returnable",
+                  selected: damageType === "returnable",
+                })}
+              >
                 <Text
                   style={[
                     styles.damageTypeText,
@@ -282,8 +290,15 @@ export function EvidenceNotesSection({
                   styles.damageTypeButton,
                   damageType === "nonreturnable" && styles.damageTypeSelected,
                 ]}
-                onPress={() => onDamageTypeChange("nonreturnable")}
- >
+                onPress={() => {
+                  void haptics.light();
+                  onDamageTypeChange("nonreturnable");
+                }}
+                {...getAccessibleButtonProps({
+                  label: "Set damage type as non-returnable",
+                  selected: damageType === "nonreturnable",
+                })}
+              >
                 <Text
                   style={[
                     styles.damageTypeText,
@@ -312,8 +327,14 @@ export function EvidenceNotesSection({
             <View style={styles.photoContainer}>
               <AppTouchable
                 style={[styles.photoButton, damagePhoto && styles.photoButtonSuccess]}
-                onPress={onTakeDamagePhoto}
- >
+                onPress={() => {
+                  void haptics.light();
+                  onTakeDamagePhoto();
+                }}
+                {...getAccessibleButtonProps({
+                  label: damagePhoto ? "Update damage photo" : "Capture damage photo",
+                })}
+              >
                 <Ionicons
                   {...decorativeIconProps}
                   name={damagePhoto ? "checkmark-circle" : "camera"}
@@ -339,7 +360,15 @@ export function EvidenceNotesSection({
                     color={uiTokens.colors.success}
                   />
                   <Text style={styles.photoPreviewText}>Photo captured</Text>
-                  <AppTouchable onPress={onRemoveDamagePhoto} >
+                  <AppTouchable
+                    onPress={() => {
+                      void haptics.light();
+                      onRemoveDamagePhoto();
+                    }}
+                    {...getAccessibleButtonProps({
+                      label: "Remove damage photo",
+                    })}
+                  >
                     <Text style={styles.photoRemoveText}>Remove</Text>
                   </AppTouchable>
                 </View>
@@ -363,8 +392,14 @@ export function EvidenceNotesSection({
                 />
                 <AppTouchable
                   style={styles.removePhotoBadge}
-                  onPress={() => onRemoveItemPhoto(index)}
-                  accessibilityLabel="Remove photo">
+                  onPress={() => {
+                    void haptics.light();
+                    onRemoveItemPhoto(index);
+                  }}
+                  {...getAccessibleButtonProps({
+                    label: "Remove item photo",
+                  })}
+                >
                   <Ionicons
                     {...decorativeIconProps}
                     name="close-circle"
@@ -379,8 +414,14 @@ export function EvidenceNotesSection({
           {itemPhotos.length < 3 && (
             <AppTouchable
               style={styles.addPhotoCard}
-              onPress={onAddItemPhoto}
- >
+              onPress={() => {
+                void haptics.light();
+                onAddItemPhoto();
+              }}
+              {...getAccessibleButtonProps({
+                label: "Add item photo",
+              })}
+            >
               <Ionicons
                 {...decorativeIconProps}
                 name="add-circle-outline"
