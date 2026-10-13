@@ -3,8 +3,9 @@
  * Part of FR-M-23: Recount notifications
  */
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
+import { VirtualList } from "@/components/common/VirtualList";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
 
@@ -336,21 +337,25 @@ export default function NotificationsScreen() {
         />
       </View>
 
-      <FlatList
-        data={notifications}
-        renderItem={renderNotificationItem}
-        keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={renderEmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={isLoading}
-            onRefresh={() => fetchNotifications(showUnreadOnly)}
-            colors={[uiTokens.colors.accent]}
-            tintColor={uiTokens.colors.accent}
-          />
-        }
-      />
+      <>
+        {/* ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to improve scrolling performance and reduce memory usage for potentially long lists of notifications. */}
+        <VirtualList
+          data={notifications}
+          renderItem={renderNotificationItem}
+          keyExtractor={(item) => item._id}
+          estimatedItemSize={120}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={renderEmptyState}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={() => fetchNotifications(showUnreadOnly)}
+              colors={[uiTokens.colors.accent]}
+              tintColor={uiTokens.colors.accent}
+            />
+          }
+        />
+      </>
 
       {isLoading ? (
         <View style={[styles.loadingOverlay, { backgroundColor: uiTokens.colors.overlay }]}>
