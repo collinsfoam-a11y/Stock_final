@@ -41,3 +41,6 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+## 2026-10-13 - Standardizing Evidence Notes Micro-Interactions
+**Learning:** Adding haptic feedback combined with `getAccessibleButtonProps` to icon-only buttons like evidence photos (add/remove) and damage type buttons creates a significantly better micro-UX interaction for evidence notes, giving users immediate tactile confirmation and ensuring screen readers accurately announce the action.
+**Action:** Always wrap interactive UI elements like image add/remove actions and toggle selections in `void haptics.light()` combined with appropriate `getAccessibleButtonProps` for robust mobile interactions.
