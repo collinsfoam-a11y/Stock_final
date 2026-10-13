@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   Alert,
   Modal,
   TextInput as _TextInput,
@@ -11,6 +10,7 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
+import { VirtualList } from "@/components/common/VirtualList";
 import { usePermission } from "../../src/hooks/usePermission";
 import {
   getUnknownItems,
@@ -195,24 +195,28 @@ export default function UnknownItemsScreen() {
           <LoadingSpinner size={40} color={uiTokens.colors.accent} />
         </View>
       ) : (
-        <FlatList
-          data={items}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id || item._id}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons
-                name={offlineMode ? "cloud-offline-outline" : "checkmark-circle-outline"}
-                size={64}
-                color={offlineMode ? uiTokens.colors.warning : uiTokens.colors.success}
-              />
-              <Text style={styles.emptyText}>
-                {offlineMode ? "Reconnect to review unknown items" : "All unknown items resolved!"}
-              </Text>
-            </View>
-          }
-        />
+        <>
+          {/* ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to improve scrolling performance and reduce memory usage for potentially long lists of unknown items. */}
+          <VirtualList
+            data={items}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id || item._id}
+            estimatedItemSize={200}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons
+                  name={offlineMode ? "cloud-offline-outline" : "checkmark-circle-outline"}
+                  size={64}
+                  color={offlineMode ? uiTokens.colors.warning : uiTokens.colors.success}
+                />
+                <Text style={styles.emptyText}>
+                  {offlineMode ? "Reconnect to review unknown items" : "All unknown items resolved!"}
+                </Text>
+              </View>
+            }
+          />
+        </>
       )}
 
       <Modal
