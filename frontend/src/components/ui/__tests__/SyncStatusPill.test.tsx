@@ -42,7 +42,9 @@ describe("SyncStatusPill", () => {
       statusCallback?.({
         isOnline: true,
         queuedOperations: 0,
-        lastSyncTimestamp: Date.now(),
+        lastSync: new Date().toISOString(),
+        cacheSize: 0,
+        needsSync: false,
       });
     });
 
@@ -65,7 +67,9 @@ describe("SyncStatusPill", () => {
       statusCallback?.({
         isOnline: true,
         queuedOperations: 3,
-        lastSyncTimestamp: Date.now(),
+        lastSync: new Date().toISOString(),
+        cacheSize: 12,
+        needsSync: true,
       });
     });
 
@@ -89,7 +93,9 @@ describe("SyncStatusPill", () => {
       statusCallback?.({
         isOnline: false,
         queuedOperations: 2,
-        lastSyncTimestamp: null,
+        lastSync: null,
+        cacheSize: 8,
+        needsSync: true,
       });
     });
 
