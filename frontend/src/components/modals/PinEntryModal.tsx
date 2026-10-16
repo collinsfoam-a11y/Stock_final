@@ -6,6 +6,8 @@ import { verifyPin } from "@/services/api/api"; // We will add this next
 import { semanticColors as uiSemanticColors } from "@/theme/unified";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 
 interface PinEntryModalProps {
   visible: boolean;
@@ -31,6 +33,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
+    void haptics.light();
     if (!supervisorUsername || !pin || !reason) {
       setError("All fields are required");
       return;
@@ -70,6 +73,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
   };
 
   const handleClose = () => {
+    void haptics.light();
     setSupervisorUsername("");
     setPin("");
     setReason("");
@@ -94,6 +98,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             placeholderTextColor={modernColors.text.secondary}
             autoCapitalize="none"
             autoCorrect={false}
+            accessibilityLabel="Supervisor Username"
           />
         </View>
 
@@ -108,6 +113,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             secureTextEntry
             keyboardType="numeric"
             autoCorrect={false}
+            accessibilityLabel="PIN"
           />
         </View>
 
@@ -123,6 +129,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             numberOfLines={3}
             autoCapitalize="sentences"
             autoCorrect={false}
+            accessibilityLabel="Reason for Override"
           />
         </View>
 
@@ -131,6 +138,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             style={[styles.button, styles.cancelButton]}
             onPress={handleClose}
             disabled={loading}
+            {...getAccessibleButtonProps({ label: "Cancel", disabled: loading })}
  >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </AppTouchable>
@@ -139,6 +147,7 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
             style={[styles.button, styles.primaryButton]}
             onPress={handleSubmit}
             disabled={loading}
+            {...getAccessibleButtonProps({ label: "Authorize", disabled: loading, busy: loading })}
  >
             {loading ? (
               <ActivityIndicator color={uiSemanticColors.text.inverse} />
