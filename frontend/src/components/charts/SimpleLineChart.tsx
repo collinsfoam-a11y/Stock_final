@@ -52,8 +52,14 @@ export const SimpleLineChart: React.FC<
   axisColor = modernColors.border.medium,
 }) => {
   if (!data || data.length === 0) {
+    const emptySummary = title ? `${title}. No data available` : "No data available for line chart";
     return (
-      <View style={styles.container}>
+      <View
+        style={styles.container}
+        accessible={true}
+        accessibilityRole="summary"
+        accessibilityLabel={emptySummary}
+      >
         {title && <Text style={[styles.title, { color: textColor }]}>{title}</Text>}
         <View style={styles.emptyState}>
           <Text style={[styles.emptyText, { color: textColor }]}>No data available</Text>
@@ -97,11 +103,30 @@ export const SimpleLineChart: React.FC<
       label: String(point.x),
     }));
 
+  const firstPoint = data[0];
+  const lastPoint = data[data.length - 1];
+  const chartSummary = [
+    title ? `Line chart: ${title}` : "Line chart",
+    yAxisLabel ? `Y-axis: ${yAxisLabel}` : "",
+    xAxisLabel ? `X-axis: ${xAxisLabel}` : "",
+    `${data.length} data points`,
+    firstPoint ? `Start: ${firstPoint.x} = ${firstPoint.y}` : "",
+    lastPoint ? `End: ${lastPoint.x} = ${lastPoint.y}` : "",
+    `Min: ${minY}, Max: ${maxY}`,
+  ]
+    .filter(Boolean)
+    .join(". ");
+
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessible={true}
+      accessibilityRole="summary"
+      accessibilityLabel={chartSummary}
+    >
       {title && <Text style={[styles.title, { color: textColor }]}>{title}</Text>}
       {yAxisLabel && <Text style={[styles.yAxisLabel, { color: textColor }]}>{yAxisLabel}</Text>}
-      <View style={styles.chartContainer}>
+      <View style={styles.chartContainer} importantForAccessibility="no-hide-descendants" accessible={false}>
         {/* Y-axis labels */}
         <View style={styles.yAxis}>
           {gridLines.map((line, i) => (
