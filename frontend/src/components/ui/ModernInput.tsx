@@ -204,7 +204,8 @@ export const ModernInput: React.FC<ModernInputProps> = ({
           placeholderTextColor={uiTokens.colors.textSecondary}
           accessibilityLabel={label || placeholder || "Text input"}
           accessibilityHint={helperText}
-          accessibilityState={{ disabled: disabled || editable === false, invalid: !!error }}
+          accessibilityState={{ disabled: disabled || editable === false }}
+          aria-invalid={!!error}
           value={value}
           onChangeText={onChangeText}
           editable={editable && !disabled}
