@@ -64,4 +64,33 @@ describe("ConfirmModal", () => {
     fireEvent.press(getByLabelText("Confirm"));
     expect(haptics.medium).toHaveBeenCalled();
   });
+
+  it("sets accessibilityRole='header' on title and passes accessible button props", () => {
+    const { getByText, getByLabelText } = render(
+      <ConfirmModal
+        visible={true}
+        onClose={() => {}}
+        title="Delete Item"
+        message="Are you sure?"
+        onConfirm={() => {}}
+        confirmLabel="Yes, Delete"
+        cancelLabel="No, Keep"
+        loading={true}
+      />
+    );
+
+    const titleElement = getByText("Delete Item");
+    expect(titleElement.props.accessibilityRole).toBe("header");
+
+    const confirmButton = getByLabelText("Yes, Delete");
+    expect(confirmButton.props.accessibilityState).toEqual({
+      disabled: true,
+      busy: true,
+    });
+
+    const cancelButton = getByLabelText("No, Keep");
+    expect(cancelButton.props.accessibilityState).toEqual({
+      disabled: true,
+    });
+  });
 });
