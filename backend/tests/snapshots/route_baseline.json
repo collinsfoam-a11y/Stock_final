@@ -2616,12 +2616,5 @@
     "methods": [
       "GET"
     ]
-  },
-  {
-    "path": "/{full_path:path}",
-    "name": "serve_spa",
-    "methods": [
-      "GET"
-    ]
   }
 ]
