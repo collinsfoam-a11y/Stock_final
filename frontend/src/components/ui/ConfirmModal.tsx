@@ -27,6 +27,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Modal } from "./Modal";
 import { colors, semanticColors, spacing, radius, textStyles } from "@/theme/unified";
 import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 
@@ -170,11 +171,13 @@ function ConfirmModal({
           entering={FadeIn.delay(100)}
           style={[styles.iconContainer, { backgroundColor: config.backgroundColor }]}
         >
-          <Ionicons name={iconName} size={32} color={config.color} />
+          <Ionicons name={iconName} size={32} color={config.color} {...getDecorativeIconProps()} />
         </Animated.View>
 
         {/* Title */}
-        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          {title}
+        </Text>
 
         {/* Message */}
         <Text style={styles.message}>{message}</Text>
@@ -201,8 +204,10 @@ function ConfirmModal({
             style={styles.cancelButton}
             onPress={handleCancel}
             disabled={loading}
-            accessibilityRole="button"
-            accessibilityLabel={cancelLabel}
+            {...getAccessibleButtonProps({
+              label: cancelLabel,
+              disabled: loading,
+            })}
           >
             <Text style={styles.cancelText}>{cancelLabel}</Text>
           </AppTouchable>
@@ -216,8 +221,11 @@ function ConfirmModal({
             ]}
             onPress={handleConfirm}
             disabled={loading || confirmDisabled}
-            accessibilityRole="button"
-            accessibilityLabel={confirmLabel}
+            {...getAccessibleButtonProps({
+              label: confirmLabel,
+              disabled: loading || confirmDisabled,
+              busy: loading,
+            })}
           >
             {loading && showLoadingSpinner ? (
               <ActivityIndicator color={semanticColors.text.inverse} size="small" />
