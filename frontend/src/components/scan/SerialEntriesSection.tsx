@@ -4,6 +4,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import type { SerialEntryData } from "@/types/scan";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 import { SerialEntryCard } from "./SerialEntryCard";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
@@ -28,6 +30,17 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
   onRemoveSerial,
 }) => {
   const uiTokens = useUiTokens();
+
+  const handleOpenScanner = () => {
+    void haptics.light();
+    onOpenScanner();
+  };
+
+  const handleAddSerial = () => {
+    void haptics.light();
+    onAddSerial();
+  };
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -129,7 +142,12 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
     <View style={styles.section}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Ionicons name="barcode-outline" size={20} color={uiTokens.colors.accent} />
+          <Ionicons
+            name="barcode-outline"
+            size={20}
+            color={uiTokens.colors.accent}
+            {...getDecorativeIconProps()}
+          />
           <Text style={styles.title}>Serial Numbers</Text>
         </View>
         <Text style={styles.helperText}>
@@ -138,13 +156,24 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
       </View>
       <AppTouchable
         style={styles.scanButton}
-        onPress={onOpenScanner}
-        accessibilityLabel="Scan">
-        <Ionicons name="scan" size={22} color={uiTokens.colors.surfaceElevated} />
+        onPress={handleOpenScanner}
+        {...getAccessibleButtonProps({
+          label: "Scan Serial Numbers",
+          hint: "Opens camera scanner to read serial barcodes",
+        })}>
+        <Ionicons
+          name="scan"
+          size={22}
+          color={uiTokens.colors.surfaceElevated}
+          {...getDecorativeIconProps()}
+        />
         <Text style={styles.scanButtonText}>Scan Serial Numbers</Text>
       </AppTouchable>
       {serialValidationErrors.length > 0 && (
-        <View style={styles.validationContainer}>
+        <View
+          style={styles.validationContainer}
+          accessibilityRole="alert"
+          accessibilityLiveRegion="assertive">
           {serialValidationErrors.map((error, index) => (
             <Text key={`${error}-${index}`} style={styles.validationText}>
               • {error}
@@ -166,9 +195,17 @@ export const SerialEntriesSection: React.FC<SerialEntriesSectionProps> = ({
       </View>
       <AppTouchable
         style={styles.addButton}
-        onPress={onAddSerial}
-        accessibilityLabel="Add">
-        <Ionicons name="add-circle-outline" size={20} color={uiTokens.colors.accentStrong} />
+        onPress={handleAddSerial}
+        {...getAccessibleButtonProps({
+          label: "Add Serial Manually",
+          hint: "Adds a new empty serial number input entry",
+        })}>
+        <Ionicons
+          name="add-circle-outline"
+          size={20}
+          color={uiTokens.colors.accentStrong}
+          {...getDecorativeIconProps()}
+        />
         <Text style={styles.addButtonText}>Add Serial Manually</Text>
       </AppTouchable>
     </View>
