@@ -4,6 +4,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import type { SerialEntryData } from "@/types/scan";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 
@@ -24,6 +26,12 @@ export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
 }) => {
   const uiTokens = useUiTokens();
   const hasValue = entry.serial_number.trim().length > 0;
+
+  const handleRemove = () => {
+    void haptics.light();
+    onRemove();
+  };
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -78,9 +86,17 @@ export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
         <Text style={styles.label}>Unit #{index + 1}</Text>
         <AppTouchable
           style={styles.removeButton}
-          onPress={onRemove}
-          accessibilityLabel="Delete">
-          <Ionicons name="trash-outline" size={18} color={uiTokens.colors.error} />
+          onPress={handleRemove}
+          {...getAccessibleButtonProps({
+            label: `Remove serial number for Unit #${index + 1}`,
+            hint: "Removes this serial number entry",
+          })}>
+          <Ionicons
+            name="trash-outline"
+            size={18}
+            color={uiTokens.colors.error}
+            {...getDecorativeIconProps()}
+          />
         </AppTouchable>
       </View>
       <TextInput
@@ -100,8 +116,20 @@ export const SerialEntryCard: React.FC<SerialEntryCardProps> = ({
         placeholderTextColor={uiTokens.colors.textMuted}
         autoCapitalize="characters"
         autoCorrect={false}
+        accessibilityLabel={`Serial number for Unit #${index + 1}`}
+        accessibilityHint={
+          validationError ? `Error: ${validationError}` : "Enter unit serial number"
+        }
+        aria-invalid={Boolean(validationError)}
       />
-      {validationError && <Text style={styles.errorText}>{validationError}</Text>}
+      {validationError && (
+        <Text
+          style={styles.errorText}
+          accessibilityRole="alert"
+          accessibilityLiveRegion="assertive">
+          {validationError}
+        </Text>
+      )}
     </View>
   );
 };
