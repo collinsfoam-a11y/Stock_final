@@ -15,3 +15,11 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+
+## 2024-10-18 - Replacing FlatList with VirtualList in AutoComplete
+**Learning:** For components that dynamically render filtered lists as a user types (like a search autocomplete dropdown), `FlatList` can cause noticeable frame drops and typing latency when the result set is large, because it attempts to reconcile many items at once synchronously on the JS thread. `VirtualList` (`@shopify/flash-list`) solves this by recycling views natively.
+**Action:** Always prefer `VirtualList` for autocomplete dropdowns or search results. Ensure `useRef<FlatList>` is relaxed to `useRef<any>` when doing so, and provide an accurate `estimatedItemSize` based on the item layout (e.g., padding + font height).
+
+## 2024-10-18 - VirtualList ForwardRef Generic Types
+**Learning:** When adding `React.forwardRef` to a generic component like `VirtualList<T>`, the generic type parameter is lost and infers as `unknown`. This causes type checking errors (like `Property 'ref' does not exist`) when consumers try to pass refs.
+**Action:** Use a type cast on the exported component after applying `forwardRef`: `export const VirtualList = VirtualListBase as <T>(props: VirtualListProps<T> & { ref?: any }) => React.ReactElement;`. This preserves the generic type checking while allowing the ref.
