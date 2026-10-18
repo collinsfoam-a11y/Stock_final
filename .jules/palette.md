@@ -41,3 +41,6 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+## 2026-10-18 - Standardizing Assignment Modal Accessibility and Feedback
+**Learning:** Assignment modals (like `RecountAssignmentModal`) frequently use `AppTouchable` components that lack tactile feedback and comprehensive accessibility attributes for screen readers, leading to a suboptimal UX for staff assignments.
+**Action:** Always manually apply `getAccessibleButtonProps` and wrap the `onPress` callback to execute `haptics.light()` or `haptics.medium()` when implementing `AppTouchable` to ensure tactile feedback and clear accessibility labeling.

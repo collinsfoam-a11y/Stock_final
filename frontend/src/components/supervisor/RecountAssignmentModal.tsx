@@ -8,6 +8,8 @@ import { legacyTheme as theme } from "@/theme/unified";
 
 import { semanticColors as uiSemanticColors } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 export interface AssignableStaffUser {
   username: string;
   full_name?: string | null;
@@ -85,8 +87,12 @@ export default function RecountAssignmentModal({
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Assign To</Text>
             <AppTouchable
+              {...getAccessibleButtonProps({ label: "Select staff assignee" })}
               style={styles.selector}
-              onPress={() => setPickerVisible(true)}
+              onPress={() => {
+                void haptics.light();
+                setPickerVisible(true);
+              }}
               activeOpacity={0.8}
               disabled={loading || staffOptions.length === 0}
  >
@@ -110,8 +116,12 @@ export default function RecountAssignmentModal({
 
           <View style={styles.actions}>
             <AppTouchable
+              {...getAccessibleButtonProps({ label: "Cancel recount assignment" })}
               style={[styles.button, styles.cancelButton]}
-              onPress={onClose}
+              onPress={() => {
+                void haptics.light();
+                onClose();
+              }}
               disabled={loading}
               activeOpacity={0.8}
  >
@@ -119,12 +129,16 @@ export default function RecountAssignmentModal({
             </AppTouchable>
 
             <AppTouchable
+              {...getAccessibleButtonProps({ label: "Confirm and assign recount" })}
               style={[
                 styles.button,
                 styles.confirmButton,
                 (!selectedAssignee || loading) && styles.disabledButton,
               ]}
-              onPress={() => void handleSubmit()}
+              onPress={() => {
+                void haptics.medium();
+                void handleSubmit();
+              }}
               disabled={!selectedAssignee || loading}
               activeOpacity={0.8}
  >
