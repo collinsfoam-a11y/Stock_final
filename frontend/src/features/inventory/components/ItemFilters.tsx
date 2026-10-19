@@ -11,10 +11,10 @@ import {
   StyleSheet,
   Platform,
   Modal,
-  FlatList,
   ActivityIndicator,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { VirtualList } from "@/components/common/VirtualList";
 import { useTheme } from "@/hooks/useTheme";
 import { useSettingsStore } from "@/store/settingsStore";
 import { ItemVerificationAPI } from "@/features/inventory/services/itemVerificationApi";
@@ -85,7 +85,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
       }
     };
 
-    loadLocations();
+    void loadLocations();
   }, [offlineMode]);
 
   const loadRackProgress = async () => {
@@ -129,7 +129,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
     setModalType(type);
     setModalVisible(true);
     if (type === "rack" && sessionId) {
-      loadRackProgress();
+      void loadRackProgress();
     }
   };
 
@@ -166,10 +166,13 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
             {isLoading ? (
               <ActivityIndicator size="large" color={theme.colors.primary} style={{ margin: 20 }} />
             ) : (
-              <FlatList
-                data={data}
-                keyExtractor={(item) => (typeof item === "string" ? item : item.rack)}
-                renderItem={({ item }) => {
+              <>
+                {/* ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to optimize modal rendering for long location lists. */}
+                <VirtualList
+                  data={data}
+                  keyExtractor={(item) => (typeof item === "string" ? item : item.rack)}
+                  estimatedItemSize={50}
+                  renderItem={({ item }) => {
                   if (isRack && typeof item !== "string") {
                     // Render Rack Progress Card
                     return (
@@ -212,6 +215,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
                   </Text>
                 }
               />
+              </>
             )}
           </View>
         </View>
