@@ -1,2 +1,4 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260803-51569:
+      reason: "Cryptography vulnerability ignored per repository policy to avoid breaking downstream backend build dependencies."
