@@ -32,6 +32,7 @@ import { useAuthStore } from "../../store/authStore";
 import { useThemeContext } from "../../context/ThemeContext";
 import { safeBackNavigation } from "../../utils/navigation";
 import type { UserRole } from "../../utils/roleNavigation";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 
@@ -59,6 +60,7 @@ export interface ScreenHeaderProps {
     icon: keyof typeof Ionicons.glyphMap;
     onPress: () => void;
     label?: string;
+    accessibilityLabel?: string;
   };
   /** Custom right content - renders any React element on the right side */
   customRightContent?: React.ReactNode;
@@ -81,6 +83,7 @@ interface AnimatedButtonProps {
   backgroundColor: string;
   size?: number;
   testID?: string;
+  accessibilityLabel?: string;
 }
 
 const AnimatedButton: React.FC<AnimatedButtonProps> = ({
@@ -90,6 +93,7 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   backgroundColor,
   size = 22,
   testID,
+  accessibilityLabel,
 }) => {
   const scale = useSharedValue(1);
 
@@ -105,6 +109,8 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = ({
     scale.value = withSpring(1, { damping: 15 });
   }, [scale]);
 
+  const defaultLabel = testID ? testID.replace(/-/g, " ") : "Header button";
+
   return (
     <Animated.View style={animatedStyle}>
       <AppTouchable
@@ -114,8 +120,8 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = ({
         style={[styles.actionButton, { backgroundColor }]}
         activeOpacity={0.8}
         testID={testID}
-        accessibilityLabel={testID || "Header button"}>
-        <Ionicons name={icon} size={size} color={iconColor} />
+        {...getAccessibleButtonProps({ label: accessibilityLabel || defaultLabel })}>
+        <Ionicons name={icon} size={size} color={iconColor} {...getDecorativeIconProps()} />
       </AppTouchable>
     </Animated.View>
   );
@@ -289,6 +295,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
               backgroundColor={colors.buttonBg}
               size={24}
               testID="back-button"
+              accessibilityLabel="Go back"
             />
           </Animated.View>
         )}
@@ -325,6 +332,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             iconColor={colors.accent}
             backgroundColor={colors.buttonBg}
             testID="settings-button"
+            accessibilityLabel="Settings"
           />
         )}
         {rightAction && (
@@ -334,6 +342,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             iconColor={colors.accent}
             backgroundColor={colors.buttonBg}
             testID="right-action-button"
+            accessibilityLabel={rightAction.accessibilityLabel || rightAction.label || "Custom action"}
           />
         )}
         {showLogoutButton && (
@@ -343,6 +352,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             iconColor={colors.danger}
             backgroundColor={colors.dangerBg}
             testID="logout-button"
+            accessibilityLabel="Log out"
           />
         )}
       </Animated.View>
