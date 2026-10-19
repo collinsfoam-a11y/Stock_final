@@ -41,3 +41,7 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+
+## 2026-06-25 - Standardizing Dynamic Accessibility Labels on Custom Buttons
+**Learning:** When creating custom button components (like `AnimatedButton` in `ScreenHeader`) that rely on optional props (like `testID`) as fallback accessibility labels, passing `testID` directly can result in hyphenated, non-human-readable screen reader output (e.g., "back-button").
+**Action:** Always format programmatic strings (like replacing hyphens with spaces) or provide a dedicated `accessibilityLabel` prop, and ensure `getAccessibleButtonProps` is used to maintain correct role and state attributes.
