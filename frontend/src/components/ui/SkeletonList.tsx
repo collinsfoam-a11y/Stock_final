@@ -18,6 +18,8 @@ interface SkeletonListProps {
   style?: ViewStyle;
   animated?: boolean;
   staggerDelay?: number;
+  accessible?: boolean;
+  accessibilityLabel?: string;
 }
 
 export const SkeletonList: React.FC<SkeletonListProps> = ({
@@ -28,12 +30,26 @@ export const SkeletonList: React.FC<SkeletonListProps> = ({
   style,
   animated = true,
   staggerDelay = 50,
+  accessible = true,
+  accessibilityLabel = "Loading list...",
 }) => {
+  const accessibilityProps = accessible
+    ? {
+        accessible: true,
+        accessibilityRole: "progressbar" as const,
+        accessibilityValue: { text: "Loading" },
+        accessibilityLabel,
+      }
+    : {
+        accessible: false,
+        importantForAccessibility: "no" as const,
+      };
+
   const renderItem = (index: number) => {
     const content = (() => {
       switch (variant) {
         case "card":
-          return <SkeletonCard />;
+          return <SkeletonCard accessible={false} />;
         case "simple":
           return (
             <Skeleton
@@ -41,11 +57,12 @@ export const SkeletonList: React.FC<SkeletonListProps> = ({
               height={rowHeight}
               borderRadius={8}
               style={{ marginBottom: gap }}
+              accessible={false}
             />
           );
         case "list":
         default:
-          return <SkeletonListItem style={{ marginBottom: gap }} />;
+          return <SkeletonListItem style={{ marginBottom: gap }} accessible={false} />;
       }
     })();
 
@@ -66,7 +83,7 @@ export const SkeletonList: React.FC<SkeletonListProps> = ({
   };
 
   return (
-    <View style={[styles.container, style]}>
+    <View {...accessibilityProps} style={[styles.container, style]}>
       {Array.from({ length: count }).map((_, index) => renderItem(index))}
     </View>
   );
@@ -81,6 +98,8 @@ interface SkeletonGridProps {
   itemSize?: number;
   gap?: number;
   style?: ViewStyle;
+  accessible?: boolean;
+  accessibilityLabel?: string;
 }
 
 export const SkeletonGrid: React.FC<SkeletonGridProps> = ({
@@ -89,9 +108,23 @@ export const SkeletonGrid: React.FC<SkeletonGridProps> = ({
   itemSize = 100,
   gap = 12,
   style,
+  accessible = true,
+  accessibilityLabel = "Loading grid...",
 }) => {
+  const accessibilityProps = accessible
+    ? {
+        accessible: true,
+        accessibilityRole: "progressbar" as const,
+        accessibilityValue: { text: "Loading" },
+        accessibilityLabel,
+      }
+    : {
+        accessible: false,
+        importantForAccessibility: "no" as const,
+      };
+
   return (
-    <View style={[styles.grid, { gap }, style]}>
+    <View {...accessibilityProps} style={[styles.grid, { gap }, style]}>
       {Array.from({ length: rows }).map((_, rowIndex) => (
         <View key={rowIndex} style={[styles.gridRow, { gap }]}>
           {Array.from({ length: columns }).map((_, colIndex) => (
@@ -100,7 +133,7 @@ export const SkeletonGrid: React.FC<SkeletonGridProps> = ({
               delay={(rowIndex * columns + colIndex) * 50}
               duration={300}
             >
-              <Skeleton width={itemSize} height={itemSize} borderRadius={12} />
+              <Skeleton width={itemSize} height={itemSize} borderRadius={12} accessible={false} />
             </FadeIn>
           ))}
         </View>
@@ -116,25 +149,42 @@ interface SkeletonScreenProps {
   header?: boolean;
   tabs?: boolean;
   listCount?: number;
+  accessible?: boolean;
+  accessibilityLabel?: string;
 }
 
 export const SkeletonScreen: React.FC<SkeletonScreenProps> = ({
   header = true,
   tabs = false,
   listCount = 5,
+  accessible = true,
+  accessibilityLabel = "Loading screen...",
 }) => {
+  const accessibilityProps = accessible
+    ? {
+        accessible: true,
+        accessibilityRole: "progressbar" as const,
+        accessibilityValue: { text: "Loading" },
+        accessibilityLabel,
+      }
+    : {
+        accessible: false,
+        importantForAccessibility: "no" as const,
+      };
+
   return (
-    <View style={styles.screen}>
+    <View {...accessibilityProps} style={styles.screen}>
       {header && (
         <FadeIn direction="down" duration={200}>
           <View style={styles.header}>
-            <Skeleton width={40} height={40} variant="circular" />
-            <Skeleton width="60%" height={24} style={{ marginLeft: 12 }} />
+            <Skeleton width={40} height={40} variant="circular" accessible={false} />
+            <Skeleton width="60%" height={24} style={{ marginLeft: 12 }} accessible={false} />
             <Skeleton
               width={40}
               height={40}
               variant="circular"
               style={{ marginLeft: "auto" }}
+              accessible={false}
             />
           </View>
         </FadeIn>
@@ -150,6 +200,7 @@ export const SkeletonScreen: React.FC<SkeletonScreenProps> = ({
                 height={32}
                 borderRadius={16}
                 style={{ marginRight: 8 }}
+                accessible={false}
               />
             ))}
           </View>
@@ -161,6 +212,7 @@ export const SkeletonScreen: React.FC<SkeletonScreenProps> = ({
         variant="list"
         animated
         staggerDelay={75}
+        accessible={false}
       />
     </View>
   );
@@ -190,5 +242,3 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 });
-
-
