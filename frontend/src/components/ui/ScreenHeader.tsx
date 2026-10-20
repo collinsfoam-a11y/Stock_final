@@ -18,7 +18,6 @@ import { BlurView } from "expo-blur";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 import Animated, {
   FadeIn,
   FadeInLeft,
@@ -34,6 +33,8 @@ import { safeBackNavigation } from "../../utils/navigation";
 import type { UserRole } from "../../utils/roleNavigation";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 
 // ============================================================================
 // Types
@@ -81,6 +82,9 @@ interface AnimatedButtonProps {
   backgroundColor: string;
   size?: number;
   testID?: string;
+  accessibilityLabel: string;
+  accessibilityHint?: string;
+  hapticStyle?: "light" | "medium";
 }
 
 const AnimatedButton: React.FC<AnimatedButtonProps> = ({
@@ -90,8 +94,12 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   backgroundColor,
   size = 22,
   testID,
+  accessibilityLabel,
+  accessibilityHint,
+  hapticStyle = "light",
 }) => {
   const scale = useSharedValue(1);
+  const decorativeIconProps = getDecorativeIconProps();
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -105,17 +113,29 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = ({
     scale.value = withSpring(1, { damping: 15 });
   }, [scale]);
 
+  const handlePress = useCallback(() => {
+    if (hapticStyle === "medium") {
+      void haptics.medium();
+    } else {
+      void haptics.light();
+    }
+    onPress();
+  }, [hapticStyle, onPress]);
+
   return (
     <Animated.View style={animatedStyle}>
       <AppTouchable
-        onPress={onPress}
+        onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={[styles.actionButton, { backgroundColor }]}
         activeOpacity={0.8}
         testID={testID}
-        accessibilityLabel={testID || "Header button"}>
-        <Ionicons name={icon} size={size} color={iconColor} />
+        {...getAccessibleButtonProps({
+          label: accessibilityLabel,
+          hint: accessibilityHint,
+        })}>
+        <Ionicons {...decorativeIconProps} name={icon} size={size} color={iconColor} />
       </AppTouchable>
     </Animated.View>
   );
@@ -165,9 +185,6 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
   // Handlers
   const handleBackPress = useCallback(() => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
     if (onBackPress) {
       onBackPress();
       return;
@@ -177,10 +194,6 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   }, [onBackPress, router, user?.role]);
 
   const handleLogout = useCallback(async () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-
     if (logoutConfirmMessage === null) {
       // Skip confirmation
       await logout();
@@ -208,16 +221,10 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   }, [logout, logoutConfirmMessage]);
 
   const handleRightAction = useCallback(() => {
-    if (Platform.OS !== "web") {
-      Haptics.selectionAsync();
-    }
     rightAction?.onPress();
   }, [rightAction]);
 
   const handleSettingsPress = useCallback(() => {
-    if (Platform.OS !== "web") {
-      Haptics.selectionAsync();
-    }
     const role = user?.role;
     const target =
       role === "admin" || role === "supervisor" || role === "staff"
@@ -289,6 +296,9 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
               backgroundColor={colors.buttonBg}
               size={24}
               testID="back-button"
+              accessibilityLabel="Go back"
+              accessibilityHint="Returns to the previous operational screen."
+              hapticStyle="light"
             />
           </Animated.View>
         )}
@@ -325,6 +335,9 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             iconColor={colors.accent}
             backgroundColor={colors.buttonBg}
             testID="settings-button"
+            accessibilityLabel="Open settings"
+            accessibilityHint="Navigates to user and system settings."
+            hapticStyle="light"
           />
         )}
         {rightAction && (
@@ -334,6 +347,8 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             iconColor={colors.accent}
             backgroundColor={colors.buttonBg}
             testID="right-action-button"
+            accessibilityLabel={rightAction.label ?? "Header action"}
+            hapticStyle="light"
           />
         )}
         {showLogoutButton && (
@@ -343,6 +358,9 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             iconColor={colors.danger}
             backgroundColor={colors.dangerBg}
             testID="logout-button"
+            accessibilityLabel="Log out"
+            accessibilityHint="Logs out of the current session."
+            hapticStyle="medium"
           />
         )}
       </Animated.View>
