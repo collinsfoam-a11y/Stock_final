@@ -8,6 +8,8 @@ import { legacyTheme as theme } from "@/theme/unified";
 
 import { semanticColors as uiSemanticColors } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 export interface AssignableStaffUser {
   username: string;
   full_name?: string | null;
@@ -86,9 +88,16 @@ export default function RecountAssignmentModal({
             <Text style={styles.fieldLabel}>Assign To</Text>
             <AppTouchable
               style={styles.selector}
-              onPress={() => setPickerVisible(true)}
+              onPress={() => {
+                void haptics.light();
+                setPickerVisible(true);
+              }}
               activeOpacity={0.8}
               disabled={loading || staffOptions.length === 0}
+              {...getAccessibleButtonProps({
+                label: "Select Staff Assignee",
+                disabled: loading || staffOptions.length === 0,
+              })}
  >
               <Text style={[styles.selectorText, !selectedAssignee && styles.selectorPlaceholder]}>
                 {staffOptions.length === 0 ? "No active staff available" : selectedLabel}
@@ -111,9 +120,13 @@ export default function RecountAssignmentModal({
           <View style={styles.actions}>
             <AppTouchable
               style={[styles.button, styles.cancelButton]}
-              onPress={onClose}
+              onPress={() => {
+                void haptics.light();
+                onClose();
+              }}
               disabled={loading}
               activeOpacity={0.8}
+              {...getAccessibleButtonProps({ label: "Cancel" })}
  >
               <Text style={styles.cancelText}>Cancel</Text>
             </AppTouchable>
@@ -124,9 +137,17 @@ export default function RecountAssignmentModal({
                 styles.confirmButton,
                 (!selectedAssignee || loading) && styles.disabledButton,
               ]}
-              onPress={() => void handleSubmit()}
+              onPress={() => {
+                void haptics.medium();
+                void handleSubmit();
+              }}
               disabled={!selectedAssignee || loading}
               activeOpacity={0.8}
+              {...getAccessibleButtonProps({
+                label: "Assign Recount",
+                disabled: !selectedAssignee || loading,
+                busy: loading,
+              })}
  >
               {loading ? (
                 <ActivityIndicator color={uiSemanticColors.text.inverse} />
