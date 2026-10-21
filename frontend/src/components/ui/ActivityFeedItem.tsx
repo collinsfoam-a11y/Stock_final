@@ -12,6 +12,7 @@ import { AnimatedPressable } from "./AnimatedPressable";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { colorWithAlpha } from "@/theme/themeTokens";
+import { getDecorativeIconProps } from "@/utils/accessibility";
 import { getOperationalMotionDuration } from "@/utils/motion";
 
 export type ActivityType = "scan" | "session" | "variance" | "user" | "system";
@@ -24,6 +25,7 @@ interface ActivityFeedItemProps {
   onPress?: () => void;
   delay?: number;
   status?: "success" | "warning" | "error" | "info";
+  accessibilityHint?: string;
 }
 
 const activityIcons = {
@@ -67,12 +69,14 @@ export const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   onPress,
   delay = 0,
   status,
+  accessibilityHint,
 }) => {
   const uiTokens = useUiTokens();
   const prefersReducedMotion = useReducedMotion();
   const styles = useMemo(() => createStyles(uiTokens), [uiTokens]);
   const motionDuration = getOperationalMotionDuration(uiTokens, "normal", prefersReducedMotion);
   const config = activityIcons[type];
+  const decorativeIconProps = getDecorativeIconProps();
   const typeColor = {
     scan: uiTokens.colors.accent,
     session: uiTokens.colors.info,
@@ -118,7 +122,7 @@ export const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
             },
           ]}
         >
-          <Ionicons name={config.icon} size={20} color={typeColor} />
+          <Ionicons name={config.icon} size={20} color={typeColor} {...decorativeIconProps} />
         </View>
 
         <View style={styles.textContent}>
@@ -168,7 +172,7 @@ export const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
         </View>
 
         {onPress && (
-          <Ionicons name="chevron-forward" size={20} color={uiTokens.colors.textMuted} />
+          <Ionicons name="chevron-forward" size={20} color={uiTokens.colors.textMuted} {...decorativeIconProps} />
         )}
       </View>
 
@@ -182,6 +186,7 @@ export const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
         onPress={onPress}
         hapticFeedback="light"
         accessibilityLabel={accessibilityLabel}
+        accessibilityHint={accessibilityHint ?? "Navigates to activity details"}
       >
         {content}
       </AnimatedPressable>
