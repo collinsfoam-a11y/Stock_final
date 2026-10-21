@@ -55,7 +55,12 @@ export function CreateSessionModal({
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <Pressable style={styles.modalBackdrop} onPress={onClose} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close modal overlay"
+          style={styles.modalBackdrop}
+          onPress={onClose}
+        />
         <View style={styles.modalSheet}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>

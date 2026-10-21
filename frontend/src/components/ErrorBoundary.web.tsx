@@ -1,5 +1,6 @@
 import React, { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 import { ErrorBoundary as ReactErrorBoundary } from "react-error-boundary";
 
 import { errorReporter } from "../services/errorRecovery";
@@ -40,6 +41,7 @@ const ErrorFallback = ({
         </Text>
         {__DEV__ ? <Text style={styles.details}>{error.toString()}</Text> : null}
         <Pressable
+          {...getAccessibleButtonProps({ label: "Try Again" })}
           onPress={resetErrorBoundary}
           style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
         >
