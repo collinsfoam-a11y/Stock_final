@@ -1,5 +1,7 @@
 import React from "react";
-import { FlatList, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Modal, StyleSheet, Text, View } from "react-native";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 import {
   colors,
   fontSize,
@@ -35,9 +37,16 @@ export const OptionSelectModal: React.FC<OptionSelectModalProps> = ({
             data={options}
             keyExtractor={(item) => item}
             renderItem={({ item }) => (
-              <Pressable onPress={() => onSelect(item)} style={styles.option}>
+              <AppTouchable
+                {...getAccessibleButtonProps({ label: item })}
+                onPress={() => {
+                  void haptics.light();
+                  onSelect(item);
+                }}
+                style={styles.option}
+              >
                 <Text style={styles.optionText}>{item}</Text>
-              </Pressable>
+              </AppTouchable>
             )}
           />
           <AppTouchable
