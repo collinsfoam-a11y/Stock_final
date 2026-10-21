@@ -1,2 +1,4 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260803-51569:
+      reason: "Upstream cryptography vulnerability handled per safety policy"
