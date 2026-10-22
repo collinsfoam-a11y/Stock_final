@@ -24,6 +24,8 @@ interface AnimatedCounterProps {
   suffix?: string;
   decimalPlaces?: number;
   formatNumber?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
@@ -34,12 +36,22 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
   suffix = "",
   decimalPlaces = 0,
   formatNumber = true,
+  accessibilityLabel,
+  accessibilityHint,
 }) => {
   const uiTokens = useUiTokens();
   const prefersReducedMotion = useReducedMotion();
   const governedDuration = getOperationalMotionDuration(uiTokens, "slow", prefersReducedMotion);
   const resolvedDuration = governedDuration === 0 ? 0 : Math.min(duration, governedDuration);
   const [displayValue, setDisplayValue] = React.useState("0");
+
+  const finalFormattedValue = React.useMemo(() => {
+    let formatted = value.toFixed(decimalPlaces);
+    if (formatNumber && decimalPlaces === 0) {
+      formatted = Math.round(value).toLocaleString();
+    }
+    return `${prefix}${formatted}${suffix}`;
+  }, [value, decimalPlaces, formatNumber, prefix, suffix]);
 
   // Use a simple interval-based approach for display
   useEffect(() => {
@@ -87,6 +99,10 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
 
   return (
     <Text
+      accessible={true}
+      accessibilityRole="text"
+      accessibilityLabel={accessibilityLabel || finalFormattedValue}
+      accessibilityHint={accessibilityHint}
       style={[
         {
           fontSize: 32,
