@@ -29,6 +29,7 @@ import {
   textStyles,
 } from "@/theme/unified";
 import { useThemeContextSafe } from "../../context/ThemeContext";
+import { haptics } from "@/services/haptics";
 
 import { shadows as unifiedShadows } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
@@ -122,6 +123,7 @@ export const ModernCard: React.FC<ModernCardProps> = ({
   // Press handlers
   const handlePressIn = () => {
     if (onPress) {
+      void haptics.light();
       scale.value = withSpring(0.98, {
         damping: modernAnimations.easing.spring.damping,
         stiffness: modernAnimations.easing.spring.stiffness,
