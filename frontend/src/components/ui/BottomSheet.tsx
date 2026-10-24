@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, StyleSheet, Platform } from "react-native";
+import { Modal, StyleSheet, Platform, View } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -11,6 +11,9 @@ import { flags } from "../../constants/flags";
 
 import { colors as uiColors, semanticColors as uiSemanticColors } from "@/theme/unified";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
+
 interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -27,7 +30,15 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   const progress = useSharedValue(visible ? 1 : 0);
   const [render, setRender] = React.useState(visible);
 
+  const handleClose = React.useCallback(() => {
+    void haptics.light();
+    onClose();
+  }, [onClose]);
+
   React.useEffect(() => {
+    if (visible) {
+      void haptics.light();
+    }
     if (!flags.enableAnimations) {
       // No animations: show/hide instantly
       setRender(visible);
@@ -67,16 +78,26 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       animationType={
         !flags.enableAnimations ? (Platform.OS === "ios" ? "slide" : "fade") : undefined
       }
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <Animated.View style={[styles.backdrop, backdropStyle]}>
         <AppTouchable
           style={{ flex: 1 }}
           activeOpacity={1}
-          onPress={onClose}
-          accessibilityLabel="Close" />
+          onPress={handleClose}
+          {...getAccessibleButtonProps({
+            label: "Close modal backdrop",
+            hint: "Dismisses bottom sheet modal",
+          })}
+        />
       </Animated.View>
-      <Animated.View style={[styles.sheet, { height }, sheetStyle]}>{children}</Animated.View>
+      <Animated.View
+        style={[styles.sheet, { height }, sheetStyle]}
+        accessibilityViewIsModal={true}
+      >
+        <View style={styles.handle} />
+        {children}
+      </Animated.View>
     </Modal>
   );
 };
@@ -85,6 +106,14 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: uiColors.neutral[700],
+    alignSelf: "center",
+    marginBottom: 12,
   },
   sheet: {
     position: "absolute",
