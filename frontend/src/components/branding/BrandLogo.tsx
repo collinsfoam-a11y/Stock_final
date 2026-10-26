@@ -40,6 +40,10 @@ interface BrandLogoProps {
   maxHeight?: number;
   style?: ImageStyle;
   containerStyle?: ViewStyle;
+  accessible?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  testID?: string;
 }
 
 export function BrandLogo({
@@ -50,6 +54,10 @@ export function BrandLogo({
   maxHeight,
   style,
   containerStyle,
+  accessible = true,
+  accessibilityLabel,
+  accessibilityHint,
+  testID,
 }: BrandLogoProps) {
   const sourceConfig = SOURCES[variant];
   const { source } = sourceConfig;
@@ -78,9 +86,16 @@ export function BrandLogo({
   };
 
   const dimensions = getDimensions();
+  const defaultLabel = "Stock Verify logo";
+  const computedLabel = accessibilityLabel !== undefined ? accessibilityLabel : defaultLabel;
 
   return (
     <View
+      accessible={accessible}
+      accessibilityRole={accessible ? "image" : undefined}
+      accessibilityLabel={accessible ? computedLabel : undefined}
+      accessibilityHint={accessible ? accessibilityHint : undefined}
+      testID={testID}
       style={[
         styles.container,
         dimensions,
@@ -91,6 +106,8 @@ export function BrandLogo({
         source={source}
         style={[styles.image, dimensions, style]}
         resizeMode="contain"
+        accessibilityElementsHidden={true}
+        importantForAccessibility="no"
       />
     </View>
   );
