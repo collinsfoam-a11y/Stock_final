@@ -15,6 +15,7 @@ import { localDb } from "../../db/localDb";
 import { shadows as uiShadows } from "@/theme/unified";
 import { zIndex as uiZIndex } from "@/theme/designTokens";
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { VirtualList } from "@/components/common/VirtualList";
 interface SearchAutocompleteProps {
   onSelectItem: (item: SearchResult) => void;
   onBarcodeScan?: (barcode: string) => void;
@@ -44,7 +45,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef<TextInput>(null);
-  const listRef = useRef<FlatList>(null);
+  const listRef = useRef<any>(null);
 
   // Search function
   const performSearch = React.useCallback(
@@ -354,15 +355,15 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                   FOUND {results.length} {results.length === 1 ? "ITEM" : "ITEMS"}
                 </Text>
               </View>
-              <FlatList
+              {/* ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to improve scrolling performance, reduce memory usage, and prevent frame drops for potentially long lists of search results. */}
+              <VirtualList
                 ref={listRef}
                 data={results}
                 renderItem={renderResultItem}
                 keyExtractor={(item, index) => `${item.item_code}-${index}`}
                 style={styles.resultsList}
                 keyboardShouldPersistTaps="handled"
-                maxToRenderPerBatch={10}
-                windowSize={5}
+                estimatedItemSize={90}
                 showsVerticalScrollIndicator={true}
                 ListFooterComponent={
                   hasMore ? (
