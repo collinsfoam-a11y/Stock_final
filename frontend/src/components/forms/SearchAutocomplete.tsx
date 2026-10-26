@@ -174,6 +174,9 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
         ]}
         onPress={() => handleSelectItem(item)}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`Select ${item.item_name}`}
+        accessibilityHint="Tap to select this item"
  >
         <View style={styles.resultContent}>
           {/* Header: Name and Badge */}
@@ -313,6 +316,8 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="search"
+          accessibilityRole="search"
+          accessibilityLabel={placeholder || "Search"}
         />
 
         {isSearching && (
@@ -324,7 +329,9 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
             style={styles.clearButton}
             onPress={handleClear}
             activeOpacity={0.7}
-            accessibilityLabel="Clear">
+            accessibilityRole="button"
+            accessibilityLabel="Clear search query"
+            accessibilityHint="Clears the current search input">
             <Ionicons name="close-circle" size={20} color={theme.colors.placeholder} />
           </AppTouchable>
         )}
