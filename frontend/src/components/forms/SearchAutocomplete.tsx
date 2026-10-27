@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, TextInput, StyleSheet, FlatList, ActivityIndicator, Keyboard } from "react-native";
+import { View, Text, TextInput, StyleSheet, ActivityIndicator, Keyboard } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { VirtualList } from "../common/VirtualList";
 import { useTheme } from "../../hooks/useTheme";
 import { useSettingsStore } from "../../store/settingsStore";
 import { searchItems, SearchResult } from "../../services/enhancedSearchService";
@@ -44,7 +45,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef<TextInput>(null);
-  const listRef = useRef<FlatList>(null);
+  const listRef = useRef<any>(null);
 
   // Search function
   const performSearch = React.useCallback(
@@ -354,15 +355,15 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                   FOUND {results.length} {results.length === 1 ? "ITEM" : "ITEMS"}
                 </Text>
               </View>
-              <FlatList
+              {/* ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to improve rendering performance and reduce memory usage for potentially long search result lists. */}
+              <VirtualList
                 ref={listRef}
                 data={results}
                 renderItem={renderResultItem}
                 keyExtractor={(item, index) => `${item.item_code}-${index}`}
                 style={styles.resultsList}
                 keyboardShouldPersistTaps="handled"
-                maxToRenderPerBatch={10}
-                windowSize={5}
+                estimatedItemSize={85}
                 showsVerticalScrollIndicator={true}
                 ListFooterComponent={
                   hasMore ? (
