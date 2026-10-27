@@ -6,6 +6,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { ToastData, toastService } from "../../services/toastService";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { getTokenShadowStyle } from "../../theme/themeTokens";
+import { getDecorativeIconProps } from "../../utils/accessibility";
 import { zIndex } from "@/theme/designTokens";
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -82,7 +83,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     },
                   ]}
                 >
-                  <Ionicons name={getToastIcon(toast.type)} size={19} color={toastColor} />
+                  <Ionicons name={getToastIcon(toast.type)} size={19} color={toastColor} {...getDecorativeIconProps()} />
                 </View>
                 <Text style={[styles.message, { color: tokens.colors.textPrimary }]}>
                   {toast.message}
