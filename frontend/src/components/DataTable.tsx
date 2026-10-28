@@ -5,6 +5,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useUiTokens } from "@/hooks/useUiTokens";
 import { AppTouchable } from "@/components/ui/AppTouchable";
 import { borderRadius, spacing, typography } from "@/theme/unified";
+import { haptics } from "@/services/haptics";
+import { getAccessibleButtonProps } from "@/utils/accessibility";
 
 export interface TableColumn {
   key: string;
@@ -97,8 +99,15 @@ export const DataTable: React.FC<DataTableProps> = ({
         <AppTouchable
           key={column.key}
           style={[styles.headerCell, column.width ? { width: column.width, flex: 0 } : { flex: 1 }] as any}
-          onPress={() => column.sortable && handleSort(column.key)}
+          onPress={() => {
+            void haptics.light();
+            column.sortable && handleSort(column.key);
+          }}
           disabled={!column.sortable}
+          {...getAccessibleButtonProps({
+            label: column.sortable ? `Sort by ${column.label}` : column.label,
+            disabled: !column.sortable,
+          })}
         >
           <Text style={[styles.headerText, { color: t.colors.textSecondary }]}>{column.label}</Text>
           {sortable && column.sortable && sortColumn === column.key && (
@@ -123,9 +132,15 @@ export const DataTable: React.FC<DataTableProps> = ({
         { borderBottomColor: t.colors.border },
         index % 2 === 1 && { backgroundColor: `${t.colors.border}22` },
       ]}
-      onPress={() => onRowPress?.(item)}
+      onPress={() => {
+        void haptics.light();
+        onRowPress?.(item);
+      }}
       disabled={!onRowPress}
-      accessibilityLabel="Select row"
+      {...getAccessibleButtonProps({
+        label: "Select row",
+        disabled: !onRowPress,
+      })}
     >
       {columns.map((column) => (
         <View
@@ -154,9 +169,15 @@ export const DataTable: React.FC<DataTableProps> = ({
       <View style={[styles.pagination, { backgroundColor: t.colors.surfaceElevated, borderTopColor: t.colors.border }]}>
         <AppTouchable
           style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
-          onPress={() => setCurrentPage(currentPage - 1)}
+          onPress={() => {
+            void haptics.light();
+            setCurrentPage(currentPage - 1);
+          }}
           disabled={currentPage === 1}
-          accessibilityLabel="Previous page"
+          {...getAccessibleButtonProps({
+            label: "Previous page",
+            disabled: currentPage === 1,
+          })}
         >
           <Ionicons
             name="chevron-back"
@@ -172,9 +193,15 @@ export const DataTable: React.FC<DataTableProps> = ({
             styles.paginationButton,
             currentPage === totalPages && styles.paginationButtonDisabled,
           ]}
-          onPress={() => setCurrentPage(currentPage + 1)}
+          onPress={() => {
+            void haptics.light();
+            setCurrentPage(currentPage + 1);
+          }}
           disabled={currentPage === totalPages}
-          accessibilityLabel="Next page"
+          {...getAccessibleButtonProps({
+            label: "Next page",
+            disabled: currentPage === totalPages,
+          })}
         >
           <Ionicons
             name="chevron-forward"
