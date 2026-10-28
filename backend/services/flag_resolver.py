@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 import hashlib
 from typing import Any, Literal, Optional
@@ -134,7 +135,10 @@ async def is_global_disable_active(*, request_context: Any, db: Any = None) -> b
 
 
 async def _load_phase0_flags(db: Any) -> dict[str, Optional[FeatureFlag]]:
-    return {key: await _load_flag(db, key) for key in (BL_V2_GLOBAL_DISABLE, *_SCOPED_FLAG_KEYS)}
+    # ⚡ Bolt: Fetch phase 0 flags concurrently using asyncio.gather to avoid N+1 query latency during resolution.
+    keys = (BL_V2_GLOBAL_DISABLE, *_SCOPED_FLAG_KEYS)
+    results = await asyncio.gather(*[_load_flag(db, key) for key in keys])
+    return dict(zip(keys, results))
 
 
 async def _load_flag(db: Any, key: str) -> Optional[FeatureFlag]:
