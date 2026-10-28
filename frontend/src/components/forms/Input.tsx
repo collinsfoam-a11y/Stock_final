@@ -6,6 +6,8 @@ import React from "react";
 import { TextInput, View, Text, StyleSheet, TextInputProps, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../hooks/useTheme";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
 
@@ -17,6 +19,8 @@ interface InputProps extends TextInputProps {
   rightIconColor?: string;
   onRightIconPress?: () => void;
   containerStyle?: object;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 export const Input = React.forwardRef<TextInput, InputProps>(
@@ -29,11 +33,24 @@ export const Input = React.forwardRef<TextInput, InputProps>(
       rightIconColor,
       onRightIconPress,
       containerStyle,
+      accessibilityLabel,
+      accessibilityHint,
       ...textInputProps
     },
     ref
   ) => {
     const theme = useTheme();
+
+    const handleRightIconPress = () => {
+      if (onRightIconPress) {
+        void haptics.light();
+        onRightIconPress();
+      }
+    };
+
+    const computedAccessibilityLabel =
+      accessibilityLabel || label || textInputProps.placeholder || "Text input";
+    const computedAccessibilityHint = error ? `Error: ${error}` : accessibilityHint;
 
     return (
       <View style={[styles.container, containerStyle]}>
@@ -54,12 +71,16 @@ export const Input = React.forwardRef<TextInput, InputProps>(
               size={20}
               color={theme.colors.placeholder}
               style={styles.leftIcon}
+              {...getDecorativeIconProps()}
             />
           )}
           <TextInput
             autoCapitalize="none"
             autoCorrect={false}
             ref={ref}
+            accessibilityLabel={computedAccessibilityLabel}
+            accessibilityHint={computedAccessibilityHint}
+            aria-invalid={Boolean(error)}
             style={[
               styles.input,
               {
@@ -81,18 +102,32 @@ export const Input = React.forwardRef<TextInput, InputProps>(
           />
           {rightIcon && (
             <AppTouchable
-              onPress={onRightIconPress}
+              onPress={handleRightIconPress}
               style={styles.rightIcon}
-              activeOpacity={0.7}>
+              activeOpacity={0.7}
+              {...getAccessibleButtonProps({
+                label: `${rightIcon} action`,
+                hint: `Triggers action for ${computedAccessibilityLabel}`,
+              })}
+            >
               <Ionicons
                 name={rightIcon}
                 size={20}
                 color={rightIconColor || theme.colors.placeholder}
+                {...getDecorativeIconProps()}
               />
             </AppTouchable>
           )}
         </View>
-        {error && <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>}
+        {error && (
+          <Text
+            accessibilityRole="alert"
+            accessibilityLiveRegion="assertive"
+            style={[styles.error, { color: theme.colors.error }]}
+          >
+            {error}
+          </Text>
+        )}
       </View>
     );
   }
