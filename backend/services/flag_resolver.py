@@ -138,7 +138,7 @@ async def _load_phase0_flags(db: Any) -> dict[str, Optional[FeatureFlag]]:
     # ⚡ Bolt: Fetch phase 0 flags concurrently using asyncio.gather to avoid N+1 query latency during resolution.
     keys = (BL_V2_GLOBAL_DISABLE, *_SCOPED_FLAG_KEYS)
     results = await asyncio.gather(*[_load_flag(db, key) for key in keys])
-    return dict(zip(keys, results))
+    return dict(zip(keys, results, strict=True))
 
 
 async def _load_flag(db: Any, key: str) -> Optional[FeatureFlag]:
