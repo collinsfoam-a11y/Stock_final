@@ -23,6 +23,8 @@ import { useMotionAwareEntering } from "../../hooks/useMotionAwareEntering";
 import type { ThemeTokens } from "../../theme/themeTokens";
 import { AppTouchable } from "../ui/AppTouchable";
 import type { DashboardKpiViewModel, DashboardStatus } from "../../viewModels/types";
+import { haptics } from "../../services/haptics";
+import { getAccessibleButtonProps } from "../../utils/accessibility";
 
 export interface KpiTileProps {
     vm: DashboardKpiViewModel;
@@ -113,10 +115,14 @@ export const KpiTile: React.FC<KpiTileProps> = ({ vm, onPress, delay = 0 }) => {
 
     return (
         <AppTouchable
-            onPress={onPress}
+            onPress={onPress ? () => {
+                void haptics.light();
+                onPress();
+            } : undefined}
             activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={accessibilityLabel}
+            {...getAccessibleButtonProps({
+                label: accessibilityLabel,
+            })}
             style={styles.tile}
         >
             {content}
