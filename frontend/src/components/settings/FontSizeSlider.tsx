@@ -60,7 +60,7 @@ export const FontSizeSlider: React.FC<FontSizeSliderProps> = ({
     // Only trigger haptics and callback when value actually changes
     if (snappedValue !== value) {
       if (Platform.OS !== "web") {
-        selectionAsync();
+        void selectionAsync()?.catch(() => {});
       }
       onValueChange(snappedValue);
     }

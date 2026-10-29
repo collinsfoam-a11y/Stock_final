@@ -20,7 +20,7 @@ jest.mock("../../../hooks/useUiTokens", () => ({
 jest.mock("@expo/vector-icons/Ionicons", () => "Ionicons");
 
 jest.mock("expo-haptics", () => ({
-  selectionAsync: jest.fn(),
+  selectionAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe("FontSizeSlider", () => {
