@@ -24,6 +24,8 @@ import { useMotionAwareEntering } from "../../hooks/useMotionAwareEntering";
 import { colorWithAlpha, type ThemeTokens } from "../../theme/themeTokens";
 import { AppTouchable } from "../ui/AppTouchable";
 import type { ExceptionTriageItem, ExceptionTriageKind, TriageSeverity } from "../../viewModels/types";
+import { haptics } from "../../services/haptics";
+import { getAccessibleButtonProps } from "../../utils/accessibility";
 
 export interface ExceptionTriageListProps {
     items: ExceptionTriageItem[];
@@ -103,10 +105,14 @@ const TriageRow: React.FC<{
 
     return (
         <AppTouchable
-            onPress={() => onPress?.(item)}
+            onPress={onPress ? () => {
+                void haptics.light();
+                onPress(item);
+            } : undefined}
             activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={`${item.title}, ${item.count} affected`}
+            {...getAccessibleButtonProps({
+                label: `${item.title}, ${item.count} affected`,
+            })}
         >
             <Animated.View entering={entering}>{row}</Animated.View>
         </AppTouchable>
