@@ -47,4 +47,18 @@ describe("Badge", () => {
     const badge = getByLabelText("Badge: 0");
     expect(badge.props.accessibilityLabel).toBe("Badge: 0");
   });
+
+  it("handles undefined or null label gracefully without stringifying 'undefined' or 'null'", () => {
+    const { getByLabelText } = render(<Badge label={undefined} />);
+    const badge = getByLabelText("Badge");
+    expect(badge.props.accessibilityLabel).toBe("Badge");
+  });
+
+  it("applies accessibilityHint when provided", () => {
+    const { getByLabelText } = render(
+      <Badge label="5" accessibilityHint="Displays current pending item count" />
+    );
+    const badge = getByLabelText("Badge: 5");
+    expect(badge.props.accessibilityHint).toBe("Displays current pending item count");
+  });
 });

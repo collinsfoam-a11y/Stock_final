@@ -12,13 +12,14 @@ export type BadgeVariant = "default" | "primary" | "success" | "warning" | "erro
 export type BadgeSize = "sm" | "md" | "lg";
 
 interface BadgeProps {
-  label: string | number;
+  label?: string | number;
   variant?: BadgeVariant;
   size?: BadgeSize;
   dot?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
   accessibilityLabel?: string;
+  accessibilityHint?: string;
   accessibilityRole?: "text" | "none" | "image";
 }
 
@@ -45,15 +46,18 @@ export const Badge: React.FC<BadgeProps> = ({
   style,
   textStyle,
   accessibilityLabel,
+  accessibilityHint,
   accessibilityRole = "text",
 }) => {
   const colors = variantColors[variant];
   const sizes = sizeStyles[size];
 
+  const defaultLabel = label !== undefined && label !== null && label !== "" ? `Badge: ${label}` : "Badge";
   const accessibilityProps = {
     accessible: true,
     accessibilityRole: accessibilityRole,
-    accessibilityLabel: accessibilityLabel || `Badge: ${label}`,
+    accessibilityLabel: accessibilityLabel || defaultLabel,
+    ...(accessibilityHint ? { accessibilityHint } : null),
   };
 
   if (dot) {
