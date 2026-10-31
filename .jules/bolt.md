@@ -15,3 +15,6 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+## 2026-07-28 - PyMongo Sequential I/O Bottlenecks in Analytics
+**Learning:** Legacy sessions analytics fetched aggregated data by sequentially awaiting five separate PyMongo `to_list()` cursors. Because these queries on the same collection are independent and PyMongo is non-blocking, these operations created a significant latency bottleneck.
+**Action:** When performing multiple independent aggregation pipelines or queries on collections, always use `asyncio.gather(...)` to execute them concurrently, significantly reducing overall I/O wait times.
