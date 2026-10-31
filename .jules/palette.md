@@ -41,3 +41,6 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+## 2026-07-28 - Centralizing Tactile Feedback in Core Touchables
+**Learning:** Wrapping `onPress` in foundational components like `AppTouchable` with `haptics.light()` ensures consistent tactile feedback application-wide without repeating `haptics.light()` in every consumer component.
+**Action:** Conditionally inject `haptics.light()` into `AppTouchable` while preserving the `GestureResponderEvent` argument to prevent breaking event-dependent logic.
