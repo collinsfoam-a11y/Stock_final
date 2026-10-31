@@ -44,3 +44,6 @@
 ## 2026-07-28 - Centralizing Tactile Feedback in Core Touchables
 **Learning:** Wrapping `onPress` in foundational components like `AppTouchable` with `haptics.light()` ensures consistent tactile feedback application-wide without repeating `haptics.light()` in every consumer component.
 **Action:** Conditionally inject `haptics.light()` into `AppTouchable` while preserving the `GestureResponderEvent` argument to prevent breaking event-dependent logic.
+## 2026-07-28 - Centralizing Tactile Feedback in Core Touchables
+**Learning:** Wrapping `onPress` in foundational components like `AppTouchable` with `haptics.light()` ensures consistent tactile feedback application-wide without repeating `haptics.light()` in every consumer component.
+**Action:** Conditionally inject `haptics.light()` into `AppTouchable` while preserving the `GestureResponderEvent` argument to prevent breaking event-dependent logic.
