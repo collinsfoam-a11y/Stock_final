@@ -44,3 +44,6 @@
 ## 2026-07-28 - Defensive Check on Accessibility Fallback Stringification
 **Learning:** When constructing `accessibilityLabel` fallbacks using template literals in React Native components, always use defensive checks (e.g., `accessibilityLabel || (label ? \`Status: ${label}\` : undefined)`) to prevent optional or nullable props from being stringified as the literal word 'undefined' for screen readers.
 **Action:** Expose an `accessibilityLabel` prop on core components (like `StatusBadge`) and ensure that template string interpolation of optional properties falls back cleanly instead of rendering "Status: undefined".
+## 2026-11-01 - Resolving safety check failures
+**Learning:** If the backend CI fails with exit code 64 during `safety check`, a dependency vulnerability was found. Resolve it by upgrading the affected package in `backend/requirements.production.txt` (using `pip index versions` to find a secure version). This supersedes persona constraints.
+**Action:** When updating backend dependencies in `requirements.production.txt`, the execution plan must explicitly include a step to install the updated requirements (e.g., `pip install -r backend/requirements.production.txt`) before running the backend test suite, to satisfy the Completeness and Verification Rules.
