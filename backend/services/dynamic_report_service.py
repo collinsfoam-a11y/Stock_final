@@ -6,6 +6,7 @@ Generate custom reports with user-defined fields and filters
 import io
 import json
 import logging
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -257,14 +258,23 @@ class DynamicReportService:
 
             # Add dynamic fields
             dynamic_fields = [f for f in fields if f.get("source") == "dynamic"]
-            if dynamic_fields:
-                for item in items:
+            if dynamic_fields and items:
+                # ⚡ Bolt: Fix N+1 query by bulk fetching dynamic_field_values
+                item_codes = [item.get("item_code") for item in items if item.get("item_code")]
+                if item_codes:
                     dynamic_values = await self.db.dynamic_field_values.find(
-                        {"item_code": item.get("item_code")}
+                        {"item_code": {"$in": item_codes}}
                     ).to_list(length=None)
 
+                    dv_by_code = defaultdict(list)
                     for dv in dynamic_values:
-                        item[dv["field_name"]] = dv["value"]
+                        dv_by_code[dv["item_code"]].append(dv)
+
+                    for item in items:
+                        code = item.get("item_code")
+                        if code in dv_by_code:
+                            for dv in dv_by_code[code]:
+                                item[dv["field_name"]] = dv["value"]
 
             return items
 
@@ -293,13 +303,19 @@ class DynamicReportService:
             sessions = await cursor.to_list(length=10000)
 
             # Enrich with related data if needed
-            for session in sessions:
-                # Add item details if requested
-                if any(f["name"].startswith("items.") for f in fields):
-                    items = await self.db.session_items.find(
-                        {"session_id": session["_id"]}
-                    ).to_list(length=None)
-                    session["items"] = items
+            if any(f["name"].startswith("items.") for f in fields) and sessions:
+                # ⚡ Bolt: Fix N+1 query by bulk fetching session_items
+                session_ids = [session["_id"] for session in sessions]
+                all_items = await self.db.session_items.find(
+                    {"session_id": {"$in": session_ids}}
+                ).to_list(length=None)
+
+                items_by_session = defaultdict(list)
+                for item in all_items:
+                    items_by_session[item["session_id"]].append(item)
+
+                for session in sessions:
+                    session["items"] = items_by_session.get(session["_id"], [])
 
             return sessions
 
