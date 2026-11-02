@@ -15,3 +15,7 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+
+## 2026-11-02 - List Rendering Optimization in React Native
+**Learning:** `FlatList` suffers from significant frame drops and memory issues when rendering long, complex items or paginated lists with infinite scrolling (like search results). The `VirtualList` component (which wraps `@shopify/flash-list`) is vastly superior for these use cases but requires a precisely calculated `estimatedItemSize` based on actual layout padding, margins, and text heights.
+**Action:** When optimizing long dropdowns or lists (like in `SearchAutocomplete`), replace `FlatList` with `VirtualList`, calculate an accurate `estimatedItemSize`, remove incompatible props (`maxToRenderPerBatch`, `windowSize`), and ensure ref types are relaxed if needed (`useRef<any>`).
