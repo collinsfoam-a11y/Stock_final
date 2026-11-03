@@ -41,3 +41,6 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+## 2024-11-03 - Accessible Radio Groups in React Native
+**Learning:** Custom selection controls like radio buttons using generic touchables need specific mapping (`accessibilityRole="radiogroup"` on container and `accessibilityRole="radio"`, `accessibilityState={{ checked: boolean }}` on elements) for accurate screen reader announcements in React Native.
+**Action:** Always map generic container views and interactive elements to specific accessibility roles and corresponding states when building standard form controls.
