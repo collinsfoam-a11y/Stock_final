@@ -15,3 +15,7 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+
+## 2026-08-01 - List Rendering Optimization in SearchAutocomplete
+**Learning:** Rendering potentially long, dynamic autocomplete suggestion lists (e.g. from an offline local DB search) using standard `FlatList` can cause UI thread blocking and memory pressure, degrading search UX. `VirtualList` (wrapping `@shopify/flash-list`) is required for performant long lists in this codebase.
+**Action:** When working with search results or autocomplete dropdowns that could return dozens of items, always prefer `VirtualList` over `FlatList`. Ensure you provide an accurately calculated `estimatedItemSize` (e.g. based on padding, fonts, and gaps in `resultItem`) to maximize view recycling benefits.
