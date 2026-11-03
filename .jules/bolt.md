@@ -19,3 +19,7 @@
 ## 2026-08-01 - List Rendering Optimization in SearchAutocomplete
 **Learning:** Rendering potentially long, dynamic autocomplete suggestion lists (e.g. from an offline local DB search) using standard `FlatList` can cause UI thread blocking and memory pressure, degrading search UX. `VirtualList` (wrapping `@shopify/flash-list`) is required for performant long lists in this codebase.
 **Action:** When working with search results or autocomplete dropdowns that could return dozens of items, always prefer `VirtualList` over `FlatList`. Ensure you provide an accurately calculated `estimatedItemSize` (e.g. based on padding, fonts, and gaps in `resultItem`) to maximize view recycling benefits.
+
+## 2026-08-01 - Dependency Updates for Vulnerabilities
+**Learning:** Resolving safety check failures in python applications. Ensure you review the `requirements.production.txt` and correctly target and test updated dependency versions using `pip index versions` rather than guessing, which avoids test breaks.
+**Action:** When asked to resolve vulnerabilities (such as from `safety check`), explicitly discover valid secure versions, apply them, and test them by re-running the test suite as well as the safety check.
