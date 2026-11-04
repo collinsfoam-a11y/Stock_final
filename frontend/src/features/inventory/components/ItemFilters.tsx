@@ -338,7 +338,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
               <Text style={[styles.filterLabel, { color: theme.colors.text }]}>
                 Verification Status
               </Text>
-              <View style={styles.radioGroup}>
+              <View style={styles.radioGroup} accessibilityRole="radiogroup">
                 <AppTouchable
                   style={[
                     styles.radioOption,
@@ -346,6 +346,8 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
                     { borderColor: theme.colors.border },
                   ]}
                   onPress={() => updateFilter("verified", undefined)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: filters.verified === undefined }}
                 >
                   <Text style={[styles.radioText, { color: theme.colors.text }]}>All</Text>
                   {filters.verified === undefined && (
@@ -359,6 +361,8 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
                     { borderColor: theme.colors.border },
                   ]}
                   onPress={() => updateFilter("verified", true)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: filters.verified === true }}
                 >
                   <Text style={[styles.radioText, { color: theme.colors.text }]}>Verified</Text>
                   {filters.verified === true && (
@@ -372,6 +376,8 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
                     { borderColor: theme.colors.border },
                   ]}
                   onPress={() => updateFilter("verified", false)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: filters.verified === false }}
                 >
                   <Text style={[styles.radioText, { color: theme.colors.text }]}>Unverified</Text>
                   {filters.verified === false && (
