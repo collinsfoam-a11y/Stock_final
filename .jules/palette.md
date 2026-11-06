@@ -41,3 +41,7 @@
 ## 2025-02-28 - accessibilityRole collision with getAccessibleButtonProps
 **Learning:** The UI governance linter requires using `getAccessibleButtonProps` to enforce proper accessibility labeling and state on interactive elements like touchables. However, this helper inherently sets the `accessibilityRole="button"`. Manually defining `accessibilityRole` on components like `Badge` when `getAccessibleButtonProps` is used elsewhere in tests or typings can lead to type inference collisions or unexpected test failures if not properly synchronized.
 **Action:** Always check existing tests and typings for `accessibilityRole` expectations when applying accessibility spread props. Remove redundant manual role assignments if the spread already provides them.
+
+## 2026-08-10 - Standardizing Accessible States for Custom Radios
+**Learning:** Custom selection controls like radio groups built with touchables need explicit `accessibilityRole="radiogroup"` on the container and `accessibilityRole="radio"` combined with `accessibilityState={{ checked: <boolean> }}` on the options. Using `selected` instead of `checked` for radio buttons is technically incorrect and may result in improper screen reader announcements.
+**Action:** When building or maintaining custom radio inputs, always ensure the container is explicitly marked as a `radiogroup` and the active state of each `radio` option is managed using the `checked` accessibility state rather than `selected`.

@@ -44,7 +44,7 @@ export const Radio: React.FC<RadioProps> = ({
   disabled = false,
 }) => {
   return (
-    <View style={styles.container}>
+    <View style={styles.container} accessibilityRole="radiogroup">
       {options.map((option) => (
         <RadioItem
           key={option.value}
@@ -96,7 +96,7 @@ const RadioItem: React.FC<RadioItemProps> = ({
       hitSlop={OPERATIONAL_HIT_SLOP.standard}
       accessibilityRole="radio"
       accessibilityLabel={option.label}
-      accessibilityState={{ selected, disabled }}
+      accessibilityState={{ checked: selected, disabled }}
     >
       <View
         style={[
