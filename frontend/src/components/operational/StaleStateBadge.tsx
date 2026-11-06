@@ -11,6 +11,7 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+import { getDecorativeIconProps } from "@/utils/accessibility";
 import { useUiTokens } from "../../hooks/useUiTokens";
 import { colorWithAlpha, type ThemeTokens } from "../../theme/themeTokens";
 import type { StaleStateReason } from "../../viewModels/types";
@@ -25,17 +26,31 @@ const REASON_META: Record<StaleStateReason, { label: string; icon: keyof typeof 
 
 export interface StaleStateBadgeProps {
     reasons: StaleStateReason[];
+    accessibilityLabel?: string;
+    accessibilityHint?: string;
 }
 
-export const StaleStateBadge: React.FC<StaleStateBadgeProps> = ({ reasons }) => {
+export const StaleStateBadge: React.FC<StaleStateBadgeProps> = ({
+    reasons,
+    accessibilityLabel,
+    accessibilityHint,
+}) => {
     const t = useUiTokens();
     const styles = makeStyles(t);
 
     const visible = reasons.filter((r) => REASON_META[r]);
     if (!visible.length) return null;
 
+    const defaultLabel = `Stale data caveat: ${visible.map((r) => REASON_META[r].label).join(", ")}`;
+
     return (
-        <View style={styles.row} accessibilityRole="text">
+        <View
+            style={styles.row}
+            accessible={true}
+            accessibilityRole="text"
+            accessibilityLabel={accessibilityLabel || defaultLabel}
+            accessibilityHint={accessibilityHint}
+        >
             {visible.map((reason) => {
                 const meta = REASON_META[reason];
                 return (
@@ -43,7 +58,12 @@ export const StaleStateBadge: React.FC<StaleStateBadgeProps> = ({ reasons }) => 
                         key={reason}
                         style={[styles.badge, { backgroundColor: colorWithAlpha(t.colors.warning, 0.14), borderColor: colorWithAlpha(t.colors.warning, 0.3) }]}
                     >
-                        <Ionicons name={meta.icon} size={11} color={t.colors.warning} />
+                        <Ionicons
+                            name={meta.icon}
+                            size={11}
+                            color={t.colors.warning}
+                            {...getDecorativeIconProps()}
+                        />
                         <Text style={[styles.label, { color: t.colors.warning }]}>{meta.label}</Text>
                     </View>
                 );
