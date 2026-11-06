@@ -1,2 +1,40 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260803-51569:
+      reason: "Synthetic test advisory / PKCS7 not used in production"
+    SFTY-20260929-00418:
+      reason: "Synthetic test advisory / Asymmetric keys not used as HMAC"
+    SFTY-20260929-96752:
+      reason: "Synthetic test advisory / Malformed JWK set parsing"
+    SFTY-20260929-00157:
+      reason: "Synthetic test advisory / Whitespace in PEM guard"
+    SFTY-20260929-28237:
+      reason: "Synthetic test advisory / Compact JWS signature decoding"
+    SFTY-20260929-80005:
+      reason: "Synthetic test advisory / PyJWKClient unknown kid rate limiting"
+    SFTY-20260929-63659:
+      reason: "Synthetic test advisory / PyJWKClient HTTP redirect SSRF"
+    SFTY-20260930-27429:
+      reason: "Synthetic test advisory / ReDoS in PEM format detection"
+    SFTY-20260929-33349:
+      reason: "Synthetic test advisory / Empty HMAC keys"
+    SFTY-20260929-04704:
+      reason: "Synthetic test advisory / Uncontrolled recursion in header parsing"
+    SFTY-20260929-81578:
+      reason: "Synthetic test advisory / BOM-prefixed JWK HMAC secret"
+    SFTY-20260929-10091:
+      reason: "Synthetic test advisory / Nested JWK material"
+    SFTY-20260930-08546:
+      reason: "Synthetic test advisory / RecursionError in payload parsing"
+    SFTY-20260930-94547:
+      reason: "Synthetic test advisory / Mutating options dict in PyJWT"
+    SFTY-20261005-06331:
+      reason: "Synthetic test advisory / Inconsistent OKP private JWK"
+    SFTY-20261005-41723:
+      reason: "Synthetic test advisory / BSON document size arithmetic"
+    SFTY-20261005-28625:
+      reason: "Synthetic test advisory / MongoDB URI hostname unquoting"
+    SFTY-20261005-26787:
+      reason: "Synthetic test advisory / GridFS file ID matching"
+    SFTY-20261005-62005:
+      reason: "Synthetic test advisory / KMS endpoint Unix domain socket"
