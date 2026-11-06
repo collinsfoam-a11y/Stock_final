@@ -138,4 +138,36 @@ describe("StaleStateBadge", () => {
         // Unknown reason simply does not render a badge.
         expect(queryByText("Unknown future reason")).toBeNull();
     });
+
+    it("provides accessible grouping and default accessibilityLabel for screen readers", () => {
+        const { getByLabelText } = render(
+            <StaleStateBadge reasons={["cached_erp", "offline"]} />,
+        );
+        const badge = getByLabelText("Stale data caveat: Cached ERP, Offline");
+        expect(badge.props.accessible).toBe(true);
+        expect(badge.props.accessibilityRole).toBe("text");
+    });
+
+    it("supports custom accessibilityLabel and accessibilityHint", () => {
+        const { getByLabelText } = render(
+            <StaleStateBadge
+                reasons={["cached_erp"]}
+                accessibilityLabel="Custom caveat label"
+                accessibilityHint="Custom hint"
+            />,
+        );
+        const badge = getByLabelText("Custom caveat label");
+        expect(badge.props.accessibilityHint).toBe("Custom hint");
+    });
+
+    it("hides decorative icons from screen readers", () => {
+        const { UNSAFE_queryByType } = render(
+            <StaleStateBadge reasons={["cached_erp"]} />,
+        );
+        const icon = UNSAFE_queryByType(require("@expo/vector-icons/Ionicons").default);
+        if (icon) {
+            expect(icon.props.accessibilityElementsHidden).toBe(true);
+            expect(icon.props.importantForAccessibility).toBe("no");
+        }
+    });
 });
