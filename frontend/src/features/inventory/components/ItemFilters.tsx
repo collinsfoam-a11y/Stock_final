@@ -11,9 +11,9 @@ import {
   StyleSheet,
   Platform,
   Modal,
-  FlatList,
   ActivityIndicator,
 } from "react-native";
+import { VirtualList } from "@/components/common/VirtualList";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@/hooks/useTheme";
 import { useSettingsStore } from "@/store/settingsStore";
@@ -166,10 +166,13 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
             {isLoading ? (
               <ActivityIndicator size="large" color={theme.colors.primary} style={{ margin: 20 }} />
             ) : (
-              <FlatList
-                data={data}
-                keyExtractor={(item) => (typeof item === "string" ? item : item.rack)}
-                renderItem={({ item }) => {
+              <>
+                {/* ⚡ Bolt: Replaced FlatList with VirtualList (FlashList) to improve rendering performance and reduce memory usage for long lists of location options. */}
+                <VirtualList
+                  data={data}
+                  estimatedItemSize={65}
+                  keyExtractor={(item) => (typeof item === "string" ? item : item.rack)}
+                  renderItem={({ item }) => {
                   if (isRack && typeof item !== "string") {
                     // Render Rack Progress Card
                     return (
@@ -212,6 +215,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
                   </Text>
                 }
               />
+              </>
             )}
           </View>
         </View>

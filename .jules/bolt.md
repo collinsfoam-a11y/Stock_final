@@ -15,3 +15,6 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+## 2026-07-28 - React Native List Refactoring
+**Learning:** When replacing `FlatList` with `VirtualList` (a `FlashList` wrapper), any associated `useRef` typings need to be updated as well. Using `useRef<any>(null)` is an easy fallback but bypassing TypeScript safety checks introduces technical debt. In addition, when placing JSX comments inside ternary conditional operators, wrapping the comment and the component in a React Fragment (`<>...</>`) is a valid and necessary syntax workaround.
+**Action:** In future optimizations, properly type `VirtualList` refs instead of defaulting to `any`.
