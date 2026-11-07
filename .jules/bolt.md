@@ -18,3 +18,7 @@
 ## 2026-07-28 - React Native List Refactoring
 **Learning:** When replacing `FlatList` with `VirtualList` (a `FlashList` wrapper), any associated `useRef` typings need to be updated as well. Using `useRef<any>(null)` is an easy fallback but bypassing TypeScript safety checks introduces technical debt. In addition, when placing JSX comments inside ternary conditional operators, wrapping the comment and the component in a React Fragment (`<>...</>`) is a valid and necessary syntax workaround.
 **Action:** In future optimizations, properly type `VirtualList` refs instead of defaulting to `any`.
+
+## 2026-11-07 - React Native ref forwarding on generic components
+**Learning:** When using `React.forwardRef` on a generic component like `VirtualList<T>`, TypeScript loses the generic type parameter. To solve this, you need to use `<T,>` in the generic and assert the returned component type explicitly using `as <T>(props: VirtualListProps<T> & { ref?: any }) => React.ReactElement;`.
+**Action:** Always correctly cast generic components wrapped in `forwardRef` to avoid TypeScript `ref` property errors when replacing `FlatList`.

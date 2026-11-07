@@ -85,7 +85,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
       }
     };
 
-    loadLocations();
+    void loadLocations();
   }, [offlineMode]);
 
   const loadRackProgress = async () => {
@@ -129,7 +129,7 @@ export const ItemFilters: React.FC<ItemFiltersProps> = ({
     setModalType(type);
     setModalVisible(true);
     if (type === "rack" && sessionId) {
-      loadRackProgress();
+      void loadRackProgress();
     }
   };
 
