@@ -167,32 +167,60 @@ async def generate_stock_summary(db, filters: ReportFilter) -> list[dict]:
     if date_filter:
         line_query["counted_at"] = date_filter
 
+    pipeline: list[dict[str, Any]] = [
+        {"$match": line_query},
+        {"$match": {"item_code": {"$exists": True, "$nin": [None, ""]}}},
+        {
+            "$group": {
+                "_id": "$item_code",
+                "verification_count": {"$sum": 1},
+                "finalized_count": {
+                    "$sum": {
+                        "$cond": [
+                            {"$eq": [{"$toLower": {"$ifNull": ["$status", ""]}}, "locked"]},
+                            1,
+                            0,
+                        ]
+                    }
+                },
+                "finalized_qty": {
+                    "$sum": {
+                        "$cond": [
+                            {"$eq": [{"$toLower": {"$ifNull": ["$status", ""]}}, "locked"]},
+                            {
+                                "$convert": {
+                                    "input": "$counted_qty",
+                                    "to": "double",
+                                    "onError": 0.0,
+                                    "onNull": 0.0,
+                                }
+                            },
+                            0.0,
+                        ]
+                    }
+                },
+                "last_verified": {
+                    "$max": {
+                        "$cond": [
+                            {"$eq": [{"$toLower": {"$ifNull": ["$status", ""]}}, "locked"]},
+                            {"$ifNull": ["$finalized_at", {"$ifNull": ["$verified_at", "$counted_at"]}]},
+                            None,
+                        ]
+                    }
+                },
+            }
+        },
+    ]
+
+    # ⚡ Bolt: Offload application-level aggregation loops to MongoDB pipelines.
     line_summary: dict[str, dict[str, Any]] = {}
-    lines_cursor = db.count_lines.find(line_query)
-    async for line in lines_cursor:
-        item_code = line.get("item_code")
-        if not item_code:
-            continue
-        summary = line_summary.setdefault(
-            item_code,
-            {
-                "verification_count": 0,
-                "finalized_count": 0,
-                "finalized_qty": 0.0,
-                "last_verified": None,
-            },
-        )
-        summary["verification_count"] += 1
-        if str(line.get("status", "")).lower() == "locked":
-            summary["finalized_count"] += 1
-            summary["finalized_qty"] += float(line.get("counted_qty") or 0.0)
-            last_verified = (
-                line.get("finalized_at") or line.get("verified_at") or line.get("counted_at")
-            )
-            if last_verified and (
-                summary["last_verified"] is None or last_verified > summary["last_verified"]
-            ):
-                summary["last_verified"] = last_verified
+    async for doc in db.count_lines.aggregate(pipeline):
+        line_summary[doc["_id"]] = {
+            "verification_count": doc.get("verification_count", 0),
+            "finalized_count": doc.get("finalized_count", 0),
+            "finalized_qty": doc.get("finalized_qty", 0.0),
+            "last_verified": doc.get("last_verified"),
+        }
 
     results: list[dict[str, Any]] = []
     for item in items:
