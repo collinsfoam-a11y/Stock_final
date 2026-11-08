@@ -1,6 +1,8 @@
 import React from 'react';
 // eslint-disable-next-line no-restricted-imports
-import { TouchableOpacityProps, ViewStyle, TouchableOpacity, AccessibilityRole } from 'react-native';
+import { TouchableOpacityProps, ViewStyle, TouchableOpacity, AccessibilityRole, GestureResponderEvent } from 'react-native';
+
+import { haptics } from '@/services/haptics';
 
 interface Props extends Omit<TouchableOpacityProps, 'accessibilityRole'> {
   accessibilityLabel?: string;
@@ -14,12 +16,20 @@ export const AppTouchable = React.forwardRef<React.ElementRef<typeof TouchableOp
   minHitSize = 44,
   hitSlop,
   style,
+  onPress,
   ...props
 }, ref) => {
   const minSizeStyle: ViewStyle = {
     minWidth: minHitSize,
     minHeight: minHitSize,
   };
+
+  const handlePress = onPress
+    ? (e: GestureResponderEvent) => {
+        void haptics.light();
+        onPress(e);
+      }
+    : undefined;
 
   return (
     <TouchableOpacity
@@ -28,6 +38,7 @@ export const AppTouchable = React.forwardRef<React.ElementRef<typeof TouchableOp
       accessibilityRole={accessibilityRole as AccessibilityRole}
       hitSlop={hitSlop || { top: 8, bottom: 8, left: 8, right: 8 }}
       style={[minSizeStyle, style]}
+      onPress={handlePress}
       {...props}
     />
   );
