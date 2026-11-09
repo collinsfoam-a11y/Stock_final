@@ -5,6 +5,7 @@ import pytest
 from backend.api.admin_dashboard_api import (
     calculate_completion_percentage,
     count_pending_variances,
+    calculate_verified_value,
 )
 
 
@@ -47,3 +48,18 @@ async def test_count_pending_variances_matches_status_and_approval_status():
     result = await count_pending_variances(db)
 
     assert result == 4
+
+
+@pytest.mark.asyncio
+async def test_calculate_verified_value():
+    db = MagicMock()
+
+    db.count_lines.aggregate.return_value = _AggregateCursor([{"total_value": 420.50}])
+
+    result = await calculate_verified_value(db)
+
+    assert result == 420.50
+    # Also verify that it handles empty results correctly
+    db.count_lines.aggregate.return_value = _AggregateCursor([])
+    result_empty = await calculate_verified_value(db)
+    assert result_empty == 0.0

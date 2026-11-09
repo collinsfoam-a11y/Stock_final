@@ -15,3 +15,7 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+
+## 2024-11-20 - Application-Level Aggregation Overhead
+**Learning:** Iterating through cursors using `async for` in Python simply to perform mathematical aggregations (e.g., calculating a total value by multiplying and summing fields) is a major performance bottleneck. It pulls large datasets into memory, spiking application CPU usage and generating immense network I/O, particularly for dashboards where this operation must be real-time.
+**Action:** Always replace Python-level sum/multiply loop aggregations with optimized MongoDB aggregation pipelines using operators like `$sum`, `$multiply`, and `$convert`. Use `$convert` combined with `$cond` and truthiness fallbacks to accurately mirror Python's truthy/falsy evaluation directly at the database layer.
