@@ -61,6 +61,10 @@ describe("Radio Component", () => {
       <Radio options={OPTIONS} value="option2" onChange={() => {}} />
     );
 
+    // React Native Testing Library sometimes does not properly map "radiogroup" role
+    // in its getByRole implementation. Using getByLabelText for now as a workaround for RNTL limitations
+    // in some RN versions where custom roles are not mapped correctly by the RNTL query engine.
+
     const option1 = getByLabelText("Option 1");
     const option2 = getByLabelText("Option 2");
     const option3 = getByLabelText("Option 3");
@@ -70,9 +74,9 @@ describe("Radio Component", () => {
     expect(option2.props.accessibilityRole).toBe("radio");
     expect(option3.props.accessibilityRole).toBe("radio");
 
-    // Verify accessibilityState.selected
-    expect(option1.props.accessibilityState.selected).toBe(false);
-    expect(option2.props.accessibilityState.selected).toBe(true);
+    // Verify accessibilityState.checked
+    expect(option1.props.accessibilityState.checked).toBe(false);
+    expect(option2.props.accessibilityState.checked).toBe(true);
 
     // Verify accessibilityState.disabled
     expect(option1.props.accessibilityState.disabled).toBe(false);
