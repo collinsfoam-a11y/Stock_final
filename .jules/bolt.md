@@ -15,3 +15,7 @@
 ## 2024-08-20 - In-Memory Database Counting
 **Learning:** Fetching up to 5000 full documents into application memory using `to_list()` merely to iterate and count how many match a condition is a massive anti-pattern that severely spikes network I/O, deserialization time, and CPU utilization.
 **Action:** Replace all instances of in-memory iterations purely meant for counting with native MongoDB database operators (e.g. `collection.count_documents(query)`), being sure to strictly replicate missing/null handling exactly via `$exists` and `$ne`.
+
+## 2024-11-20 - Dependency Version Updates and CI Failures
+**Learning:** Security scanners like `safety` will fail CI jobs if dependencies contain known vulnerabilities. These failures can block the merge of performance improvements or other unrelated changes. However, when resolving a vulnerability strictly by updating a package version, do not describe the PR as "fixing" or "resolving vulnerabilities" to avoid unverified claims; instead, accurately describe the action as "updating dependency versions" and running the safety checks.
+**Action:** When a CI failure occurs due to dependency vulnerabilities, discover available package versions (e.g. `pip index versions <package>`) and update the requirements file to a secure, stable version, then verify by running the specific scanner command.
