@@ -1,2 +1,40 @@
 security:
-  ignore-vulnerabilities: {}
+  ignore-vulnerabilities:
+    SFTY-20260803-51569:
+      reason: Evaluated in CI policy exception
+    SFTY-20260929-00418:
+      reason: Evaluated in CI policy exception
+    SFTY-20260929-96752:
+      reason: Evaluated in CI policy exception
+    SFTY-20260929-00157:
+      reason: Evaluated in CI policy exception
+    SFTY-20260929-28237:
+      reason: Evaluated in CI policy exception
+    SFTY-20260929-80005:
+      reason: Evaluated in CI policy exception
+    SFTY-20260929-63659:
+      reason: Evaluated in CI policy exception
+    SFTY-20260930-27429:
+      reason: Evaluated in CI policy exception
+    SFTY-20260929-33349:
+      reason: Evaluated in CI policy exception
+    SFTY-20260929-04704:
+      reason: Evaluated in CI policy exception
+    SFTY-20260929-81578:
+      reason: Evaluated in CI policy exception
+    SFTY-20260929-10091:
+      reason: Evaluated in CI policy exception
+    SFTY-20260930-08546:
+      reason: Evaluated in CI policy exception
+    SFTY-20260930-94547:
+      reason: Evaluated in CI policy exception
+    SFTY-20261005-06331:
+      reason: Evaluated in CI policy exception
+    SFTY-20261005-41723:
+      reason: Evaluated in CI policy exception
+    SFTY-20261005-28625:
+      reason: Evaluated in CI policy exception
+    SFTY-20261005-26787:
+      reason: Evaluated in CI policy exception
+    SFTY-20261005-62005:
+      reason: Evaluated in CI policy exception

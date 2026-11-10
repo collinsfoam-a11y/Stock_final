@@ -37,6 +37,8 @@ interface StatusBadgeProps {
   icon?: keyof typeof Ionicons.glyphMap;
   pulse?: boolean;
   style?: ViewStyle;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 const variantColors: Record<
@@ -97,6 +99,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   icon,
   pulse = false,
   style,
+  accessibilityLabel,
+  accessibilityHint,
 }) => {
   const colors = variantColors[variant];
   const sizeConfig = sizeStyles[size];
@@ -143,10 +147,14 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     borderColor: colors.border,
   };
 
+  const trimmedLabel = label?.trim();
+  const defaultLabel = trimmedLabel ? `Status: ${trimmedLabel}` : "Status";
+
   const accessibilityProps = {
     accessible: true,
     accessibilityRole: "text" as const,
-    accessibilityLabel: `Status: ${label}`,
+    accessibilityLabel: accessibilityLabel || defaultLabel,
+    accessibilityHint,
   };
 
   const content = (
