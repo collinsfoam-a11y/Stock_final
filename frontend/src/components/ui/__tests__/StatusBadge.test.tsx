@@ -16,13 +16,34 @@ describe("StatusBadge", () => {
     expect(badge.props.accessibilityRole).toBe("text");
   });
 
+  it("supports custom accessibilityLabel and accessibilityHint", () => {
+    const { getByLabelText } = render(
+      <StatusBadge
+        label="ACTIVE"
+        accessibilityLabel="Device is active"
+        accessibilityHint="Indicates real-time scanner connectivity"
+      />
+    );
+    const badge = getByLabelText("Device is active");
+
+    expect(badge.props.accessible).toBe(true);
+    expect(badge.props.accessibilityRole).toBe("text");
+    expect(badge.props.accessibilityHint).toBe("Indicates real-time scanner connectivity");
+  });
+
+  it("handles empty or whitespace label gracefully in accessibilityLabel", () => {
+    const { getByLabelText } = render(<StatusBadge label="" />);
+    const badge = getByLabelText("Status");
+
+    expect(badge.props.accessible).toBe(true);
+    expect(badge.props.accessibilityRole).toBe("text");
+  });
+
   it("hides decorative icon from screen readers", () => {
     const { UNSAFE_queryByType } = render(
       <StatusBadge label="ACTIVE" icon="radio-button-on" />
     );
 
-    // Ionicons are typically rendered as Text or similar components in tests depending on the mock
-    // We check if it has the decorative icon props
     const icon = UNSAFE_queryByType(require("@expo/vector-icons/Ionicons").default);
     if (icon) {
       expect(icon.props.accessibilityElementsHidden).toBe(true);
@@ -31,10 +52,18 @@ describe("StatusBadge", () => {
   });
 
   it("renders with pulse animation without breaking accessibility", () => {
-    const { getByLabelText } = render(<StatusBadge label="ACTIVE" pulse={true} />);
-    const badge = getByLabelText("Status: ACTIVE");
+    const { getByLabelText } = render(
+      <StatusBadge
+        label="ACTIVE"
+        pulse={true}
+        accessibilityLabel="Sync in progress"
+        accessibilityHint="Currently syncing records"
+      />
+    );
+    const badge = getByLabelText("Sync in progress");
 
     expect(badge.props.accessible).toBe(true);
     expect(badge.props.accessibilityRole).toBe("text");
+    expect(badge.props.accessibilityHint).toBe("Currently syncing records");
   });
 });
