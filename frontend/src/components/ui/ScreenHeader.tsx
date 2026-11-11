@@ -34,6 +34,8 @@ import { safeBackNavigation } from "../../utils/navigation";
 import type { UserRole } from "../../utils/roleNavigation";
 
 import { AppTouchable } from "@/components/ui/AppTouchable";
+import { getAccessibleButtonProps, getDecorativeIconProps } from "@/utils/accessibility";
+import { haptics } from "@/services/haptics";
 
 // ============================================================================
 // Types
@@ -108,14 +110,16 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   return (
     <Animated.View style={animatedStyle}>
       <AppTouchable
-        onPress={onPress}
+        onPress={onPress ? () => { void haptics.light(); onPress(); } : undefined}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={[styles.actionButton, { backgroundColor }]}
         activeOpacity={0.8}
         testID={testID}
-        accessibilityLabel={testID || "Header button"}>
-        <Ionicons name={icon} size={size} color={iconColor} />
+        {...getAccessibleButtonProps({
+          label: testID ? testID.replace(/-/g, " ") : "Header button",
+        })}>
+        <Ionicons {...getDecorativeIconProps()} name={icon} size={size} color={iconColor} />
       </AppTouchable>
     </Animated.View>
   );
