@@ -18,7 +18,6 @@ import { BlurView } from "expo-blur";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 import Animated, {
   FadeIn,
   FadeInLeft,
@@ -170,7 +169,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   // Handlers
   const handleBackPress = useCallback(() => {
     if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void haptics.light();
     }
     if (onBackPress) {
       onBackPress();
@@ -182,7 +181,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
   const handleLogout = useCallback(async () => {
     if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      void haptics.medium();
     }
 
     if (logoutConfirmMessage === null) {
@@ -213,14 +212,14 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
   const handleRightAction = useCallback(() => {
     if (Platform.OS !== "web") {
-      Haptics.selectionAsync();
+      void haptics.selection();
     }
     rightAction?.onPress();
   }, [rightAction]);
 
   const handleSettingsPress = useCallback(() => {
     if (Platform.OS !== "web") {
-      Haptics.selectionAsync();
+      void haptics.selection();
     }
     const role = user?.role;
     const target =
